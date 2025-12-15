@@ -6,6 +6,7 @@ import uvicorn
 import shutil
 import os
 from pathlib import Path
+from datetime import datetime
 
 # Local modules
 import database
@@ -465,6 +466,274 @@ async def get_usage_by_employee_type(year: int):
                     "percentage": round((staff['total_used'] / total_used * 100), 1) if total_used > 0 else 0
                 }
             }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# === COMPLIANCE & AGENT ENDPOINTS ===
+
+@app.get("/api/compliance/5day-check/{year}")
+async def check_5day_compliance(year: int):
+    """
+    Verifica cumplimiento de 5日取得義務 para todos los empleados.
+    Retorna empleados que no cumplen con el mínimo de 5 días.
+    """
+    try:
+        from agents.compliance import get_compliance
+        compliance = get_compliance()
+        results = compliance.check_all_5_day_compliance(year)
+        return {
+            "status": "success",
+            "year": year,
+            "summary": {
+                "total_checked": results['total_checked'],
+                "compliant": results['compliant'],
+                "at_risk": results['at_risk'],
+                "non_compliant": results['non_compliant'],
+                "compliance_rate": results.get('compliance_rate', 0)
+            },
+            "non_compliant_employees": [
+                {
+                    "employee_num": c.employee_num,
+                    "name": c.employee_name,
+                    "days_used": c.days_used,
+                    "days_remaining": c.days_remaining,
+                    "status": c.status.value
+                }
+                for c in results['checks']
+                if c.status.value != 'compliant'
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/compliance/expiring/{year}")
+async def check_expiring_balances(year: int, warning_days: int = 30):
+    """
+    Verifica balances próximos a expirar.
+    Retorna empleados con días que expiran dentro del período de alerta.
+    """
+    try:
+        from agents.compliance import get_compliance
+        compliance = get_compliance()
+        results = compliance.check_expiring_balances(year, warning_days)
+        return {
+            "status": "success",
+            "year": year,
+            "warning_days": warning_days,
+            "count": len(results),
+            "employees": [
+                {
+                    "employee_num": r.employee_num,
+                    "name": r.employee_name,
+                    "expiring_days": r.expiring_days,
+                    "expiry_date": r.expiry_date,
+                    "days_until_expiry": r.days_until_expiry,
+                    "alert_level": r.alert_level.value
+                }
+                for r in results
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/compliance/report/{year}")
+async def get_compliance_report(year: int):
+    """
+    Genera un reporte completo de compliance para el año especificado.
+    Incluye: 5日取得義務, expiración, alertas.
+    """
+    try:
+        from agents.compliance import get_compliance
+        compliance = get_compliance()
+        report = compliance.get_compliance_report(year)
+        return {"status": "success", "report": report}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/compliance/alerts")
+async def get_compliance_alerts():
+    """
+    Obtiene todas las alertas de compliance activas.
+    """
+    try:
+        from agents.compliance import get_compliance
+        compliance = get_compliance()
+        alerts = compliance.get_active_alerts()
+        summary = compliance.get_alerts_summary()
+        return {
+            "status": "success",
+            "summary": summary,
+            "alerts": [
+                {
+                    "id": a.alert_id,
+                    "level": a.level.value,
+                    "type": a.type,
+                    "employee_num": a.employee_num,
+                    "employee_name": a.employee_name,
+                    "message": a.message,
+                    "message_ja": a.message_ja,
+                    "action_required": a.action_required,
+                    "created_at": a.created_at
+                }
+                for a in alerts
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/compliance/annual-ledger/{year}")
+async def get_annual_ledger(year: int):
+    """
+    Genera el 年次有給休暇管理簿 (libro de gestión de vacaciones anuales).
+    Documento requerido por ley desde 2019.
+    """
+    try:
+        from agents.compliance import get_compliance
+        compliance = get_compliance()
+        entries = compliance.generate_annual_ledger(year)
+        return {
+            "status": "success",
+            "year": year,
+            "document_name": "年次有給休暇管理簿",
+            "count": len(entries),
+            "entries": [
+                {
+                    "employee_num": e.employee_num,
+                    "employee_name": e.employee_name,
+                    "grant_date": e.grant_date,
+                    "granted_days": e.granted_days,
+                    "used_dates": e.used_dates,
+                    "used_days": e.used_days,
+                    "remaining_days": e.remaining_days
+                }
+                for e in entries
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/compliance/export-ledger/{year}")
+async def export_annual_ledger(year: int, format: str = "csv"):
+    """
+    Exporta el 年次有給休暇管理簿 a archivo.
+    Formatos: csv, json
+    """
+    try:
+        from agents.compliance import get_compliance
+        compliance = get_compliance()
+
+        filename = f"年次有給休暇管理簿_{year}.{format}"
+        output_path = UPLOAD_DIR / filename
+
+        success = compliance.export_annual_ledger(year, str(output_path), format)
+
+        if success:
+            return {
+                "status": "success",
+                "message": f"年次有給休暇管理簿 exported successfully",
+                "filename": filename,
+                "path": str(output_path)
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Export failed")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# === SYSTEM STATUS & AUDIT ENDPOINTS ===
+
+@app.get("/api/system/snapshot")
+async def get_system_snapshot():
+    """
+    Obtiene un snapshot del estado actual del sistema.
+    Útil para monitoreo y debugging.
+    """
+    try:
+        from agents.documentor import get_documentor
+        documentor = get_documentor()
+        snapshot = documentor.get_system_snapshot()
+        return {"status": "success", "snapshot": snapshot.to_dict()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/system/audit-log")
+async def get_audit_log(
+    action: str = None,
+    entity_type: str = None,
+    limit: int = 100
+):
+    """
+    Obtiene el historial de auditoría del sistema.
+    Filtrable por tipo de acción y entidad.
+    """
+    try:
+        from agents.documentor import get_documentor
+        documentor = get_documentor()
+        entries = documentor.search_history(
+            action=action,
+            entity_type=entity_type,
+            limit=limit
+        )
+        return {"status": "success", "count": len(entries), "entries": entries}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/system/activity-report")
+async def get_activity_report(days: int = 7):
+    """
+    Genera un reporte de actividad para los últimos N días.
+    """
+    try:
+        from agents.documentor import get_documentor
+        from datetime import timedelta
+        documentor = get_documentor()
+
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+
+        report = documentor.generate_activity_report(
+            start_date.isoformat(),
+            end_date.isoformat()
+        )
+        return {"status": "success", "report": report.to_dict()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# === NOTIFICATIONS ENDPOINTS ===
+
+@app.get("/api/notifications")
+async def get_notifications(employee_num: str = None, unread_only: bool = False):
+    """
+    Obtiene notificaciones del sistema.
+    Las notificaciones incluyen alertas de compliance, solicitudes aprobadas/rechazadas, etc.
+    """
+    try:
+        from agents.compliance import get_compliance
+        compliance = get_compliance()
+
+        # Obtener alertas como notificaciones
+        alerts = compliance.get_active_alerts()
+
+        notifications = []
+        for alert in alerts:
+            if employee_num and alert.employee_num != employee_num:
+                continue
+
+            notifications.append({
+                "id": alert.alert_id,
+                "type": alert.type,
+                "level": alert.level.value,
+                "title": alert.type.replace('_', ' ').title(),
+                "message": alert.message_ja,
+                "employee_num": alert.employee_num,
+                "created_at": alert.created_at,
+                "is_read": False  # Por implementar
+            })
+
+        return {
+            "status": "success",
+            "count": len(notifications),
+            "notifications": notifications
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
