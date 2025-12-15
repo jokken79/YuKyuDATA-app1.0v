@@ -91,10 +91,21 @@
                     <p style="color: #64748b;" id="page-subtitle">Real-time vacation data analytics</p>
                 </div>
 
-                <div class="flex-center" gap="1rem">
-                    <div id="year-filter" class="flex-center" style="gap: 0.5rem; margin-right: 1.5rem;"></div>
+                <div class="flex-center" style="gap: 1rem;">
+                    <div id="year-filter" class="flex-center" style="gap: 0.5rem; margin-right: 1rem;"></div>
+
+                    <!-- Theme Toggle -->
+                    <div class="theme-toggle" onclick="App.theme.toggle()" title="テーマ切替">
+                        <div class="theme-toggle-track">
+                            <div class="theme-toggle-thumb">
+                                <span id="theme-icon">🌙</span>
+                            </div>
+                        </div>
+                        <span class="theme-toggle-label" id="theme-label">Dark</span>
+                    </div>
+
                     <button class="btn btn-primary" onclick="App.data.sync()">
-                        <span>⚡</span> Sync Data
+                        <span>⚡</span> Sync
                     </button>
                     <button class="btn btn-glass" onclick="App.data.syncGenzai()" title="Sync Dispatch">
                         <span>🏢</span>
@@ -602,22 +613,27 @@
             <!-- VIEW: MONTHLY REPORTS -->
             <div id="view-reports" class="view-section" style="display: none;">
                 <div class="bento-grid">
-                    <!-- Date Selector -->
+                    <!-- Date Selector with Tabs -->
                     <div class="glass-panel col-span-4" style="padding: 1.5rem;">
-                        <div class="flex-between" style="margin-bottom: 1rem;">
-                            <div class="flex-center" style="gap: 1rem;">
-                                <h3 style="font-size: 1.25rem;">📋 レポート期間選択</h3>
-                            </div>
-                            <div class="flex-center" style="gap: 0.5rem;">
-                                <select id="report-mode" class="input-glass" style="width: 160px;" onchange="App.reports.toggleMode()">
-                                    <option value="monthly">月次 (21日〜20日)</option>
-                                    <option value="custom">カスタム期間</option>
-                                </select>
-                            </div>
+                        <div class="flex-between" style="margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+                            <h3 style="font-size: 1.25rem;">📋 レポート期間</h3>
+                            <button class="btn btn-export" onclick="App.reports.exportReport()">
+                                📥 Excel出力
+                            </button>
+                        </div>
+
+                        <!-- Tab Selector -->
+                        <div class="tab-container" style="margin-bottom: 1.25rem;">
+                            <button class="tab-btn active" id="tab-monthly" onclick="App.reports.setMode('monthly')">
+                                📅 月次 (21日〜20日)
+                            </button>
+                            <button class="tab-btn" id="tab-custom" onclick="App.reports.setMode('custom')">
+                                🔧 期間指定
+                            </button>
                         </div>
 
                         <!-- Monthly Mode -->
-                        <div id="monthly-selector" style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                        <div id="monthly-selector" style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap;">
                             <select id="report-year" class="input-glass" style="width: 120px;" onchange="App.reports.loadMonthList()">
                             </select>
                             <select id="report-month" class="input-glass" style="width: 120px;" onchange="App.reports.loadReport()">
@@ -638,25 +654,23 @@
                         </div>
 
                         <!-- Custom Mode -->
-                        <div id="custom-selector" style="display: none; gap: 1rem; align-items: center; margin-bottom: 1rem;">
-                            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                        <div id="custom-selector" style="display: none; margin-bottom: 1rem;">
+                            <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
                                 <div>
                                     <label class="stat-label" style="display: block; margin-bottom: 0.25rem; font-size: 0.8rem;">開始日</label>
                                     <input type="date" id="report-start-date" class="input-glass" style="width: 160px;">
                                 </div>
-                                <div style="display: flex; align-items: center; padding-top: 1.5rem;">
-                                    <span style="font-size: 1.5rem; color: var(--muted);">〜</span>
+                                <div style="padding-bottom: 0.75rem;">
+                                    <span style="font-size: 1.25rem; color: var(--text-muted);">〜</span>
                                 </div>
                                 <div>
                                     <label class="stat-label" style="display: block; margin-bottom: 0.25rem; font-size: 0.8rem;">終了日</label>
                                     <input type="date" id="report-end-date" class="input-glass" style="width: 160px;">
                                 </div>
-                                <div style="padding-top: 1.5rem;">
-                                    <button class="btn btn-primary" onclick="App.reports.loadCustomReport()">🔍 表示</button>
-                                </div>
+                                <button class="btn btn-primary" onclick="App.reports.loadCustomReport()">🔍 表示</button>
                             </div>
-                            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--muted);">
-                                ※ 任意の期間を選択できます（複数月にまたがる期間もOK）
+                            <div style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">
+                                ※ 複数月にまたがる期間もOK（例: 1/16 〜 2/20）
                             </div>
                         </div>
 

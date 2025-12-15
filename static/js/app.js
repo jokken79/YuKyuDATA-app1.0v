@@ -19,11 +19,43 @@ const App = {
         console.log('🚀 Initializing YuKyu Premium Dashboard...');
         this.ui.showLoading();
 
+        // Initialize theme
+        this.theme.init();
+
         // Initial Fetch
         await this.data.fetchEmployees();
 
         this.ui.hideLoading();
         this.events.setupListeners();
+    },
+
+    // ========================================
+    // THEME MODULE
+    // ========================================
+    theme: {
+        current: 'dark',
+
+        init() {
+            // Load saved theme or default to dark
+            const saved = localStorage.getItem('yukyu-theme');
+            this.current = saved || 'dark';
+            this.apply();
+        },
+
+        toggle() {
+            this.current = this.current === 'dark' ? 'light' : 'dark';
+            this.apply();
+            localStorage.setItem('yukyu-theme', this.current);
+            App.ui.showToast('info', this.current === 'dark' ? '🌙 ダークモード' : '☀️ ライトモード');
+        },
+
+        apply() {
+            document.documentElement.setAttribute('data-theme', this.current);
+            const icon = document.getElementById('theme-icon');
+            const label = document.getElementById('theme-label');
+            if (icon) icon.textContent = this.current === 'dark' ? '🌙' : '☀️';
+            if (label) label.textContent = this.current === 'dark' ? 'Dark' : 'Light';
+        }
     },
 
     data: {
@@ -1391,18 +1423,57 @@ const App = {
             this.loadReport();
         },
 
-        toggleMode() {
-            this.mode = document.getElementById('report-mode').value;
+        setMode(mode) {
+            this.mode = mode;
             const monthlySelector = document.getElementById('monthly-selector');
             const customSelector = document.getElementById('custom-selector');
+            const tabMonthly = document.getElementById('tab-monthly');
+            const tabCustom = document.getElementById('tab-custom');
 
+            // Update tab active states
             if (this.mode === 'monthly') {
+                tabMonthly.classList.add('active');
+                tabCustom.classList.remove('active');
                 monthlySelector.style.display = 'flex';
                 customSelector.style.display = 'none';
                 this.loadReport();
             } else {
+                tabMonthly.classList.remove('active');
+                tabCustom.classList.add('active');
                 monthlySelector.style.display = 'none';
                 customSelector.style.display = 'block';
+            }
+        },
+
+        async exportReport() {
+            const data = this.mode === 'monthly'
+                ? { year: this.currentYear, month: this.currentMonth }
+                : {
+                    startDate: document.getElementById('report-start-date').value,
+                    endDate: document.getElementById('report-end-date').value
+                };
+
+            App.ui.showLoading();
+            try {
+                const params = this.mode === 'monthly'
+                    ? `export_type=monthly_report&year=${data.year}&month=${data.month}`
+                    : `export_type=custom_report&start_date=${data.startDate}&end_date=${data.endDate}`;
+
+                const res = await fetch(`${App.config.apiBase}/export/excel?${params}`, { method: 'POST' });
+                const json = await res.json();
+
+                if (json.status === 'success') {
+                    App.ui.showToast('success', `レポートをエクスポートしました: ${json.filename}`);
+                    if (json.download_url) {
+                        window.open(json.download_url, '_blank');
+                    }
+                } else {
+                    throw new Error(json.detail || 'エクスポートに失敗しました');
+                }
+            } catch (e) {
+                App.ui.showToast('error', e.message || 'エクスポートに失敗しました');
+            } finally {
+                App.ui.hideLoading();
             }
         },
 
