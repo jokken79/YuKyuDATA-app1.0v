@@ -216,22 +216,45 @@
                         </h3>
 
                         <div id="request-form">
-                            <!-- Factory Filter + Employee Search -->
-                            <div style="margin-bottom: 1.5rem;">
-                                <label class="stat-label" style="display: block; margin-bottom: 0.5rem;">🏭 工場で絞込み (Filter by Factory)</label>
-                                <select id="factory-filter" class="input-glass" style="width: 100%; margin-bottom: 0.75rem;"
-                                    onchange="App.requests.filterByFactory()">
-                                    <option value="">すべての工場 (All Factories)</option>
-                                </select>
+                            <!-- Progress Steps -->
+                            <div class="progress-steps">
+                                <div class="progress-step active" id="step-1">
+                                    <div class="progress-step-number">1</div>
+                                    <div class="progress-step-label">従業員選択</div>
+                                </div>
+                                <div class="progress-step" id="step-2">
+                                    <div class="progress-step-number">2</div>
+                                    <div class="progress-step-label">日程・種類</div>
+                                </div>
+                                <div class="progress-step" id="step-3">
+                                    <div class="progress-step-number">3</div>
+                                    <div class="progress-step-label">確認・送信</div>
+                                </div>
+                            </div>
 
-                                <label class="stat-label" style="display: block; margin-bottom: 0.5rem;">🔍 従業員を検索 (Search Employee)</label>
-                                <input type="text" id="emp-search" class="input-glass" style="width: 100%;"
-                                    placeholder="名前または社員番号で検索..." oninput="App.requests.searchEmployee(this.value)">
-                                <div id="emp-search-results" style="margin-top: 0.5rem; max-height: 200px; overflow-y: auto;"></div>
+                            <!-- SECTION 1: Employee Selection -->
+                            <div class="form-section">
+                                <div class="form-section-title">👤 従業員を選択</div>
+
+                                <div class="form-group">
+                                    <label>🏭 工場で絞込み (Filter by Factory)</label>
+                                    <select id="factory-filter" class="input-glass" style="width: 100%;"
+                                        onchange="App.requests.filterByFactory()">
+                                        <option value="">すべての工場 (All Factories)</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="required">🔍 従業員を検索 (Search Employee)</label>
+                                    <input type="text" id="emp-search" class="input-glass" style="width: 100%;"
+                                        placeholder="名前または社員番号で検索..." oninput="App.requests.searchEmployee(this.value)">
+                                    <div id="emp-search-validation" class="validation-message"></div>
+                                    <div id="emp-search-results" style="margin-top: 0.5rem; max-height: 200px; overflow-y: auto;"></div>
+                                </div>
                             </div>
 
                             <!-- Selected Employee Info -->
-                            <div id="selected-emp-info" style="display: none; margin-bottom: 1.5rem; padding: 1rem; background: rgba(56, 189, 248, 0.1); border-radius: 12px;">
+                            <div id="selected-emp-info" style="display: none; margin-bottom: 1.25rem; padding: 1rem; background: rgba(56, 189, 248, 0.1); border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.2);">
                                 <div class="flex-between">
                                     <div>
                                         <div id="selected-emp-name" style="font-weight: 600; font-size: 1.1rem;"></div>
@@ -269,60 +292,73 @@
                                 </div>
                             </div>
 
-                            <!-- Date Selection -->
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-                                <div>
-                                    <label class="stat-label" style="display: block; margin-bottom: 0.5rem;">開始日 (Start Date)</label>
-                                    <input type="date" id="start-date" class="input-glass" style="width: 100%;">
-                                </div>
-                                <div>
-                                    <label class="stat-label" style="display: block; margin-bottom: 0.5rem;">終了日 (End Date)</label>
-                                    <input type="date" id="end-date" class="input-glass" style="width: 100%;">
-                                </div>
-                            </div>
+                            <!-- SECTION 2: Date & Type -->
+                            <div class="form-section">
+                                <div class="form-section-title">📅 日程と種類</div>
 
-                            <!-- Days & Type -->
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-                                <div>
-                                    <label class="stat-label" style="display: block; margin-bottom: 0.5rem;">種類 (Type)</label>
-                                    <select id="leave-type" class="input-glass" style="width: 100%;" onchange="App.requests.toggleLeaveType()">
-                                        <option value="full">全日休暇 (Full Day)</option>
-                                        <option value="half_am">午前半休 (AM Half)</option>
-                                        <option value="half_pm">午後半休 (PM Half)</option>
-                                        <option value="hourly">時間休 (Hourly)</option>
-                                    </select>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div class="form-group">
+                                        <label class="required">開始日 (Start Date)</label>
+                                        <input type="date" id="start-date" class="input-glass" style="width: 100%;"
+                                            onchange="App.requests.validateDates()">
+                                        <div id="start-date-validation" class="validation-message"></div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="required">終了日 (End Date)</label>
+                                        <input type="date" id="end-date" class="input-glass" style="width: 100%;"
+                                            onchange="App.requests.validateDates()">
+                                        <div id="end-date-validation" class="validation-message"></div>
+                                    </div>
                                 </div>
-                                <div id="days-input-container">
-                                    <label class="stat-label" style="display: block; margin-bottom: 0.5rem;">日数 (Days)</label>
-                                    <input type="number" id="days-requested" class="input-glass" style="width: 100%;"
-                                        min="0.5" step="0.5" value="1">
-                                </div>
-                                <div id="hours-input-container" style="display: none;">
-                                    <label class="stat-label" style="display: block; margin-bottom: 0.5rem;">時間数 (Hours)</label>
-                                    <input type="number" id="hours-requested" class="input-glass" style="width: 100%;"
-                                        min="1" max="7" step="1" value="1" oninput="App.requests.updateCostEstimate()">
-                                    <div style="font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;">※ 1日最大7時間まで</div>
+
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                    <div class="form-group">
+                                        <label class="required">種類 (Type)</label>
+                                        <select id="leave-type" class="input-glass" style="width: 100%;" onchange="App.requests.toggleLeaveType()">
+                                            <option value="full">全日休暇 (Full Day)</option>
+                                            <option value="half_am">午前半休 (AM Half)</option>
+                                            <option value="half_pm">午後半休 (PM Half)</option>
+                                            <option value="hourly">時間休 (Hourly)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" id="days-input-container">
+                                        <label class="required">日数 (Days)</label>
+                                        <input type="number" id="days-requested" class="input-glass" style="width: 100%;"
+                                            min="0.5" step="0.5" value="1" oninput="App.requests.validateDays()">
+                                        <div id="days-validation" class="validation-message"></div>
+                                    </div>
+                                    <div class="form-group" id="hours-input-container" style="display: none;">
+                                        <label class="required">時間数 (Hours)</label>
+                                        <input type="number" id="hours-requested" class="input-glass" style="width: 100%;"
+                                            min="1" max="7" step="1" value="1" oninput="App.requests.updateCostEstimate(); App.requests.validateHours();">
+                                        <div id="hours-validation" class="validation-message"></div>
+                                        <div style="font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;">※ 1日最大7時間まで</div>
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Cost Estimate (shown for hourly leave) -->
-                            <div id="cost-estimate-container" style="display: none; margin-bottom: 1.5rem; padding: 1rem; background: rgba(251, 191, 36, 0.1); border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.3);">
+                            <div id="cost-estimate-container" style="display: none; margin-bottom: 1.25rem; padding: 1rem; background: rgba(251, 191, 36, 0.1); border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.3);">
                                 <div class="flex-between">
                                     <span class="stat-label">💰 見積コスト (Estimated Cost):</span>
                                     <span id="cost-estimate" style="font-size: 1.25rem; font-weight: 700; color: var(--warning);"></span>
                                 </div>
                             </div>
 
-                            <!-- Reason -->
-                            <div style="margin-bottom: 1.5rem;">
-                                <label class="stat-label" style="display: block; margin-bottom: 0.5rem;">理由 (Reason)</label>
-                                <textarea id="leave-reason" class="input-glass" style="width: 100%; min-height: 80px; resize: vertical;"
-                                    placeholder="私用、通院、旅行など..."></textarea>
+                            <!-- SECTION 3: Reason -->
+                            <div class="form-section">
+                                <div class="form-section-title">📝 理由</div>
+                                <div class="form-group">
+                                    <label>理由 (Reason) - 任意</label>
+                                    <textarea id="leave-reason" class="input-glass" style="width: 100%; min-height: 80px; resize: vertical;"
+                                        placeholder="私用、通院、旅行など..." maxlength="200" oninput="App.requests.updateCharCounter()"></textarea>
+                                    <div class="char-counter" id="reason-char-counter">0 / 200</div>
+                                </div>
                             </div>
 
                             <!-- Submit Button -->
-                            <button class="btn btn-primary" style="width: 100%; padding: 1rem;" onclick="App.requests.submit()">
-                                📤 申請する (Submit Request)
+                            <button class="btn btn-primary" id="submit-btn" style="width: 100%; padding: 1rem;" onclick="App.requests.showConfirmation()">
+                                ✓ 内容を確認する (Review & Submit)
                             </button>
                         </div>
                     </div>
@@ -873,6 +909,63 @@
             console.log('PWA install available');
         });
     </script>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="confirm-modal" onclick="if(event.target === this) App.requests.hideConfirmation()">
+        <div class="confirm-modal-content">
+            <div class="confirm-modal-title">
+                ✅ 申請内容の確認
+            </div>
+
+            <div class="confirm-summary">
+                <div class="confirm-row">
+                    <span class="confirm-row-label">従業員</span>
+                    <span class="confirm-row-value" id="confirm-employee">-</span>
+                </div>
+                <div class="confirm-row">
+                    <span class="confirm-row-label">工場</span>
+                    <span class="confirm-row-value" id="confirm-factory">-</span>
+                </div>
+                <div class="confirm-row">
+                    <span class="confirm-row-label">期間</span>
+                    <span class="confirm-row-value" id="confirm-dates">-</span>
+                </div>
+                <div class="confirm-row">
+                    <span class="confirm-row-label">種類</span>
+                    <span class="confirm-row-value" id="confirm-type">-</span>
+                </div>
+                <div class="confirm-row">
+                    <span class="confirm-row-label">日数/時間</span>
+                    <span class="confirm-row-value highlight" id="confirm-amount">-</span>
+                </div>
+                <div class="confirm-row" id="confirm-cost-row" style="display: none;">
+                    <span class="confirm-row-label">見積コスト</span>
+                    <span class="confirm-row-value" style="color: var(--warning);" id="confirm-cost">-</span>
+                </div>
+                <div class="confirm-row">
+                    <span class="confirm-row-label">残り日数</span>
+                    <span class="confirm-row-value" id="confirm-balance">-</span>
+                </div>
+                <div class="confirm-row" id="confirm-reason-row">
+                    <span class="confirm-row-label">理由</span>
+                    <span class="confirm-row-value" id="confirm-reason" style="max-width: 200px; text-align: right;">-</span>
+                </div>
+            </div>
+
+            <div style="padding: 0.75rem; background: rgba(251, 191, 36, 0.1); border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; color: var(--warning);">
+                ⚠️ この内容で申請を送信しますか？
+            </div>
+
+            <div class="confirm-actions">
+                <button class="btn btn-glass" onclick="App.requests.hideConfirmation()">
+                    ← 戻る
+                </button>
+                <button class="btn btn-primary" id="confirm-submit-btn" onclick="App.requests.submitConfirmed()">
+                    📤 申請する
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

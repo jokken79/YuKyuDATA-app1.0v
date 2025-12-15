@@ -847,3 +847,378 @@ body {
     gap: 0.5rem;
   }
 }
+
+/* =========================================
+   UX IMPROVEMENTS - Form Validation & States
+   ========================================= */
+
+/* Form Group Styling */
+.form-group {
+  position: relative;
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* Input States - Validation */
+.input-glass.is-valid {
+  border-color: var(--success) !important;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15);
+}
+
+.input-glass.is-invalid {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15);
+  animation: shake 0.3s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* Validation Messages */
+.validation-message {
+  font-size: 0.75rem;
+  margin-top: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: all 0.2s ease;
+}
+
+.validation-message.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.validation-message.error {
+  color: var(--danger);
+}
+
+.validation-message.success {
+  color: var(--success);
+}
+
+.validation-message.warning {
+  color: var(--warning);
+}
+
+/* Form Section Dividers */
+.form-section {
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="light"] .form-section {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+.form-section-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Loading Skeleton */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+[data-theme="light"] .skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.05) 25%,
+    rgba(0, 0, 0, 0.1) 50%,
+    rgba(0, 0, 0, 0.05) 75%
+  );
+  background-size: 200% 100%;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-text {
+  height: 1rem;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-text.short { width: 60%; }
+.skeleton-text.medium { width: 80%; }
+
+/* Button Loading State */
+.btn.is-loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+
+.btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  top: 50%;
+  left: 50%;
+  margin-left: -10px;
+  margin-top: -10px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Confirmation Modal */
+.confirm-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.confirm-modal.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.confirm-modal-content {
+  background: var(--bg-card);
+  border: var(--glass-border);
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 480px;
+  width: 90%;
+  transform: scale(0.9) translateY(20px);
+  transition: transform 0.3s ease;
+  box-shadow: var(--glass-shadow);
+}
+
+.confirm-modal.active .confirm-modal-content {
+  transform: scale(1) translateY(0);
+}
+
+.confirm-modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.confirm-summary {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+[data-theme="light"] .confirm-summary {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.confirm-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="light"] .confirm-row {
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+.confirm-row:last-child {
+  border-bottom: none;
+}
+
+.confirm-row-label {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.confirm-row-value {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.confirm-row-value.highlight {
+  color: var(--primary);
+  font-size: 1.1rem;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.confirm-actions .btn {
+  flex: 1;
+  padding: 0.875rem;
+}
+
+/* Progress Steps Indicator */
+.progress-steps {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.progress-steps::before {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  z-index: 0;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.progress-step-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.progress-step.active .progress-step-number {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.progress-step.completed .progress-step-number {
+  background: var(--success);
+  border-color: var(--success);
+  color: white;
+}
+
+.progress-step-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.progress-step.active .progress-step-label,
+.progress-step.completed .progress-step-label {
+  color: var(--text-primary);
+}
+
+/* Character Counter */
+.char-counter {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: right;
+  margin-top: 0.25rem;
+}
+
+.char-counter.warning { color: var(--warning); }
+.char-counter.danger { color: var(--danger); }
+
+/* Mobile Form Optimizations */
+@media (max-width: 768px) {
+  .form-section {
+    padding: 1rem;
+  }
+
+  .confirm-modal-content {
+    padding: 1.5rem;
+    margin: 1rem;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .confirm-actions {
+    flex-direction: column;
+  }
+
+  .progress-steps {
+    margin-bottom: 1.5rem;
+  }
+
+  .progress-step-label {
+    font-size: 0.65rem;
+    max-width: 60px;
+  }
+}
+
+/* Touch-friendly inputs on mobile */
+@media (max-width: 768px) {
+  .input-glass,
+  .btn {
+    min-height: 48px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  select.input-glass {
+    padding-right: 2.5rem;
+  }
+}
+
+/* Focus visible for better accessibility */
+.input-glass:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Required field indicator */
+.required::after {
+  content: ' *';
+  color: var(--danger);
+}

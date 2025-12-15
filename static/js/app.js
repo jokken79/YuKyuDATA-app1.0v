@@ -742,9 +742,13 @@ const App = {
                     // Show usage history
                     this.renderUsageHistory(json);
 
-                    // Clear search
+                    // Clear search and mark as valid
                     document.getElementById('emp-search').value = json.employee.name;
+                    document.getElementById('emp-search').classList.add('is-valid');
                     document.getElementById('emp-search-results').innerHTML = '';
+
+                    // Update progress steps
+                    this.updateProgressSteps(2);
 
                     // Update cost estimate if hourly is selected
                     this.updateCostEstimate();
@@ -867,6 +871,243 @@ const App = {
             }
         },
 
+        // ===== UX IMPROVEMENTS =====
+
+        // Update progress steps
+        updateProgressSteps(step) {
+            for (let i = 1; i <= 3; i++) {
+                const el = document.getElementById(`step-${i}`);
+                el.classList.remove('active', 'completed');
+                if (i < step) el.classList.add('completed');
+                if (i === step) el.classList.add('active');
+            }
+        },
+
+        // Validate dates inline
+        validateDates() {
+            const startDate = document.getElementById('start-date');
+            const endDate = document.getElementById('end-date');
+            const startValidation = document.getElementById('start-date-validation');
+            const endValidation = document.getElementById('end-date-validation');
+            let isValid = true;
+
+            // Reset
+            startDate.classList.remove('is-valid', 'is-invalid');
+            endDate.classList.remove('is-valid', 'is-invalid');
+            startValidation.classList.remove('show', 'error', 'success');
+            endValidation.classList.remove('show', 'error', 'success');
+
+            const today = new Date().toISOString().split('T')[0];
+
+            if (startDate.value) {
+                if (startDate.value < today) {
+                    startDate.classList.add('is-invalid');
+                    startValidation.innerHTML = '⚠️ 過去の日付は選択できません';
+                    startValidation.classList.add('show', 'error');
+                    isValid = false;
+                } else {
+                    startDate.classList.add('is-valid');
+                }
+            }
+
+            if (endDate.value && startDate.value) {
+                if (endDate.value < startDate.value) {
+                    endDate.classList.add('is-invalid');
+                    endValidation.innerHTML = '⚠️ 終了日は開始日以降にしてください';
+                    endValidation.classList.add('show', 'error');
+                    isValid = false;
+                } else {
+                    endDate.classList.add('is-valid');
+                }
+            }
+
+            // Update progress if employee selected and dates valid
+            if (this.selectedEmployee && startDate.value && endDate.value && isValid) {
+                this.updateProgressSteps(2);
+            }
+
+            return isValid;
+        },
+
+        // Validate days inline
+        validateDays() {
+            const daysInput = document.getElementById('days-requested');
+            const validation = document.getElementById('days-validation');
+            const days = parseFloat(daysInput.value) || 0;
+
+            daysInput.classList.remove('is-valid', 'is-invalid');
+            validation.classList.remove('show', 'error', 'warning', 'success');
+
+            if (!this.selectedEmployee) return;
+
+            const available = this.selectedEmployee.total_available || 0;
+
+            if (days <= 0) {
+                daysInput.classList.add('is-invalid');
+                validation.innerHTML = '⚠️ 日数を入力してください';
+                validation.classList.add('show', 'error');
+                return false;
+            }
+
+            if (days > available) {
+                daysInput.classList.add('is-invalid');
+                validation.innerHTML = `⚠️ 残り${available}日を超えています`;
+                validation.classList.add('show', 'error');
+                return false;
+            }
+
+            if (days > available * 0.8) {
+                daysInput.classList.add('is-valid');
+                validation.innerHTML = `ℹ️ 残り${(available - days).toFixed(1)}日になります`;
+                validation.classList.add('show', 'warning');
+                return true;
+            }
+
+            daysInput.classList.add('is-valid');
+            return true;
+        },
+
+        // Validate hours inline
+        validateHours() {
+            const hoursInput = document.getElementById('hours-requested');
+            const validation = document.getElementById('hours-validation');
+            const hours = parseFloat(hoursInput.value) || 0;
+
+            hoursInput.classList.remove('is-valid', 'is-invalid');
+            validation.classList.remove('show', 'error', 'warning', 'success');
+
+            if (!this.selectedEmployee) return;
+
+            const totalHours = this.selectedEmployee.total_hours_available || (this.selectedEmployee.total_available * 8);
+
+            if (hours <= 0 || hours > 7) {
+                hoursInput.classList.add('is-invalid');
+                validation.innerHTML = '⚠️ 1〜7時間の範囲で入力してください';
+                validation.classList.add('show', 'error');
+                return false;
+            }
+
+            if (hours > totalHours) {
+                hoursInput.classList.add('is-invalid');
+                validation.innerHTML = `⚠️ 残り${totalHours.toFixed(0)}時間を超えています`;
+                validation.classList.add('show', 'error');
+                return false;
+            }
+
+            hoursInput.classList.add('is-valid');
+            return true;
+        },
+
+        // Update character counter
+        updateCharCounter() {
+            const textarea = document.getElementById('leave-reason');
+            const counter = document.getElementById('reason-char-counter');
+            const length = textarea.value.length;
+            const max = 200;
+
+            counter.textContent = `${length} / ${max}`;
+            counter.classList.remove('warning', 'danger');
+
+            if (length > max * 0.9) {
+                counter.classList.add('danger');
+            } else if (length > max * 0.7) {
+                counter.classList.add('warning');
+            }
+        },
+
+        // Show confirmation modal
+        showConfirmation() {
+            // Validate all fields first
+            if (!this.selectedEmployee) {
+                App.ui.showToast('error', '従業員を選択してください');
+                document.getElementById('emp-search').focus();
+                return;
+            }
+
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+
+            if (!startDate || !endDate) {
+                App.ui.showToast('error', '日付を入力してください');
+                return;
+            }
+
+            if (!this.validateDates()) {
+                App.ui.showToast('error', '日付を確認してください');
+                return;
+            }
+
+            const leaveType = document.getElementById('leave-type').value;
+            const isHourly = leaveType === 'hourly';
+
+            if (isHourly && !this.validateHours()) {
+                return;
+            } else if (!isHourly && !this.validateDays()) {
+                return;
+            }
+
+            // Update progress to step 3
+            this.updateProgressSteps(3);
+
+            // Populate confirmation modal
+            document.getElementById('confirm-employee').textContent = this.selectedEmployee.employee.name;
+            document.getElementById('confirm-factory').textContent = this.selectedEmployee.employee.factory || '-';
+            document.getElementById('confirm-dates').textContent = `${startDate} 〜 ${endDate}`;
+
+            const typeLabels = {
+                'full': '全日休暇',
+                'half_am': '午前半休',
+                'half_pm': '午後半休',
+                'hourly': '時間休'
+            };
+            document.getElementById('confirm-type').textContent = typeLabels[leaveType] || leaveType;
+
+            if (isHourly) {
+                const hours = parseFloat(document.getElementById('hours-requested').value) || 0;
+                document.getElementById('confirm-amount').textContent = `${hours}時間`;
+
+                const wage = this.selectedEmployee.hourly_wage || 0;
+                const cost = hours * wage;
+                document.getElementById('confirm-cost').textContent = `¥${cost.toLocaleString()}`;
+                document.getElementById('confirm-cost-row').style.display = 'flex';
+            } else {
+                const days = parseFloat(document.getElementById('days-requested').value) || 0;
+                document.getElementById('confirm-amount').textContent = `${days}日`;
+                document.getElementById('confirm-cost-row').style.display = 'none';
+            }
+
+            const available = this.selectedEmployee.total_available || 0;
+            const requested = isHourly
+                ? (parseFloat(document.getElementById('hours-requested').value) || 0) / 8
+                : (parseFloat(document.getElementById('days-requested').value) || 0);
+            const remaining = (available - requested).toFixed(1);
+            document.getElementById('confirm-balance').textContent = `${available}日 → ${remaining}日`;
+
+            const reason = document.getElementById('leave-reason').value || '(なし)';
+            document.getElementById('confirm-reason').textContent = reason;
+
+            // Show modal
+            document.getElementById('confirm-modal').classList.add('active');
+        },
+
+        hideConfirmation() {
+            document.getElementById('confirm-modal').classList.remove('active');
+            this.updateProgressSteps(2);
+        },
+
+        async submitConfirmed() {
+            // Add loading state to button
+            const submitBtn = document.getElementById('confirm-submit-btn');
+            submitBtn.classList.add('is-loading');
+
+            try {
+                await this.submit();
+                this.hideConfirmation();
+            } finally {
+                submitBtn.classList.remove('is-loading');
+            }
+        },
+
         async submit() {
             if (!this.selectedEmployee) {
                 App.ui.showToast('error', '従業員を選択してください');
@@ -972,6 +1213,28 @@ const App = {
             document.getElementById('days-input-container').style.display = 'block';
             document.getElementById('hours-input-container').style.display = 'none';
             document.getElementById('cost-estimate-container').style.display = 'none';
+
+            // Reset validation states
+            ['emp-search', 'start-date', 'end-date', 'days-requested', 'hours-requested'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove('is-valid', 'is-invalid');
+            });
+
+            // Reset validation messages
+            ['emp-search-validation', 'start-date-validation', 'end-date-validation', 'days-validation', 'hours-validation'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.remove('show', 'error', 'success', 'warning');
+                    el.innerHTML = '';
+                }
+            });
+
+            // Reset progress steps
+            this.updateProgressSteps(1);
+
+            // Reset char counter
+            const charCounter = document.getElementById('reason-char-counter');
+            if (charCounter) charCounter.textContent = '0 / 200';
         },
 
         async loadPending() {
