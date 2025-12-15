@@ -1151,7 +1151,166 @@ async def get_dashboard_analytics(year: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# === MONTHLY REPORTS ENDPOINTS (21日〜20日) ===
+# === MONTHLY REPORTS ENDPOINTS ===
+
+@app.get("/api/reports/custom")
+async def get_custom_report(start_date: str, end_date: str):
+    """
+    カスタム期間レポート - 任意の日付範囲
+    例: /api/reports/custom?start_date=2025-01-16&end_date=2025-02-20
+    """
+    try:
+        import calendar
+        from collections import defaultdict
+
+        # Parse dates
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d')
+
+        if end < start:
+            raise HTTPException(status_code=400, detail="終了日は開始日より後である必要があります")
+
+        # Get all usage details in date range
+        all_usage = []
+
+        # Get unique year-month combinations in range
+        current = start
+        while current <= end:
+            usage = database.get_yukyu_usage_details(year=current.year, month=current.month)
+            for u in usage:
+                use_date = u.get('use_date', '')
+                if use_date and start_date <= use_date <= end_date:
+                    all_usage.append(u)
+            # Move to next month
+            if current.month == 12:
+                current = current.replace(year=current.year + 1, month=1)
+            else:
+                current = current.replace(month=current.month + 1)
+
+        # Get approved requests in range
+        approved_requests = database.get_leave_requests(status='APPROVED')
+        for req in approved_requests:
+            req_start = req.get('start_date', '')
+            req_end = req.get('end_date', '')
+            if req_start and req_end:
+                if req_start <= end_date and req_end >= start_date:
+                    exists = any(
+                        u.get('employee_num') == req.get('employee_num') and
+                        u.get('use_date') == req_start
+                        for u in all_usage
+                    )
+                    if not exists:
+                        all_usage.append({
+                            'employee_num': req.get('employee_num'),
+                            'name': req.get('employee_name'),
+                            'use_date': req_start,
+                            'days_used': req.get('days_requested', 0),
+                            'hours_used': req.get('hours_requested', 0),
+                            'leave_type': req.get('leave_type', 'full'),
+                            'source': 'request'
+                        })
+
+        # Employee summary
+        employee_summary = defaultdict(lambda: {
+            'name': '',
+            'total_days': 0,
+            'total_hours': 0,
+            'dates': [],
+            'factory': ''
+        })
+
+        for u in all_usage:
+            emp_num = u.get('employee_num', '')
+            if emp_num:
+                employee_summary[emp_num]['name'] = u.get('name', '')
+                employee_summary[emp_num]['total_days'] += u.get('days_used', 0) or 1
+                employee_summary[emp_num]['total_hours'] += u.get('hours_used', 0) or 0
+                employee_summary[emp_num]['dates'].append({
+                    'date': u.get('use_date'),
+                    'days': u.get('days_used', 0) or 1,
+                    'hours': u.get('hours_used', 0),
+                    'type': u.get('leave_type', 'full')
+                })
+
+        # Add factory info
+        genzai = database.get_genzai()
+        ukeoi = database.get_ukeoi()
+        genzai_map = {e['employee_num']: e.get('dispatch_name', '') for e in genzai}
+        ukeoi_map = {e['employee_num']: e.get('contract_business', '') for e in ukeoi}
+
+        for emp_num, data in employee_summary.items():
+            data['factory'] = genzai_map.get(emp_num) or ukeoi_map.get(emp_num) or ''
+
+        # Factory summary
+        factory_summary = defaultdict(lambda: {'count': 0, 'total_days': 0, 'employees': []})
+        for emp_num, data in employee_summary.items():
+            factory = data['factory'] or '未分類'
+            factory_summary[factory]['count'] += 1
+            factory_summary[factory]['total_days'] += data['total_days']
+            factory_summary[factory]['employees'].append({
+                'employee_num': emp_num,
+                'name': data['name'],
+                'days': data['total_days'],
+                'hours': data['total_hours']
+            })
+
+        # Daily summary
+        daily_summary = defaultdict(lambda: {'count': 0, 'employees': []})
+        for u in all_usage:
+            date = u.get('use_date', '')
+            if date:
+                daily_summary[date]['count'] += 1
+                daily_summary[date]['employees'].append(u.get('name', ''))
+
+        # Calculate days in period
+        days_in_period = (end - start).days + 1
+
+        return {
+            "status": "success",
+            "report_period": {
+                "start_date": start_date,
+                "end_date": end_date,
+                "days_in_period": days_in_period,
+                "label": f"{start_date} 〜 {end_date} ({days_in_period}日間)"
+            },
+            "summary": {
+                "total_employees": len(employee_summary),
+                "total_days": sum(e['total_days'] for e in employee_summary.values()),
+                "total_hours": sum(e['total_hours'] for e in employee_summary.values())
+            },
+            "employees": [
+                {
+                    "employee_num": emp_num,
+                    "name": data['name'],
+                    "factory": data['factory'],
+                    "total_days": data['total_days'],
+                    "total_hours": data['total_hours'],
+                    "dates": sorted(data['dates'], key=lambda x: x['date'])
+                }
+                for emp_num, data in sorted(employee_summary.items(), key=lambda x: x[1]['total_days'], reverse=True)
+            ],
+            "by_factory": [
+                {
+                    "factory": factory,
+                    "employee_count": data['count'],
+                    "total_days": data['total_days'],
+                    "employees": data['employees']
+                }
+                for factory, data in sorted(factory_summary.items(), key=lambda x: x[1]['total_days'], reverse=True)
+            ],
+            "by_date": [
+                {
+                    "date": date,
+                    "count": data['count'],
+                    "employees": data['employees']
+                }
+                for date, data in sorted(daily_summary.items())
+            ]
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=f"日付フォーマットエラー: {str(ve)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/reports/monthly/{year}/{month}")
 async def get_monthly_report(year: int, month: int):

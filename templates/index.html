@@ -599,34 +599,64 @@
                 </div>
             </div>
 
-            <!-- VIEW: MONTHLY REPORTS (21日〜20日) -->
+            <!-- VIEW: MONTHLY REPORTS -->
             <div id="view-reports" class="view-section" style="display: none;">
                 <div class="bento-grid">
-                    <!-- Month Selector -->
+                    <!-- Date Selector -->
                     <div class="glass-panel col-span-4" style="padding: 1.5rem;">
                         <div class="flex-between" style="margin-bottom: 1rem;">
                             <div class="flex-center" style="gap: 1rem;">
-                                <h3 style="font-size: 1.25rem;">📋 月次レポート</h3>
-                                <span style="color: var(--muted); font-size: 0.9rem;">締め日: 21日〜20日</span>
+                                <h3 style="font-size: 1.25rem;">📋 レポート期間選択</h3>
                             </div>
                             <div class="flex-center" style="gap: 0.5rem;">
-                                <select id="report-year" class="input-glass" style="width: 120px;" onchange="App.reports.loadMonthList()">
+                                <select id="report-mode" class="input-glass" style="width: 160px;" onchange="App.reports.toggleMode()">
+                                    <option value="monthly">月次 (21日〜20日)</option>
+                                    <option value="custom">カスタム期間</option>
                                 </select>
-                                <select id="report-month" class="input-glass" style="width: 120px;" onchange="App.reports.loadReport()">
-                                    <option value="1">1月度</option>
-                                    <option value="2">2月度</option>
-                                    <option value="3">3月度</option>
-                                    <option value="4">4月度</option>
-                                    <option value="5">5月度</option>
-                                    <option value="6">6月度</option>
-                                    <option value="7">7月度</option>
-                                    <option value="8">8月度</option>
-                                    <option value="9">9月度</option>
-                                    <option value="10">10月度</option>
-                                    <option value="11">11月度</option>
-                                    <option value="12">12月度</option>
-                                </select>
-                                <button class="btn btn-primary" onclick="App.reports.loadReport()">🔍 表示</button>
+                            </div>
+                        </div>
+
+                        <!-- Monthly Mode -->
+                        <div id="monthly-selector" style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                            <select id="report-year" class="input-glass" style="width: 120px;" onchange="App.reports.loadMonthList()">
+                            </select>
+                            <select id="report-month" class="input-glass" style="width: 120px;" onchange="App.reports.loadReport()">
+                                <option value="1">1月度</option>
+                                <option value="2">2月度</option>
+                                <option value="3">3月度</option>
+                                <option value="4">4月度</option>
+                                <option value="5">5月度</option>
+                                <option value="6">6月度</option>
+                                <option value="7">7月度</option>
+                                <option value="8">8月度</option>
+                                <option value="9">9月度</option>
+                                <option value="10">10月度</option>
+                                <option value="11">11月度</option>
+                                <option value="12">12月度</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="App.reports.loadReport()">🔍 表示</button>
+                        </div>
+
+                        <!-- Custom Mode -->
+                        <div id="custom-selector" style="display: none; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                                <div>
+                                    <label class="stat-label" style="display: block; margin-bottom: 0.25rem; font-size: 0.8rem;">開始日</label>
+                                    <input type="date" id="report-start-date" class="input-glass" style="width: 160px;">
+                                </div>
+                                <div style="display: flex; align-items: center; padding-top: 1.5rem;">
+                                    <span style="font-size: 1.5rem; color: var(--muted);">〜</span>
+                                </div>
+                                <div>
+                                    <label class="stat-label" style="display: block; margin-bottom: 0.25rem; font-size: 0.8rem;">終了日</label>
+                                    <input type="date" id="report-end-date" class="input-glass" style="width: 160px;">
+                                </div>
+                                <div style="padding-top: 1.5rem;">
+                                    <button class="btn btn-primary" onclick="App.reports.loadCustomReport()">🔍 表示</button>
+                                </div>
+                            </div>
+                            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--muted);">
+                                ※ 任意の期間を選択できます（複数月にまたがる期間もOK）
                             </div>
                         </div>
 

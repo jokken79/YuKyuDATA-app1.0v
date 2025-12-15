@@ -1363,11 +1363,12 @@ const App = {
     },
 
     // ========================================
-    // MONTHLY REPORTS MODULE (21日〜20日)
+    // MONTHLY REPORTS MODULE
     // ========================================
     reports: {
         currentYear: new Date().getFullYear(),
         currentMonth: new Date().getMonth() + 1,
+        mode: 'monthly',
 
         init() {
             // Initialize year selector
@@ -1378,9 +1379,81 @@ const App = {
             // Set current month
             document.getElementById('report-month').value = this.currentMonth;
 
+            // Initialize custom date pickers with default range (last 30 days)
+            const today = new Date();
+            const thirtyDaysAgo = new Date(today);
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            document.getElementById('report-start-date').value = thirtyDaysAgo.toISOString().split('T')[0];
+            document.getElementById('report-end-date').value = today.toISOString().split('T')[0];
+
             // Load data
             this.loadMonthList();
             this.loadReport();
+        },
+
+        toggleMode() {
+            this.mode = document.getElementById('report-mode').value;
+            const monthlySelector = document.getElementById('monthly-selector');
+            const customSelector = document.getElementById('custom-selector');
+
+            if (this.mode === 'monthly') {
+                monthlySelector.style.display = 'flex';
+                customSelector.style.display = 'none';
+                this.loadReport();
+            } else {
+                monthlySelector.style.display = 'none';
+                customSelector.style.display = 'block';
+            }
+        },
+
+        async loadCustomReport() {
+            const startDate = document.getElementById('report-start-date').value;
+            const endDate = document.getElementById('report-end-date').value;
+
+            if (!startDate || !endDate) {
+                App.ui.showToast('error', '開始日と終了日を選択してください');
+                return;
+            }
+
+            if (endDate < startDate) {
+                App.ui.showToast('error', '終了日は開始日より後を選択してください');
+                return;
+            }
+
+            App.ui.showLoading();
+
+            try {
+                const res = await fetch(`${App.config.apiBase}/reports/custom?start_date=${startDate}&end_date=${endDate}`);
+                const json = await res.json();
+
+                if (json.status !== 'success') {
+                    throw new Error(json.detail || 'レポート取得に失敗しました');
+                }
+
+                // Update period display
+                document.getElementById('report-period-label').innerText = json.report_period.label;
+
+                // Update summary cards
+                document.getElementById('rpt-emp-count').innerText = json.summary.total_employees + '人';
+                document.getElementById('rpt-total-days').innerText = json.summary.total_days + '日';
+                document.getElementById('rpt-total-hours').innerText = json.summary.total_hours + '時間';
+                const avgDays = json.summary.total_employees > 0
+                    ? (json.summary.total_days / json.summary.total_employees).toFixed(1)
+                    : '0';
+                document.getElementById('rpt-avg-days').innerText = avgDays + '日';
+
+                // Render lists
+                this.renderEmployeeList(json.employees);
+                this.renderFactoryList(json.by_factory);
+                this.renderDailyGrid(json.by_date);
+
+                App.ui.showToast('success', `カスタムレポートを読み込みました (${json.report_period.days_in_period}日間)`);
+
+            } catch (e) {
+                App.ui.showToast('error', e.message || 'レポートの読み込みに失敗しました');
+            } finally {
+                App.ui.hideLoading();
+            }
         },
 
         async loadMonthList() {

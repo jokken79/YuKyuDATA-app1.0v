@@ -279,6 +279,24 @@ class TestMonthlyReportsEndpoints:
         assert "reports" in data
         assert len(data["reports"]) == 12  # 12 months
 
+    def test_custom_report(self):
+        """カスタム期間レポートAPIが正常に動作すること"""
+        response = client.get("/api/reports/custom?start_date=2025-01-16&end_date=2025-02-20")
+        assert response.status_code == 200
+        data = response.json()
+        assert "status" in data
+        assert "report_period" in data
+        assert "summary" in data
+        assert "employees" in data
+        assert data["report_period"]["start_date"] == "2025-01-16"
+        assert data["report_period"]["end_date"] == "2025-02-20"
+        assert data["report_period"]["days_in_period"] == 36  # 16 days in Jan + 20 days in Feb
+
+    def test_custom_report_invalid_dates(self):
+        """カスタムレポートで終了日が開始日より前の場合エラーになること"""
+        response = client.get("/api/reports/custom?start_date=2025-02-20&end_date=2025-01-16")
+        assert response.status_code == 400
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
