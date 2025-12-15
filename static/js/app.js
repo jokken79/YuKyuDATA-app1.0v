@@ -248,6 +248,7 @@ const App = {
 
             // Load data for specific views
             if (viewName === 'requests') {
+                App.requests.loadFactories();
                 App.requests.loadPending();
                 App.requests.loadHistory();
             }
@@ -593,33 +594,114 @@ const App = {
     requests: {
         selectedEmployee: null,
         searchTimeout: null,
+        factories: [],
+
+        async loadFactories() {
+            try {
+                const res = await fetch(`${App.config.apiBase}/factories?status=在職中`);
+                const json = await res.json();
+
+                if (json.data) {
+                    this.factories = json.data;
+                    const select = document.getElementById('factory-filter');
+                    if (select) {
+                        // Keep first option (All Factories)
+                        select.innerHTML = '<option value="">すべての工場 (All Factories)</option>';
+                        this.factories.forEach(factory => {
+                            const opt = document.createElement('option');
+                            opt.value = factory;
+                            opt.textContent = factory;
+                            select.appendChild(opt);
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load factories:', e);
+            }
+        },
+
+        filterByFactory() {
+            const factory = document.getElementById('factory-filter').value;
+            const searchInput = document.getElementById('emp-search');
+            const query = searchInput.value;
+
+            // If factory is selected, show employees from that factory
+            if (factory) {
+                this.searchWithFactory(query, factory);
+            } else {
+                // If no factory selected and no query, clear results
+                if (!query || query.length < 2) {
+                    document.getElementById('emp-search-results').innerHTML = '';
+                } else {
+                    this.searchEmployee(query);
+                }
+            }
+        },
+
+        async searchWithFactory(query, factory) {
+            try {
+                let url = `${App.config.apiBase}/employees/search?status=在職中`;
+                if (query) url += `&q=${encodeURIComponent(query)}`;
+                if (factory) url += `&factory=${encodeURIComponent(factory)}`;
+
+                const res = await fetch(url);
+                const json = await res.json();
+
+                const container = document.getElementById('emp-search-results');
+                if (json.data && json.data.length > 0) {
+                    container.innerHTML = json.data.slice(0, 15).map(emp => {
+                        const empNum = App.utils.escapeAttr(emp.employee_num);
+                        const name = App.utils.escapeHtml(emp.name);
+                        const empFactory = App.utils.escapeHtml(emp.factory || '-');
+                        const type = App.utils.escapeHtml(emp.type);
+                        return `
+                        <div class="search-result-item" data-employee-num="${empNum}"
+                             style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.2s;">
+                            <div style="font-weight: 600;">${name}</div>
+                            <div style="font-size: 0.85rem; color: var(--muted);">${empNum} | ${empFactory} | ${type}</div>
+                        </div>
+                    `}).join('');
+                } else {
+                    container.innerHTML = '<div style="padding: 1rem; color: var(--muted); text-align: center;">No results found</div>';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        },
 
         async searchEmployee(query) {
             if (this.searchTimeout) clearTimeout(this.searchTimeout);
 
-            if (!query || query.length < 2) {
+            const factory = document.getElementById('factory-filter')?.value || '';
+
+            // If factory is selected, allow search with shorter query
+            if (!factory && (!query || query.length < 2)) {
                 document.getElementById('emp-search-results').innerHTML = '';
                 return;
             }
 
             this.searchTimeout = setTimeout(async () => {
                 try {
-                    const res = await fetch(`${App.config.apiBase}/employees/search?q=${encodeURIComponent(query)}&status=在職中`);
+                    let url = `${App.config.apiBase}/employees/search?status=在職中`;
+                    if (query) url += `&q=${encodeURIComponent(query)}`;
+                    if (factory) url += `&factory=${encodeURIComponent(factory)}`;
+
+                    const res = await fetch(url);
                     const json = await res.json();
 
                     const container = document.getElementById('emp-search-results');
                     if (json.data && json.data.length > 0) {
                         // Using data attributes instead of inline onclick (XSS prevention)
-                        container.innerHTML = json.data.slice(0, 10).map(emp => {
+                        container.innerHTML = json.data.slice(0, 15).map(emp => {
                             const empNum = App.utils.escapeAttr(emp.employee_num);
                             const name = App.utils.escapeHtml(emp.name);
-                            const factory = App.utils.escapeHtml(emp.factory || '-');
+                            const empFactory = App.utils.escapeHtml(emp.factory || '-');
                             const type = App.utils.escapeHtml(emp.type);
                             return `
                             <div class="search-result-item" data-employee-num="${empNum}"
                                  style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.2s;">
                                 <div style="font-weight: 600;">${name}</div>
-                                <div style="font-size: 0.85rem; color: var(--muted);">${empNum} | ${factory} | ${type}</div>
+                                <div style="font-size: 0.85rem; color: var(--muted);">${empNum} | ${empFactory} | ${type}</div>
                             </div>
                         `}).join('');
                     } else {
@@ -873,9 +955,12 @@ const App = {
 
         resetForm() {
             this.selectedEmployee = null;
+            document.getElementById('factory-filter').value = '';
             document.getElementById('emp-search').value = '';
+            document.getElementById('emp-search-results').innerHTML = '';
             document.getElementById('selected-emp-info').style.display = 'none';
             document.getElementById('hourly-wage-info').style.display = 'none';
+            document.getElementById('usage-history-container').style.display = 'none';
             document.getElementById('start-date').value = '';
             document.getElementById('end-date').value = '';
             document.getElementById('days-requested').value = '1';

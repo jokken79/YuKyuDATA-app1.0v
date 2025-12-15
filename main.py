@@ -287,39 +287,87 @@ async def get_factory_stats(year: int = None):
 
 # === LEAVE REQUEST ENDPOINTS ===
 
+@app.get("/api/factories")
+async def get_factories(status: str = None):
+    """Get unique list of factories from genzai and ukeoi tables."""
+    try:
+        factories = set()
+
+        # Get factories from genzai (dispatch employees)
+        genzai = database.get_genzai(status)
+        for emp in genzai:
+            factory = emp.get('dispatch_name')
+            if factory:
+                factories.add(factory)
+
+        # Get factories from ukeoi (contract employees)
+        ukeoi = database.get_ukeoi(status)
+        for emp in ukeoi:
+            factory = emp.get('contract_business')
+            if factory:
+                factories.add(factory)
+
+        # Sort alphabetically
+        factory_list = sorted(list(factories))
+
+        return {"status": "success", "data": factory_list, "count": len(factory_list)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/employees/search")
-async def search_employees(q: str = "", status: str = None):
-    """Search for employees in genzai and ukeoi tables. Optional status filter (在職中)."""
+async def search_employees(q: str = "", status: str = None, factory: str = None):
+    """Search for employees in genzai and ukeoi tables. Optional status and factory filters."""
     try:
         results = []
 
         # Search in genzai (dispatch employees)
         genzai = database.get_genzai(status)
         for emp in genzai:
-            if q.lower() in emp.get('name', '').lower() or \
-               q.lower() in emp.get('employee_num', '').lower() or \
-               q.lower() in emp.get('dispatch_name', '').lower():
-                results.append({
-                    "employee_num": emp.get('employee_num'),
-                    "name": emp.get('name'),
-                    "factory": emp.get('dispatch_name'),
-                    "status": emp.get('status'),
-                    "type": "派遣"
-                })
+            emp_factory = emp.get('dispatch_name', '')
+
+            # Apply factory filter if specified
+            if factory and emp_factory != factory:
+                continue
+
+            # Apply search query if specified
+            if q:
+                if not (q.lower() in emp.get('name', '').lower() or
+                        q.lower() in emp.get('employee_num', '').lower() or
+                        q.lower() in emp_factory.lower()):
+                    continue
+
+            results.append({
+                "employee_num": emp.get('employee_num'),
+                "name": emp.get('name'),
+                "factory": emp_factory,
+                "status": emp.get('status'),
+                "type": "派遣"
+            })
 
         # Search in ukeoi (contract employees)
         ukeoi = database.get_ukeoi(status)
         for emp in ukeoi:
-            if q.lower() in emp.get('name', '').lower() or \
-               q.lower() in emp.get('employee_num', '').lower() or \
-               q.lower() in emp.get('contract_business', '').lower():
-                results.append({
-                    "employee_num": emp.get('employee_num'),
-                    "name": emp.get('name'),
-                    "factory": emp.get('contract_business'),
-                    "status": emp.get('status'),
-                    "type": "請負"
-                })
+            emp_factory = emp.get('contract_business', '')
+
+            # Apply factory filter if specified
+            if factory and emp_factory != factory:
+                continue
+
+            # Apply search query if specified
+            if q:
+                if not (q.lower() in emp.get('name', '').lower() or
+                        q.lower() in emp.get('employee_num', '').lower() or
+                        q.lower() in emp_factory.lower()):
+                    continue
+
+            results.append({
+                "employee_num": emp.get('employee_num'),
+                "name": emp.get('name'),
+                "factory": emp_factory,
+                "status": emp.get('status'),
+                "type": "請負"
+            })
 
         return {"status": "success", "data": results, "count": len(results)}
     except Exception as e:

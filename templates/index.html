@@ -216,9 +216,15 @@
                         </h3>
 
                         <div id="request-form">
-                            <!-- Employee Search -->
+                            <!-- Factory Filter + Employee Search -->
                             <div style="margin-bottom: 1.5rem;">
-                                <label class="stat-label" style="display: block; margin-bottom: 0.5rem;">従業員を検索 (Search Employee)</label>
+                                <label class="stat-label" style="display: block; margin-bottom: 0.5rem;">🏭 工場で絞込み (Filter by Factory)</label>
+                                <select id="factory-filter" class="input-glass" style="width: 100%; margin-bottom: 0.75rem;"
+                                    onchange="App.requests.filterByFactory()">
+                                    <option value="">すべての工場 (All Factories)</option>
+                                </select>
+
+                                <label class="stat-label" style="display: block; margin-bottom: 0.5rem;">🔍 従業員を検索 (Search Employee)</label>
                                 <input type="text" id="emp-search" class="input-glass" style="width: 100%;"
                                     placeholder="名前または社員番号で検索..." oninput="App.requests.searchEmployee(this.value)">
                                 <div id="emp-search-results" style="margin-top: 0.5rem; max-height: 200px; overflow-y: auto;"></div>
