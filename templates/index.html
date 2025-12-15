@@ -64,8 +64,14 @@
             <div class="nav-item" data-view="requests" onclick="App.ui.switchView('requests')">
                 <span>📝</span> <span>申請</span>
             </div>
+            <div class="nav-item" data-view="calendar" onclick="App.ui.switchView('calendar')">
+                <span>📅</span> <span>カレンダー</span>
+            </div>
             <div class="nav-item" data-view="compliance" onclick="App.ui.switchView('compliance')">
                 <span>✅</span> <span>Compliance</span>
+            </div>
+            <div class="nav-item" data-view="analytics" onclick="App.ui.switchView('analytics')">
+                <span>📈</span> <span>分析</span>
             </div>
             <div class="nav-item" style="margin-top: auto;" onclick="App.ui.switchView('settings')">
                 <span>⚙️</span> <span>Settings</span>
@@ -418,6 +424,174 @@
                         <div style="text-align: center; color: var(--muted); padding: 2rem;">
                             Click "表示" to load the annual ledger
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: CALENDAR -->
+            <div id="view-calendar" class="view-section" style="display: none;">
+                <div class="bento-grid">
+                    <!-- Calendar Controls -->
+                    <div class="glass-panel col-span-4" style="padding: 1.5rem;">
+                        <div class="flex-between" style="margin-bottom: 1rem;">
+                            <div class="flex-center" style="gap: 1rem;">
+                                <button class="btn btn-glass" onclick="App.calendar.prevMonth()">◀</button>
+                                <h3 id="calendar-month-title" style="font-size: 1.5rem; min-width: 200px; text-align: center;">2025年 12月</h3>
+                                <button class="btn btn-glass" onclick="App.calendar.nextMonth()">▶</button>
+                            </div>
+                            <div class="flex-center" style="gap: 0.5rem;">
+                                <button class="btn btn-glass" onclick="App.calendar.goToToday()">今日</button>
+                                <button class="btn btn-primary" onclick="App.calendar.loadEvents()">🔄 更新</button>
+                            </div>
+                        </div>
+
+                        <!-- Legend -->
+                        <div class="flex-center" style="gap: 1.5rem; margin-bottom: 1rem; font-size: 0.85rem;">
+                            <span><span style="display: inline-block; width: 12px; height: 12px; background: #38bdf8; border-radius: 2px; margin-right: 0.25rem;"></span>全日休暇</span>
+                            <span><span style="display: inline-block; width: 12px; height: 12px; background: #818cf8; border-radius: 2px; margin-right: 0.25rem;"></span>午前半休</span>
+                            <span><span style="display: inline-block; width: 12px; height: 12px; background: #f472b6; border-radius: 2px; margin-right: 0.25rem;"></span>午後半休</span>
+                            <span><span style="display: inline-block; width: 12px; height: 12px; background: #fbbf24; border-radius: 2px; margin-right: 0.25rem;"></span>時間休</span>
+                            <span><span style="display: inline-block; width: 12px; height: 12px; background: #34d399; border-radius: 2px; margin-right: 0.25rem;"></span>使用日</span>
+                        </div>
+
+                        <!-- Calendar Grid -->
+                        <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;">
+                            <!-- Header -->
+                            <div class="calendar-header">日</div>
+                            <div class="calendar-header">月</div>
+                            <div class="calendar-header">火</div>
+                            <div class="calendar-header">水</div>
+                            <div class="calendar-header">木</div>
+                            <div class="calendar-header">金</div>
+                            <div class="calendar-header">土</div>
+                            <!-- Days will be rendered by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Day Detail Panel -->
+                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                        <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">
+                            📋 選択日の詳細
+                            <span id="selected-date-display" style="color: var(--primary); margin-left: 0.5rem;">-</span>
+                        </h3>
+                        <div id="day-detail-container" style="max-height: 300px; overflow-y: auto;">
+                            <div style="text-align: center; color: var(--muted); padding: 2rem;">
+                                日付をクリックして詳細を表示
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Summary -->
+                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                        <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">📊 月間サマリー</h3>
+                        <div id="monthly-summary-container">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="stat-card" style="text-align: center; padding: 1rem;">
+                                    <div class="stat-label">休暇取得者数</div>
+                                    <div class="stat-value" id="cal-month-employees" style="font-size: 2rem;">-</div>
+                                </div>
+                                <div class="stat-card" style="text-align: center; padding: 1rem;">
+                                    <div class="stat-label">総取得日数</div>
+                                    <div class="stat-value" id="cal-month-days" style="font-size: 2rem;">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: ANALYTICS -->
+            <div id="view-analytics" class="view-section" style="display: none;">
+                <div class="bento-grid">
+                    <!-- Summary Cards -->
+                    <div class="glass-panel stat-card col-span-1">
+                        <div class="stat-label">総従業員数</div>
+                        <div class="stat-value" id="ana-total-emp">-</div>
+                    </div>
+                    <div class="glass-panel stat-card col-span-1">
+                        <div class="stat-label">総付与日数</div>
+                        <div class="stat-value" id="ana-total-granted" style="color: var(--primary);">-</div>
+                    </div>
+                    <div class="glass-panel stat-card col-span-1">
+                        <div class="stat-label">総使用日数</div>
+                        <div class="stat-value" id="ana-total-used" style="color: var(--success);">-</div>
+                    </div>
+                    <div class="glass-panel stat-card col-span-1">
+                        <div class="stat-label">平均消化率</div>
+                        <div class="stat-value" id="ana-avg-rate" style="color: var(--warning);">-</div>
+                    </div>
+
+                    <!-- Department Chart -->
+                    <div class="glass-panel col-span-2" style="padding: 1.5rem; height: 400px;">
+                        <h3 class="stat-label" style="margin-bottom: 1rem;">部門別使用日数</h3>
+                        <div style="position: relative; height: 320px; width: 100%;">
+                            <canvas id="chart-department"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Employee Type Chart -->
+                    <div class="glass-panel col-span-2" style="padding: 1.5rem; height: 400px;">
+                        <h3 class="stat-label" style="margin-bottom: 1rem;">従業員タイプ別</h3>
+                        <div style="position: relative; height: 320px; width: 100%;">
+                            <canvas id="chart-emp-type"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Top Users -->
+                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                        <h3 class="stat-label" style="margin-bottom: 1rem;">🏆 Top 10 使用者</h3>
+                        <div id="top-users-list" style="max-height: 300px; overflow-y: auto;"></div>
+                    </div>
+
+                    <!-- High Balance -->
+                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                        <h3 class="stat-label" style="margin-bottom: 1rem;">⚠️ 残日数が多い従業員</h3>
+                        <div id="high-balance-list" style="max-height: 300px; overflow-y: auto;"></div>
+                    </div>
+
+                    <!-- Predictions -->
+                    <div class="glass-panel col-span-4" style="padding: 1.5rem;">
+                        <div class="flex-between" style="margin-bottom: 1rem;">
+                            <h3 class="stat-label">📈 年末予測・5日義務達成リスク</h3>
+                            <button class="btn btn-glass" onclick="App.analytics.loadPredictions()">🔄 更新</button>
+                        </div>
+                        <div id="predictions-container">
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                                <div class="stat-card" style="text-align: center; padding: 1rem;">
+                                    <div class="stat-label">現在月</div>
+                                    <div id="pred-current-month" style="font-size: 1.5rem; font-weight: 700;">-</div>
+                                </div>
+                                <div class="stat-card" style="text-align: center; padding: 1rem;">
+                                    <div class="stat-label">残り月数</div>
+                                    <div id="pred-remaining-months" style="font-size: 1.5rem; font-weight: 700;">-</div>
+                                </div>
+                                <div class="stat-card" style="text-align: center; padding: 1rem;">
+                                    <div class="stat-label">月平均使用</div>
+                                    <div id="pred-avg-monthly" style="font-size: 1.5rem; font-weight: 700;">-</div>
+                                </div>
+                                <div class="stat-card" style="text-align: center; padding: 1rem; border-color: var(--danger);">
+                                    <div class="stat-label">5日未達成リスク</div>
+                                    <div id="pred-at-risk" style="font-size: 1.5rem; font-weight: 700; color: var(--danger);">-</div>
+                                </div>
+                            </div>
+                            <div id="at-risk-employees" style="max-height: 200px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Export Section -->
+                <div class="glass-panel" style="padding: 1.5rem; margin-top: 1.5rem;">
+                    <h3 class="stat-label" style="margin-bottom: 1rem;">📥 データエクスポート</h3>
+                    <div class="flex-center" style="gap: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="App.analytics.exportExcel('employees')">
+                            📊 従業員データ (Excel)
+                        </button>
+                        <button class="btn btn-glass" onclick="App.analytics.exportExcel('requests')">
+                            📝 申請一覧 (Excel)
+                        </button>
+                        <button class="btn btn-glass" onclick="App.analytics.exportExcel('compliance')">
+                            ✅ 管理簿 (Excel)
+                        </button>
                     </div>
                 </div>
             </div>

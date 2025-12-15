@@ -151,12 +151,14 @@ const App = {
 
             // Update Header
             const titleMap = {
-                'dashboard': 'Dashboard Overview',
-                'employees': 'Employee Directory',
-                'factories': 'Factory Analytics',
+                'dashboard': 'ダッシュボード',
+                'employees': '従業員一覧',
+                'factories': '工場別分析',
                 'requests': '有給休暇申請',
-                'compliance': 'Compliance & Reports',
-                'settings': 'System Settings'
+                'calendar': '休暇カレンダー',
+                'compliance': 'コンプライアンス',
+                'analytics': '詳細分析',
+                'settings': 'システム設定'
             };
             document.getElementById('page-title').innerText = titleMap[viewName] || 'Dashboard';
 
@@ -173,8 +175,16 @@ const App = {
                 App.requests.loadHistory();
             }
 
+            if (viewName === 'calendar') {
+                App.calendar.loadEvents();
+            }
+
             if (viewName === 'compliance') {
                 App.compliance.loadAlerts();
+            }
+
+            if (viewName === 'analytics') {
+                App.analytics.loadDashboard();
             }
 
             if (viewName === 'settings') {
@@ -1003,6 +1013,344 @@ const App = {
 
             } catch (e) {
                 App.ui.showToast('error', 'Failed to load audit log');
+            } finally {
+                App.ui.hideLoading();
+            }
+        }
+    },
+
+    // ========================================
+    // CALENDAR MODULE
+    // ========================================
+    calendar: {
+        currentYear: new Date().getFullYear(),
+        currentMonth: new Date().getMonth() + 1,
+        events: [],
+        selectedDate: null,
+
+        async loadEvents() {
+            App.ui.showLoading();
+            try {
+                const res = await fetch(`${App.config.apiBase}/calendar/events?year=${this.currentYear}&month=${this.currentMonth}`);
+                const json = await res.json();
+                this.events = json.events || [];
+                this.renderCalendar();
+                this.updateMonthlySummary();
+                App.ui.showToast('success', 'カレンダーを更新しました');
+            } catch (e) {
+                App.ui.showToast('error', 'カレンダーの読み込みに失敗しました');
+            } finally {
+                App.ui.hideLoading();
+            }
+        },
+
+        renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            const title = document.getElementById('calendar-month-title');
+
+            // Update title
+            const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+            title.innerText = `${this.currentYear}年 ${monthNames[this.currentMonth - 1]}`;
+
+            // Clear existing days (keep headers)
+            const headers = grid.querySelectorAll('.calendar-header');
+            grid.innerHTML = '';
+            headers.forEach(h => grid.appendChild(h));
+
+            // Get first day and days in month
+            const firstDay = new Date(this.currentYear, this.currentMonth - 1, 1).getDay();
+            const daysInMonth = new Date(this.currentYear, this.currentMonth, 0).getDate();
+            const daysInPrevMonth = new Date(this.currentYear, this.currentMonth - 1, 0).getDate();
+
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+            // Previous month days
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const day = daysInPrevMonth - i;
+                grid.appendChild(this.createDayCell(day, true));
+            }
+
+            // Current month days
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isToday = dateStr === todayStr;
+                const dayEvents = this.events.filter(e => e.start <= dateStr && e.end >= dateStr);
+                grid.appendChild(this.createDayCell(day, false, isToday, dateStr, dayEvents));
+            }
+
+            // Next month days
+            const totalCells = firstDay + daysInMonth;
+            const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+            for (let day = 1; day <= remainingCells; day++) {
+                grid.appendChild(this.createDayCell(day, true));
+            }
+        },
+
+        createDayCell(day, isOtherMonth, isToday = false, dateStr = '', events = []) {
+            const cell = document.createElement('div');
+            cell.className = `calendar-day ${isOtherMonth ? 'other-month' : ''} ${isToday ? 'today' : ''} ${this.selectedDate === dateStr ? 'selected' : ''}`;
+
+            if (!isOtherMonth && dateStr) {
+                cell.onclick = () => this.selectDate(dateStr, events);
+            }
+
+            let html = `<div class="calendar-day-number">${day}</div>`;
+
+            if (!isOtherMonth && events.length > 0) {
+                const displayEvents = events.slice(0, 2);
+                displayEvents.forEach(e => {
+                    html += `<div class="calendar-event" style="background: ${e.color};">${e.title.split('(')[0].trim()}</div>`;
+                });
+                if (events.length > 2) {
+                    html += `<div class="calendar-event-count">+${events.length - 2}</div>`;
+                }
+            }
+
+            cell.innerHTML = html;
+            return cell;
+        },
+
+        selectDate(dateStr, events) {
+            this.selectedDate = dateStr;
+            this.renderCalendar();
+
+            document.getElementById('selected-date-display').innerText = dateStr;
+
+            const container = document.getElementById('day-detail-container');
+            if (events.length > 0) {
+                container.innerHTML = events.map(e => {
+                    const typeLabels = { 'full': '全日', 'half_am': '午前半休', 'half_pm': '午後半休', 'hourly': '時間休', 'usage': '使用日' };
+                    const typeLabel = typeLabels[e.leave_type] || typeLabels[e.type] || '休暇';
+                    return `
+                        <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem; border-left: 3px solid ${e.color};">
+                            <div style="font-weight: 600;">${e.employee_name}</div>
+                            <div style="font-size: 0.85rem; color: var(--muted);">
+                                ${typeLabel} ${e.days ? `(${e.days}日)` : ''} ${e.hours ? `(${e.hours}時間)` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                container.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 2rem;">この日の休暇取得者はいません</div>';
+            }
+        },
+
+        updateMonthlySummary() {
+            const uniqueEmployees = new Set(this.events.map(e => e.employee_num));
+            const totalDays = this.events.reduce((sum, e) => sum + (e.days || 0), 0);
+
+            document.getElementById('cal-month-employees').innerText = uniqueEmployees.size;
+            document.getElementById('cal-month-days').innerText = totalDays.toFixed(1);
+        },
+
+        prevMonth() {
+            this.currentMonth--;
+            if (this.currentMonth < 1) {
+                this.currentMonth = 12;
+                this.currentYear--;
+            }
+            this.loadEvents();
+        },
+
+        nextMonth() {
+            this.currentMonth++;
+            if (this.currentMonth > 12) {
+                this.currentMonth = 1;
+                this.currentYear++;
+            }
+            this.loadEvents();
+        },
+
+        goToToday() {
+            this.currentYear = new Date().getFullYear();
+            this.currentMonth = new Date().getMonth() + 1;
+            this.loadEvents();
+        }
+    },
+
+    // ========================================
+    // ANALYTICS MODULE
+    // ========================================
+    analytics: {
+        async loadDashboard() {
+            const year = App.state.year || new Date().getFullYear();
+            App.ui.showLoading();
+
+            try {
+                const res = await fetch(`${App.config.apiBase}/analytics/dashboard/${year}`);
+                const json = await res.json();
+
+                // Update summary cards
+                document.getElementById('ana-total-emp').innerText = json.summary.total_employees;
+                document.getElementById('ana-total-granted').innerText = json.summary.total_granted.toLocaleString();
+                document.getElementById('ana-total-used').innerText = json.summary.total_used.toLocaleString();
+                document.getElementById('ana-avg-rate').innerText = json.summary.average_rate + '%';
+
+                // Render department chart
+                this.renderDepartmentChart(json.department_stats);
+
+                // Render employee type chart
+                this.renderTypeChart(json.type_stats);
+
+                // Render top users
+                this.renderTopUsers(json.top_users);
+
+                // Render high balance
+                this.renderHighBalance(json.high_balance);
+
+                // Load predictions
+                this.loadPredictions();
+
+            } catch (e) {
+                App.ui.showToast('error', '分析データの読み込みに失敗しました');
+            } finally {
+                App.ui.hideLoading();
+            }
+        },
+
+        renderDepartmentChart(deptStats) {
+            const ctx = document.getElementById('chart-department');
+            if (!ctx) return;
+
+            if (App.state.charts['department']) {
+                App.state.charts['department'].destroy();
+            }
+
+            const data = deptStats.slice(0, 10);
+            App.state.charts['department'] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.name.length > 15 ? d.name.substring(0, 15) + '...' : d.name),
+                    datasets: [{
+                        label: '使用日数',
+                        data: data.map(d => d.total_used),
+                        backgroundColor: 'rgba(56, 189, 248, 0.5)',
+                        borderColor: '#38bdf8',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                        y: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        },
+
+        renderTypeChart(typeStats) {
+            const ctx = document.getElementById('chart-emp-type');
+            if (!ctx) return;
+
+            if (App.state.charts['empType']) {
+                App.state.charts['empType'].destroy();
+            }
+
+            App.state.charts['empType'] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(typeStats),
+                    datasets: [{
+                        data: Object.values(typeStats).map(v => v.used),
+                        backgroundColor: ['#38bdf8', '#818cf8', '#34d399'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        },
+
+        renderTopUsers(topUsers) {
+            const container = document.getElementById('top-users-list');
+            container.innerHTML = topUsers.map((u, i) => `
+                <div style="display: flex; align-items: center; padding: 0.5rem; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 0.5rem;">
+                    <div style="width: 30px; height: 30px; background: ${i < 3 ? 'var(--warning)' : 'rgba(255,255,255,0.1)'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 0.75rem; font-weight: 700; font-size: 0.8rem;">
+                        ${i + 1}
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600;">${u.name}</div>
+                        <div style="font-size: 0.8rem; color: var(--muted);">${u.employee_num}</div>
+                    </div>
+                    <div style="font-weight: 700; color: var(--success);">${u.used}日</div>
+                </div>
+            `).join('');
+        },
+
+        renderHighBalance(highBalance) {
+            const container = document.getElementById('high-balance-list');
+            container.innerHTML = highBalance.map(u => `
+                <div style="display: flex; align-items: center; padding: 0.5rem; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 0.5rem;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600;">${u.name}</div>
+                        <div style="font-size: 0.8rem; color: var(--muted);">${u.employee_num}</div>
+                    </div>
+                    <div style="font-weight: 700; color: var(--warning);">${u.balance}日</div>
+                </div>
+            `).join('');
+        },
+
+        async loadPredictions() {
+            const year = App.state.year || new Date().getFullYear();
+
+            try {
+                const res = await fetch(`${App.config.apiBase}/analytics/predictions/${year}`);
+                const json = await res.json();
+
+                document.getElementById('pred-current-month').innerText = json.current_month + '月';
+                document.getElementById('pred-remaining-months').innerText = json.remaining_months + 'ヶ月';
+                document.getElementById('pred-avg-monthly').innerText = json.avg_monthly_usage + '日';
+                document.getElementById('pred-at-risk').innerText = json.at_risk_count + '人';
+
+                const container = document.getElementById('at-risk-employees');
+                if (json.at_risk_employees && json.at_risk_employees.length > 0) {
+                    container.innerHTML = json.at_risk_employees.map(e => `
+                        <div style="display: flex; align-items: center; padding: 0.5rem; background: rgba(248, 113, 113, 0.1); border-radius: 8px; margin-bottom: 0.5rem; border-left: 3px solid var(--danger);">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600;">${e.name}</div>
+                                <div style="font-size: 0.8rem; color: var(--muted);">${e.employee_num}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 0.8rem; color: var(--muted);">現在 ${e.current_used}日</div>
+                                <div style="font-weight: 700; color: var(--danger);">あと ${e.days_needed}日必要</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div style="text-align: center; color: var(--success); padding: 1rem;">✅ 5日義務達成リスク者はいません</div>';
+                }
+
+            } catch (e) {
+                console.error('Predictions error', e);
+            }
+        },
+
+        async exportExcel(type) {
+            const year = App.state.year || new Date().getFullYear();
+            App.ui.showLoading();
+
+            try {
+                const res = await fetch(`${App.config.apiBase}/export/excel?export_type=${type}&year=${year}`, {
+                    method: 'POST'
+                });
+                const json = await res.json();
+
+                if (json.status === 'success') {
+                    App.ui.showToast('success', `${json.filename} をエクスポートしました`);
+                }
+            } catch (e) {
+                App.ui.showToast('error', 'エクスポートに失敗しました');
             } finally {
                 App.ui.hideLoading();
             }

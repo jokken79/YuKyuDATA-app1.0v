@@ -6,7 +6,7 @@ import uvicorn
 import shutil
 import os
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Local modules
 import database
@@ -769,6 +769,438 @@ async def get_notifications(employee_num: str = None, unread_only: bool = False)
             "status": "success",
             "count": len(notifications),
             "notifications": notifications
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# === CALENDAR ENDPOINTS ===
+
+@app.get("/api/calendar/events")
+async def get_calendar_events(year: int = None, month: int = None):
+    """
+    カレンダー用のイベントデータを取得。
+    承認済み休暇と使用日を返す。
+    """
+    try:
+        if not year:
+            year = datetime.now().year
+
+        events = []
+
+        # 承認済み休暇申請を取得
+        approved_requests = database.get_leave_requests(status='APPROVED', year=year)
+        for req in approved_requests:
+            # 休暇タイプに応じた色分け
+            type_colors = {
+                'full': '#38bdf8',      # 全日休暇 - 青
+                'half_am': '#818cf8',   # 午前半休 - 紫
+                'half_pm': '#f472b6',   # 午後半休 - ピンク
+                'hourly': '#fbbf24'     # 時間休 - 黄色
+            }
+            type_labels = {
+                'full': '全日',
+                'half_am': '午前半休',
+                'half_pm': '午後半休',
+                'hourly': '時間休'
+            }
+            leave_type = req.get('leave_type', 'full')
+
+            events.append({
+                'id': f"request_{req['id']}",
+                'title': f"{req['employee_name']} ({type_labels.get(leave_type, '休暇')})",
+                'start': req['start_date'],
+                'end': req['end_date'],
+                'color': type_colors.get(leave_type, '#38bdf8'),
+                'type': 'approved_request',
+                'employee_num': req['employee_num'],
+                'employee_name': req['employee_name'],
+                'leave_type': leave_type,
+                'days': req.get('days_requested', 0),
+                'hours': req.get('hours_requested', 0)
+            })
+
+        # 使用日詳細を取得
+        usage_details = database.get_yukyu_usage_details(year=year, month=month)
+        for detail in usage_details:
+            events.append({
+                'id': f"usage_{detail.get('id', '')}",
+                'title': f"{detail['name']} ({detail.get('days_used', 1)}日)",
+                'start': detail['use_date'],
+                'end': detail['use_date'],
+                'color': '#34d399',  # 緑
+                'type': 'usage_detail',
+                'employee_num': detail['employee_num'],
+                'employee_name': detail['name'],
+                'days': detail.get('days_used', 1)
+            })
+
+        return {
+            "status": "success",
+            "year": year,
+            "month": month,
+            "count": len(events),
+            "events": events
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/calendar/summary/{year}/{month}")
+async def get_calendar_month_summary(year: int, month: int):
+    """
+    月別カレンダーサマリーを取得。
+    各日の休暇取得人数を返す。
+    """
+    try:
+        import calendar
+        from collections import defaultdict
+
+        # 月の日数を取得
+        _, days_in_month = calendar.monthrange(year, month)
+
+        # 日ごとの集計
+        daily_counts = defaultdict(lambda: {'count': 0, 'employees': []})
+
+        # 承認済み申請
+        approved = database.get_leave_requests(status='APPROVED', year=year)
+        for req in approved:
+            start = datetime.strptime(req['start_date'], '%Y-%m-%d')
+            end = datetime.strptime(req['end_date'], '%Y-%m-%d')
+
+            current = start
+            while current <= end:
+                if current.year == year and current.month == month:
+                    day_key = current.strftime('%Y-%m-%d')
+                    daily_counts[day_key]['count'] += 1
+                    daily_counts[day_key]['employees'].append({
+                        'name': req['employee_name'],
+                        'type': req.get('leave_type', 'full')
+                    })
+                current = current + timedelta(days=1)
+
+        # 使用日詳細
+        usage = database.get_yukyu_usage_details(year=year, month=month)
+        for detail in usage:
+            day_key = detail['use_date']
+            # 重複チェック
+            exists = any(e['name'] == detail['name'] for e in daily_counts[day_key]['employees'])
+            if not exists:
+                daily_counts[day_key]['count'] += 1
+                daily_counts[day_key]['employees'].append({
+                    'name': detail['name'],
+                    'type': 'usage'
+                })
+
+        return {
+            "status": "success",
+            "year": year,
+            "month": month,
+            "days_in_month": days_in_month,
+            "daily_summary": dict(daily_counts)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# === EXPORT ENDPOINTS ===
+
+@app.post("/api/export/excel")
+async def export_to_excel(export_type: str = "employees", year: int = None):
+    """
+    データをExcel形式でエクスポート。
+    export_type: employees, requests, compliance, calendar
+    """
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+
+        if not year:
+            year = datetime.now().year
+
+        wb = Workbook()
+        ws = wb.active
+
+        # ヘッダースタイル
+        header_fill = PatternFill(start_color="38bdf8", end_color="38bdf8", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF")
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+
+        if export_type == "employees":
+            ws.title = f"有給休暇一覧_{year}"
+            headers = ["社員番号", "氏名", "派遣先", "付与日数", "使用日数", "残日数", "消化率", "年度"]
+
+            data = database.get_employees(year=year)
+
+            # ヘッダー
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center')
+                cell.border = thin_border
+
+            # データ
+            for row, emp in enumerate(data, 2):
+                ws.cell(row=row, column=1, value=emp['employee_num']).border = thin_border
+                ws.cell(row=row, column=2, value=emp['name']).border = thin_border
+                ws.cell(row=row, column=3, value=emp.get('haken', '')).border = thin_border
+                ws.cell(row=row, column=4, value=emp['granted']).border = thin_border
+                ws.cell(row=row, column=5, value=emp['used']).border = thin_border
+                ws.cell(row=row, column=6, value=emp['balance']).border = thin_border
+                ws.cell(row=row, column=7, value=f"{emp.get('usage_rate', 0):.1f}%").border = thin_border
+                ws.cell(row=row, column=8, value=emp['year']).border = thin_border
+
+        elif export_type == "requests":
+            ws.title = f"休暇申請一覧_{year}"
+            headers = ["ID", "社員番号", "氏名", "開始日", "終了日", "種類", "日数", "時間", "理由", "ステータス", "申請日"]
+
+            data = database.get_leave_requests(year=year)
+
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center')
+                cell.border = thin_border
+
+            type_labels = {'full': '全日', 'half_am': '午前半休', 'half_pm': '午後半休', 'hourly': '時間休'}
+            status_labels = {'PENDING': '審査中', 'APPROVED': '承認済', 'REJECTED': '却下'}
+
+            for row, req in enumerate(data, 2):
+                ws.cell(row=row, column=1, value=req['id']).border = thin_border
+                ws.cell(row=row, column=2, value=req['employee_num']).border = thin_border
+                ws.cell(row=row, column=3, value=req['employee_name']).border = thin_border
+                ws.cell(row=row, column=4, value=req['start_date']).border = thin_border
+                ws.cell(row=row, column=5, value=req['end_date']).border = thin_border
+                ws.cell(row=row, column=6, value=type_labels.get(req.get('leave_type', 'full'), '')).border = thin_border
+                ws.cell(row=row, column=7, value=req.get('days_requested', 0)).border = thin_border
+                ws.cell(row=row, column=8, value=req.get('hours_requested', 0)).border = thin_border
+                ws.cell(row=row, column=9, value=req.get('reason', '')).border = thin_border
+                ws.cell(row=row, column=10, value=status_labels.get(req['status'], '')).border = thin_border
+                ws.cell(row=row, column=11, value=req.get('requested_at', '')[:10] if req.get('requested_at') else '').border = thin_border
+
+        elif export_type == "compliance":
+            ws.title = f"年次有給休暇管理簿_{year}"
+            headers = ["社員番号", "氏名", "基準日", "付与日数", "取得日数", "残日数", "5日義務達成"]
+
+            from agents.compliance import get_compliance
+            compliance = get_compliance()
+            entries = compliance.generate_annual_ledger(year)
+            five_day_results = compliance.check_all_5_day_compliance(year)
+
+            # 5日義務チェック結果をマップ
+            compliance_map = {}
+            for check in five_day_results.get('checks', []):
+                compliance_map[check.employee_num] = check.status.value
+
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center')
+                cell.border = thin_border
+
+            for row, entry in enumerate(entries, 2):
+                status = compliance_map.get(entry.employee_num, 'unknown')
+                status_label = {'compliant': '達成', 'at_risk': '要注意', 'non_compliant': '未達成'}.get(status, '-')
+
+                ws.cell(row=row, column=1, value=entry.employee_num).border = thin_border
+                ws.cell(row=row, column=2, value=entry.employee_name).border = thin_border
+                ws.cell(row=row, column=3, value=entry.grant_date).border = thin_border
+                ws.cell(row=row, column=4, value=entry.granted_days).border = thin_border
+                ws.cell(row=row, column=5, value=entry.used_days).border = thin_border
+                ws.cell(row=row, column=6, value=entry.remaining_days).border = thin_border
+                cell = ws.cell(row=row, column=7, value=status_label)
+                cell.border = thin_border
+                if status == 'non_compliant':
+                    cell.fill = PatternFill(start_color="f87171", end_color="f87171", fill_type="solid")
+                elif status == 'at_risk':
+                    cell.fill = PatternFill(start_color="fbbf24", end_color="fbbf24", fill_type="solid")
+
+        # 列幅自動調整
+        for col in range(1, ws.max_column + 1):
+            max_length = 0
+            column_letter = get_column_letter(col)
+            for row in range(1, ws.max_row + 1):
+                cell_value = ws.cell(row=row, column=col).value
+                if cell_value:
+                    max_length = max(max_length, len(str(cell_value)) * 1.5)
+            ws.column_dimensions[column_letter].width = max(12, min(50, max_length))
+
+        # ファイル保存
+        filename = f"{export_type}_{year}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        filepath = UPLOAD_DIR / filename
+        wb.save(filepath)
+
+        return {
+            "status": "success",
+            "message": f"{export_type}データをエクスポートしました",
+            "filename": filename,
+            "path": str(filepath)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# === ANALYTICS ENDPOINTS ===
+
+@app.get("/api/analytics/dashboard/{year}")
+async def get_dashboard_analytics(year: int):
+    """
+    ダッシュボード用の詳細分析データを取得。
+    """
+    try:
+        from collections import defaultdict
+
+        # 基本データ
+        employees = database.get_employees(year=year)
+        genzai = database.get_genzai()
+        ukeoi = database.get_ukeoi()
+        requests = database.get_leave_requests(year=year)
+
+        # 部門別集計
+        dept_stats = defaultdict(lambda: {'count': 0, 'total_used': 0, 'total_granted': 0})
+        for emp in employees:
+            dept = emp.get('haken') or '未分類'
+            dept_stats[dept]['count'] += 1
+            dept_stats[dept]['total_used'] += emp.get('used', 0)
+            dept_stats[dept]['total_granted'] += emp.get('granted', 0)
+
+        # 消化率分布
+        rate_distribution = {'0-25': 0, '26-50': 0, '51-75': 0, '76-100': 0}
+        for emp in employees:
+            rate = emp.get('usage_rate', 0)
+            if rate <= 25:
+                rate_distribution['0-25'] += 1
+            elif rate <= 50:
+                rate_distribution['26-50'] += 1
+            elif rate <= 75:
+                rate_distribution['51-75'] += 1
+            else:
+                rate_distribution['76-100'] += 1
+
+        # 月別トレンド
+        monthly = database.get_monthly_usage_summary(year)
+        monthly_trend = []
+        for month in range(1, 13):
+            monthly_trend.append({
+                'month': month,
+                'total_days': monthly.get(month, {}).get('total_days', 0),
+                'employee_count': monthly.get(month, {}).get('employee_count', 0)
+            })
+
+        # 申請統計
+        request_stats = {
+            'total': len(requests),
+            'pending': len([r for r in requests if r['status'] == 'PENDING']),
+            'approved': len([r for r in requests if r['status'] == 'APPROVED']),
+            'rejected': len([r for r in requests if r['status'] == 'REJECTED']),
+            'by_type': defaultdict(int)
+        }
+        for req in requests:
+            request_stats['by_type'][req.get('leave_type', 'full')] += 1
+
+        # 従業員タイプ別
+        genzai_nums = {e['employee_num'] for e in genzai}
+        ukeoi_nums = {e['employee_num'] for e in ukeoi}
+
+        type_stats = {
+            '派遣': {'count': 0, 'used': 0},
+            '請負': {'count': 0, 'used': 0},
+            'その他': {'count': 0, 'used': 0}
+        }
+        for emp in employees:
+            emp_num = emp.get('employee_num', '')
+            if emp_num in genzai_nums:
+                type_stats['派遣']['count'] += 1
+                type_stats['派遣']['used'] += emp.get('used', 0)
+            elif emp_num in ukeoi_nums:
+                type_stats['請負']['count'] += 1
+                type_stats['請負']['used'] += emp.get('used', 0)
+            else:
+                type_stats['その他']['count'] += 1
+                type_stats['その他']['used'] += emp.get('used', 0)
+
+        # Top 10使用者
+        top_users = sorted(employees, key=lambda x: x.get('used', 0), reverse=True)[:10]
+
+        # 残日数の多い順
+        high_balance = sorted(employees, key=lambda x: x.get('balance', 0), reverse=True)[:10]
+
+        return {
+            "status": "success",
+            "year": year,
+            "summary": {
+                "total_employees": len(employees),
+                "total_granted": sum(e.get('granted', 0) for e in employees),
+                "total_used": sum(e.get('used', 0) for e in employees),
+                "total_balance": sum(e.get('balance', 0) for e in employees),
+                "average_rate": round(sum(e.get('usage_rate', 0) for e in employees) / len(employees), 1) if employees else 0
+            },
+            "department_stats": [{'name': k, **v} for k, v in sorted(dept_stats.items(), key=lambda x: x[1]['total_used'], reverse=True)],
+            "rate_distribution": rate_distribution,
+            "monthly_trend": monthly_trend,
+            "request_stats": {**request_stats, 'by_type': dict(request_stats['by_type'])},
+            "type_stats": type_stats,
+            "top_users": [{'name': e['name'], 'employee_num': e['employee_num'], 'used': e['used']} for e in top_users],
+            "high_balance": [{'name': e['name'], 'employee_num': e['employee_num'], 'balance': e['balance']} for e in high_balance]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/analytics/predictions/{year}")
+async def get_predictions(year: int):
+    """
+    年末までの消化率予測を計算。
+    """
+    try:
+        current_month = datetime.now().month
+        remaining_months = 12 - current_month
+
+        employees = database.get_employees(year=year)
+        monthly = database.get_monthly_usage_summary(year)
+
+        # 過去月の平均使用日数
+        past_months_usage = [monthly.get(m, {}).get('total_days', 0) for m in range(1, current_month + 1)]
+        avg_monthly_usage = sum(past_months_usage) / len(past_months_usage) if past_months_usage else 0
+
+        predictions = []
+        for emp in employees:
+            # 個人の月平均使用率
+            emp_monthly_avg = emp.get('used', 0) / current_month if current_month > 0 else 0
+
+            # 年末予測
+            predicted_used = emp.get('used', 0) + (emp_monthly_avg * remaining_months)
+            predicted_rate = (predicted_used / emp.get('granted', 1)) * 100 if emp.get('granted', 0) > 0 else 0
+
+            # 5日達成予測
+            will_meet_5day = predicted_used >= 5
+
+            predictions.append({
+                'employee_num': emp.get('employee_num'),
+                'name': emp.get('name'),
+                'current_used': emp.get('used', 0),
+                'predicted_used': round(predicted_used, 1),
+                'predicted_rate': round(min(predicted_rate, 100), 1),
+                'will_meet_5day': will_meet_5day,
+                'days_needed': max(0, 5 - emp.get('used', 0))
+            })
+
+        # 5日未達成リスク者
+        at_risk = [p for p in predictions if not p['will_meet_5day'] and p['days_needed'] > 0]
+
+        return {
+            "status": "success",
+            "year": year,
+            "current_month": current_month,
+            "remaining_months": remaining_months,
+            "avg_monthly_usage": round(avg_monthly_usage, 1),
+            "predictions": predictions,
+            "at_risk_count": len(at_risk),
+            "at_risk_employees": sorted(at_risk, key=lambda x: x['days_needed'], reverse=True)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
