@@ -179,6 +179,26 @@ Development/Debug files:
 └── *.txt               # Debug output files
 ```
 
+## Data Persistence Behavior
+
+### Auto-Sync on Startup
+When the server starts, it checks if the database is empty. If empty AND the Excel files exist, it automatically syncs data from Excel. This means:
+
+- **First time**: Data loads automatically from Excel
+- **Subsequent times**: Data persists in SQLite - no sync needed
+- **New employees**: Use "Sync" button to add new employees from Excel
+
+### Database Status Endpoint
+Use `GET /api/db-status` to check:
+- Number of employees in database
+- Whether database is empty
+- If Excel files exist at expected paths
+
+### When to Use Manual Sync
+- When new employees are added to the Excel file
+- When vacation data is updated in Excel
+- To refresh data from the source Excel files
+
 ## Important Constraints
 
 1. **Path Dependencies**:

@@ -145,6 +145,58 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 # Initialize Database
 database.init_db()
 
+# ============================================
+# AUTO-SYNC ON STARTUP IF DATABASE IS EMPTY
+# ============================================
+def auto_sync_on_startup():
+    """
+    Sincroniza automáticamente los datos desde Excel si la base de datos está vacía.
+    Esto asegura que los datos persisten y no hay que sincronizar manualmente cada vez.
+    """
+    try:
+        # Check if employees table is empty
+        employees = database.get_employees()
+
+        if len(employees) == 0:
+            logger.info("📊 Database is empty - attempting auto-sync from Excel...")
+
+            # Try to sync vacation data
+            if os.path.exists(DEFAULT_EXCEL_PATH):
+                logger.info(f"📁 Found vacation Excel: {DEFAULT_EXCEL_PATH}")
+                data = excel_service.parse_excel_file(DEFAULT_EXCEL_PATH)
+                database.save_employees(data)
+
+                # Also parse usage details
+                usage_details = excel_service.parse_yukyu_usage_details(DEFAULT_EXCEL_PATH)
+                database.save_yukyu_usage_details(usage_details)
+
+                logger.info(f"✅ Auto-synced {len(data)} employees + {len(usage_details)} usage details")
+            else:
+                logger.warning(f"⚠️ Vacation Excel not found at: {DEFAULT_EXCEL_PATH}")
+
+            # Try to sync Genzai (dispatch employees)
+            if os.path.exists(EMPLOYEE_REGISTRY_PATH):
+                logger.info(f"📁 Found employee registry: {EMPLOYEE_REGISTRY_PATH}")
+
+                genzai_data = excel_service.parse_genzai_sheet(EMPLOYEE_REGISTRY_PATH)
+                database.save_genzai(genzai_data)
+                logger.info(f"✅ Auto-synced {len(genzai_data)} dispatch employees (Genzai)")
+
+                ukeoi_data = excel_service.parse_ukeoi_sheet(EMPLOYEE_REGISTRY_PATH)
+                database.save_ukeoi(ukeoi_data)
+                logger.info(f"✅ Auto-synced {len(ukeoi_data)} contract employees (Ukeoi)")
+            else:
+                logger.warning(f"⚠️ Employee registry not found at: {EMPLOYEE_REGISTRY_PATH}")
+        else:
+            logger.info(f"✅ Database already has {len(employees)} employees - skipping auto-sync")
+
+    except Exception as e:
+        logger.error(f"❌ Auto-sync failed: {str(e)}")
+        # Don't raise - allow server to start even if sync fails
+
+# Run auto-sync on startup
+auto_sync_on_startup()
+
 # Mount static files (css, js, etc.)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -2038,6 +2090,50 @@ async def health_check():
         "timestamp": datetime.now().isoformat(),
         "version": "2.0.0"
     }
+
+
+@app.get("/api/db-status")
+async def get_db_status():
+    """
+    Retorna el estado actual de la base de datos.
+    Útil para debugging y verificar que los datos persisten.
+    """
+    try:
+        employees = database.get_employees()
+        genzai = database.get_genzai()
+        ukeoi = database.get_ukeoi()
+        years = database.get_available_years()
+
+        # Check if Excel files exist
+        vacation_excel_exists = os.path.exists(DEFAULT_EXCEL_PATH)
+        registry_excel_exists = os.path.exists(EMPLOYEE_REGISTRY_PATH)
+
+        return {
+            "status": "success",
+            "database": {
+                "employees_count": len(employees),
+                "genzai_count": len(genzai),
+                "ukeoi_count": len(ukeoi),
+                "available_years": years,
+                "is_empty": len(employees) == 0
+            },
+            "excel_files": {
+                "vacation_excel": {
+                    "path": DEFAULT_EXCEL_PATH,
+                    "exists": vacation_excel_exists
+                },
+                "employee_registry": {
+                    "path": EMPLOYEE_REGISTRY_PATH,
+                    "exists": registry_excel_exists
+                }
+            },
+            "message": "データは正常に保存されています" if len(employees) > 0 else "データベースは空です - Syncボタンを押してください"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 
 @app.get("/api/info")
