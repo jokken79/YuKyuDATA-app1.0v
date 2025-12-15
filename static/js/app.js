@@ -657,6 +657,9 @@ const App = {
                         hourlyWageInfo.style.display = 'none';
                     }
 
+                    // Show usage history
+                    this.renderUsageHistory(json);
+
                     // Clear search
                     document.getElementById('emp-search').value = json.employee.name;
                     document.getElementById('emp-search-results').innerHTML = '';
@@ -706,6 +709,80 @@ const App = {
             const cost = hours * wage;
 
             document.getElementById('cost-estimate').innerText = `¥${cost.toLocaleString()}`;
+        },
+
+        renderUsageHistory(json) {
+            const container = document.getElementById('usage-history-container');
+            const summaryEl = document.getElementById('usage-history-summary');
+            const detailEl = document.getElementById('usage-history-detail');
+
+            // Check if we have history data
+            const history = json.history || [];
+            const usageHistory = json.usage_history || [];
+
+            if (history.length === 0 && usageHistory.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'block';
+
+            // Build summary by year (from history data)
+            let summaryHtml = '<div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;">';
+            history.forEach(h => {
+                const year = h.year;
+                const used = h.used || 0;
+                const granted = h.granted || 0;
+                summaryHtml += `
+                    <div style="padding: 0.5rem 0.75rem; background: rgba(255,255,255,0.05); border-radius: 6px; font-size: 0.8rem;">
+                        <span style="color: var(--primary); font-weight: 600;">${year}年</span>
+                        <span style="margin-left: 0.5rem;">使用: ${used}日</span>
+                        <span style="margin-left: 0.5rem; color: var(--muted);">/ ${granted}日</span>
+                    </div>
+                `;
+            });
+            summaryHtml += '</div>';
+            summaryEl.innerHTML = summaryHtml;
+
+            // Build detail list (individual usage dates)
+            if (usageHistory.length > 0) {
+                let detailHtml = '<table style="width: 100%; font-size: 0.8rem; border-collapse: collapse;">';
+                detailHtml += '<thead><tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">';
+                detailHtml += '<th style="text-align: left; padding: 0.5rem;">日付</th>';
+                detailHtml += '<th style="text-align: right; padding: 0.5rem;">日数</th>';
+                detailHtml += '<th style="text-align: right; padding: 0.5rem;">年度</th>';
+                detailHtml += '</tr></thead><tbody>';
+
+                usageHistory.forEach(u => {
+                    const date = u.date || '-';
+                    const days = u.days || 0;
+                    const year = u.year || '-';
+                    detailHtml += `
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 0.5rem;">${App.utils.escapeHtml(date)}</td>
+                            <td style="text-align: right; padding: 0.5rem;">${days}日</td>
+                            <td style="text-align: right; padding: 0.5rem; color: var(--muted);">${year}</td>
+                        </tr>
+                    `;
+                });
+
+                detailHtml += '</tbody></table>';
+                detailEl.innerHTML = detailHtml;
+            } else {
+                detailEl.innerHTML = '<div style="color: var(--muted); font-size: 0.8rem; padding: 0.5rem;">使用履歴の詳細はありません</div>';
+            }
+        },
+
+        toggleUsageHistory() {
+            const detailEl = document.getElementById('usage-history-detail');
+            const btn = event.target;
+            if (detailEl.style.display === 'none') {
+                detailEl.style.display = 'block';
+                btn.innerText = '詳細を隠す';
+            } else {
+                detailEl.style.display = 'none';
+                btn.innerText = '詳細を表示';
+            }
         },
 
         async submit() {

@@ -25,7 +25,7 @@ from fiscal_year import (
     calculate_seniority_years,
     calculate_granted_days,
     get_fiscal_period,
-    apply_fifo_deduction,
+    apply_lifo_deduction,
     FISCAL_CONFIG,
     GRANT_TABLE
 )
@@ -380,10 +380,42 @@ async def get_employee_leave_info(employee_num: str):
         # Calculate hours available (1 day = 8 hours)
         total_hours_available = total_available * 8
 
+        # Get usage history (individual dates when yukyu was used)
+        usage_history = []
+        for year_record in history:
+            year = year_record.get('year')
+            if year:
+                usage_details = database.get_yukyu_usage_details(year=year, employee_num=employee_num)
+                for detail in usage_details:
+                    usage_history.append({
+                        'date': detail.get('use_date'),
+                        'days': detail.get('days_used', 1),
+                        'year': year
+                    })
+
+        # Also include approved requests as usage
+        approved_requests = database.get_leave_requests(status='APPROVED', employee_num=employee_num)
+        for req in approved_requests:
+            # Check if not already in usage_history
+            req_date = req.get('start_date')
+            if req_date and not any(u['date'] == req_date for u in usage_history):
+                usage_history.append({
+                    'date': req_date,
+                    'days': req.get('days_requested', 0),
+                    'hours': req.get('hours_requested', 0),
+                    'type': req.get('leave_type', 'full'),
+                    'year': req.get('year'),
+                    'source': 'request'
+                })
+
+        # Sort by date descending (newest first)
+        usage_history.sort(key=lambda x: x.get('date', ''), reverse=True)
+
         return {
             "status": "success",
             "employee": employee_data,
             "yukyu_history": history,
+            "usage_history": usage_history,  # Individual usage dates
             "total_available": round(total_available, 1),
             "total_hours_available": round(total_hours_available, 1),
             "hourly_wage": hourly_wage,
@@ -1817,19 +1849,19 @@ async def get_grant_rec(employee_num: str):
 @app.post("/api/fiscal/apply-fifo-deduction")
 async def apply_deduction(employee_num: str, days: float, year: int = None):
     """
-    Aplica deducción de días usando lógica FIFO.
-    Usa primero los días más antiguos.
+    Aplica deducción de días usando lógica LIFO.
+    Usa primero los días más nuevos (recientes).
     """
     if not year:
         year = datetime.now().year
 
     try:
-        result = apply_fifo_deduction(employee_num, days, year)
-        logger.info(f"FIFO deduction: {employee_num}, {days} days, result: {result}")
+        result = apply_lifo_deduction(employee_num, days, year)
+        logger.info(f"LIFO deduction: {employee_num}, {days} days, result: {result}")
 
         return {"status": "success", **result}
     except Exception as e:
-        logger.error(f"FIFO deduction error: {str(e)}")
+        logger.error(f"LIFO deduction error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

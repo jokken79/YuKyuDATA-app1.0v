@@ -4,7 +4,7 @@ Módulo de gestión del año fiscal de vacaciones (有給休暇)
 Características:
 - Período de cierre: 21日〜20日 (configurable)
 - Carry-over máximo: 2 años
-- Uso FIFO: días más antiguos primero
+- Uso LIFO: días más nuevos primero (los nuevos se consumen antes)
 - Tabla de otorgamiento según antigüedad (Ley Laboral Japonesa)
 """
 
@@ -237,7 +237,7 @@ def process_year_end_carryover(from_year: int, to_year: int) -> Dict:
 
 def get_employee_balance_breakdown(employee_num: str, year: int) -> Dict:
     """
-    Obtiene desglose del balance por año de origen para uso FIFO.
+    Obtiene desglose del balance por año de origen para uso LIFO.
 
     Args:
         employee_num: Número de empleado
@@ -252,7 +252,7 @@ def get_employee_balance_breakdown(employee_num: str, year: int) -> Dict:
             SELECT year, granted, used, balance
             FROM employees
             WHERE employee_num = ? AND year >= ?
-            ORDER BY year ASC
+            ORDER BY year DESC
         ''', (employee_num, year - 1)).fetchall()
 
     breakdown = {
@@ -260,7 +260,7 @@ def get_employee_balance_breakdown(employee_num: str, year: int) -> Dict:
         'reference_year': year,
         'total_available': 0.0,
         'by_year': [],
-        'fifo_order': [],
+        'lifo_order': [],
     }
 
     for rec in records:
@@ -276,23 +276,23 @@ def get_employee_balance_breakdown(employee_num: str, year: int) -> Dict:
         breakdown['by_year'].append(year_data)
         breakdown['total_available'] += balance
 
-        # FIFO: años más antiguos tienen prioridad
+        # LIFO: años más nuevos tienen prioridad
         if balance > 0:
-            breakdown['fifo_order'].append({
+            breakdown['lifo_order'].append({
                 'year': rec['year'],
                 'days': balance,
-                'priority': 1 if rec['year'] < year else 2,
+                'priority': 1 if rec['year'] >= year else 2,
             })
 
-    # Ordenar por prioridad FIFO (antiguos primero)
-    breakdown['fifo_order'].sort(key=lambda x: (x['priority'], x['year']))
+    # Ordenar por prioridad LIFO (nuevos primero)
+    breakdown['lifo_order'].sort(key=lambda x: (x['priority'], -x['year']))
 
     return breakdown
 
 
-def apply_fifo_deduction(employee_num: str, days_to_use: float, current_year: int) -> Dict:
+def apply_lifo_deduction(employee_num: str, days_to_use: float, current_year: int) -> Dict:
     """
-    Aplica deducción de días usando lógica FIFO (primero los más antiguos).
+    Aplica deducción de días usando lógica LIFO (primero los más nuevos).
 
     Args:
         employee_num: Número de empleado
@@ -311,7 +311,7 @@ def apply_fifo_deduction(employee_num: str, days_to_use: float, current_year: in
             conn.execute("BEGIN TRANSACTION")
             c = conn.cursor()
 
-            for item in breakdown['fifo_order']:
+            for item in breakdown['lifo_order']:
                 if remaining <= 0:
                     break
 
@@ -348,6 +348,15 @@ def apply_fifo_deduction(employee_num: str, days_to_use: float, current_year: in
         'deductions_by_year': deductions,
         'success': remaining == 0
     }
+
+
+# Alias para compatibilidad con código existente
+def apply_fifo_deduction(employee_num: str, days_to_use: float, current_year: int) -> Dict:
+    """
+    DEPRECATED: Usar apply_lifo_deduction en su lugar.
+    Esta función ahora usa LIFO internamente.
+    """
+    return apply_lifo_deduction(employee_num, days_to_use, current_year)
 
 
 def check_expiring_soon(year: int, warning_threshold_months: int = 3) -> List[Dict]:

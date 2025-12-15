@@ -97,7 +97,7 @@ CREATE INDEX idx_genzai_status ON genzai(status)
 Nuevas columnas agregadas:
 - `genzai.hire_date` - Fecha de entrada del empleado
 - `ukeoi.hire_date` - Fecha de entrada del empleado
-- `employees.grant_year` - Año de otorgamiento para tracking FIFO
+- `employees.grant_year` - Año de otorgamiento para tracking LIFO
 
 ### 2.3 Sistema de Logging
 **Archivo:** `logger.py` (nuevo)
@@ -204,10 +204,12 @@ FISCAL_CONFIG = {
 | `calculate_granted_days()` | Días según antigüedad |
 | `get_fiscal_period()` | Período 21日〜20日 |
 | `process_year_end_carryover()` | Carry-over de fin de año |
-| `get_employee_balance_breakdown()` | Desglose por año (FIFO) |
-| `apply_fifo_deduction()` | Deducción usando días antiguos primero |
+| `get_employee_balance_breakdown()` | Desglose por año (LIFO) |
+| `apply_lifo_deduction()` | Deducción usando días NUEVOS primero |
 | `check_expiring_soon()` | Días próximos a expirar |
 | `check_5day_compliance()` | Cumplimiento de 5日取得義務 |
+
+> **NOTA IMPORTANTE**: La lógica de consumo es **LIFO** (Last In, First Out), es decir, se consumen primero los días del año más reciente. Esto difiere de FIFO donde se consumirían los días más antiguos primero.
 
 ### 4.3 Nuevos Endpoints
 **Archivo:** `main.py`
@@ -216,11 +218,11 @@ FISCAL_CONFIG = {
 |----------|--------|-------------|
 | `/api/fiscal/config` | GET | Configuración fiscal |
 | `/api/fiscal/process-carryover` | POST | Procesar carry-over |
-| `/api/fiscal/balance-breakdown/{emp}` | GET | Desglose FIFO |
+| `/api/fiscal/balance-breakdown/{emp}` | GET | Desglose LIFO |
 | `/api/fiscal/expiring-soon` | GET | Días por expirar |
 | `/api/fiscal/5day-compliance/{year}` | GET | Cumplimiento 5日 |
 | `/api/fiscal/grant-recommendation/{emp}` | GET | Recomendación de otorgamiento |
-| `/api/fiscal/apply-fifo-deduction` | POST | Aplicar deducción FIFO |
+| `/api/fiscal/apply-fifo-deduction` | POST | Aplicar deducción LIFO (nuevos primero) |
 
 ---
 
@@ -293,7 +295,7 @@ FISCAL_CONFIG = {
 curl -X POST "http://localhost:8000/api/fiscal/process-carryover?from_year=2024&to_year=2025"
 ```
 
-### Ver Desglose de Balance (FIFO)
+### Ver Desglose de Balance (LIFO)
 ```bash
 curl "http://localhost:8000/api/fiscal/balance-breakdown/12345?year=2025"
 ```
