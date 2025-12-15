@@ -221,15 +221,19 @@ async def get_employee_leave_info(employee_num: str):
 
         # Get employee data from genzai or ukeoi
         employee_data = None
+        hourly_wage = 0
+
         genzai_list = database.get_genzai()
         for emp in genzai_list:
             if emp.get('employee_num') == employee_num:
+                hourly_wage = emp.get('hourly_wage', 0)
                 employee_data = {
                     "employee_num": emp.get('employee_num'),
                     "name": emp.get('name'),
                     "factory": emp.get('dispatch_name'),
                     "status": emp.get('status'),
-                    "type": "派遣"
+                    "type": "派遣",
+                    "hourly_wage": hourly_wage
                 }
                 break
 
@@ -237,12 +241,14 @@ async def get_employee_leave_info(employee_num: str):
             ukeoi_list = database.get_ukeoi()
             for emp in ukeoi_list:
                 if emp.get('employee_num') == employee_num:
+                    hourly_wage = emp.get('hourly_wage', 0)
                     employee_data = {
                         "employee_num": emp.get('employee_num'),
                         "name": emp.get('name'),
                         "factory": emp.get('contract_business'),
                         "status": emp.get('status'),
-                        "type": "請負"
+                        "type": "請負",
+                        "hourly_wage": hourly_wage
                     }
                     break
 
@@ -258,11 +264,16 @@ async def get_employee_leave_info(employee_num: str):
         # Calculate total available (sum of balances from history)
         total_available = sum(record.get('balance', 0) for record in history)
 
+        # Calculate hours available (1 day = 8 hours)
+        total_hours_available = total_available * 8
+
         return {
             "status": "success",
             "employee": employee_data,
             "yukyu_history": history,
             "total_available": round(total_available, 1),
+            "total_hours_available": round(total_hours_available, 1),
+            "hourly_wage": hourly_wage,
             "pending_requests": pending_requests
         }
     except HTTPException as he:
@@ -272,7 +283,7 @@ async def get_employee_leave_info(employee_num: str):
 
 @app.post("/api/leave-requests")
 async def create_leave_request(request_data: dict):
-    """Create a new leave request."""
+    """Create a new leave request with support for 時間単位有給 (hourly leave)."""
     try:
         from datetime import datetime
 
@@ -289,13 +300,32 @@ async def create_leave_request(request_data: dict):
         history = database.get_employee_yukyu_history(request_data['employee_num'], current_year)
         total_available = sum(record.get('balance', 0) for record in history)
 
-        if request_data['days_requested'] > total_available:
+        # Convert hours to days for validation (8 hours = 1 day)
+        hours_requested = request_data.get('hours_requested', 0)
+        total_days_equivalent = request_data['days_requested'] + (hours_requested / 8)
+
+        if total_days_equivalent > total_available:
             raise HTTPException(
                 status_code=400,
-                detail=f"Insufficient balance. Available: {total_available} days, Requested: {request_data['days_requested']} days"
+                detail=f"残日数が不足しています。残り: {total_available}日, 申請: {total_days_equivalent}日相当"
             )
 
-        # Create request
+        # Get hourly wage from genzai or ukeoi
+        hourly_wage = 0
+        genzai_list = database.get_genzai()
+        for emp in genzai_list:
+            if emp.get('employee_num') == request_data['employee_num']:
+                hourly_wage = emp.get('hourly_wage', 0)
+                break
+
+        if hourly_wage == 0:
+            ukeoi_list = database.get_ukeoi()
+            for emp in ukeoi_list:
+                if emp.get('employee_num') == request_data['employee_num']:
+                    hourly_wage = emp.get('hourly_wage', 0)
+                    break
+
+        # Create request with new fields
         request_id = database.create_leave_request(
             employee_num=request_data['employee_num'],
             employee_name=request_data['employee_name'],
@@ -303,13 +333,18 @@ async def create_leave_request(request_data: dict):
             end_date=request_data['end_date'],
             days_requested=request_data['days_requested'],
             reason=request_data.get('reason', ''),
-            year=current_year
+            year=current_year,
+            hours_requested=hours_requested,
+            leave_type=request_data.get('leave_type', 'full'),
+            hourly_wage=hourly_wage
         )
 
         return {
             "status": "success",
-            "message": "Leave request created successfully",
-            "request_id": request_id
+            "message": "申請が作成されました",
+            "request_id": request_id,
+            "hourly_wage": hourly_wage,
+            "cost_estimate": ((request_data['days_requested'] * 8) + hours_requested) * hourly_wage
         }
     except HTTPException as he:
         raise he

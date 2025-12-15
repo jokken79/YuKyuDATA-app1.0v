@@ -490,13 +490,66 @@ const App = {
                         `${json.employee.employee_num} | ${json.employee.factory || '-'} | ${json.employee.type}`;
                     document.getElementById('selected-emp-balance').innerText = json.total_available.toFixed(1) + '日';
 
+                    // Show hourly wage info if available
+                    const hourlyWageInfo = document.getElementById('hourly-wage-info');
+                    if (json.hourly_wage && json.hourly_wage > 0) {
+                        hourlyWageInfo.style.display = 'block';
+                        document.getElementById('selected-emp-wage').innerText = `¥${json.hourly_wage.toLocaleString()}`;
+                        const totalHours = json.total_hours_available || (json.total_available * 8);
+                        document.getElementById('selected-emp-hours').innerText = `${totalHours.toFixed(0)}時間`;
+                    } else {
+                        hourlyWageInfo.style.display = 'none';
+                    }
+
                     // Clear search
                     document.getElementById('emp-search').value = json.employee.name;
                     document.getElementById('emp-search-results').innerHTML = '';
+
+                    // Update cost estimate if hourly is selected
+                    this.updateCostEstimate();
                 }
             } catch (e) {
                 App.ui.showToast('error', 'Failed to load employee info');
             }
+        },
+
+        toggleLeaveType() {
+            const leaveType = document.getElementById('leave-type').value;
+            const daysContainer = document.getElementById('days-input-container');
+            const hoursContainer = document.getElementById('hours-input-container');
+            const costContainer = document.getElementById('cost-estimate-container');
+
+            if (leaveType === 'hourly') {
+                daysContainer.style.display = 'none';
+                hoursContainer.style.display = 'block';
+                costContainer.style.display = 'block';
+                this.updateCostEstimate();
+            } else {
+                daysContainer.style.display = 'block';
+                hoursContainer.style.display = 'none';
+                costContainer.style.display = 'none';
+
+                // Set default days based on type
+                const daysInput = document.getElementById('days-requested');
+                if (leaveType === 'half_am' || leaveType === 'half_pm') {
+                    daysInput.value = '0.5';
+                } else {
+                    daysInput.value = '1';
+                }
+            }
+        },
+
+        updateCostEstimate() {
+            if (!this.selectedEmployee || !this.selectedEmployee.hourly_wage) {
+                document.getElementById('cost-estimate').innerText = '-';
+                return;
+            }
+
+            const hours = parseFloat(document.getElementById('hours-requested').value) || 0;
+            const wage = this.selectedEmployee.hourly_wage;
+            const cost = hours * wage;
+
+            document.getElementById('cost-estimate').innerText = `¥${cost.toLocaleString()}`;
         },
 
         async submit() {
@@ -507,18 +560,46 @@ const App = {
 
             const startDate = document.getElementById('start-date').value;
             const endDate = document.getElementById('end-date').value;
-            const daysRequested = parseFloat(document.getElementById('days-requested').value);
+            const leaveType = document.getElementById('leave-type').value;
             const reason = document.getElementById('leave-reason').value;
+
+            // Determine days and hours based on leave type
+            let daysRequested = 0;
+            let hoursRequested = 0;
+
+            if (leaveType === 'hourly') {
+                hoursRequested = parseFloat(document.getElementById('hours-requested').value) || 0;
+                daysRequested = hoursRequested / 8; // Convert hours to days for balance check
+            } else {
+                daysRequested = parseFloat(document.getElementById('days-requested').value) || 0;
+            }
 
             if (!startDate || !endDate) {
                 App.ui.showToast('error', '日付を入力してください');
                 return;
             }
 
-            if (daysRequested > this.selectedEmployee.total_available) {
-                App.ui.showToast('error', `残日数が不足しています (残り: ${this.selectedEmployee.total_available}日)`);
-                return;
+            // Validate based on leave type
+            if (leaveType === 'hourly') {
+                if (hoursRequested <= 0 || hoursRequested > 7) {
+                    App.ui.showToast('error', '時間数は1〜7時間の範囲で入力してください');
+                    return;
+                }
+                const totalHoursAvailable = this.selectedEmployee.total_hours_available || (this.selectedEmployee.total_available * 8);
+                if (hoursRequested > totalHoursAvailable) {
+                    App.ui.showToast('error', `残時間が不足しています (残り: ${totalHoursAvailable.toFixed(0)}時間)`);
+                    return;
+                }
+            } else {
+                if (daysRequested > this.selectedEmployee.total_available) {
+                    App.ui.showToast('error', `残日数が不足しています (残り: ${this.selectedEmployee.total_available}日)`);
+                    return;
+                }
             }
+
+            // Calculate cost estimate for hourly leave
+            const hourlyWage = this.selectedEmployee.hourly_wage || 0;
+            const costEstimate = leaveType === 'hourly' ? hoursRequested * hourlyWage : 0;
 
             App.ui.showLoading();
             try {
@@ -531,7 +612,11 @@ const App = {
                         start_date: startDate,
                         end_date: endDate,
                         days_requested: daysRequested,
-                        reason: reason
+                        hours_requested: hoursRequested,
+                        leave_type: leaveType,
+                        reason: reason,
+                        hourly_wage: hourlyWage,
+                        cost_estimate: costEstimate
                     })
                 });
 
@@ -540,7 +625,8 @@ const App = {
                     throw new Error(err.detail || 'Request failed');
                 }
 
-                App.ui.showToast('success', '申請が送信されました');
+                const typeLabel = leaveType === 'hourly' ? `${hoursRequested}時間` : `${daysRequested}日`;
+                App.ui.showToast('success', `申請が送信されました (${typeLabel})`);
                 this.resetForm();
                 this.loadPending();
                 this.loadHistory();
@@ -556,10 +642,18 @@ const App = {
             this.selectedEmployee = null;
             document.getElementById('emp-search').value = '';
             document.getElementById('selected-emp-info').style.display = 'none';
+            document.getElementById('hourly-wage-info').style.display = 'none';
             document.getElementById('start-date').value = '';
             document.getElementById('end-date').value = '';
             document.getElementById('days-requested').value = '1';
+            document.getElementById('hours-requested').value = '1';
+            document.getElementById('leave-type').value = 'full';
             document.getElementById('leave-reason').value = '';
+
+            // Reset to days mode
+            document.getElementById('days-input-container').style.display = 'block';
+            document.getElementById('hours-input-container').style.display = 'none';
+            document.getElementById('cost-estimate-container').style.display = 'none';
         },
 
         async loadPending() {
@@ -569,23 +663,45 @@ const App = {
 
                 const container = document.getElementById('pending-requests');
                 if (json.data && json.data.length > 0) {
-                    container.innerHTML = json.data.map(req => `
-                        <div style="padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.75rem;">
-                            <div class="flex-between">
-                                <div>
-                                    <div style="font-weight: 600;">${req.employee_name}</div>
-                                    <div style="font-size: 0.85rem; color: var(--muted);">${req.start_date} 〜 ${req.end_date} (${req.days_requested}日)</div>
-                                    <div style="font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem;">${req.reason || '-'}</div>
-                                </div>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <button class="btn btn-glass" style="background: rgba(52, 211, 153, 0.2); padding: 0.5rem 1rem;"
-                                        onclick="App.requests.approve(${req.id})">✓ 承認</button>
-                                    <button class="btn btn-glass" style="background: rgba(248, 113, 113, 0.2); padding: 0.5rem 1rem;"
-                                        onclick="App.requests.reject(${req.id})">✗ 却下</button>
+                    container.innerHTML = json.data.map(req => {
+                        // Display hours or days based on leave type
+                        const isHourly = req.leave_type === 'hourly';
+                        const duration = isHourly
+                            ? `${req.hours_requested || 0}時間`
+                            : `${req.days_requested}日`;
+                        const typeLabel = {
+                            'full': '全日',
+                            'half_am': '午前半休',
+                            'half_pm': '午後半休',
+                            'hourly': '時間休'
+                        }[req.leave_type] || '';
+                        const costInfo = isHourly && req.cost_estimate > 0
+                            ? `<div style="font-size: 0.8rem; color: var(--warning); margin-top: 0.25rem;">💰 見積: ¥${req.cost_estimate.toLocaleString()}</div>`
+                            : '';
+
+                        return `
+                            <div style="padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.75rem;">
+                                <div class="flex-between">
+                                    <div>
+                                        <div style="font-weight: 600;">${req.employee_name}</div>
+                                        <div style="font-size: 0.85rem; color: var(--muted);">
+                                            ${req.start_date} 〜 ${req.end_date}
+                                            <span class="badge badge-info" style="margin-left: 0.5rem; padding: 0.15rem 0.5rem; font-size: 0.7rem;">${typeLabel}</span>
+                                            (${duration})
+                                        </div>
+                                        <div style="font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem;">${req.reason || '-'}</div>
+                                        ${costInfo}
+                                    </div>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <button class="btn btn-glass" style="background: rgba(52, 211, 153, 0.2); padding: 0.5rem 1rem;"
+                                            onclick="App.requests.approve(${req.id})">✓ 承認</button>
+                                        <button class="btn btn-glass" style="background: rgba(248, 113, 113, 0.2); padding: 0.5rem 1rem;"
+                                            onclick="App.requests.reject(${req.id})">✗ 却下</button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 } else {
                     container.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 2rem;">承認待ちの申請はありません</div>';
                 }
@@ -606,12 +722,28 @@ const App = {
                             req.status === 'REJECTED' ? 'badge-danger' : 'badge-warning';
                         const statusText = req.status === 'APPROVED' ? '承認済' :
                             req.status === 'REJECTED' ? '却下' : '審査中';
+
+                        // Display hours or days based on leave type
+                        const isHourly = req.leave_type === 'hourly';
+                        const duration = isHourly
+                            ? `${req.hours_requested || 0}時間`
+                            : `${req.days_requested}日`;
+                        const typeLabel = {
+                            'full': '全日',
+                            'half_am': '午前半休',
+                            'half_pm': '午後半休',
+                            'hourly': '時間休'
+                        }[req.leave_type] || '全日';
+
                         return `
                             <tr>
                                 <td>${req.id}</td>
                                 <td>${req.employee_name}</td>
                                 <td>${req.start_date} 〜 ${req.end_date}</td>
-                                <td>${req.days_requested}日</td>
+                                <td>
+                                    <span class="badge badge-info" style="margin-right: 0.25rem; padding: 0.1rem 0.4rem; font-size: 0.65rem;">${typeLabel}</span>
+                                    ${duration}
+                                </td>
                                 <td>${req.reason || '-'}</td>
                                 <td><span class="badge ${statusBadge}">${statusText}</span></td>
                                 <td>${req.requested_at?.slice(0, 10) || '-'}</td>

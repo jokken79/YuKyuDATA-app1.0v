@@ -3,10 +3,31 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>YuKyu Premium Dashboard</title>
 
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="有給休暇管理システム - Premium Dashboard for managing paid leave">
+    <meta name="theme-color" content="#38bdf8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="YuKyu">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="YuKyu Premium">
+    <meta name="msapplication-TileColor" content="#020617">
+    <meta name="msapplication-tap-highlight" content="no">
+    <meta name="format-detection" content="telephone=no">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
+    <link rel="apple-touch-icon" href="/static/icons/icon.svg">
+
     <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap"
         rel="stylesheet">
@@ -195,6 +216,19 @@
                                         <div id="selected-emp-balance" style="font-size: 1.5rem; font-weight: 700; color: var(--success);"></div>
                                     </div>
                                 </div>
+                                <!-- Hourly wage info (shown when available) -->
+                                <div id="hourly-wage-info" style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                    <div class="flex-between">
+                                        <div>
+                                            <span class="stat-label">時給 (Hourly Wage):</span>
+                                            <span id="selected-emp-wage" style="font-weight: 600; color: var(--primary); margin-left: 0.5rem;"></span>
+                                        </div>
+                                        <div>
+                                            <span class="stat-label">時間残高:</span>
+                                            <span id="selected-emp-hours" style="font-weight: 600; color: var(--warning); margin-left: 0.5rem;"></span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Date Selection -->
@@ -212,18 +246,32 @@
                             <!-- Days & Type -->
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
                                 <div>
-                                    <label class="stat-label" style="display: block; margin-bottom: 0.5rem;">日数 (Days)</label>
-                                    <input type="number" id="days-requested" class="input-glass" style="width: 100%;"
-                                        min="0.5" step="0.5" value="1">
-                                </div>
-                                <div>
                                     <label class="stat-label" style="display: block; margin-bottom: 0.5rem;">種類 (Type)</label>
-                                    <select id="leave-type" class="input-glass" style="width: 100%;">
+                                    <select id="leave-type" class="input-glass" style="width: 100%;" onchange="App.requests.toggleLeaveType()">
                                         <option value="full">全日休暇 (Full Day)</option>
                                         <option value="half_am">午前半休 (AM Half)</option>
                                         <option value="half_pm">午後半休 (PM Half)</option>
                                         <option value="hourly">時間休 (Hourly)</option>
                                     </select>
+                                </div>
+                                <div id="days-input-container">
+                                    <label class="stat-label" style="display: block; margin-bottom: 0.5rem;">日数 (Days)</label>
+                                    <input type="number" id="days-requested" class="input-glass" style="width: 100%;"
+                                        min="0.5" step="0.5" value="1">
+                                </div>
+                                <div id="hours-input-container" style="display: none;">
+                                    <label class="stat-label" style="display: block; margin-bottom: 0.5rem;">時間数 (Hours)</label>
+                                    <input type="number" id="hours-requested" class="input-glass" style="width: 100%;"
+                                        min="1" max="7" step="1" value="1" oninput="App.requests.updateCostEstimate()">
+                                    <div style="font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;">※ 1日最大7時間まで</div>
+                                </div>
+                            </div>
+
+                            <!-- Cost Estimate (shown for hourly leave) -->
+                            <div id="cost-estimate-container" style="display: none; margin-bottom: 1.5rem; padding: 1rem; background: rgba(251, 191, 36, 0.1); border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.3);">
+                                <div class="flex-between">
+                                    <span class="stat-label">💰 見積コスト (Estimated Cost):</span>
+                                    <span id="cost-estimate" style="font-size: 1.25rem; font-weight: 700; color: var(--warning);"></span>
                                 </div>
                             </div>
 
@@ -454,6 +502,30 @@
     </div>
 
     <script src="/static/js/app.js"></script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then(registration => {
+                        console.log('SW registered:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('SW registration failed:', error);
+                    });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // Optional: Show custom install button
+            console.log('PWA install available');
+        });
+    </script>
 </body>
 
 </html>

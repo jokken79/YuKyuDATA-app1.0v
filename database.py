@@ -103,12 +103,16 @@ def init_db():
             start_date TEXT NOT NULL,
             end_date TEXT NOT NULL,
             days_requested REAL NOT NULL,
+            hours_requested REAL DEFAULT 0,
+            leave_type TEXT DEFAULT 'full',
             reason TEXT,
             status TEXT DEFAULT 'PENDING',
             requested_at TEXT NOT NULL,
             approved_by TEXT,
             approved_at TEXT,
             year INTEGER NOT NULL,
+            hourly_wage INTEGER DEFAULT 0,
+            cost_estimate REAL DEFAULT 0,
             created_at TEXT NOT NULL
         )
     ''')
@@ -361,17 +365,38 @@ def get_stats_by_factory(year=None):
 
 # === LEAVE REQUESTS Functions ===
 
-def create_leave_request(employee_num, employee_name, start_date, end_date, days_requested, reason, year):
-    """Creates a new leave request (yukyu solicitud)."""
+def create_leave_request(employee_num, employee_name, start_date, end_date, days_requested, reason, year,
+                         hours_requested=0, leave_type='full', hourly_wage=0):
+    """Creates a new leave request (yukyu solicitud).
+
+    Args:
+        employee_num: 社員番号
+        employee_name: 氏名
+        start_date: 開始日
+        end_date: 終了日
+        days_requested: 申請日数
+        reason: 理由
+        year: 年度
+        hours_requested: 申請時間 (時間単位有給用)
+        leave_type: 種類 (full/half_am/half_pm/hourly)
+        hourly_wage: 時給 (コスト計算用)
+    """
     conn = get_db_connection()
     c = conn.cursor()
     timestamp = datetime.now().isoformat()
 
+    # Calculate cost estimate
+    # 1 day = 8 hours typical
+    total_hours = (days_requested * 8) + hours_requested
+    cost_estimate = total_hours * hourly_wage if hourly_wage > 0 else 0
+
     c.execute('''
         INSERT INTO leave_requests
-        (employee_num, employee_name, start_date, end_date, days_requested, reason, status, requested_at, year, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?)
-    ''', (employee_num, employee_name, start_date, end_date, days_requested, reason, timestamp, year, timestamp))
+        (employee_num, employee_name, start_date, end_date, days_requested, hours_requested,
+         leave_type, reason, status, requested_at, year, hourly_wage, cost_estimate, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?)
+    ''', (employee_num, employee_name, start_date, end_date, days_requested, hours_requested,
+          leave_type, reason, timestamp, year, hourly_wage, cost_estimate, timestamp))
 
     request_id = c.lastrowid
     conn.commit()
