@@ -217,7 +217,13 @@ const App = {
             const target = document.getElementById(`view-${viewName}`);
             if (target) {
                 target.style.display = 'block';
-                setTimeout(() => target.classList.add('active'), 10); // Trigger animation
+                setTimeout(() => {
+                    target.classList.add('active');
+                    // Animate view transition with GSAP
+                    if (App.animations && App.animations.transitionView) {
+                        App.animations.transitionView(target);
+                    }
+                }, 10);
             }
 
             // Update Sidebar
@@ -401,7 +407,9 @@ const App = {
         },
 
         renderDistribution() {
-            const ctx = document.getElementById('chart-distribution').getContext('2d');
+            const container = document.getElementById('chart-distribution');
+            if (!container) return;
+
             this.destroy('distribution');
 
             const data = App.data.getFiltered();
@@ -414,29 +422,100 @@ const App = {
                 else ranges[3]++;
             });
 
-            App.state.charts['distribution'] = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['0-25%', '26-50%', '51-75%', '76-100%'],
-                    datasets: [{
-                        data: ranges,
-                        backgroundColor: ['#f87171', '#fbbf24', '#38bdf8', '#34d399'],
-                        borderWidth: 0
-                    }]
+            const options = {
+                series: ranges,
+                chart: {
+                    type: 'donut',
+                    height: 320,
+                    background: 'transparent',
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 800,
+                        animateGradually: {
+                            enabled: true,
+                            delay: 150
+                        },
+                        dynamicAnimation: {
+                            enabled: true,
+                            speed: 350
+                        }
+                    },
+                    dropShadow: {
+                        enabled: true,
+                        top: 3,
+                        left: 0,
+                        blur: 10,
+                        opacity: 0.3,
+                        color: '#000'
+                    }
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'right', labels: { color: '#94a3b8' } }
+                labels: ['0-25%', '26-50%', '51-75%', '76-100%'],
+                colors: ['#f87171', '#fbbf24', '#38bdf8', '#34d399'],
+                legend: {
+                    position: 'right',
+                    labels: {
+                        colors: '#94a3b8'
+                    },
+                    markers: {
+                        width: 12,
+                        height: 12,
+                        radius: 3
+                    }
+                },
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '70%',
+                            labels: {
+                                show: true,
+                                total: {
+                                    show: true,
+                                    label: 'Total',
+                                    color: '#94a3b8',
+                                    formatter: () => data.length
+                                },
+                                value: {
+                                    color: '#e2e8f0',
+                                    fontSize: '22px',
+                                    fontWeight: 600
+                                }
+                            }
+                        }
+                    }
+                },
+                dataLabels: {
+                    enabled: true,
+                    style: {
+                        fontSize: '14px',
+                        fontWeight: 'bold'
+                    },
+                    dropShadow: {
+                        enabled: true,
+                        blur: 3,
+                        opacity: 0.8
+                    }
+                },
+                stroke: {
+                    width: 0
+                },
+                tooltip: {
+                    theme: 'dark',
+                    y: {
+                        formatter: function(value) {
+                            return value + ' employees'
+                        }
                     }
                 }
-            });
+            };
+
+            App.state.charts['distribution'] = new ApexCharts(container, options);
+            App.state.charts['distribution'].render();
         },
 
         async renderTrends() {
-            const ctx = document.getElementById('chart-trends');
-            if (!ctx) return;
+            const container = document.getElementById('chart-trends');
+            if (!container) return;
             this.destroy('trends');
 
             let trendsData = Array(12).fill(0);
@@ -455,79 +534,226 @@ const App = {
                 }
             } catch (e) { console.error("Trend fetch error", e); }
 
-            App.state.charts['trends'] = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                    datasets: [{
-                        label: 'Days Used',
-                        data: trendsData,
-                        borderColor: '#818cf8',
-                        backgroundColor: 'rgba(129, 140, 248, 0.1)',
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: '#94a3b8' }
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: '#94a3b8' }
+            const options = {
+                series: [{
+                    name: 'Days Used',
+                    data: trendsData
+                }],
+                chart: {
+                    type: 'area',
+                    height: 320,
+                    background: 'transparent',
+                    toolbar: {
+                        show: true,
+                        tools: {
+                            download: true,
+                            zoom: true,
+                            zoomin: true,
+                            zoomout: true,
+                            pan: false
                         }
                     },
-                    plugins: {
-                        legend: { display: false }
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 800,
+                        animateGradually: {
+                            enabled: true,
+                            delay: 150
+                        },
+                        dynamicAnimation: {
+                            enabled: true,
+                            speed: 350
+                        }
+                    },
+                    dropShadow: {
+                        enabled: true,
+                        top: 3,
+                        left: 0,
+                        blur: 15,
+                        opacity: 0.2,
+                        color: '#818cf8'
+                    }
+                },
+                colors: ['#818cf8'],
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shade: 'dark',
+                        type: 'vertical',
+                        shadeIntensity: 0.5,
+                        gradientToColors: ['#38bdf8'],
+                        opacityFrom: 0.7,
+                        opacityTo: 0.2,
+                        stops: [0, 100]
+                    }
+                },
+                stroke: {
+                    curve: 'smooth',
+                    width: 3,
+                    colors: ['#818cf8']
+                },
+                dataLabels: {
+                    enabled: false
+                },
+                markers: {
+                    size: 5,
+                    colors: ['#818cf8'],
+                    strokeColors: '#fff',
+                    strokeWidth: 2,
+                    hover: {
+                        size: 7
+                    }
+                },
+                xaxis: {
+                    categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    labels: {
+                        style: {
+                            colors: '#94a3b8'
+                        }
+                    },
+                    axisBorder: {
+                        show: false
+                    },
+                    axisTicks: {
+                        show: false
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        style: {
+                            colors: '#94a3b8'
+                        },
+                        formatter: function(value) {
+                            return Math.round(value)
+                        }
+                    }
+                },
+                grid: {
+                    borderColor: 'rgba(255,255,255,0.05)',
+                    strokeDashArray: 4,
+                    xaxis: {
+                        lines: {
+                            show: false
+                        }
+                    }
+                },
+                tooltip: {
+                    theme: 'dark',
+                    y: {
+                        formatter: function(value) {
+                            return value.toFixed(1) + ' days'
+                        }
                     }
                 }
-            });
+            };
+
+            App.state.charts['trends'] = new ApexCharts(container, options);
+            App.state.charts['trends'].render();
         },
 
         renderFactoryChart() {
-            const ctx = document.getElementById('chart-factories');
-            if (!ctx) return;
+            const container = document.getElementById('chart-factories');
+            if (!container) return;
 
             this.destroy('factories');
             const stats = App.data.getFactoryStats().slice(0, 10); // Top 10
 
-            App.state.charts['factories'] = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: stats.map(s => s[0]),
-                    datasets: [{
-                        label: 'Days Used',
-                        data: stats.map(s => s[1]),
-                        backgroundColor: 'rgba(56, 189, 248, 0.5)',
-                        borderColor: '#38bdf8',
-                        borderWidth: 1,
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: '#94a3b8' }
+            const options = {
+                series: [{
+                    name: 'Days Used',
+                    data: stats.map(s => s[1])
+                }],
+                chart: {
+                    type: 'bar',
+                    height: 500,
+                    background: 'transparent',
+                    toolbar: {
+                        show: true
+                    },
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 800,
+                        animateGradually: {
+                            enabled: true,
+                            delay: 150
                         },
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: '#94a3b8' }
+                        dynamicAnimation: {
+                            enabled: true,
+                            speed: 350
+                        }
+                    }
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: true,
+                        borderRadius: 8,
+                        dataLabels: {
+                            position: 'top'
+                        },
+                        distributed: true
+                    }
+                },
+                colors: ['#38bdf8', '#818cf8', '#f472b6', '#34d399', '#fbbf24',
+                         '#60a5fa', '#a78bfa', '#fb923c', '#4ade80', '#facc15'],
+                dataLabels: {
+                    enabled: true,
+                    style: {
+                        fontSize: '12px',
+                        colors: ['#fff']
+                    },
+                    formatter: function(value) {
+                        return value.toFixed(1)
+                    },
+                    offsetX: 30
+                },
+                xaxis: {
+                    categories: stats.map(s => s[0]),
+                    labels: {
+                        style: {
+                            colors: '#94a3b8'
                         }
                     },
-                    plugins: {
-                        legend: { display: false }
+                    axisBorder: {
+                        show: false
                     }
+                },
+                yaxis: {
+                    labels: {
+                        style: {
+                            colors: '#94a3b8'
+                        }
+                    }
+                },
+                grid: {
+                    borderColor: 'rgba(255,255,255,0.05)',
+                    xaxis: {
+                        lines: {
+                            show: true
+                        }
+                    },
+                    yaxis: {
+                        lines: {
+                            show: false
+                        }
+                    }
+                },
+                tooltip: {
+                    theme: 'dark',
+                    y: {
+                        formatter: function(value) {
+                            return value.toFixed(1) + ' days'
+                        }
+                    }
+                },
+                legend: {
+                    show: false
                 }
-            });
+            };
+
+            App.state.charts['factories'] = new ApexCharts(container, options);
+            App.state.charts['factories'].render();
         }
     },
 
@@ -2397,7 +2623,175 @@ const App = {
                 container.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 2rem; grid-column: 1 / -1;">この期間のデータはありません</div>';
             }
         }
+    },
+
+    // ========================================
+    // GSAP ANIMATIONS MODULE
+    // ========================================
+    animations: {
+        init() {
+            if (typeof gsap === 'undefined') {
+                console.warn('GSAP not loaded, skipping animations');
+                return;
+            }
+
+            // Register ScrollTrigger plugin
+            if (typeof ScrollTrigger !== 'undefined') {
+                gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
+            }
+
+            // Animate stat cards on load
+            gsap.from('.stat-card', {
+                duration: 0.8,
+                y: 30,
+                opacity: 0,
+                stagger: 0.1,
+                ease: 'power3.out',
+                delay: 0.2
+            });
+
+            // Animate glass panels on scroll
+            gsap.utils.toArray('.glass-panel').forEach((panel, index) => {
+                if (index > 3) { // Skip first 4 stat cards (already animated)
+                    gsap.from(panel, {
+                        scrollTrigger: {
+                            trigger: panel,
+                            start: 'top 90%',
+                            end: 'top 70%',
+                            toggleActions: 'play none none reverse'
+                        },
+                        duration: 0.6,
+                        y: 40,
+                        opacity: 0,
+                        ease: 'power2.out'
+                    });
+                }
+            });
+
+            // Smooth scroll for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        gsap.to(window, {
+                            duration: 1,
+                            scrollTo: { y: target, offsetY: 20 },
+                            ease: 'power3.inOut'
+                        });
+                    }
+                });
+            });
+
+            // Animate sidebar navigation items
+            gsap.from('.nav-item', {
+                duration: 0.6,
+                x: -30,
+                opacity: 0,
+                stagger: 0.08,
+                ease: 'power2.out',
+                delay: 0.3
+            });
+
+            // Animate logo
+            gsap.from('.logo', {
+                duration: 1,
+                scale: 0.8,
+                opacity: 0,
+                ease: 'elastic.out(1, 0.5)'
+            });
+
+            // Parallax effect for background orbs
+            if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+                gsap.to('body::before', {
+                    scrollTrigger: {
+                        scrub: true
+                    },
+                    y: (i, target) => -ScrollTrigger.maxScroll(window) * 0.3
+                });
+            }
+
+            // Button hover animations
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.addEventListener('mouseenter', () => {
+                    gsap.to(btn, {
+                        duration: 0.3,
+                        scale: 1.05,
+                        ease: 'power2.out'
+                    });
+                });
+                btn.addEventListener('mouseleave', () => {
+                    gsap.to(btn, {
+                        duration: 0.3,
+                        scale: 1,
+                        ease: 'power2.out'
+                    });
+                });
+            });
+
+            // Number counter animation for KPIs
+            this.animateCounters();
+        },
+
+        animateCounters() {
+            const counters = [
+                { id: 'kpi-used', suffix: '' },
+                { id: 'kpi-balance', suffix: '' },
+                { id: 'kpi-rate', suffix: '%' },
+                { id: 'kpi-total', suffix: '' }
+            ];
+
+            counters.forEach(({ id, suffix }) => {
+                const element = document.getElementById(id);
+                if (element && element.textContent !== '-') {
+                    const value = parseFloat(element.textContent.replace(/[^\d.-]/g, ''));
+                    if (!isNaN(value)) {
+                        const obj = { val: 0 };
+                        gsap.to(obj, {
+                            val: value,
+                            duration: 2,
+                            ease: 'power2.out',
+                            onUpdate: function() {
+                                element.textContent = Math.round(obj.val).toLocaleString() + suffix;
+                            }
+                        });
+                    }
+                }
+            });
+        },
+
+        // Animate view transitions
+        transitionView(viewElement) {
+            if (typeof gsap === 'undefined') return;
+
+            gsap.from(viewElement, {
+                duration: 0.5,
+                opacity: 0,
+                y: 20,
+                ease: 'power2.out'
+            });
+
+            // Animate children with stagger
+            const children = viewElement.querySelectorAll('.glass-panel, .stat-card');
+            gsap.from(children, {
+                duration: 0.6,
+                y: 30,
+                opacity: 0,
+                stagger: 0.08,
+                ease: 'power3.out',
+                delay: 0.1
+            });
+        }
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => App.init());
+document.addEventListener('DOMContentLoaded', () => {
+    App.init();
+
+    // Initialize GSAP animations after a short delay
+    setTimeout(() => {
+        if (App.animations) {
+            App.animations.init();
+        }
+    }, 300);
+});
