@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(timeout 5 bash:*)",
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(dir /T:W \"d:\\YuKyuDATA-app\\templates\\index.html\")",
+      "Bash(start http://localhost:8000)",
+      "Bash(taskkill:*)""Bash(*)"
+    ]
+  }
+}
