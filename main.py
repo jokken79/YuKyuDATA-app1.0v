@@ -152,10 +152,19 @@ def auto_sync_on_startup():
     """
     Sincroniza automáticamente los datos desde Excel si la base de datos está vacía.
     Esto asegura que los datos persisten y no hay que sincronizar manualmente cada vez.
+    También crea un backup automático si la BD tiene datos.
     """
     try:
         # Check if employees table is empty
         employees = database.get_employees()
+
+        # If database has data, create automatic backup on startup
+        if len(employees) > 0:
+            try:
+                backup_result = database.create_backup()
+                logger.info(f"🔒 Auto-backup created: {backup_result['filename']}")
+            except Exception as backup_err:
+                logger.warning(f"⚠️ Auto-backup failed (non-critical): {str(backup_err)}")
 
         if len(employees) == 0:
             logger.info("📊 Database is empty - attempting auto-sync from Excel...")
@@ -639,6 +648,123 @@ async def reject_leave_request(request_id: int, rejection_data: dict):
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/leave-requests/{request_id}")
+async def cancel_leave_request(request_id: int):
+    """
+    Cancela una solicitud PENDIENTE.
+    Solo funciona si el status es 'PENDING'.
+    La solicitud se elimina completamente.
+    """
+    try:
+        result = database.cancel_leave_request(request_id)
+        logger.info(f"Leave request {request_id} cancelled: {result}")
+
+        return {
+            "status": "success",
+            "message": f"申請 #{request_id} がキャンセルされました",
+            "cancelled": result
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logger.error(f"Cancel request error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/leave-requests/{request_id}/revert")
+async def revert_leave_request(request_id: int, revert_data: dict = None):
+    """
+    Revierte una solicitud YA APROBADA.
+    Devuelve los días usados al balance del empleado.
+    El status cambia a 'CANCELLED'.
+    """
+    try:
+        if revert_data is None:
+            revert_data = {}
+
+        reverted_by = revert_data.get('reverted_by', 'Manager')
+        result = database.revert_approved_request(request_id, reverted_by)
+        logger.info(f"Leave request {request_id} reverted: {result}")
+
+        return {
+            "status": "success",
+            "message": f"申請 #{request_id} が取り消されました。{result['days_returned']}日が返却されました",
+            "reverted": result
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logger.error(f"Revert request error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# === BACKUP & RESTORE ENDPOINTS ===
+
+@app.post("/api/backup")
+async def create_backup():
+    """
+    Crea una copia de seguridad de la base de datos.
+    Los backups se guardan en la carpeta 'backups/'.
+    Solo se mantienen los últimos 10 backups.
+    """
+    try:
+        result = database.create_backup()
+        logger.info(f"Backup created: {result['filename']}")
+
+        return {
+            "status": "success",
+            "message": f"Backup creado: {result['filename']}",
+            "backup": result
+        }
+    except Exception as e:
+        logger.error(f"Backup error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/backups")
+async def list_backups():
+    """Lista todos los backups disponibles."""
+    try:
+        backups = database.list_backups()
+        return {
+            "status": "success",
+            "count": len(backups),
+            "backups": backups
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/backup/restore")
+async def restore_backup(restore_data: dict):
+    """
+    Restaura la base de datos desde un backup.
+    CUIDADO: Esto sobrescribe la base de datos actual.
+    Se crea un backup automático antes de restaurar.
+
+    Body: {"filename": "yukyu_backup_20250115_123456.db"}
+    """
+    try:
+        filename = restore_data.get('filename')
+        if not filename:
+            raise HTTPException(status_code=400, detail="filename is required")
+
+        result = database.restore_backup(filename)
+        logger.info(f"Backup restored: {result}")
+
+        return {
+            "status": "success",
+            "message": f"Base de datos restaurada desde {filename}",
+            "restore": result
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logger.error(f"Restore error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # === YUKYU USAGE DETAILS ENDPOINTS (v2.0 Features) ===
 

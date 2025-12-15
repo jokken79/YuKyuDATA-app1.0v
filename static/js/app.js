@@ -566,11 +566,26 @@ const App = {
                 pendingList.addEventListener('click', (e) => {
                     const approveBtn = e.target.closest('.btn-approve');
                     const rejectBtn = e.target.closest('.btn-reject');
+                    const cancelBtn = e.target.closest('.btn-cancel');
                     if (approveBtn && approveBtn.dataset.requestId) {
                         App.requests.approve(parseInt(approveBtn.dataset.requestId));
                     }
                     if (rejectBtn && rejectBtn.dataset.requestId) {
                         App.requests.reject(parseInt(rejectBtn.dataset.requestId));
+                    }
+                    if (cancelBtn && cancelBtn.dataset.requestId) {
+                        App.requests.cancel(parseInt(cancelBtn.dataset.requestId));
+                    }
+                });
+            }
+
+            // Event delegation for history table actions (revert)
+            const historyTable = document.getElementById('requests-history');
+            if (historyTable) {
+                historyTable.addEventListener('click', (e) => {
+                    const revertBtn = e.target.closest('.btn-revert');
+                    if (revertBtn && revertBtn.dataset.requestId) {
+                        App.requests.revert(parseInt(revertBtn.dataset.requestId));
                     }
                 });
             }
@@ -1285,6 +1300,8 @@ const App = {
                                             style="background: rgba(52, 211, 153, 0.2); padding: 0.5rem 1rem;">✓ 承認</button>
                                         <button class="btn btn-glass btn-reject" data-request-id="${reqId}"
                                             style="background: rgba(248, 113, 113, 0.2); padding: 0.5rem 1rem;">✗ 却下</button>
+                                        <button class="btn btn-glass btn-cancel" data-request-id="${reqId}"
+                                            style="background: rgba(148, 163, 184, 0.2); padding: 0.5rem 0.75rem;" title="キャンセル">🗑</button>
                                     </div>
                                 </div>
                             </div>
@@ -1307,9 +1324,11 @@ const App = {
                 if (json.data && json.data.length > 0) {
                     tbody.innerHTML = json.data.map(req => {
                         const statusBadge = req.status === 'APPROVED' ? 'badge-success' :
-                            req.status === 'REJECTED' ? 'badge-danger' : 'badge-warning';
+                            req.status === 'REJECTED' ? 'badge-danger' :
+                            req.status === 'CANCELLED' ? 'badge-info' : 'badge-warning';
                         const statusText = req.status === 'APPROVED' ? '承認済' :
-                            req.status === 'REJECTED' ? '却下' : '審査中';
+                            req.status === 'REJECTED' ? '却下' :
+                            req.status === 'CANCELLED' ? '取消済' : '審査中';
 
                         // Display hours or days based on leave type
                         const isHourly = req.leave_type === 'hourly';
@@ -1323,6 +1342,13 @@ const App = {
                             'hourly': '時間休'
                         }[req.leave_type] || '全日';
 
+                        // Show revert button only for approved requests
+                        const actionBtn = req.status === 'APPROVED'
+                            ? `<button class="btn btn-glass btn-revert" data-request-id="${req.id}"
+                                style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: rgba(251, 191, 36, 0.2);"
+                                title="承認を取り消す">↩ 取消</button>`
+                            : '-';
+
                         return `
                             <tr>
                                 <td>${req.id}</td>
@@ -1335,11 +1361,12 @@ const App = {
                                 <td>${req.reason || '-'}</td>
                                 <td><span class="badge ${statusBadge}">${statusText}</span></td>
                                 <td>${req.requested_at?.slice(0, 10) || '-'}</td>
+                                <td>${actionBtn}</td>
                             </tr>
                         `;
                     }).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">申請履歴がありません</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem;">申請履歴がありません</td></tr>';
                 }
             } catch (e) {
                 console.error(e);
@@ -1389,6 +1416,160 @@ const App = {
             } finally {
                 App.ui.hideLoading();
             }
+        },
+
+        async cancel(requestId) {
+            if (!confirm(`申請 #${requestId} をキャンセルしますか？\n\nこの操作は取り消せません。`)) {
+                return;
+            }
+
+            App.ui.showLoading();
+            try {
+                const res = await fetch(`${App.config.apiBase}/leave-requests/${requestId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.detail || 'Cancel failed');
+                }
+
+                App.ui.showToast('success', '申請をキャンセルしました');
+                this.loadPending();
+                this.loadHistory();
+
+            } catch (e) {
+                App.ui.showToast('error', e.message);
+            } finally {
+                App.ui.hideLoading();
+            }
+        },
+
+        async revert(requestId) {
+            if (!confirm(`申請 #${requestId} を取り消しますか？\n\n承認済みの休暇が取り消され、日数が返却されます。`)) {
+                return;
+            }
+
+            App.ui.showLoading();
+            try {
+                const res = await fetch(`${App.config.apiBase}/leave-requests/${requestId}/revert`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reverted_by: 'Manager' })
+                });
+
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.detail || 'Revert failed');
+                }
+
+                const json = await res.json();
+                App.ui.showToast('success', json.message || '申請を取り消しました');
+                this.loadPending();
+                this.loadHistory();
+                App.data.fetchEmployees(App.state.year); // Refresh balance
+
+            } catch (e) {
+                App.ui.showToast('error', e.message);
+            } finally {
+                App.ui.hideLoading();
+            }
+        }
+    },
+
+    // ========================================
+    // BACKUP MODULE
+    // ========================================
+    backup: {
+        async create() {
+            App.ui.showLoading();
+            try {
+                const res = await fetch(`${App.config.apiBase}/backup`, { method: 'POST' });
+                const json = await res.json();
+
+                if (!res.ok) throw new Error(json.detail || 'Backup failed');
+
+                App.ui.showToast('success', `バックアップ作成: ${json.backup.filename}`);
+                return json.backup;
+
+            } catch (e) {
+                App.ui.showToast('error', e.message);
+            } finally {
+                App.ui.hideLoading();
+            }
+        },
+
+        async list() {
+            try {
+                const res = await fetch(`${App.config.apiBase}/backups`);
+                const json = await res.json();
+                return json.backups || [];
+            } catch (e) {
+                console.error(e);
+                return [];
+            }
+        },
+
+        async restore(filename) {
+            if (!confirm(`バックアップ "${filename}" から復元しますか？\n\n⚠️ 現在のデータは上書きされます。\n（復元前に自動バックアップが作成されます）`)) {
+                return;
+            }
+
+            App.ui.showLoading();
+            try {
+                const res = await fetch(`${App.config.apiBase}/backup/restore`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename })
+                });
+
+                const json = await res.json();
+                if (!res.ok) throw new Error(json.detail || 'Restore failed');
+
+                App.ui.showToast('success', `復元完了: ${filename}`);
+                App.data.fetchEmployees(App.state.year); // Reload data
+
+            } catch (e) {
+                App.ui.showToast('error', e.message);
+            } finally {
+                App.ui.hideLoading();
+            }
+        },
+
+        async showBackupList() {
+            const backups = await this.list();
+
+            if (backups.length === 0) {
+                App.ui.showToast('info', 'バックアップがありません');
+                return;
+            }
+
+            const listHtml = backups.map(b => `
+                <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem;">
+                    <div class="flex-between">
+                        <div>
+                            <div style="font-weight: 600; font-size: 0.9rem;">${b.filename}</div>
+                            <div style="font-size: 0.75rem; color: var(--muted);">${b.size_mb} MB | ${b.created_at.slice(0, 19).replace('T', ' ')}</div>
+                        </div>
+                        <button class="btn btn-glass" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="App.backup.restore('${b.filename}')">
+                            復元
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('modal-title').innerText = '📦 バックアップ一覧';
+            document.getElementById('modal-content').innerHTML = `
+                <div style="max-height: 400px; overflow-y: auto;">
+                    ${listHtml}
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="btn btn-primary" style="width: 100%;" onclick="App.backup.create(); App.ui.closeModal();">
+                        📦 新規バックアップ作成
+                    </button>
+                </div>
+            `;
+            document.getElementById('detail-modal').style.display = 'flex';
         }
     },
 
