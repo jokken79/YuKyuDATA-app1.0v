@@ -126,36 +126,156 @@
 
 body {
   background-color: var(--bg-dark-deep);
-  background-image: 
+  background-image:
     radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(129, 140, 248, 0.15) 0px, transparent 50%);
+    radial-gradient(at 100% 0%, rgba(129, 140, 248, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(244, 114, 182, 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(167, 139, 250, 0.1) 0px, transparent 50%);
+  background-attachment: fixed;
   color: #e2e8f0;
   font-family: var(--font-main);
   line-height: 1.6;
   min-height: 100vh;
   overflow-x: hidden;
+  position: relative;
 }
 
-/* Animations */
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes pulseGlow { 0% { box-shadow: 0 0 5px var(--primary-glow); } 50% { box-shadow: 0 0 20px var(--primary-glow), 0 0 10px var(--primary); } 100% { box-shadow: 0 0 5px var(--primary-glow); } }
-@keyframes slideInLeft { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+/* Animated gradient orbs */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+  animation: float 20s ease-in-out infinite;
+}
 
-/* Utility Classes */
+body::before {
+  width: 600px;
+  height: 600px;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  top: -300px;
+  right: -300px;
+  animation-delay: -10s;
+}
+
+body::after {
+  width: 500px;
+  height: 500px;
+  background: linear-gradient(135deg, var(--accent), var(--warning));
+  bottom: -250px;
+  left: -250px;
+}
+
+/* ========================================
+   ADVANCED ANIMATIONS - 2025 Edition
+   ======================================== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 5px var(--primary-glow); }
+  50% { box-shadow: 0 0 25px var(--primary-glow), 0 0 15px var(--primary); }
+  100% { box-shadow: 0 0 5px var(--primary-glow); }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes glow {
+  0%, 100% { filter: drop-shadow(0 0 5px var(--primary)); }
+  50% { filter: drop-shadow(0 0 20px var(--primary)); }
+}
+
+@keyframes rotate3d {
+  0% { transform: perspective(1000px) rotateY(0deg); }
+  100% { transform: perspective(1000px) rotateY(360deg); }
+}
+
+/* ========================================
+   GLASS PANEL - Enhanced Glassmorphism
+   ======================================== */
 .glass-panel {
   background: var(--bg-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: var(--glass-border);
   box-shadow: var(--glass-shadow);
-  border-radius: 16px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Glass panel shimmer effect on hover */
+.glass-panel::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.05),
+    transparent
+  );
+  transform: rotate(45deg);
+  transition: all 0.6s ease;
+  opacity: 0;
+}
+
+.glass-panel:hover::before {
+  opacity: 1;
+  animation: shimmer 1.5s ease-in-out;
 }
 
 .glass-panel:hover {
-  transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
+  transform: translateY(-4px) scale(1.01);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 20px 60px 0 rgba(0, 0, 0, 0.5),
+              0 0 0 1px rgba(56, 189, 248, 0.1),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px) saturate(200%);
+  -webkit-backdrop-filter: blur(20px) saturate(200%);
+}
+
+/* 3D hover effect for stat cards */
+.stat-card {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+.stat-card:hover {
+  animation: float 3s ease-in-out infinite;
 }
 
 .text-gradient {
@@ -259,42 +379,97 @@ body {
   letter-spacing: 0.05em;
 }
 
-/* Buttons */
+/* ========================================
+   BUTTONS - Modern Micro-interactions
+   ======================================== */
 .btn {
   padding: 0.75rem 1.5rem;
-  border-radius: 12px;
+  border-radius: 14px;
   border: none;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: var(--font-main);
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Ripple effect on buttons */
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+  transform: scale(0);
+  opacity: 0;
+  transition: transform 0.5s, opacity 0.5s;
+}
+
+.btn:active::after {
+  transform: scale(2);
+  opacity: 1;
+  transition: 0s;
 }
 
 .btn-primary {
   background: linear-gradient(135deg, var(--primary), #2563eb);
   color: white;
-  box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
+  box-shadow: 0 4px 20px rgba(56, 189, 248, 0.35),
+              0 0 0 0 rgba(56, 189, 248, 0);
+  position: relative;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  opacity: 0;
+  transition: opacity 0.3s;
+  border-radius: 14px;
+  z-index: -1;
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 30px rgba(56, 189, 248, 0.5),
+              0 0 0 4px rgba(56, 189, 248, 0.1);
+}
+
+.btn-primary:hover::before {
+  opacity: 1;
+}
+
+.btn-primary:active {
+  transform: translateY(-1px) scale(0.98);
 }
 
 .btn-glass {
   background: rgba(255,255,255,0.05);
   border: 1px solid rgba(255,255,255,0.1);
   color: white;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .btn-glass:hover {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
-/* Inputs */
+.btn-glass:active {
+  transform: translateY(0);
+}
+
+/* ========================================
+   INPUTS - Enhanced Focus States
+   ======================================== */
 .input-glass {
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -303,16 +478,27 @@ body {
   color: white;
   width: 100%;
   font-family: var(--font-mono);
-  transition: 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.input-glass:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.25);
 }
 
 .input-glass:focus {
   outline: none;
   border-color: var(--primary);
   background: rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15),
+              0 8px 20px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
 }
 
-/* Table */
+/* ========================================
+   TABLES - Modern Hover Effects
+   ======================================== */
 .modern-table {
   width: 100%;
   border-collapse: separate;
@@ -323,19 +509,53 @@ body {
   text-align: left;
   padding: 1rem;
   color: #94a3b8;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 2px solid rgba(56, 189, 248, 0.2);
   font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .modern-table td {
   padding: 1rem;
   border-bottom: 1px solid rgba(255,255,255,0.05);
-  transition: 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.modern-table tr:hover td {
-  background: rgba(255,255,255,0.02);
+.modern-table tr {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+.modern-table tbody tr:hover {
+  transform: scale(1.01);
+  z-index: 10;
+}
+
+.modern-table tbody tr:hover td {
+  background: linear-gradient(90deg,
+    rgba(56, 189, 248, 0.08) 0%,
+    rgba(56, 189, 248, 0.12) 50%,
+    rgba(56, 189, 248, 0.08) 100%);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2),
+              inset 0 0 0 1px rgba(56, 189, 248, 0.2);
+}
+
+.modern-table tbody tr:hover td:first-child {
+  border-left: 3px solid var(--primary);
+}
+
+/* Smooth row animation on load */
+.modern-table tbody tr {
+  animation: fadeInUp 0.5s ease-out backwards;
+}
+
+.modern-table tbody tr:nth-child(1) { animation-delay: 0.05s; }
+.modern-table tbody tr:nth-child(2) { animation-delay: 0.1s; }
+.modern-table tbody tr:nth-child(3) { animation-delay: 0.15s; }
+.modern-table tbody tr:nth-child(4) { animation-delay: 0.2s; }
+.modern-table tbody tr:nth-child(5) { animation-delay: 0.25s; }
 
 /* Badges */
 .badge {
@@ -418,22 +638,79 @@ body {
   }
 }
 
-/* Loading Global */
+/* ========================================
+   LOADING - Modern Spinner
+   ======================================== */
 .loader-overlay {
-  position: fixed; inset: 0; background: rgba(2, 6, 23, 0.8);
-  backdrop-filter: blur(5px);
-  z-index: 9999; display: flex; flex-direction: column;
-  justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.85);
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.loader-overlay.active { opacity: 1; pointer-events: all; }
 
+.loader-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Modern dual-ring spinner */
 .spinner {
-  width: 50px; height: 50px; border: 3px solid rgba(255,255,255,0.1);
-  border-radius: 50%; border-top-color: var(--primary);
-  animation: spin 1s ease-in-out infinite;
+  width: 64px;
+  height: 64px;
+  position: relative;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+.spinner::after {
+  content: '';
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  top: 4px;
+  left: 4px;
+  border-radius: 50%;
+  border: 6px solid transparent;
+  border-top-color: var(--primary);
+  border-bottom-color: var(--secondary);
+  animation: spin 1s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+  filter: drop-shadow(0 0 20px rgba(56, 189, 248, 0.6));
+}
+
+.spinner::before {
+  content: '';
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 6px solid transparent;
+  border-top-color: var(--accent);
+  border-bottom-color: var(--warning);
+  animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite reverse;
+  filter: drop-shadow(0 0 15px rgba(244, 114, 182, 0.5));
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Loading text animation */
+.loader-overlay > div {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(0.98); }
+}
 
 /* Toast */
 .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 10000; }
