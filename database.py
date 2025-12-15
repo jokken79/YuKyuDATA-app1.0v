@@ -103,15 +103,62 @@ def init_db():
             start_date TEXT NOT NULL,
             end_date TEXT NOT NULL,
             days_requested REAL NOT NULL,
+            hours_requested REAL DEFAULT 0,
+            leave_type TEXT DEFAULT 'full',
             reason TEXT,
             status TEXT DEFAULT 'PENDING',
             requested_at TEXT NOT NULL,
             approved_by TEXT,
             approved_at TEXT,
             year INTEGER NOT NULL,
+            hourly_wage INTEGER DEFAULT 0,
+            cost_estimate REAL DEFAULT 0,
             created_at TEXT NOT NULL
         )
     ''')
+
+    # ============================================
+    # STRATEGIC INDEXES FOR PERFORMANCE
+    # ============================================
+
+    # Indexes for employees table
+    c.execute('CREATE INDEX IF NOT EXISTS idx_emp_num ON employees(employee_num)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_emp_year ON employees(year)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_emp_num_year ON employees(employee_num, year)')
+
+    # Indexes for leave_requests table
+    c.execute('CREATE INDEX IF NOT EXISTS idx_lr_emp_num ON leave_requests(employee_num)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_lr_status ON leave_requests(status)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_lr_year ON leave_requests(year)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_lr_dates ON leave_requests(start_date, end_date)')
+
+    # Indexes for genzai/ukeoi tables
+    c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_emp ON genzai(employee_num)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_status ON genzai(status)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_emp ON ukeoi(employee_num)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_status ON ukeoi(status)')
+
+    # ============================================
+    # SCHEMA MIGRATIONS (add columns if not exist)
+    # ============================================
+
+    # Add hire_date to genzai if not exists
+    try:
+        c.execute("ALTER TABLE genzai ADD COLUMN hire_date TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+    # Add hire_date to ukeoi if not exists
+    try:
+        c.execute("ALTER TABLE ukeoi ADD COLUMN hire_date TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    # Add grant_year to employees for FIFO tracking
+    try:
+        c.execute("ALTER TABLE employees ADD COLUMN grant_year INTEGER")
+    except sqlite3.OperationalError:
+        pass
 
     conn.commit()
     conn.close()
@@ -361,17 +408,38 @@ def get_stats_by_factory(year=None):
 
 # === LEAVE REQUESTS Functions ===
 
-def create_leave_request(employee_num, employee_name, start_date, end_date, days_requested, reason, year):
-    """Creates a new leave request (yukyu solicitud)."""
+def create_leave_request(employee_num, employee_name, start_date, end_date, days_requested, reason, year,
+                         hours_requested=0, leave_type='full', hourly_wage=0):
+    """Creates a new leave request (yukyu solicitud).
+
+    Args:
+        employee_num: 社員番号
+        employee_name: 氏名
+        start_date: 開始日
+        end_date: 終了日
+        days_requested: 申請日数
+        reason: 理由
+        year: 年度
+        hours_requested: 申請時間 (時間単位有給用)
+        leave_type: 種類 (full/half_am/half_pm/hourly)
+        hourly_wage: 時給 (コスト計算用)
+    """
     conn = get_db_connection()
     c = conn.cursor()
     timestamp = datetime.now().isoformat()
 
+    # Calculate cost estimate
+    # 1 day = 8 hours typical
+    total_hours = (days_requested * 8) + hours_requested
+    cost_estimate = total_hours * hourly_wage if hourly_wage > 0 else 0
+
     c.execute('''
         INSERT INTO leave_requests
-        (employee_num, employee_name, start_date, end_date, days_requested, reason, status, requested_at, year, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?)
-    ''', (employee_num, employee_name, start_date, end_date, days_requested, reason, timestamp, year, timestamp))
+        (employee_num, employee_name, start_date, end_date, days_requested, hours_requested,
+         leave_type, reason, status, requested_at, year, hourly_wage, cost_estimate, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?)
+    ''', (employee_num, employee_name, start_date, end_date, days_requested, hours_requested,
+          leave_type, reason, timestamp, year, hourly_wage, cost_estimate, timestamp))
 
     request_id = c.lastrowid
     conn.commit()
