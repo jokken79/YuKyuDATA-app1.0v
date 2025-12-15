@@ -124,27 +124,20 @@ def parse_excel_file(file_path):
         # Create unique key: empNum + year
         emp_key = f"{emp_num}_{year}"
 
-        # ACCUMULATE values for same employee+year (like v2.0)
-        if emp_key not in employee_summary:
-            employee_summary[emp_key] = {
-                'id': emp_key,
-                'employeeNum': emp_num,
-                'name': name,
-                'haken': haken,
-                'granted': 0.0,
-                'used': 0.0,
-                'balance': 0.0,
-                'expired': 0.0,
-                'year': year
-            }
-
-        # SUM granted, used, expired (accumulate across multiple rows)
-        employee_summary[emp_key]['granted'] += granted
-        employee_summary[emp_key]['used'] += used
-        employee_summary[emp_key]['expired'] += expired
-
-        # ASSIGN balance (last value wins, like v2.0)
-        employee_summary[emp_key]['balance'] = balance
+        # NO ACCUMULATION - Each row with same empNum+year REPLACES the previous
+        # This prevents double counting when employee has multiple grant periods
+        # that might be incorrectly assigned to the same year
+        employee_summary[emp_key] = {
+            'id': emp_key,
+            'employeeNum': emp_num,
+            'name': name,
+            'haken': haken,
+            'granted': granted,
+            'used': used,
+            'balance': balance,
+            'expired': expired,
+            'year': year
+        }
 
     # Convert summary dict to list and calculate usage rates
     for emp in employee_summary.values():

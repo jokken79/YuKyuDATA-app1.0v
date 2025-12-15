@@ -406,6 +406,39 @@ async def get_monthly_summary(year: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/yukyu/kpi-stats/{year}")
+async def get_kpi_stats(year: int):
+    """Get correct KPI stats based on individual usage dates (R-BE columns).
+
+    This returns the TRUE usage total from individual dates,
+    not the column N sum which represents grant-period totals.
+    """
+    try:
+        # Get employees for count and granted totals
+        employees = database.get_employees(year=year)
+        total_employees = len(employees)
+        total_granted = sum(emp.get('granted', 0) for emp in employees)
+
+        # Get TRUE usage from individual dates (R-BE columns)
+        usage_details = database.get_yukyu_usage_details(year=year)
+        total_used = sum(detail.get('days_used', 0) for detail in usage_details)
+
+        # Calculate balance and rate
+        total_balance = total_granted - total_used
+        usage_rate = round((total_used / total_granted) * 100) if total_granted > 0 else 0
+
+        return {
+            "status": "success",
+            "year": year,
+            "total_employees": total_employees,
+            "total_granted": round(total_granted, 1),
+            "total_used": round(total_used, 1),
+            "total_balance": round(total_balance, 1),
+            "usage_rate": usage_rate
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/yukyu/by-employee-type/{year}")
 async def get_usage_by_employee_type(year: int):
     """Get yukyu usage breakdown by employee type (派遣/請負/スタッフ) for a year."""

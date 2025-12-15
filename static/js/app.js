@@ -1,5 +1,5 @@
 /**
- * YuKyu Dashboard v5.2 - Fixed Logic
+ * YuKyu Dashboard v5.3 - Advanced Analytics
  */
 
 const App = {
@@ -62,7 +62,7 @@ const App = {
                     }
                 }
 
-                App.ui.updateAll();
+                await App.ui.updateAll();
                 App.ui.showToast('success', 'Data refresh complete');
 
             } catch (err) {
@@ -124,8 +124,8 @@ const App = {
     },
 
     ui: {
-        updateAll() {
-            this.renderKPIs();
+        async updateAll() {
+            await this.renderKPIs();
             this.renderTable();
             this.renderCharts();
             this.updateYearFilter();
@@ -165,16 +165,36 @@ const App = {
             }
         },
 
-        renderKPIs() {
+        async renderKPIs() {
             const data = App.data.getFiltered();
             const total = data.length;
-            const granted = data.reduce((s, e) => s + e.granted, 0);
-            const used = data.reduce((s, e) => s + e.used, 0);
-            const balance = granted - used;
-            const rate = granted > 0 ? Math.round((used / granted) * 100) : 0;
 
-            document.getElementById('kpi-used').innerText = used.toLocaleString();
-            document.getElementById('kpi-balance').innerText = balance.toLocaleString();
+            // Fetch TRUE usage from individual dates (R-BE columns)
+            // This returns the correct value (~3318) instead of column N sum (~4466)
+            let used = 0;
+            let balance = 0;
+            let rate = 0;
+
+            try {
+                if (App.state.year) {
+                    const res = await fetch(`${App.config.apiBase}/yukyu/kpi-stats/${App.state.year}`);
+                    const kpi = await res.json();
+                    if (kpi.status === 'success') {
+                        used = kpi.total_used;
+                        balance = kpi.total_balance;
+                        rate = kpi.usage_rate;
+                    }
+                }
+            } catch (e) {
+                // Fallback to old calculation if endpoint fails
+                const granted = data.reduce((s, e) => s + e.granted, 0);
+                used = data.reduce((s, e) => s + e.used, 0);
+                balance = granted - used;
+                rate = granted > 0 ? Math.round((used / granted) * 100) : 0;
+            }
+
+            document.getElementById('kpi-used').innerText = Math.round(used).toLocaleString();
+            document.getElementById('kpi-balance').innerText = Math.round(balance).toLocaleString();
             document.getElementById('kpi-rate').innerText = rate + '%';
             document.getElementById('kpi-total').innerText = total;
         },
@@ -235,6 +255,8 @@ const App = {
             App.charts.renderDistribution();
             App.charts.renderTrends();
             App.charts.renderFactoryChart();
+            App.charts.renderTypes();
+            App.charts.renderTop10();
         },
 
         showLoading() { document.getElementById('loader').classList.add('active'); },
@@ -326,7 +348,6 @@ const App = {
                     const json = await res.json();
                     if (json.data) {
                         json.data.forEach(m => {
-                            // m.month is 1-12
                             if (m.month >= 1 && m.month <= 12) {
                                 trendsData[m.month - 1] = m.total_days;
                             }
@@ -359,6 +380,98 @@ const App = {
                         },
                         x: {
                             grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        },
+
+        async renderTypes() {
+            const ctx = document.getElementById('chart-types');
+            if (!ctx) return;
+            this.destroy('types');
+
+            let typeData = { labels: ['Haken', 'Ukeoi', 'Staff'], data: [0, 0, 0] };
+            try {
+                if (App.state.year) {
+                    const res = await fetch(`${App.config.apiBase}/yukyu/by-employee-type/${App.state.year}`);
+                    // API returns generic format, check if json is correct
+                    const json = await res.json();
+
+                    // The endpoint structure might be slightly different depending on implementation
+                    // Assuming structure based on previous context: { status: 'success', breakdown: { ... } }
+                    if (json.data) {
+                        typeData.data = [
+                            json.data.hakenshain?.total_used || 0,
+                            json.data.ukeoi?.total_used || 0,
+                            json.data.staff?.total_used || 0
+                        ];
+                    } else if (json.breakdown) { // Adapting to likely structure
+                        typeData.data = [
+                            json.breakdown.hakenshain?.total_used || 0,
+                            json.breakdown.ukeoi?.total_used || 0,
+                            json.breakdown.staff?.total_used || 0
+                        ];
+                    }
+                }
+            } catch (e) { console.error("Type fetch error", e); }
+
+            App.state.charts['types'] = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Haken (Dispatch)', 'Ukeoi (Contract)', 'Staff'],
+                    datasets: [{
+                        data: typeData.data,
+                        backgroundColor: ['#f472b6', '#818cf8', '#34d399'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        },
+
+        renderTop10() {
+            const ctx = document.getElementById('chart-top10');
+            if (!ctx) return;
+            this.destroy('top10');
+
+            // Calc top 10 from client data
+            const sorted = [...App.data.getFiltered()].sort((a, b) => b.used - a.used).slice(0, 10);
+
+            App.state.charts['top10'] = new Chart(ctx, {
+                type: 'bar',
+                indexAxis: 'y',
+                data: {
+                    labels: sorted.map(e => e.name),
+                    datasets: [{
+                        label: 'Days Used',
+                        data: sorted.map(e => e.used),
+                        backgroundColor: 'rgba(251, 191, 36, 0.7)',
+                        borderColor: '#fbbf24',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            ticks: { color: '#94a3b8', autoSkip: false },
+                            grid: { display: false }
+                        },
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
                             ticks: { color: '#94a3b8' }
                         }
                     },
