@@ -27,3 +27,7 @@ zeros_output.txt
 NUL
 result.txt
 result2.txt
+
+# Generated directories
+logs/
+exports/

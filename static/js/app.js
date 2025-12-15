@@ -1,5 +1,5 @@
 /**
- * YuKyu Dashboard v5.2 - Fixed Logic
+ * YuKyu Dashboard v5.3 - Security Enhanced
  */
 
 const App = {
@@ -13,6 +13,50 @@ const App = {
 
     config: {
         apiBase: 'http://localhost:8000/api'
+    },
+
+    // ========================================
+    // SECURITY UTILITIES (XSS Prevention)
+    // ========================================
+    utils: {
+        /**
+         * Escapes HTML to prevent XSS attacks
+         */
+        escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            const div = document.createElement('div');
+            div.textContent = String(str);
+            return div.innerHTML;
+        },
+
+        /**
+         * Escapes attribute values
+         */
+        escapeAttr(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/'/g, '&#39;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        },
+
+        /**
+         * Safely creates a number from input
+         */
+        safeNumber(val, defaultVal = 0) {
+            const num = parseFloat(val);
+            return Number.isFinite(num) ? num : defaultVal;
+        },
+
+        /**
+         * Validates year is within acceptable range
+         */
+        isValidYear(year) {
+            const num = parseInt(year);
+            return Number.isInteger(num) && num >= 2000 && num <= 2100;
+        }
     },
 
     async init() {
@@ -261,22 +305,33 @@ const App = {
                 return;
             }
 
-            tbody.innerHTML = data.map(e => `
-                <tr onclick="App.ui.openModal('${e.employeeNum}')" style="cursor: pointer;">
-                    <td><div class="font-bold">${e.employeeNum}</div></td>
-                    <td><div class="font-bold text-white">${e.name}</div></td>
-                    <td><div class="text-sm text-gray-400">${e.haken || '-'}</div></td>
-                    <td>${e.granted.toFixed(1)}</td>
-                    <td><span class="text-gradient">${e.used.toFixed(1)}</span></td>
-                    <td><span class="badge ${e.balance < 5 ? 'badge-danger' : 'badge-success'}">${e.balance.toFixed(1)}</span></td>
+            // Using data attributes instead of inline onclick (XSS prevention)
+            tbody.innerHTML = data.map(e => {
+                const empNum = App.utils.escapeAttr(e.employeeNum);
+                const name = App.utils.escapeHtml(e.name);
+                const haken = App.utils.escapeHtml(e.haken || '-');
+                const granted = App.utils.safeNumber(e.granted).toFixed(1);
+                const used = App.utils.safeNumber(e.used).toFixed(1);
+                const balance = App.utils.safeNumber(e.balance);
+                const usageRate = App.utils.safeNumber(e.usageRate);
+                const balanceClass = balance < 0 ? 'badge-critical' : balance < 5 ? 'badge-danger' : 'badge-success';
+
+                return `
+                <tr class="employee-row" data-employee-num="${empNum}" style="cursor: pointer;">
+                    <td><div class="font-bold">${empNum}</div></td>
+                    <td><div class="font-bold text-white">${name}</div></td>
+                    <td><div class="text-sm text-gray-400">${haken}</div></td>
+                    <td>${granted}</td>
+                    <td><span class="text-gradient">${used}</span></td>
+                    <td><span class="badge ${balanceClass}">${balance.toFixed(1)}</span></td>
                     <td>
                         <div style="width: 100px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
-                            <div style="width: ${Math.min(e.usageRate, 100)}%; height: 100%; background: var(--primary);"></div>
+                            <div style="width: ${Math.min(usageRate, 100)}%; height: 100%; background: var(--primary);"></div>
                         </div>
-                        <div class="text-xs mt-1 text-right">${e.usageRate}%</div>
+                        <div class="text-xs mt-1 text-right">${usageRate}%</div>
                     </td>
                 </tr>
-            `).join('');
+            `}).join('');
         },
 
         handleSearch(val) {
@@ -481,6 +536,54 @@ const App = {
             document.getElementById('detail-modal').addEventListener('click', (e) => {
                 if (e.target.id === 'detail-modal') App.ui.closeModal();
             });
+
+            // Event delegation for employee rows (XSS-safe)
+            const tableBody = document.getElementById('table-body');
+            if (tableBody) {
+                tableBody.addEventListener('click', (e) => {
+                    const row = e.target.closest('.employee-row');
+                    if (row && row.dataset.employeeNum) {
+                        App.ui.openModal(row.dataset.employeeNum);
+                    }
+                });
+            }
+
+            // Event delegation for search results
+            const searchResults = document.getElementById('emp-search-results');
+            if (searchResults) {
+                searchResults.addEventListener('click', (e) => {
+                    const item = e.target.closest('.search-result-item');
+                    if (item && item.dataset.employeeNum) {
+                        App.requests.selectEmployee(item.dataset.employeeNum);
+                    }
+                });
+            }
+
+            // Event delegation for leave request actions
+            const pendingList = document.getElementById('pending-requests');
+            if (pendingList) {
+                pendingList.addEventListener('click', (e) => {
+                    const approveBtn = e.target.closest('.btn-approve');
+                    const rejectBtn = e.target.closest('.btn-reject');
+                    if (approveBtn && approveBtn.dataset.requestId) {
+                        App.requests.approve(parseInt(approveBtn.dataset.requestId));
+                    }
+                    if (rejectBtn && rejectBtn.dataset.requestId) {
+                        App.requests.reject(parseInt(rejectBtn.dataset.requestId));
+                    }
+                });
+            }
+
+            // Keyboard navigation
+            document.addEventListener('keydown', (e) => {
+                // ESC to close modal
+                if (e.key === 'Escape') {
+                    const modal = document.getElementById('detail-modal');
+                    if (modal && modal.classList.contains('active')) {
+                        App.ui.closeModal();
+                    }
+                }
+            });
         }
     },
 
@@ -506,13 +609,19 @@ const App = {
 
                     const container = document.getElementById('emp-search-results');
                     if (json.data && json.data.length > 0) {
-                        container.innerHTML = json.data.slice(0, 10).map(emp => `
-                            <div class="search-result-item" onclick="App.requests.selectEmployee('${emp.employee_num}')"
+                        // Using data attributes instead of inline onclick (XSS prevention)
+                        container.innerHTML = json.data.slice(0, 10).map(emp => {
+                            const empNum = App.utils.escapeAttr(emp.employee_num);
+                            const name = App.utils.escapeHtml(emp.name);
+                            const factory = App.utils.escapeHtml(emp.factory || '-');
+                            const type = App.utils.escapeHtml(emp.type);
+                            return `
+                            <div class="search-result-item" data-employee-num="${empNum}"
                                  style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.2s;">
-                                <div style="font-weight: 600;">${emp.name}</div>
-                                <div style="font-size: 0.85rem; color: var(--muted);">${emp.employee_num} | ${emp.factory || '-'} | ${emp.type}</div>
+                                <div style="font-weight: 600;">${name}</div>
+                                <div style="font-size: 0.85rem; color: var(--muted);">${empNum} | ${factory} | ${type}</div>
                             </div>
-                        `).join('');
+                        `}).join('');
                     } else {
                         container.innerHTML = '<div style="padding: 1rem; color: var(--muted); text-align: center;">No results found</div>';
                     }
@@ -714,8 +823,8 @@ const App = {
                         // Display hours or days based on leave type
                         const isHourly = req.leave_type === 'hourly';
                         const duration = isHourly
-                            ? `${req.hours_requested || 0}時間`
-                            : `${req.days_requested}日`;
+                            ? `${App.utils.safeNumber(req.hours_requested)}時間`
+                            : `${App.utils.safeNumber(req.days_requested)}日`;
                         const typeLabel = {
                             'full': '全日',
                             'half_am': '午前半休',
@@ -723,27 +832,34 @@ const App = {
                             'hourly': '時間休'
                         }[req.leave_type] || '';
                         const costInfo = isHourly && req.cost_estimate > 0
-                            ? `<div style="font-size: 0.8rem; color: var(--warning); margin-top: 0.25rem;">💰 見積: ¥${req.cost_estimate.toLocaleString()}</div>`
+                            ? `<div style="font-size: 0.8rem; color: var(--warning); margin-top: 0.25rem;">💰 見積: ¥${App.utils.safeNumber(req.cost_estimate).toLocaleString()}</div>`
                             : '';
+
+                        // XSS prevention: escape all user data and use data attributes
+                        const empName = App.utils.escapeHtml(req.employee_name);
+                        const startDate = App.utils.escapeHtml(req.start_date);
+                        const endDate = App.utils.escapeHtml(req.end_date);
+                        const reason = App.utils.escapeHtml(req.reason || '-');
+                        const reqId = parseInt(req.id) || 0;
 
                         return `
                             <div style="padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.75rem;">
                                 <div class="flex-between">
                                     <div>
-                                        <div style="font-weight: 600;">${req.employee_name}</div>
+                                        <div style="font-weight: 600;">${empName}</div>
                                         <div style="font-size: 0.85rem; color: var(--muted);">
-                                            ${req.start_date} 〜 ${req.end_date}
+                                            ${startDate} 〜 ${endDate}
                                             <span class="badge badge-info" style="margin-left: 0.5rem; padding: 0.15rem 0.5rem; font-size: 0.7rem;">${typeLabel}</span>
                                             (${duration})
                                         </div>
-                                        <div style="font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem;">${req.reason || '-'}</div>
+                                        <div style="font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem;">${reason}</div>
                                         ${costInfo}
                                     </div>
                                     <div style="display: flex; gap: 0.5rem;">
-                                        <button class="btn btn-glass" style="background: rgba(52, 211, 153, 0.2); padding: 0.5rem 1rem;"
-                                            onclick="App.requests.approve(${req.id})">✓ 承認</button>
-                                        <button class="btn btn-glass" style="background: rgba(248, 113, 113, 0.2); padding: 0.5rem 1rem;"
-                                            onclick="App.requests.reject(${req.id})">✗ 却下</button>
+                                        <button class="btn btn-glass btn-approve" data-request-id="${reqId}"
+                                            style="background: rgba(52, 211, 153, 0.2); padding: 0.5rem 1rem;">✓ 承認</button>
+                                        <button class="btn btn-glass btn-reject" data-request-id="${reqId}"
+                                            style="background: rgba(248, 113, 113, 0.2); padding: 0.5rem 1rem;">✗ 却下</button>
                                     </div>
                                 </div>
                             </div>

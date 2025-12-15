@@ -1,26 +1,139 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field, validator
+from typing import Optional, List
+from collections import defaultdict
+from time import time
 import uvicorn
 import shutil
 import os
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 # Local modules
 import database
 import excel_service
+from logger import logger, log_api_request, log_db_operation, log_sync_event, log_leave_request
+from fiscal_year import (
+    process_year_end_carryover,
+    get_employee_balance_breakdown,
+    check_expiring_soon,
+    check_5day_compliance,
+    get_grant_recommendation,
+    calculate_seniority_years,
+    calculate_granted_days,
+    get_fiscal_period,
+    apply_fifo_deduction,
+    FISCAL_CONFIG,
+    GRANT_TABLE
+)
+from excel_export import (
+    create_approved_requests_excel,
+    create_monthly_report_excel,
+    create_annual_ledger_excel,
+    update_master_excel,
+    get_export_files,
+    cleanup_old_exports,
+    EXPORT_DIR
+)
 
-app = FastAPI(title="YuKyu Dashboard API")
+# ============================================
+# PYDANTIC MODELS FOR VALIDATION
+# ============================================
 
-# Configure CORS
+class LeaveRequestCreate(BaseModel):
+    employee_num: str = Field(..., min_length=1, description="Employee number")
+    employee_name: str = Field(..., min_length=1, description="Employee name")
+    start_date: str = Field(..., description="Start date YYYY-MM-DD")
+    end_date: str = Field(..., description="End date YYYY-MM-DD")
+    days_requested: float = Field(..., ge=0, le=40, description="Days requested")
+    hours_requested: float = Field(0, ge=0, le=320, description="Hours requested")
+    leave_type: str = Field(..., description="Leave type: full, half_am, half_pm, hourly")
+    reason: Optional[str] = None
+
+    @validator('leave_type')
+    def validate_leave_type(cls, v):
+        valid_types = ['full', 'half_am', 'half_pm', 'hourly']
+        if v not in valid_types:
+            raise ValueError(f'leave_type must be one of: {valid_types}')
+        return v
+
+    @validator('end_date')
+    def validate_dates(cls, v, values):
+        if 'start_date' in values:
+            if v < values['start_date']:
+                raise ValueError('end_date must be after start_date')
+        return v
+
+
+class DateRangeQuery(BaseModel):
+    start_date: str
+    end_date: str
+
+
+# ============================================
+# RATE LIMITER
+# ============================================
+
+class RateLimiter:
+    """Simple in-memory rate limiter"""
+    def __init__(self, max_requests: int = 100, window_seconds: int = 60):
+        self.max_requests = max_requests
+        self.window = window_seconds
+        self.requests = defaultdict(list)
+
+    def is_allowed(self, client_ip: str) -> bool:
+        now = time()
+        # Clean old requests
+        self.requests[client_ip] = [
+            t for t in self.requests[client_ip]
+            if now - t < self.window
+        ]
+
+        if len(self.requests[client_ip]) >= self.max_requests:
+            return False
+
+        self.requests[client_ip].append(now)
+        return True
+
+    def get_remaining(self, client_ip: str) -> int:
+        now = time()
+        self.requests[client_ip] = [
+            t for t in self.requests[client_ip]
+            if now - t < self.window
+        ]
+        return max(0, self.max_requests - len(self.requests[client_ip]))
+
+
+rate_limiter = RateLimiter(max_requests=100, window_seconds=60)
+
+
+# ============================================
+# APP INITIALIZATION
+# ============================================
+
+app = FastAPI(
+    title="YuKyu Dashboard API",
+    description="Employee Paid Leave Management System (有給休暇管理システム)",
+    version="2.0.0"
+)
+
+# Configure CORS - Restricted to specific origins
+ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Content-Type", "Accept"],
 )
 
 # Constants
@@ -1592,6 +1705,283 @@ async def get_predictions(year: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ============================================
+# FISCAL YEAR ENDPOINTS (年度管理)
+# ============================================
+
+@app.get("/api/fiscal/config")
+async def get_fiscal_configuration():
+    """Retorna configuración del año fiscal"""
+    current_year = datetime.now().year
+    current_month = datetime.now().month
+    start_date, end_date = get_fiscal_period(current_year, current_month)
+
+    logger.info("Fiscal config requested")
+
+    return {
+        "status": "success",
+        "config": FISCAL_CONFIG,
+        "grant_table": GRANT_TABLE,
+        "current_period": {
+            "year": current_year,
+            "month": current_month,
+            "start_date": start_date,
+            "end_date": end_date
+        }
+    }
+
+
+@app.post("/api/fiscal/process-carryover")
+async def process_carryover(from_year: int, to_year: int):
+    """
+    Procesa carry-over de fin de año fiscal.
+    Copia balances no usados y elimina registros vencidos.
+    """
+    try:
+        if to_year <= from_year:
+            raise HTTPException(status_code=400, detail="to_year must be greater than from_year")
+
+        stats = process_year_end_carryover(from_year, to_year)
+        logger.info(f"Carryover processed: {from_year} -> {to_year}, stats: {stats}")
+
+        return {
+            "status": "success",
+            "message": f"Carry-over procesado: {from_year} → {to_year}",
+            "stats": stats
+        }
+    except Exception as e:
+        logger.error(f"Carryover error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/fiscal/balance-breakdown/{employee_num}")
+async def get_balance_breakdown(employee_num: str, year: int = None):
+    """
+    Obtiene desglose de balance por año de origen (para uso FIFO).
+    Muestra qué días son del año actual y cuáles del anterior.
+    """
+    if not year:
+        year = datetime.now().year
+
+    breakdown = get_employee_balance_breakdown(employee_num, year)
+    return {"status": "success", "data": breakdown}
+
+
+@app.get("/api/fiscal/expiring-soon")
+async def get_expiring_balances(year: int = None):
+    """
+    Lista empleados con días próximos a expirar.
+    Alerta de días que vencerán al fin del año fiscal.
+    """
+    if not year:
+        year = datetime.now().year
+
+    expiring = check_expiring_soon(year)
+    total_expiring = sum(e['expiring_days'] for e in expiring)
+
+    return {
+        "status": "success",
+        "year": year,
+        "employees_count": len(expiring),
+        "total_expiring_days": round(total_expiring, 1),
+        "data": expiring
+    }
+
+
+@app.get("/api/fiscal/5day-compliance/{year}")
+async def get_compliance_report(year: int):
+    """
+    Verifica cumplimiento de la obligación de 5日取得.
+    Empleados con 10+ días deben usar mínimo 5.
+    """
+    compliance = check_5day_compliance(year)
+    logger.info(f"5-day compliance check for {year}: {compliance['compliance_rate']}%")
+
+    return {"status": "success", **compliance}
+
+
+@app.get("/api/fiscal/grant-recommendation/{employee_num}")
+async def get_grant_rec(employee_num: str):
+    """
+    Calcula días a otorgar basado en antigüedad del empleado.
+    Usa la tabla de otorgamiento de la Ley Laboral Japonesa.
+    """
+    recommendation = get_grant_recommendation(employee_num)
+
+    if 'error' in recommendation:
+        raise HTTPException(status_code=404, detail=recommendation['error'])
+
+    return {"status": "success", "data": recommendation}
+
+
+@app.post("/api/fiscal/apply-fifo-deduction")
+async def apply_deduction(employee_num: str, days: float, year: int = None):
+    """
+    Aplica deducción de días usando lógica FIFO.
+    Usa primero los días más antiguos.
+    """
+    if not year:
+        year = datetime.now().year
+
+    try:
+        result = apply_fifo_deduction(employee_num, days, year)
+        logger.info(f"FIFO deduction: {employee_num}, {days} days, result: {result}")
+
+        return {"status": "success", **result}
+    except Exception as e:
+        logger.error(f"FIFO deduction error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# EXCEL EXPORT ENDPOINTS (Excel出力)
+# ============================================
+
+@app.post("/api/export/approved-requests")
+async def export_approved_requests(year: int, month: int = None):
+    """Exporta solicitudes aprobadas a Excel"""
+    try:
+        filepath = create_approved_requests_excel(year, month)
+        filename = os.path.basename(filepath)
+        logger.info(f"Exported approved requests: {filename}")
+
+        return {
+            "status": "success",
+            "filename": filename,
+            "download_url": f"/api/export/download/{filename}"
+        }
+    except Exception as e:
+        logger.error(f"Export error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/export/monthly-report")
+async def export_monthly_report(year: int, month: int):
+    """Exporta reporte mensual (21日〜20日) a Excel"""
+    try:
+        filepath = create_monthly_report_excel(year, month)
+        filename = os.path.basename(filepath)
+        logger.info(f"Exported monthly report: {filename}")
+
+        return {
+            "status": "success",
+            "filename": filename,
+            "download_url": f"/api/export/download/{filename}"
+        }
+    except Exception as e:
+        logger.error(f"Export error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/export/annual-ledger")
+async def export_annual_ledger(year: int):
+    """
+    Exporta libro de gestión anual (年次有給休暇管理簿).
+    Requerido por ley japonesa.
+    """
+    try:
+        filepath = create_annual_ledger_excel(year)
+        filename = os.path.basename(filepath)
+        logger.info(f"Exported annual ledger: {filename}")
+
+        return {
+            "status": "success",
+            "filename": filename,
+            "download_url": f"/api/export/download/{filename}"
+        }
+    except Exception as e:
+        logger.error(f"Export error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/export/download/{filename}")
+async def download_export(filename: str):
+    """Descarga archivo exportado"""
+    # Sanitize filename to prevent path traversal
+    safe_filename = os.path.basename(filename)
+    filepath = os.path.join(EXPORT_DIR, safe_filename)
+
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+
+    return FileResponse(
+        filepath,
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        filename=safe_filename
+    )
+
+
+@app.get("/api/export/files")
+async def list_export_files():
+    """Lista archivos exportados disponibles"""
+    files = get_export_files()
+    return {
+        "status": "success",
+        "count": len(files),
+        "files": files
+    }
+
+
+@app.delete("/api/export/cleanup")
+async def cleanup_exports(days_to_keep: int = 30):
+    """Elimina exportaciones antiguas"""
+    result = cleanup_old_exports(days_to_keep)
+    logger.info(f"Export cleanup: {result}")
+    return {"status": "success", **result}
+
+
+@app.post("/api/sync/update-master-excel")
+async def sync_to_master_excel(year: int):
+    """
+    Actualiza el archivo Excel maestro con datos de la BD.
+    Sincronización bidireccional: BD → Excel
+    """
+    result = update_master_excel(DEFAULT_EXCEL_PATH, year)
+
+    if result.get("status") == "error":
+        logger.error(f"Master Excel update error: {result.get('message')}")
+        raise HTTPException(status_code=500, detail=result.get("message"))
+
+    logger.info(f"Master Excel updated: {result}")
+    return result
+
+
+# ============================================
+# HEALTH & INFO ENDPOINTS
+# ============================================
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": "2.0.0"
+    }
+
+
+@app.get("/api/info")
+async def app_info():
+    """Application information"""
+    return {
+        "name": "YuKyuDATA-app",
+        "version": "2.0.0",
+        "description": "Employee Paid Leave Management System (有給休暇管理システム)",
+        "features": [
+            "Vacation tracking and balance management",
+            "Leave request workflow",
+            "Monthly reports (21日〜20日 period)",
+            "5-day compliance monitoring",
+            "FIFO deduction logic",
+            "Year-end carry-over processing",
+            "Excel bidirectional sync",
+            "Annual ledger generation"
+        ],
+        "fiscal_config": FISCAL_CONFIG
+    }
+
+
 if __name__ == "__main__":
+    logger.info("Starting YuKyuDATA-app server...")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 

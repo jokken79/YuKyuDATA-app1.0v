@@ -117,6 +117,49 @@ def init_db():
         )
     ''')
 
+    # ============================================
+    # STRATEGIC INDEXES FOR PERFORMANCE
+    # ============================================
+
+    # Indexes for employees table
+    c.execute('CREATE INDEX IF NOT EXISTS idx_emp_num ON employees(employee_num)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_emp_year ON employees(year)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_emp_num_year ON employees(employee_num, year)')
+
+    # Indexes for leave_requests table
+    c.execute('CREATE INDEX IF NOT EXISTS idx_lr_emp_num ON leave_requests(employee_num)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_lr_status ON leave_requests(status)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_lr_year ON leave_requests(year)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_lr_dates ON leave_requests(start_date, end_date)')
+
+    # Indexes for genzai/ukeoi tables
+    c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_emp ON genzai(employee_num)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_status ON genzai(status)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_emp ON ukeoi(employee_num)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_status ON ukeoi(status)')
+
+    # ============================================
+    # SCHEMA MIGRATIONS (add columns if not exist)
+    # ============================================
+
+    # Add hire_date to genzai if not exists
+    try:
+        c.execute("ALTER TABLE genzai ADD COLUMN hire_date TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+    # Add hire_date to ukeoi if not exists
+    try:
+        c.execute("ALTER TABLE ukeoi ADD COLUMN hire_date TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    # Add grant_year to employees for FIFO tracking
+    try:
+        c.execute("ALTER TABLE employees ADD COLUMN grant_year INTEGER")
+    except sqlite3.OperationalError:
+        pass
+
     conn.commit()
     conn.close()
 
