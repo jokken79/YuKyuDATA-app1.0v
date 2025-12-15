@@ -73,6 +73,9 @@
             <div class="nav-item" data-view="analytics" onclick="App.ui.switchView('analytics')">
                 <span>📈</span> <span>分析</span>
             </div>
+            <div class="nav-item" data-view="reports" onclick="App.ui.switchView('reports')">
+                <span>📋</span> <span>月次レポート</span>
+            </div>
             <div class="nav-item" style="margin-top: auto;" onclick="App.ui.switchView('settings')">
                 <span>⚙️</span> <span>Settings</span>
             </div>
@@ -592,6 +595,114 @@
                         <button class="btn btn-glass" onclick="App.analytics.exportExcel('compliance')">
                             ✅ 管理簿 (Excel)
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: MONTHLY REPORTS (21日〜20日) -->
+            <div id="view-reports" class="view-section" style="display: none;">
+                <div class="bento-grid">
+                    <!-- Month Selector -->
+                    <div class="glass-panel col-span-4" style="padding: 1.5rem;">
+                        <div class="flex-between" style="margin-bottom: 1rem;">
+                            <div class="flex-center" style="gap: 1rem;">
+                                <h3 style="font-size: 1.25rem;">📋 月次レポート</h3>
+                                <span style="color: var(--muted); font-size: 0.9rem;">締め日: 21日〜20日</span>
+                            </div>
+                            <div class="flex-center" style="gap: 0.5rem;">
+                                <select id="report-year" class="input-glass" style="width: 120px;" onchange="App.reports.loadMonthList()">
+                                </select>
+                                <select id="report-month" class="input-glass" style="width: 120px;" onchange="App.reports.loadReport()">
+                                    <option value="1">1月度</option>
+                                    <option value="2">2月度</option>
+                                    <option value="3">3月度</option>
+                                    <option value="4">4月度</option>
+                                    <option value="5">5月度</option>
+                                    <option value="6">6月度</option>
+                                    <option value="7">7月度</option>
+                                    <option value="8">8月度</option>
+                                    <option value="9">9月度</option>
+                                    <option value="10">10月度</option>
+                                    <option value="11">11月度</option>
+                                    <option value="12">12月度</option>
+                                </select>
+                                <button class="btn btn-primary" onclick="App.reports.loadReport()">🔍 表示</button>
+                            </div>
+                        </div>
+
+                        <!-- Period Display -->
+                        <div id="report-period-display" style="text-align: center; padding: 1rem; background: rgba(56, 189, 248, 0.1); border-radius: 8px;">
+                            <span style="font-size: 1.25rem; font-weight: 600;" id="report-period-label">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="glass-panel stat-card col-span-1">
+                        <div class="stat-label">取得者数</div>
+                        <div class="stat-value" id="rpt-emp-count">-</div>
+                    </div>
+                    <div class="glass-panel stat-card col-span-1">
+                        <div class="stat-label">総取得日数</div>
+                        <div class="stat-value" id="rpt-total-days" style="color: var(--primary);">-</div>
+                    </div>
+                    <div class="glass-panel stat-card col-span-1">
+                        <div class="stat-label">総取得時間</div>
+                        <div class="stat-value" id="rpt-total-hours" style="color: var(--warning);">-</div>
+                    </div>
+                    <div class="glass-panel stat-card col-span-1">
+                        <div class="stat-label">1人平均</div>
+                        <div class="stat-value" id="rpt-avg-days" style="color: var(--success);">-</div>
+                    </div>
+
+                    <!-- Employee List -->
+                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                        <h3 class="stat-label" style="margin-bottom: 1rem;">👥 取得者一覧</h3>
+                        <div id="report-employee-list" style="max-height: 400px; overflow-y: auto;">
+                            <div style="text-align: center; color: var(--muted); padding: 2rem;">
+                                月を選択してレポートを表示
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Factory Summary -->
+                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                        <h3 class="stat-label" style="margin-bottom: 1rem;">🏭 派遣先別集計</h3>
+                        <div id="report-factory-list" style="max-height: 400px; overflow-y: auto;">
+                            <div style="text-align: center; color: var(--muted); padding: 2rem;">
+                                月を選択してレポートを表示
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Daily Breakdown -->
+                    <div class="glass-panel col-span-4" style="padding: 1.5rem;">
+                        <h3 class="stat-label" style="margin-bottom: 1rem;">📅 日別取得状況</h3>
+                        <div id="report-daily-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; max-height: 300px; overflow-y: auto;">
+                            <div style="text-align: center; color: var(--muted); padding: 2rem; grid-column: 1 / -1;">
+                                月を選択してレポートを表示
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Year Overview -->
+                <div class="glass-panel" style="padding: 1.5rem; margin-top: 1.5rem;">
+                    <h3 class="stat-label" style="margin-bottom: 1rem;">📊 年間月別サマリー</h3>
+                    <div style="overflow-x: auto;">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>月度</th>
+                                    <th>期間</th>
+                                    <th>取得者数</th>
+                                    <th>総日数</th>
+                                    <th>詳細</th>
+                                </tr>
+                            </thead>
+                            <tbody id="report-year-summary">
+                                <tr><td colspan="5" style="text-align: center; padding: 2rem;">Loading...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

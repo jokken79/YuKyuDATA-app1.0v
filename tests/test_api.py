@@ -243,5 +243,42 @@ class TestYukyuUsageEndpoints:
         assert "data" in data
 
 
+class TestMonthlyReportsEndpoints:
+    """月次レポート (21日〜20日) エンドポイントのテスト"""
+
+    def test_get_monthly_report(self):
+        """月次レポートAPIが正常に動作すること"""
+        current_year = datetime.now().year
+        current_month = datetime.now().month
+        response = client.get(f"/api/reports/monthly/{current_year}/{current_month}")
+        assert response.status_code == 200
+        data = response.json()
+        assert "status" in data
+        assert "report_period" in data
+        assert "summary" in data
+        assert "employees" in data
+        assert "by_factory" in data
+        assert "by_date" in data
+
+    def test_monthly_report_period_calculation(self):
+        """月次レポートの期間計算が正しいこと (21日〜20日)"""
+        response = client.get("/api/reports/monthly/2025/1")
+        assert response.status_code == 200
+        data = response.json()
+        # January 2025 report should be: Dec 21, 2024 - Jan 20, 2025
+        assert data["report_period"]["start_date"] == "2024-12-21"
+        assert data["report_period"]["end_date"] == "2025-01-20"
+
+    def test_get_monthly_report_list(self):
+        """年間月次レポート一覧APIが正常に動作すること"""
+        current_year = datetime.now().year
+        response = client.get(f"/api/reports/monthly-list/{current_year}")
+        assert response.status_code == 200
+        data = response.json()
+        assert "status" in data
+        assert "reports" in data
+        assert len(data["reports"]) == 12  # 12 months
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])

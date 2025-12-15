@@ -158,6 +158,7 @@ const App = {
                 'calendar': '休暇カレンダー',
                 'compliance': 'コンプライアンス',
                 'analytics': '詳細分析',
+                'reports': '月次レポート (21日〜20日)',
                 'settings': 'システム設定'
             };
             document.getElementById('page-title').innerText = titleMap[viewName] || 'Dashboard';
@@ -185,6 +186,10 @@ const App = {
 
             if (viewName === 'analytics') {
                 App.analytics.loadDashboard();
+            }
+
+            if (viewName === 'reports') {
+                App.reports.init();
             }
 
             if (viewName === 'settings') {
@@ -1353,6 +1358,177 @@ const App = {
                 App.ui.showToast('error', 'エクスポートに失敗しました');
             } finally {
                 App.ui.hideLoading();
+            }
+        }
+    },
+
+    // ========================================
+    // MONTHLY REPORTS MODULE (21日〜20日)
+    // ========================================
+    reports: {
+        currentYear: new Date().getFullYear(),
+        currentMonth: new Date().getMonth() + 1,
+
+        init() {
+            // Initialize year selector
+            const yearSelect = document.getElementById('report-year');
+            const years = App.state.availableYears.length > 0 ? App.state.availableYears : [new Date().getFullYear()];
+            yearSelect.innerHTML = years.map(y => `<option value="${y}" ${y === this.currentYear ? 'selected' : ''}>${y}年</option>`).join('');
+
+            // Set current month
+            document.getElementById('report-month').value = this.currentMonth;
+
+            // Load data
+            this.loadMonthList();
+            this.loadReport();
+        },
+
+        async loadMonthList() {
+            this.currentYear = parseInt(document.getElementById('report-year').value);
+            App.ui.showLoading();
+
+            try {
+                const res = await fetch(`${App.config.apiBase}/reports/monthly-list/${this.currentYear}`);
+                const json = await res.json();
+
+                const tbody = document.getElementById('report-year-summary');
+                if (json.reports && json.reports.length > 0) {
+                    tbody.innerHTML = json.reports.map(r => `
+                        <tr style="cursor: pointer;" onclick="App.reports.selectMonth(${r.month})">
+                            <td style="font-weight: 600;">${r.label}</td>
+                            <td style="font-size: 0.85rem; color: var(--muted);">${r.period}</td>
+                            <td>${r.employee_count}人</td>
+                            <td style="color: var(--primary); font-weight: 600;">${r.total_days}日</td>
+                            <td><button class="btn btn-glass" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;">詳細</button></td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">データがありません</td></tr>';
+                }
+
+            } catch (e) {
+                App.ui.showToast('error', '月次一覧の読み込みに失敗しました');
+            } finally {
+                App.ui.hideLoading();
+            }
+        },
+
+        selectMonth(month) {
+            document.getElementById('report-month').value = month;
+            this.loadReport();
+        },
+
+        async loadReport() {
+            this.currentYear = parseInt(document.getElementById('report-year').value);
+            this.currentMonth = parseInt(document.getElementById('report-month').value);
+
+            App.ui.showLoading();
+
+            try {
+                const res = await fetch(`${App.config.apiBase}/reports/monthly/${this.currentYear}/${this.currentMonth}`);
+                const json = await res.json();
+
+                // Update period display
+                document.getElementById('report-period-label').innerText = json.report_period.label;
+
+                // Update summary cards
+                document.getElementById('rpt-emp-count').innerText = json.summary.total_employees + '人';
+                document.getElementById('rpt-total-days').innerText = json.summary.total_days + '日';
+                document.getElementById('rpt-total-hours').innerText = json.summary.total_hours + '時間';
+                const avgDays = json.summary.total_employees > 0
+                    ? (json.summary.total_days / json.summary.total_employees).toFixed(1)
+                    : '0';
+                document.getElementById('rpt-avg-days').innerText = avgDays + '日';
+
+                // Render employee list
+                this.renderEmployeeList(json.employees);
+
+                // Render factory list
+                this.renderFactoryList(json.by_factory);
+
+                // Render daily grid
+                this.renderDailyGrid(json.by_date);
+
+                App.ui.showToast('success', `${this.currentYear}年${this.currentMonth}月度レポートを読み込みました`);
+
+            } catch (e) {
+                App.ui.showToast('error', 'レポートの読み込みに失敗しました');
+            } finally {
+                App.ui.hideLoading();
+            }
+        },
+
+        renderEmployeeList(employees) {
+            const container = document.getElementById('report-employee-list');
+            if (employees && employees.length > 0) {
+                container.innerHTML = employees.map(emp => {
+                    const datesHtml = emp.dates.map(d => {
+                        const typeLabel = {'full': '全', 'half_am': '午前', 'half_pm': '午後', 'hourly': '時'}[d.type] || '';
+                        return `<span class="badge badge-info" style="margin: 0.1rem; padding: 0.15rem 0.4rem; font-size: 0.65rem;">${d.date.slice(5)} ${typeLabel}</span>`;
+                    }).join('');
+
+                    return `
+                        <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem;">
+                            <div class="flex-between" style="margin-bottom: 0.5rem;">
+                                <div>
+                                    <div style="font-weight: 600;">${emp.name}</div>
+                                    <div style="font-size: 0.8rem; color: var(--muted);">${emp.employee_num} | ${emp.factory || '-'}</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${emp.total_days}日</div>
+                                    ${emp.total_hours > 0 ? `<div style="font-size: 0.8rem; color: var(--warning);">+${emp.total_hours}時間</div>` : ''}
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                                ${datesHtml}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                container.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 2rem;">この期間の取得者はいません</div>';
+            }
+        },
+
+        renderFactoryList(factories) {
+            const container = document.getElementById('report-factory-list');
+            if (factories && factories.length > 0) {
+                container.innerHTML = factories.map(f => `
+                    <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem;">
+                        <div class="flex-between" style="margin-bottom: 0.5rem;">
+                            <div style="font-weight: 600;">${f.factory}</div>
+                            <div>
+                                <span style="font-size: 0.9rem; color: var(--muted);">${f.employee_count}人</span>
+                                <span style="font-size: 1.1rem; font-weight: 700; color: var(--primary); margin-left: 0.5rem;">${f.total_days}日</span>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--muted);">
+                            ${f.employees.map(e => e.name).join(', ')}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 2rem;">データがありません</div>';
+            }
+        },
+
+        renderDailyGrid(dailyData) {
+            const container = document.getElementById('report-daily-grid');
+            if (dailyData && dailyData.length > 0) {
+                container.innerHTML = dailyData.map(d => {
+                    const bgColor = d.count >= 5 ? 'rgba(248, 113, 113, 0.3)' :
+                                   d.count >= 3 ? 'rgba(251, 191, 36, 0.3)' :
+                                   'rgba(56, 189, 248, 0.15)';
+                    return `
+                        <div style="padding: 0.5rem; background: ${bgColor}; border-radius: 8px; text-align: center;" title="${d.employees.join(', ')}">
+                            <div style="font-weight: 600; font-size: 0.9rem;">${d.date.slice(5)}</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">${d.count}</div>
+                            <div style="font-size: 0.7rem; color: var(--muted);">人</div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                container.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 2rem; grid-column: 1 / -1;">この期間のデータはありません</div>';
             }
         }
     }
