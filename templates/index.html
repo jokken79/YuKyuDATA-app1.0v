@@ -400,10 +400,11 @@
                                     <th>理由</th>
                                     <th>ステータス</th>
                                     <th>申請日</th>
+                                    <th>操作</th>
                                 </tr>
                             </thead>
                             <tbody id="requests-history">
-                                <tr><td colspan="7" style="text-align: center; padding: 2rem;">Loading...</td></tr>
+                                <tr><td colspan="8" style="text-align: center; padding: 2rem;">Loading...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -843,6 +844,22 @@
                                 <button class="btn btn-glass" onclick="App.data.sync()" style="background: rgba(56, 189, 248, 0.2);">
                                     ⚡ データ同期
                                 </button>
+                            </div>
+                        </div>
+
+                        <!-- Backup Management -->
+                        <div>
+                            <h4 class="stat-label" style="margin-bottom: 1rem;">📦 バックアップ管理</h4>
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <button class="btn btn-primary" onclick="App.backup.create()">
+                                    📦 バックアップ作成
+                                </button>
+                                <button class="btn btn-glass" onclick="App.backup.showBackupList()">
+                                    📋 バックアップ一覧
+                                </button>
+                            </div>
+                            <div style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--muted);">
+                                ※ サーバー起動時に自動バックアップが作成されます。最大10件保持。
                             </div>
                         </div>
 
