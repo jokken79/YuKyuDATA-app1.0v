@@ -203,7 +203,7 @@ const App = {
         async updateAll() {
             await this.renderKPIs();
             this.renderTable();
-            this.renderCharts();
+            await this.renderCharts();
             this.updateYearFilter();
             document.getElementById('emp-count-badge').innerText = `${App.data.getFiltered().length} Employees`;
         },
@@ -277,6 +277,10 @@ const App = {
 
             if (viewName === 'settings') {
                 App.settings.loadSnapshot();
+            }
+
+            if (viewName === 'employees') {
+                App.employeeTypes.loadData();
             }
         },
 
@@ -362,7 +366,12 @@ const App = {
         },
 
         handleSearch(val) {
-            this.renderTable(val);
+            // Use employeeTypes module if data is loaded
+            if (App.employeeTypes.data.all.length > 0) {
+                App.employeeTypes.renderTable(val);
+            } else {
+                this.renderTable(val);
+            }
         },
 
         updateYearFilter() {
@@ -377,12 +386,12 @@ const App = {
             `).join('');
         },
 
-        renderCharts() {
+        async renderCharts() {
             App.charts.renderDistribution();
             App.charts.renderTrends();
             App.charts.renderFactoryChart();
             App.charts.renderTypes();
-            App.charts.renderTop10();
+            await App.charts.renderTop10();
         },
 
         showLoading() { document.getElementById('loader').classList.add('active'); },
@@ -723,13 +732,25 @@ const App = {
             });
         },
 
-        renderTop10() {
+        async renderTop10() {
             const ctx = document.getElementById('chart-top10');
             if (!ctx) return;
             this.destroy('top10');
 
-            // Calc top 10 from client data
-            const sorted = [...App.data.getFiltered()].sort((a, b) => b.used - a.used).slice(0, 10);
+            // Fetch Top 10 from API - only ACTIVE employees (在職中)
+            let sorted = [];
+            try {
+                const year = App.state.year || new Date().getFullYear();
+                const res = await fetch(`${App.config.apiBase}/analytics/top10-active/${year}`);
+                const json = await res.json();
+                if (json.status === 'success' && json.data) {
+                    sorted = json.data;
+                }
+            } catch (e) {
+                // Fallback to client-side calculation
+                console.warn('Top10 API failed, using local data', e);
+                sorted = [...App.data.getFiltered()].sort((a, b) => b.used - a.used).slice(0, 10);
+            }
 
             App.state.charts['top10'] = new Chart(ctx, {
                 type: 'bar',
@@ -737,7 +758,7 @@ const App = {
                 data: {
                     labels: sorted.map(e => e.name),
                     datasets: [{
-                        label: 'Days Used',
+                        label: 'Days Used (在職中のみ)',
                         data: sorted.map(e => e.used),
                         backgroundColor: 'rgba(251, 191, 36, 0.7)',
                         borderColor: '#fbbf24',
@@ -2894,6 +2915,125 @@ const App = {
                 ease: 'power3.out',
                 delay: 0.1
             });
+        }
+    },
+
+    // ========================================
+    // EMPLOYEE TYPES MODULE (Haken/Ukeoi/Staff)
+    // ========================================
+    employeeTypes: {
+        currentTab: 'all',
+        activeOnly: true,
+        data: {
+            haken: [],
+            ukeoi: [],
+            staff: [],
+            all: []
+        },
+
+        async loadData() {
+            try {
+                const year = App.state.year || new Date().getFullYear();
+                const res = await fetch(`${App.config.apiBase}/employees/by-type?year=${year}&active_only=${this.activeOnly}`);
+                const json = await res.json();
+
+                if (json.status === 'success') {
+                    this.data.haken = json.haken.employees || [];
+                    this.data.ukeoi = json.ukeoi.employees || [];
+                    this.data.staff = json.staff.employees || [];
+                    this.data.all = [...this.data.haken, ...this.data.ukeoi, ...this.data.staff];
+
+                    // Update counts
+                    document.getElementById('count-all').innerText = this.data.all.length;
+                    document.getElementById('count-haken').innerText = this.data.haken.length;
+                    document.getElementById('count-ukeoi').innerText = this.data.ukeoi.length;
+                    document.getElementById('count-staff').innerText = this.data.staff.length;
+
+                    // Update summary cards
+                    document.getElementById('haken-used').innerText = Math.round(json.haken.total_used);
+                    document.getElementById('ukeoi-used').innerText = Math.round(json.ukeoi.total_used);
+                    document.getElementById('staff-used').innerText = Math.round(json.staff.total_used);
+                    document.getElementById('total-type-used').innerText = Math.round(
+                        json.haken.total_used + json.ukeoi.total_used + json.staff.total_used
+                    );
+
+                    // Render table with current tab
+                    this.renderTable();
+                }
+            } catch (e) {
+                console.error('Failed to load employee types:', e);
+                App.ui.showToast('error', '従業員データの読み込みに失敗しました');
+            }
+        },
+
+        switchTab(tab) {
+            this.currentTab = tab;
+
+            // Update tab buttons
+            document.querySelectorAll('.employee-tabs .btn').forEach(btn => btn.classList.remove('active', 'btn-primary'));
+            document.getElementById(`tab-${tab}`).classList.add('active', 'btn-primary');
+
+            this.renderTable();
+        },
+
+        toggleActiveFilter() {
+            this.activeOnly = document.getElementById('active-only-toggle').checked;
+            this.loadData();
+        },
+
+        renderTable(filterText = '') {
+            const tbody = document.getElementById('table-body');
+            let data = this.data[this.currentTab] || [];
+
+            // Apply search filter
+            if (filterText) {
+                const q = filterText.toLowerCase();
+                data = data.filter(e =>
+                    (e.name && e.name.toLowerCase().includes(q)) ||
+                    (e.employee_num && String(e.employee_num).includes(q)) ||
+                    (e.haken && e.haken.toLowerCase().includes(q)) ||
+                    (e.dispatch_name && e.dispatch_name.toLowerCase().includes(q)) ||
+                    (e.contract_business && e.contract_business.toLowerCase().includes(q))
+                );
+            }
+
+            document.getElementById('emp-count-badge').innerText = `${data.length} Employees`;
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem;">データがありません</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(e => {
+                const empNum = App.utils.escapeAttr(e.employee_num || '');
+                const name = App.utils.escapeHtml(e.name || '');
+                const type = e.type || '';
+                const typeLabel = type === 'haken' ? '🏭 派遣' : type === 'ukeoi' ? '📋 請負' : '👔 スタッフ';
+                const typeBadge = type === 'haken' ? 'badge-info' : type === 'ukeoi' ? 'badge-success' : 'badge-warning';
+                const factory = App.utils.escapeHtml(e.dispatch_name || e.contract_business || e.haken || '-');
+                const granted = App.utils.safeNumber(e.granted).toFixed(1);
+                const used = App.utils.safeNumber(e.used).toFixed(1);
+                const balance = App.utils.safeNumber(e.balance);
+                const usageRate = e.granted > 0 ? Math.round((e.used / e.granted) * 100) : 0;
+                const balanceClass = balance < 0 ? 'badge-critical' : balance < 5 ? 'badge-danger' : 'badge-success';
+
+                return `
+                <tr class="employee-row" data-employee-num="${empNum}" style="cursor: pointer;">
+                    <td><div class="font-bold">${empNum}</div></td>
+                    <td><div class="font-bold text-white">${name}</div></td>
+                    <td><span class="badge ${typeBadge}">${typeLabel}</span></td>
+                    <td><div class="text-sm text-gray-400">${factory}</div></td>
+                    <td>${granted}</td>
+                    <td><span class="text-gradient">${used}</span></td>
+                    <td><span class="badge ${balanceClass}">${balance.toFixed(1)}</span></td>
+                    <td>
+                        <div style="width: 100px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                            <div style="width: ${Math.min(usageRate, 100)}%; height: 100%; background: var(--primary);"></div>
+                        </div>
+                        <div class="text-xs mt-1 text-right">${usageRate}%</div>
+                    </td>
+                </tr>
+            `}).join('');
         }
     }
 };

@@ -174,20 +174,67 @@
                 <div class="glass-panel" style="padding: 2rem;">
                     <div class="flex-between" style="margin-bottom: 1.5rem;">
                         <div class="flex-center" style="gap: 1rem;">
-                            <h3 style="font-size: 1.25rem;">Staff Directory</h3>
+                            <h3 style="font-size: 1.25rem;">従業員一覧</h3>
                             <div class="badge badge-warning" id="emp-count-badge">0 Employees</div>
                         </div>
-                        <input type="text" id="search-input" placeholder="Search by name, ID, or factory..."
-                            class="input-glass" style="width: 300px;" oninput="App.ui.handleSearch(this.value)">
+                        <div class="flex-center" style="gap: 1rem;">
+                            <label class="flex-center" style="gap: 0.5rem; cursor: pointer;">
+                                <input type="checkbox" id="active-only-toggle" checked onchange="App.employeeTypes.toggleActiveFilter()">
+                                <span style="font-size: 0.85rem;">在職中のみ</span>
+                            </label>
+                            <input type="text" id="search-input" placeholder="Search by name, ID, or factory..."
+                                class="input-glass" style="width: 300px;" oninput="App.ui.handleSearch(this.value)">
+                        </div>
                     </div>
 
-                    <div style="overflow-x: auto; max-height: 70vh;">
+                    <!-- Employee Type Tabs -->
+                    <div class="employee-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+                        <button class="btn btn-glass active" id="tab-all" onclick="App.employeeTypes.switchTab('all')">
+                            すべて (All)
+                            <span class="badge badge-primary" id="count-all" style="margin-left: 0.5rem;">0</span>
+                        </button>
+                        <button class="btn btn-glass" id="tab-haken" onclick="App.employeeTypes.switchTab('haken')">
+                            🏭 派遣 (Haken)
+                            <span class="badge badge-info" id="count-haken" style="margin-left: 0.5rem;">0</span>
+                        </button>
+                        <button class="btn btn-glass" id="tab-ukeoi" onclick="App.employeeTypes.switchTab('ukeoi')">
+                            📋 請負 (Ukeoi)
+                            <span class="badge badge-success" id="count-ukeoi" style="margin-left: 0.5rem;">0</span>
+                        </button>
+                        <button class="btn btn-glass" id="tab-staff" onclick="App.employeeTypes.switchTab('staff')">
+                            👔 スタッフ (Staff)
+                            <span class="badge badge-warning" id="count-staff" style="margin-left: 0.5rem;">0</span>
+                        </button>
+                    </div>
+
+                    <!-- Summary Cards by Type -->
+                    <div class="bento-grid" style="grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                        <div class="kpi-card" style="padding: 1rem; background: rgba(56, 189, 248, 0.1); border-left: 3px solid #38bdf8;">
+                            <div class="stat-label">派遣 使用日数</div>
+                            <div class="stat-value" id="haken-used">0</div>
+                        </div>
+                        <div class="kpi-card" style="padding: 1rem; background: rgba(52, 211, 153, 0.1); border-left: 3px solid #34d399;">
+                            <div class="stat-label">請負 使用日数</div>
+                            <div class="stat-value" id="ukeoi-used">0</div>
+                        </div>
+                        <div class="kpi-card" style="padding: 1rem; background: rgba(251, 191, 36, 0.1); border-left: 3px solid #fbbf24;">
+                            <div class="stat-label">スタッフ 使用日数</div>
+                            <div class="stat-value" id="staff-used">0</div>
+                        </div>
+                        <div class="kpi-card" style="padding: 1rem; background: rgba(168, 85, 247, 0.1); border-left: 3px solid #a855f7;">
+                            <div class="stat-label">合計 使用日数</div>
+                            <div class="stat-value" id="total-type-used">0</div>
+                        </div>
+                    </div>
+
+                    <div style="overflow-x: auto; max-height: 60vh;">
                         <table class="modern-table">
                             <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Employee</th>
-                                    <th>Factory</th>
+                                    <th>Type</th>
+                                    <th>Factory/Business</th>
                                     <th>Granted</th>
                                     <th>Used</th>
                                     <th>Balance</th>
@@ -196,7 +243,7 @@
                             </thead>
                             <tbody id="table-body">
                                 <tr>
-                                    <td colspan="7" style="text-align:center; padding: 2rem;">Loading data...</td>
+                                    <td colspan="8" style="text-align:center; padding: 2rem;">Loading data...</td>
                                 </tr>
                             </tbody>
                         </table>

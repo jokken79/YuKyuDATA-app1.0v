@@ -1079,6 +1079,306 @@ async def export_annual_ledger(year: int, format: str = "csv"):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# === ACTIVE EMPLOYEES FILTER (Solo empleados activos) ===
+
+def get_active_employee_nums() -> set:
+    """
+    Obtiene los números de empleados ACTIVOS (status = '在職中').
+    Cruza genzai y ukeoi para obtener solo los que están trabajando.
+    """
+    active_nums = set()
+
+    # Empleados activos de genzai (派遣)
+    genzai = database.get_genzai(status='在職中')
+    for emp in genzai:
+        if emp.get('employee_num'):
+            active_nums.add(str(emp['employee_num']))
+
+    # Empleados activos de ukeoi (請負)
+    ukeoi = database.get_ukeoi(status='在職中')
+    for emp in ukeoi:
+        if emp.get('employee_num'):
+            active_nums.add(str(emp['employee_num']))
+
+    return active_nums
+
+
+@app.get("/api/employees/active")
+async def get_active_employees(year: int = None):
+    """
+    Obtiene solo empleados ACTIVOS (在職中) con sus datos de yukyu.
+    Cruza employees con genzai/ukeoi para filtrar renunciados.
+    """
+    try:
+        active_nums = get_active_employee_nums()
+
+        # Obtener datos de yukyu
+        employees = database.get_employees(year=year)
+
+        # Filtrar solo activos
+        active_employees = [
+            emp for emp in employees
+            if str(emp.get('employee_num', '')) in active_nums
+        ]
+
+        years = database.get_available_years()
+
+        return {
+            "status": "success",
+            "data": active_employees,
+            "count": len(active_employees),
+            "total_in_db": len(employees),
+            "filtered_out": len(employees) - len(active_employees),
+            "available_years": years
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/employees/by-type")
+async def get_employees_by_type(year: int = None, active_only: bool = True):
+    """
+    Obtiene empleados separados por tipo: Haken (派遣), Ukeoi (請負), Staff.
+    Opcionalmente filtra solo activos.
+    """
+    try:
+        employees = database.get_employees(year=year)
+
+        # Obtener listas de empleados por tipo
+        genzai_list = database.get_genzai(status='在職中' if active_only else None)
+        ukeoi_list = database.get_ukeoi(status='在職中' if active_only else None)
+
+        genzai_nums = {str(emp['employee_num']) for emp in genzai_list if emp.get('employee_num')}
+        ukeoi_nums = {str(emp['employee_num']) for emp in ukeoi_list if emp.get('employee_num')}
+
+        # Clasificar empleados
+        haken_employees = []
+        ukeoi_employees = []
+        staff_employees = []
+
+        for emp in employees:
+            emp_num = str(emp.get('employee_num', ''))
+
+            # Enriquecer con datos adicionales
+            emp_enriched = dict(emp)
+
+            if emp_num in genzai_nums:
+                # Buscar datos adicionales de genzai
+                genzai_data = next((g for g in genzai_list if str(g.get('employee_num')) == emp_num), {})
+                emp_enriched['type'] = 'haken'
+                emp_enriched['dispatch_name'] = genzai_data.get('dispatch_name', '')
+                emp_enriched['status'] = genzai_data.get('status', '')
+                emp_enriched['hourly_wage'] = genzai_data.get('hourly_wage', 0)
+                haken_employees.append(emp_enriched)
+
+            elif emp_num in ukeoi_nums:
+                # Buscar datos adicionales de ukeoi
+                ukeoi_data = next((u for u in ukeoi_list if str(u.get('employee_num')) == emp_num), {})
+                emp_enriched['type'] = 'ukeoi'
+                emp_enriched['contract_business'] = ukeoi_data.get('contract_business', '')
+                emp_enriched['status'] = ukeoi_data.get('status', '')
+                emp_enriched['hourly_wage'] = ukeoi_data.get('hourly_wage', 0)
+                ukeoi_employees.append(emp_enriched)
+
+            elif not active_only or emp_num:  # Staff sin filtro o incluir todos
+                emp_enriched['type'] = 'staff'
+                staff_employees.append(emp_enriched)
+
+        return {
+            "status": "success",
+            "year": year,
+            "active_only": active_only,
+            "haken": {
+                "count": len(haken_employees),
+                "employees": haken_employees,
+                "total_used": sum(e.get('used', 0) for e in haken_employees),
+                "total_granted": sum(e.get('granted', 0) for e in haken_employees)
+            },
+            "ukeoi": {
+                "count": len(ukeoi_employees),
+                "employees": ukeoi_employees,
+                "total_used": sum(e.get('used', 0) for e in ukeoi_employees),
+                "total_granted": sum(e.get('granted', 0) for e in ukeoi_employees)
+            },
+            "staff": {
+                "count": len(staff_employees),
+                "employees": staff_employees,
+                "total_used": sum(e.get('used', 0) for e in staff_employees),
+                "total_granted": sum(e.get('granted', 0) for e in staff_employees)
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/analytics/top10-active/{year}")
+async def get_top10_active_users(year: int):
+    """
+    Obtiene el Top 10 de usuarios activos (solo 在職中).
+    Excluye empleados que ya renunciaron.
+    """
+    try:
+        active_nums = get_active_employee_nums()
+        employees = database.get_employees(year=year)
+
+        # Filtrar solo activos y ordenar por uso
+        active_employees = [
+            emp for emp in employees
+            if str(emp.get('employee_num', '')) in active_nums
+        ]
+
+        # Ordenar por días usados (descendente)
+        sorted_active = sorted(active_employees, key=lambda x: x.get('used', 0), reverse=True)
+        top10 = sorted_active[:10]
+
+        return {
+            "status": "success",
+            "year": year,
+            "count": len(top10),
+            "data": [
+                {
+                    "rank": i + 1,
+                    "employee_num": emp.get('employee_num'),
+                    "name": emp.get('name'),
+                    "haken": emp.get('haken'),
+                    "used": emp.get('used', 0),
+                    "granted": emp.get('granted', 0),
+                    "balance": emp.get('balance', 0),
+                    "usage_rate": emp.get('usage_rate', 0)
+                }
+                for i, emp in enumerate(top10)
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/analytics/high-balance-active/{year}")
+async def get_high_balance_active(year: int, limit: int = 10):
+    """
+    Obtiene empleados activos con balance alto (días sin usar).
+    Solo incluye empleados en estado 在職中.
+    """
+    try:
+        active_nums = get_active_employee_nums()
+        employees = database.get_employees(year=year)
+
+        # Filtrar solo activos
+        active_employees = [
+            emp for emp in employees
+            if str(emp.get('employee_num', '')) in active_nums
+        ]
+
+        # Ordenar por balance (descendente)
+        sorted_by_balance = sorted(active_employees, key=lambda x: x.get('balance', 0), reverse=True)
+        high_balance = sorted_by_balance[:limit]
+
+        return {
+            "status": "success",
+            "year": year,
+            "count": len(high_balance),
+            "data": [
+                {
+                    "employee_num": emp.get('employee_num'),
+                    "name": emp.get('name'),
+                    "haken": emp.get('haken'),
+                    "balance": emp.get('balance', 0),
+                    "granted": emp.get('granted', 0),
+                    "used": emp.get('used', 0)
+                }
+                for emp in high_balance
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# === ORCHESTRATOR ENDPOINTS (Sistema de Agentes) ===
+
+@app.get("/api/orchestrator/status")
+async def get_orchestrator_status():
+    """
+    Obtiene el estado actual del orquestador.
+    """
+    try:
+        from agents.orchestrator import get_orchestrator
+        orchestrator = get_orchestrator()
+        status = orchestrator.get_current_status()
+
+        return {
+            "status": "success",
+            "orchestrator": {
+                "current_pipeline": status.get('current_pipeline'),
+                "total_pipelines_executed": status.get('total_pipelines_executed', 0),
+                "last_execution": status.get('last_execution')
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/orchestrator/history")
+async def get_orchestrator_history(limit: int = 10):
+    """
+    Obtiene el historial de pipelines ejecutados.
+    """
+    try:
+        from agents.orchestrator import get_orchestrator
+        orchestrator = get_orchestrator()
+        history = orchestrator.get_pipeline_history(limit)
+
+        return {
+            "status": "success",
+            "count": len(history),
+            "history": [
+                {
+                    "pipeline_name": p.pipeline_name,
+                    "status": p.status.value,
+                    "total_duration_ms": p.total_duration_ms,
+                    "tasks_count": len(p.tasks),
+                    "started_at": p.started_at,
+                    "completed_at": p.completed_at
+                }
+                for p in history
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/orchestrator/run-compliance-check/{year}")
+async def run_compliance_pipeline(year: int):
+    """
+    Ejecuta el pipeline completo de compliance check.
+    """
+    try:
+        from agents.orchestrator import get_orchestrator
+        from agents.compliance import get_compliance
+
+        orchestrator = get_orchestrator()
+        orchestrator.compliance_agent = get_compliance()
+
+        result = orchestrator.orchestrate_compliance_check(year)
+
+        return {
+            "status": "success",
+            "pipeline_name": result.pipeline_name,
+            "pipeline_status": result.status.value,
+            "duration_ms": result.total_duration_ms,
+            "tasks": [
+                {
+                    "name": t.task_name,
+                    "status": t.status.value,
+                    "duration_ms": t.duration_ms,
+                    "error": t.error
+                }
+                for t in result.tasks
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # === SYSTEM STATUS & AUDIT ENDPOINTS ===
 
 @app.get("/api/system/snapshot")
@@ -1180,33 +1480,50 @@ async def get_notifications(employee_num: str = None, unread_only: bool = False)
 # === CALENDAR ENDPOINTS ===
 
 @app.get("/api/calendar/events")
-async def get_calendar_events(year: int = None, month: int = None):
+async def get_calendar_events(year: int = None, month: int = None, active_only: bool = True):
     """
     カレンダー用のイベントデータを取得。
     承認済み休暇と使用日を返す。
+
+    Args:
+        year: 年度
+        month: 月 (オプション)
+        active_only: 在職中の従業員のみ表示 (デフォルト: True)
     """
     try:
         if not year:
             year = datetime.now().year
 
+        # 在職中のみフィルタリングする場合、アクティブな従業員番号を取得
+        active_nums = get_active_employee_nums() if active_only else None
+
         events = []
+        filtered_count = 0
+
+        # 休暇タイプに応じた色分け
+        type_colors = {
+            'full': '#38bdf8',      # 全日休暇 - 青
+            'half_am': '#818cf8',   # 午前半休 - 紫
+            'half_pm': '#f472b6',   # 午後半休 - ピンク
+            'hourly': '#fbbf24'     # 時間休 - 黄色
+        }
+        type_labels = {
+            'full': '全日',
+            'half_am': '午前半休',
+            'half_pm': '午後半休',
+            'hourly': '時間休'
+        }
 
         # 承認済み休暇申請を取得
         approved_requests = database.get_leave_requests(status='APPROVED', year=year)
         for req in approved_requests:
-            # 休暇タイプに応じた色分け
-            type_colors = {
-                'full': '#38bdf8',      # 全日休暇 - 青
-                'half_am': '#818cf8',   # 午前半休 - 紫
-                'half_pm': '#f472b6',   # 午後半休 - ピンク
-                'hourly': '#fbbf24'     # 時間休 - 黄色
-            }
-            type_labels = {
-                'full': '全日',
-                'half_am': '午前半休',
-                'half_pm': '午後半休',
-                'hourly': '時間休'
-            }
+            emp_num = str(req.get('employee_num', ''))
+
+            # フィルタリング: 在職中のみ
+            if active_only and active_nums and emp_num not in active_nums:
+                filtered_count += 1
+                continue
+
             leave_type = req.get('leave_type', 'full')
 
             events.append({
@@ -1226,6 +1543,13 @@ async def get_calendar_events(year: int = None, month: int = None):
         # 使用日詳細を取得
         usage_details = database.get_yukyu_usage_details(year=year, month=month)
         for detail in usage_details:
+            emp_num = str(detail.get('employee_num', ''))
+
+            # フィルタリング: 在職中のみ
+            if active_only and active_nums and emp_num not in active_nums:
+                filtered_count += 1
+                continue
+
             events.append({
                 'id': f"usage_{detail.get('id', '')}",
                 'title': f"{detail['name']} ({detail.get('days_used', 1)}日)",
@@ -1242,7 +1566,9 @@ async def get_calendar_events(year: int = None, month: int = None):
             "status": "success",
             "year": year,
             "month": month,
+            "active_only": active_only,
             "count": len(events),
+            "filtered_out": filtered_count,
             "events": events
         }
     except Exception as e:
