@@ -51,8 +51,18 @@
 <body>
 
     <div class="app-container">
+        <!-- Mobile Menu Toggle -->
+        <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+        </button>
+
+        <!-- Mobile Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
         <!-- Sidebar Navigation -->
-        <nav class="sidebar">
+        <nav class="sidebar" id="sidebar">
             <div class="logo">
                 <span style="font-size: 2rem;">✨</span>
                 <div>
@@ -61,33 +71,33 @@
                 </div>
             </div>
 
-            <div class="nav-item active" data-view="dashboard" onclick="App.ui.switchView('dashboard')">
-                <span>📊</span> <span>Dashboard</span>
-            </div>
-            <div class="nav-item" data-view="employees" onclick="App.ui.switchView('employees')">
-                <span>👥</span> <span>Employees</span>
-            </div>
-            <div class="nav-item" data-view="factories" onclick="App.ui.switchView('factories')">
-                <span>🏭</span> <span>Factories</span>
-            </div>
-            <div class="nav-item" data-view="requests" onclick="App.ui.switchView('requests')">
-                <span>📝</span> <span>申請</span>
-            </div>
-            <div class="nav-item" data-view="calendar" onclick="App.ui.switchView('calendar')">
-                <span>📅</span> <span>カレンダー</span>
-            </div>
-            <div class="nav-item" data-view="compliance" onclick="App.ui.switchView('compliance')">
-                <span>✅</span> <span>Compliance</span>
-            </div>
-            <div class="nav-item" data-view="analytics" onclick="App.ui.switchView('analytics')">
-                <span>📈</span> <span>分析</span>
-            </div>
-            <div class="nav-item" data-view="reports" onclick="App.ui.switchView('reports')">
-                <span>📋</span> <span>月次レポート</span>
-            </div>
-            <div class="nav-item" style="margin-top: auto;" onclick="App.ui.switchView('settings')">
-                <span>⚙️</span> <span>Settings</span>
-            </div>
+            <button type="button" class="nav-item active" data-view="dashboard" onclick="App.ui.switchView('dashboard')" aria-label="Dashboard">
+                <span aria-hidden="true">📊</span> <span>Dashboard</span>
+            </button>
+            <button type="button" class="nav-item" data-view="employees" onclick="App.ui.switchView('employees')" aria-label="Employees">
+                <span aria-hidden="true">👥</span> <span>Employees</span>
+            </button>
+            <button type="button" class="nav-item" data-view="factories" onclick="App.ui.switchView('factories')" aria-label="Factories">
+                <span aria-hidden="true">🏭</span> <span>Factories</span>
+            </button>
+            <button type="button" class="nav-item" data-view="requests" onclick="App.ui.switchView('requests')" aria-label="申請">
+                <span aria-hidden="true">📝</span> <span>申請</span>
+            </button>
+            <button type="button" class="nav-item" data-view="calendar" onclick="App.ui.switchView('calendar')" aria-label="カレンダー">
+                <span aria-hidden="true">📅</span> <span>カレンダー</span>
+            </button>
+            <button type="button" class="nav-item" data-view="compliance" onclick="App.ui.switchView('compliance')" aria-label="Compliance">
+                <span aria-hidden="true">✅</span> <span>Compliance</span>
+            </button>
+            <button type="button" class="nav-item" data-view="analytics" onclick="App.ui.switchView('analytics')" aria-label="分析">
+                <span aria-hidden="true">📈</span> <span>分析</span>
+            </button>
+            <button type="button" class="nav-item" data-view="reports" onclick="App.ui.switchView('reports')" aria-label="月次レポート">
+                <span aria-hidden="true">📋</span> <span>月次レポート</span>
+            </button>
+            <button type="button" class="nav-item" style="margin-top: auto;" onclick="App.ui.switchView('settings')" aria-label="Settings">
+                <span aria-hidden="true">⚙️</span> <span>Settings</span>
+            </button>
         </nav>
 
         <!-- Main Content -->
@@ -113,14 +123,18 @@
                         <span class="theme-toggle-label" id="theme-label">Dark</span>
                     </div>
 
-                    <button class="btn btn-primary" onclick="App.data.sync()">
-                        <span>⚡</span> Sync
+                    <button class="btn btn-primary" id="btn-sync-main" onclick="App.data.sync()">
+                        <span class="btn-icon">⚡</span>
+                        <span class="btn-text">Sync</span>
+                        <span class="btn-spinner" style="display: none;"></span>
                     </button>
-                    <button class="btn btn-glass" onclick="App.data.syncGenzai()" title="Sync Dispatch">
-                        <span>🏢</span>
+                    <button class="btn btn-glass" id="btn-sync-genzai" onclick="App.data.syncGenzai()" title="Sync Dispatch Employees">
+                        <span class="btn-icon">🏢</span>
+                        <span class="btn-spinner" style="display: none;"></span>
                     </button>
-                    <button class="btn btn-glass" onclick="App.data.syncUkeoi()" title="Sync Contract">
-                        <span>🔧</span>
+                    <button class="btn btn-glass" id="btn-sync-ukeoi" onclick="App.data.syncUkeoi()" title="Sync Contract Employees">
+                        <span class="btn-icon">🔧</span>
+                        <span class="btn-spinner" style="display: none;"></span>
                     </button>
                 </div>
             </header>
@@ -128,27 +142,125 @@
             <!-- VIEW: DASHBOARD -->
             <div id="view-dashboard" class="view-section active">
 
-                <!-- Bento Grid Stats -->
+                <!-- Bento Grid Stats with Progress Rings -->
                 <div class="bento-grid">
-                    <div class="glass-panel stat-card col-span-1">
+                    <!-- Usage Ring -->
+                    <div class="glass-panel stat-card stat-card-ring col-span-1">
+                        <div class="progress-ring-container">
+                            <svg class="progress-ring" width="80" height="80">
+                                <circle class="progress-ring__circle-bg" cx="40" cy="40" r="34"></circle>
+                                <circle class="progress-ring__circle progress-ring__circle--success" id="ring-usage" cx="40" cy="40" r="34"
+                                    stroke-dasharray="213.6" stroke-dashoffset="213.6"></circle>
+                            </svg>
+                            <div class="progress-ring__value" id="ring-usage-value">0</div>
+                        </div>
                         <div class="stat-label">Total Usage</div>
-                        <div class="stat-value" id="kpi-used">-</div>
-                        <div class="badge badge-success">Active</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);" id="kpi-used-detail">0 days</div>
                     </div>
-                    <div class="glass-panel stat-card col-span-1">
+
+                    <!-- Balance Ring -->
+                    <div class="glass-panel stat-card stat-card-ring col-span-1">
+                        <div class="progress-ring-container">
+                            <svg class="progress-ring" width="80" height="80">
+                                <circle class="progress-ring__circle-bg" cx="40" cy="40" r="34"></circle>
+                                <circle class="progress-ring__circle progress-ring__circle--warning" id="ring-balance" cx="40" cy="40" r="34"
+                                    stroke-dasharray="213.6" stroke-dashoffset="213.6"></circle>
+                            </svg>
+                            <div class="progress-ring__value" id="ring-balance-value">0</div>
+                        </div>
                         <div class="stat-label">Remaining</div>
-                        <div class="stat-value" id="kpi-balance" style="color: var(--warning);">-</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);" id="kpi-balance-detail">0 days left</div>
                     </div>
-                    <div class="glass-panel stat-card col-span-1">
+
+                    <!-- Utilization Ring -->
+                    <div class="glass-panel stat-card stat-card-ring col-span-1">
+                        <div class="progress-ring-container">
+                            <svg class="progress-ring" width="80" height="80">
+                                <circle class="progress-ring__circle-bg" cx="40" cy="40" r="34"></circle>
+                                <circle class="progress-ring__circle progress-ring__circle--primary" id="ring-rate" cx="40" cy="40" r="34"
+                                    stroke-dasharray="213.6" stroke-dashoffset="213.6"></circle>
+                            </svg>
+                            <div class="progress-ring__value" id="ring-rate-value">0%</div>
+                        </div>
                         <div class="stat-label">Utilization</div>
-                        <div class="stat-value" id="kpi-rate">-</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);" id="kpi-rate-detail">avg rate</div>
                     </div>
+
+                    <!-- Employees Card -->
                     <div class="glass-panel stat-card col-span-1"
                         style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(37, 99, 235, 0.2)); border: 1px solid var(--primary); cursor: pointer;"
                         onclick="App.ui.switchView('employees')">
                         <div class="stat-label">Employees</div>
-                        <div class="stat-value" id="kpi-total">-</div>
-                        <div style="font-size: 0.8rem; margin-top: 5px;">Click to view all →</div>
+                        <div class="stat-value count-up" id="kpi-total">-</div>
+                        <div class="quick-stats">
+                            <div class="quick-stat">
+                                <div class="quick-stat-value" id="qs-haken">0</div>
+                                <div class="quick-stat-label">派遣</div>
+                            </div>
+                            <div class="quick-stat">
+                                <div class="quick-stat-value" id="qs-ukeoi">0</div>
+                                <div class="quick-stat-label">請負</div>
+                            </div>
+                            <div class="quick-stat">
+                                <div class="quick-stat-value" id="qs-staff">0</div>
+                                <div class="quick-stat-label">Staff</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compliance Gauge Row -->
+                <div class="bento-grid" style="margin-bottom: 1.5rem;">
+                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                        <h3 class="stat-label" style="margin-bottom: 1rem;">📊 Compliance Gauge (5日最低消化)</h3>
+                        <div class="gauge-container">
+                            <svg class="gauge-svg" viewBox="0 0 200 120">
+                                <path class="gauge-bg" d="M 20 100 A 80 80 0 0 1 180 100" />
+                                <path class="gauge-fill" id="gauge-compliance" d="M 20 100 A 80 80 0 0 1 180 100"
+                                    stroke-dasharray="251.2" stroke-dashoffset="251.2" stroke="var(--success)" />
+                            </svg>
+                            <div class="gauge-value" id="gauge-value">0%</div>
+                            <div class="gauge-label">compliance rate</div>
+                            <div class="gauge-markers">
+                                <span>0%</span>
+                                <span>100%</span>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+                            <span id="compliance-count">0</span> of <span id="compliance-total">0</span> employees have used ≥5 days
+                        </div>
+                    </div>
+
+                    <!-- Expiring Days Alert -->
+                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                        <h3 class="stat-label" style="margin-bottom: 1rem;">⚠️ Days Expiring Soon</h3>
+                        <div id="expiring-alert">
+                            <div class="countdown-card" id="countdown-container" style="display: none;">
+                                <div class="countdown-icon">⏰</div>
+                                <div class="countdown-info">
+                                    <div class="countdown-title">有給休暇が失効予定</div>
+                                    <div class="countdown-value" id="expiring-days">0 days</div>
+                                    <div class="countdown-detail" id="expiring-detail">from 0 employees</div>
+                                </div>
+                            </div>
+                            <div id="no-expiring" style="text-align: center; padding: 2rem; color: var(--success);">
+                                ✅ No days expiring soon!
+                            </div>
+                        </div>
+                        <div class="quick-stats" style="margin-top: 1rem;">
+                            <div class="quick-stat">
+                                <div class="quick-stat-value" id="critical-count" style="color: var(--danger);">0</div>
+                                <div class="quick-stat-label">Critical (0日)</div>
+                            </div>
+                            <div class="quick-stat">
+                                <div class="quick-stat-value" id="warning-count" style="color: var(--warning);">0</div>
+                                <div class="quick-stat-label">Warning (&lt;3日)</div>
+                            </div>
+                            <div class="quick-stat">
+                                <div class="quick-stat-value" id="healthy-count" style="color: var(--success);">0</div>
+                                <div class="quick-stat-label">Healthy (≥5日)</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -174,20 +286,69 @@
                 <div class="glass-panel" style="padding: 2rem;">
                     <div class="flex-between" style="margin-bottom: 1.5rem;">
                         <div class="flex-center" style="gap: 1rem;">
-                            <h3 style="font-size: 1.25rem;">Staff Directory</h3>
+                            <h3 style="font-size: 1.25rem;">従業員一覧</h3>
                             <div class="badge badge-warning" id="emp-count-badge">0 Employees</div>
                         </div>
-                        <input type="text" id="search-input" placeholder="Search by name, ID, or factory..."
-                            class="input-glass" style="width: 300px;" oninput="App.ui.handleSearch(this.value)">
+                        <div class="flex-center" style="gap: 1rem;">
+                            <label for="active-only-toggle" class="flex-center" style="gap: 0.5rem; cursor: pointer;">
+                                <input type="checkbox" id="active-only-toggle" checked onchange="App.employeeTypes.toggleActiveFilter()">
+                                <span style="font-size: 0.85rem;">在職中のみ</span>
+                            </label>
+                            <label for="search-input" class="sr-only">Search employees</label>
+                            <input type="text" id="search-input" placeholder="Search by name, ID, or factory..."
+                                class="input-glass" style="width: 300px;" oninput="App.ui.handleSearch(this.value)"
+                                aria-label="Search employees by name, ID, or factory">
+                        </div>
                     </div>
 
-                    <div style="overflow-x: auto; max-height: 70vh;">
+                    <!-- Employee Type Tabs -->
+                    <div class="employee-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+                        <button class="btn btn-glass active" id="tab-all" onclick="App.employeeTypes.switchTab('all')">
+                            すべて (All)
+                            <span class="badge badge-primary" id="count-all" style="margin-left: 0.5rem;">0</span>
+                        </button>
+                        <button class="btn btn-glass" id="tab-haken" onclick="App.employeeTypes.switchTab('haken')">
+                            🏭 派遣 (Haken)
+                            <span class="badge badge-info" id="count-haken" style="margin-left: 0.5rem;">0</span>
+                        </button>
+                        <button class="btn btn-glass" id="tab-ukeoi" onclick="App.employeeTypes.switchTab('ukeoi')">
+                            📋 請負 (Ukeoi)
+                            <span class="badge badge-success" id="count-ukeoi" style="margin-left: 0.5rem;">0</span>
+                        </button>
+                        <button class="btn btn-glass" id="tab-staff" onclick="App.employeeTypes.switchTab('staff')">
+                            👔 スタッフ (Staff)
+                            <span class="badge badge-warning" id="count-staff" style="margin-left: 0.5rem;">0</span>
+                        </button>
+                    </div>
+
+                    <!-- Summary Cards by Type -->
+                    <div class="bento-grid" style="grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                        <div class="kpi-card" style="padding: 1rem; background: rgba(56, 189, 248, 0.1); border-left: 3px solid #38bdf8;">
+                            <div class="stat-label">派遣 使用日数</div>
+                            <div class="stat-value" id="haken-used">0</div>
+                        </div>
+                        <div class="kpi-card" style="padding: 1rem; background: rgba(52, 211, 153, 0.1); border-left: 3px solid #34d399;">
+                            <div class="stat-label">請負 使用日数</div>
+                            <div class="stat-value" id="ukeoi-used">0</div>
+                        </div>
+                        <div class="kpi-card" style="padding: 1rem; background: rgba(251, 191, 36, 0.1); border-left: 3px solid #fbbf24;">
+                            <div class="stat-label">スタッフ 使用日数</div>
+                            <div class="stat-value" id="staff-used">0</div>
+                        </div>
+                        <div class="kpi-card" style="padding: 1rem; background: rgba(168, 85, 247, 0.1); border-left: 3px solid #a855f7;">
+                            <div class="stat-label">合計 使用日数</div>
+                            <div class="stat-value" id="total-type-used">0</div>
+                        </div>
+                    </div>
+
+                    <div style="overflow-x: auto; max-height: 60vh;">
                         <table class="modern-table">
                             <thead>
                                 <tr>
                                     <th>ID</th>
                                     <th>Employee</th>
-                                    <th>Factory</th>
+                                    <th>Type</th>
+                                    <th>Factory/Business</th>
                                     <th>Granted</th>
                                     <th>Used</th>
                                     <th>Balance</th>
@@ -195,8 +356,36 @@
                                 </tr>
                             </thead>
                             <tbody id="table-body">
-                                <tr>
-                                    <td colspan="7" style="text-align:center; padding: 2rem;">Loading data...</td>
+                                <!-- Skeleton loading rows -->
+                                <tr class="skeleton-row">
+                                    <td><div class="skeleton skeleton-text" style="width: 60px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 100px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 50px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 120px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 40px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 40px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 40px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 50px; height: 16px;"></div></td>
+                                </tr>
+                                <tr class="skeleton-row">
+                                    <td><div class="skeleton skeleton-text" style="width: 55px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 90px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 45px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 110px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 35px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 35px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 35px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 45px; height: 16px;"></div></td>
+                                </tr>
+                                <tr class="skeleton-row">
+                                    <td><div class="skeleton skeleton-text" style="width: 65px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 95px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 55px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 100px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 38px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 38px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 38px; height: 16px;"></div></td>
+                                    <td><div class="skeleton skeleton-text" style="width: 48px; height: 16px;"></div></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -246,7 +435,7 @@
                                 <div class="form-section-title">👤 従業員を選択</div>
 
                                 <div class="form-group">
-                                    <label>🏭 工場で絞込み (Filter by Factory)</label>
+                                    <label for="factory-filter">🏭 工場で絞込み (Filter by Factory)</label>
                                     <select id="factory-filter" class="input-glass" style="width: 100%;"
                                         onchange="App.requests.filterByFactory()">
                                         <option value="">すべての工場 (All Factories)</option>
@@ -254,9 +443,10 @@
                                 </div>
 
                                 <div class="form-group">
-                                    <label class="required">🔍 従業員を検索 (Search Employee)</label>
+                                    <label for="emp-search" class="required">🔍 従業員を検索 (Search Employee)</label>
                                     <input type="text" id="emp-search" class="input-glass" style="width: 100%;"
-                                        placeholder="名前または社員番号で検索..." oninput="App.requests.searchEmployee(this.value)">
+                                        placeholder="名前または社員番号で検索..." oninput="App.requests.searchEmployee(this.value)"
+                                        aria-describedby="emp-search-validation">
                                     <div id="emp-search-validation" class="validation-message"></div>
                                     <div id="emp-search-results" style="margin-top: 0.5rem; max-height: 200px; overflow-y: auto;"></div>
                                 </div>
@@ -287,7 +477,31 @@
                                         </div>
                                     </div>
                                 </div>
-                                <!-- Usage History -->
+                                <!-- Yukyu History Table (2 years) -->
+                                <div id="yukyu-history-table" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                    <div style="margin-bottom: 0.75rem;">
+                                        <span class="stat-label">📊 年度別有給履歴 (2年分)</span>
+                                    </div>
+                                    <table style="width: 100%; font-size: 0.85rem; border-collapse: collapse;">
+                                        <thead>
+                                            <tr style="background: rgba(56, 189, 248, 0.15);">
+                                                <th style="padding: 0.5rem; text-align: left; border-radius: 8px 0 0 0;">年度</th>
+                                                <th style="padding: 0.5rem; text-align: center;">付与日数</th>
+                                                <th style="padding: 0.5rem; text-align: center;">使用日数</th>
+                                                <th style="padding: 0.5rem; text-align: center;">残日数</th>
+                                                <th style="padding: 0.5rem; text-align: center; border-radius: 0 8px 0 0;">消化率</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="yukyu-history-tbody">
+                                            <tr>
+                                                <td colspan="5" style="padding: 1rem; text-align: center; color: var(--muted);">
+                                                    従業員を選択してください
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <!-- Usage History (dates) -->
                                 <div id="usage-history-container" style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1);">
                                     <div style="margin-bottom: 0.5rem;">
                                         <span class="stat-label">📅 使用履歴 (Usage History)</span>
@@ -307,22 +521,22 @@
 
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                     <div class="form-group">
-                                        <label class="required">開始日 (Start Date)</label>
+                                        <label for="start-date" class="required">開始日 (Start Date)</label>
                                         <input type="date" id="start-date" class="input-glass" style="width: 100%;"
-                                            onchange="App.requests.validateDates()">
+                                            onchange="App.requests.validateDates()" aria-describedby="start-date-validation">
                                         <div id="start-date-validation" class="validation-message"></div>
                                     </div>
                                     <div class="form-group">
-                                        <label class="required">終了日 (End Date)</label>
+                                        <label for="end-date" class="required">終了日 (End Date)</label>
                                         <input type="date" id="end-date" class="input-glass" style="width: 100%;"
-                                            onchange="App.requests.validateDates()">
+                                            onchange="App.requests.validateDates()" aria-describedby="end-date-validation">
                                         <div id="end-date-validation" class="validation-message"></div>
                                     </div>
                                 </div>
 
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                     <div class="form-group">
-                                        <label class="required">種類 (Type)</label>
+                                        <label for="leave-type" class="required">種類 (Type)</label>
                                         <select id="leave-type" class="input-glass" style="width: 100%;" onchange="App.requests.toggleLeaveType()">
                                             <option value="full">全日休暇 (Full Day)</option>
                                             <option value="half_am">午前半休 (AM Half)</option>
@@ -331,17 +545,19 @@
                                         </select>
                                     </div>
                                     <div class="form-group" id="days-input-container">
-                                        <label class="required">日数 (Days)</label>
+                                        <label for="days-requested" class="required">日数 (Days)</label>
                                         <input type="number" id="days-requested" class="input-glass" style="width: 100%;"
-                                            min="0.5" step="0.5" value="1" oninput="App.requests.validateDays()">
+                                            min="0.5" step="0.5" value="1" oninput="App.requests.validateDays()"
+                                            aria-describedby="days-validation">
                                         <div id="days-validation" class="validation-message"></div>
                                     </div>
                                     <div class="form-group" id="hours-input-container" style="display: none;">
-                                        <label class="required">時間数 (Hours)</label>
+                                        <label for="hours-requested" class="required">時間数 (Hours)</label>
                                         <input type="number" id="hours-requested" class="input-glass" style="width: 100%;"
-                                            min="1" max="7" step="1" value="1" oninput="App.requests.updateCostEstimate(); App.requests.validateHours();">
+                                            min="1" max="7" step="1" value="1" oninput="App.requests.updateCostEstimate(); App.requests.validateHours();"
+                                            aria-describedby="hours-validation hours-hint">
                                         <div id="hours-validation" class="validation-message"></div>
-                                        <div style="font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;">※ 1日最大7時間まで</div>
+                                        <div id="hours-hint" style="font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;">※ 1日最大7時間まで</div>
                                     </div>
                                 </div>
                             </div>
@@ -358,9 +574,10 @@
                             <div class="form-section">
                                 <div class="form-section-title">📝 理由</div>
                                 <div class="form-group">
-                                    <label>理由 (Reason) - 任意</label>
+                                    <label for="leave-reason">理由 (Reason) - 任意</label>
                                     <textarea id="leave-reason" class="input-glass" style="width: 100%; min-height: 80px; resize: vertical;"
-                                        placeholder="私用、通院、旅行など..." maxlength="200" oninput="App.requests.updateCharCounter()"></textarea>
+                                        placeholder="私用、通院、旅行など..." maxlength="200" oninput="App.requests.updateCharCounter()"
+                                        aria-describedby="reason-char-counter"></textarea>
                                     <div class="char-counter" id="reason-char-counter">0 / 200</div>
                                 </div>
                             </div>
@@ -697,10 +914,15 @@
                         </div>
 
                         <!-- Monthly Mode -->
-                        <div id="monthly-selector" style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap;">
-                            <select id="report-year" class="input-glass" style="width: 120px;" onchange="App.reports.loadMonthList()">
-                            </select>
-                            <select id="report-month" class="input-glass" style="width: 120px;" onchange="App.reports.loadReport()">
+                        <div id="monthly-selector" style="display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap;">
+                            <div>
+                                <label for="report-year" class="sr-only">年度選択</label>
+                                <select id="report-year" class="input-glass" style="width: 120px;" onchange="App.reports.loadMonthList()" aria-label="年度を選択">
+                                </select>
+                            </div>
+                            <div>
+                                <label for="report-month" class="sr-only">月度選択</label>
+                                <select id="report-month" class="input-glass" style="width: 120px;" onchange="App.reports.loadReport()" aria-label="月度を選択">
                                 <option value="1">1月度</option>
                                 <option value="2">2月度</option>
                                 <option value="3">3月度</option>
@@ -713,7 +935,8 @@
                                 <option value="10">10月度</option>
                                 <option value="11">11月度</option>
                                 <option value="12">12月度</option>
-                            </select>
+                                </select>
+                            </div>
                             <button class="btn btn-primary" onclick="App.reports.loadReport()">🔍 表示</button>
                         </div>
 
@@ -721,14 +944,14 @@
                         <div id="custom-selector" style="display: none; margin-bottom: 1rem;">
                             <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
                                 <div>
-                                    <label class="stat-label" style="display: block; margin-bottom: 0.25rem; font-size: 0.8rem;">開始日</label>
+                                    <label for="report-start-date" class="stat-label" style="display: block; margin-bottom: 0.25rem; font-size: 0.8rem;">開始日</label>
                                     <input type="date" id="report-start-date" class="input-glass" style="width: 160px;">
                                 </div>
-                                <div style="padding-bottom: 0.75rem;">
+                                <div style="padding-bottom: 0.75rem;" aria-hidden="true">
                                     <span style="font-size: 1.25rem; color: var(--text-muted);">〜</span>
                                 </div>
                                 <div>
-                                    <label class="stat-label" style="display: block; margin-bottom: 0.25rem; font-size: 0.8rem;">終了日</label>
+                                    <label for="report-end-date" class="stat-label" style="display: block; margin-bottom: 0.25rem; font-size: 0.8rem;">終了日</label>
                                     <input type="date" id="report-end-date" class="input-glass" style="width: 160px;">
                                 </div>
                                 <button class="btn btn-primary" onclick="App.reports.loadCustomReport()">🔍 表示</button>
@@ -898,11 +1121,11 @@
     <div class="toast-container" id="toast-container"></div>
 
     <!-- Simple Modal for Details -->
-    <div class="loader-overlay" id="detail-modal" style="background: rgba(0,0,0,0.7);">
-        <div class="glass-panel" style="width: 500px; max-width: 90%; position: relative;">
+    <div class="loader-overlay" id="detail-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="background: rgba(0,0,0,0.7);">
+        <div class="glass-panel" style="width: 600px; max-width: 95%; max-height: 90vh; overflow-y: auto; position: relative;">
             <button class="btn"
-                style="position: absolute; right: 10px; top: 10px; background: transparent; color: white;"
-                onclick="App.ui.closeModal()">✕</button>
+                style="position: absolute; right: 10px; top: 10px; background: transparent; color: white; z-index: 10;"
+                onclick="App.ui.closeModal()" aria-label="Close modal">✕</button>
             <div style="padding: 2rem;">
                 <h2 id="modal-title" style="margin-bottom: 1rem;">Employee Details</h2>
                 <div id="modal-content"></div>
