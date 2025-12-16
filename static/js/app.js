@@ -59,6 +59,181 @@ const App = {
         }
     },
 
+    // ========================================
+    // VISUALIZATIONS MODULE (Advanced Animations)
+    // ========================================
+    visualizations: {
+        // Animate SVG progress ring
+        animateRing(elementId, valueId, value, maxValue, duration = 1000) {
+            const ring = document.getElementById(elementId);
+            const valueEl = document.getElementById(valueId);
+            if (!ring || !valueEl) return;
+
+            const radius = 34;
+            const circumference = 2 * Math.PI * radius; // 213.6
+            const percent = Math.min(value / maxValue, 1);
+            const offset = circumference - (percent * circumference);
+
+            // Animate the ring
+            ring.style.strokeDasharray = circumference;
+            ring.style.strokeDashoffset = circumference;
+
+            // Trigger animation after a small delay
+            setTimeout(() => {
+                ring.style.strokeDashoffset = offset;
+            }, 100);
+
+            // Animate the number
+            this.animateNumber(valueEl, 0, value, duration);
+        },
+
+        // Animate number counting up
+        animateNumber(element, start, end, duration) {
+            const startTime = performance.now();
+            const isFloat = !Number.isInteger(end);
+
+            const animate = (currentTime) => {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                // Ease out cubic
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                const current = start + (end - start) * easeOut;
+
+                if (isFloat) {
+                    element.textContent = current.toFixed(1);
+                } else {
+                    element.textContent = Math.round(current).toLocaleString();
+                }
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            };
+
+            requestAnimationFrame(animate);
+        },
+
+        // Update compliance gauge (semi-circle)
+        updateGauge(complianceRate, compliant = 0, total = 0) {
+            const gauge = document.getElementById('gauge-compliance');
+            const valueEl = document.getElementById('gauge-value');
+            const labelEl = document.querySelector('.gauge-label');
+            const countEl = document.getElementById('compliance-count');
+            const totalEl = document.getElementById('compliance-total');
+            if (!gauge) return;
+
+            // Semi-circle arc length is ~251.2 (π * 80)
+            const arcLength = Math.PI * 80;
+            const percent = Math.min(complianceRate / 100, 1);
+            const offset = arcLength - (percent * arcLength);
+
+            // Set color based on compliance
+            let color = 'var(--danger)';
+            if (complianceRate >= 80) color = 'var(--success)';
+            else if (complianceRate >= 50) color = 'var(--warning)';
+
+            gauge.style.stroke = color;
+            gauge.style.strokeDasharray = arcLength;
+            gauge.style.strokeDashoffset = arcLength;
+
+            setTimeout(() => {
+                gauge.style.strokeDashoffset = offset;
+            }, 200);
+
+            if (valueEl) {
+                this.animateNumber(valueEl, 0, complianceRate, 1500);
+                setTimeout(() => {
+                    valueEl.textContent = Math.round(complianceRate) + '%';
+                }, 1600);
+            }
+
+            if (countEl) countEl.textContent = compliant;
+            if (totalEl) totalEl.textContent = total;
+
+            if (labelEl) {
+                if (complianceRate >= 80) {
+                    labelEl.textContent = '優秀 - Excelente';
+                    labelEl.style.color = 'var(--success)';
+                } else if (complianceRate >= 50) {
+                    labelEl.textContent = '注意 - Atención';
+                    labelEl.style.color = 'var(--warning)';
+                } else {
+                    labelEl.textContent = '要改善 - Mejorar';
+                    labelEl.style.color = 'var(--danger)';
+                }
+            }
+        },
+
+        // Update expiring days countdown
+        updateExpiringDays(data) {
+            const countdownContainer = document.getElementById('countdown-container');
+            const noExpiring = document.getElementById('no-expiring');
+            const expiringDays = document.getElementById('expiring-days');
+            const expiringDetail = document.getElementById('expiring-detail');
+            const criticalCount = document.getElementById('critical-count');
+            const warningCount = document.getElementById('warning-count');
+            const healthyCount = document.getElementById('healthy-count');
+
+            // Calculate categories
+            const critical = data.filter(e => e.balance <= 0).length;
+            const warning = data.filter(e => e.balance > 0 && e.balance < 3).length;
+            const healthy = data.filter(e => e.balance >= 5).length;
+
+            // Update counts with animation
+            if (criticalCount) this.animateNumber(criticalCount, 0, critical, 800);
+            if (warningCount) this.animateNumber(warningCount, 0, warning, 800);
+            if (healthyCount) this.animateNumber(healthyCount, 0, healthy, 800);
+
+            // Filter employees with low balance
+            const expiring = data
+                .filter(e => e.balance < 5 && e.balance > 0)
+                .sort((a, b) => a.balance - b.balance);
+
+            const totalExpiringDays = expiring.reduce((sum, e) => sum + e.balance, 0);
+
+            if (expiring.length === 0) {
+                if (countdownContainer) countdownContainer.style.display = 'none';
+                if (noExpiring) noExpiring.style.display = 'block';
+            } else {
+                if (countdownContainer) countdownContainer.style.display = 'flex';
+                if (noExpiring) noExpiring.style.display = 'none';
+                if (expiringDays) expiringDays.textContent = totalExpiringDays.toFixed(1) + ' days';
+                if (expiringDetail) expiringDetail.textContent = `from ${expiring.length} employees`;
+            }
+        },
+
+        // Show confetti celebration
+        showConfetti() {
+            const colors = ['#00d4ff', '#ff6b6b', '#ffd93d', '#6bcb77', '#c56cf0'];
+            const confettiCount = 50;
+
+            for (let i = 0; i < confettiCount; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+                document.body.appendChild(confetti);
+
+                // Remove after animation
+                setTimeout(() => confetti.remove(), 3500);
+            }
+        },
+
+        // Quick stats for employee types
+        updateQuickStats(hakenCount, ukeoiCount, staffCount) {
+            const hakenEl = document.getElementById('quick-haken');
+            const ukeoiEl = document.getElementById('quick-ukeoi');
+            const staffEl = document.getElementById('quick-staff');
+
+            if (hakenEl) this.animateNumber(hakenEl, 0, hakenCount, 800);
+            if (ukeoiEl) this.animateNumber(ukeoiEl, 0, ukeoiCount, 800);
+            if (staffEl) this.animateNumber(staffEl, 0, staffCount, 800);
+        }
+    },
+
     async init() {
         console.log('🚀 Initializing YuKyu Premium Dashboard...');
         this.ui.showLoading();
@@ -329,6 +504,7 @@ const App = {
         async renderKPIs() {
             const data = App.data.getFiltered();
             const total = data.length;
+            const granted = data.reduce((s, e) => s + e.granted, 0);
 
             // Fetch TRUE usage from individual dates (R-BE columns)
             // This returns the correct value (~3318) instead of column N sum (~4466)
@@ -348,16 +524,33 @@ const App = {
                 }
             } catch (e) {
                 // Fallback to old calculation if endpoint fails
-                const granted = data.reduce((s, e) => s + e.granted, 0);
                 used = data.reduce((s, e) => s + e.used, 0);
                 balance = granted - used;
                 rate = granted > 0 ? Math.round((used / granted) * 100) : 0;
             }
 
+            // Update traditional KPI displays
             document.getElementById('kpi-used').innerText = Math.round(used).toLocaleString();
             document.getElementById('kpi-balance').innerText = Math.round(balance).toLocaleString();
             document.getElementById('kpi-rate').innerText = rate + '%';
             document.getElementById('kpi-total').innerText = total;
+
+            // Calculate max values for rings
+            const maxUsage = granted > 0 ? granted : 10000;
+            const maxBalance = granted > 0 ? granted : 10000;
+
+            // Animate progress rings
+            App.visualizations.animateRing('ring-usage', 'ring-usage-value', used, maxUsage, 1200);
+            App.visualizations.animateRing('ring-balance', 'ring-balance-value', balance, maxBalance, 1200);
+            App.visualizations.animateRing('ring-rate', 'ring-rate-value', rate, 100, 1200);
+
+            // Calculate compliance (% of employees with >= 5 days used - Japanese law)
+            const compliant = data.filter(e => e.used >= 5).length;
+            const complianceRate = total > 0 ? Math.round((compliant / total) * 100) : 0;
+            App.visualizations.updateGauge(complianceRate, compliant, total);
+
+            // Update expiring days countdown
+            App.visualizations.updateExpiringDays(data);
         },
 
         renderTable(filterText = '') {
@@ -389,6 +582,10 @@ const App = {
                 const usageRate = App.utils.safeNumber(e.usageRate);
                 const balanceClass = balance < 0 ? 'badge-critical' : balance < 5 ? 'badge-danger' : 'badge-success';
 
+                // Determine color based on usage rate
+                const rateColor = usageRate >= 80 ? 'var(--success)' : usageRate >= 50 ? 'var(--warning)' : 'var(--danger)';
+                const rateGlow = usageRate >= 80 ? '0 0 8px var(--success)' : usageRate >= 50 ? '0 0 8px var(--warning)' : '0 0 8px var(--danger)';
+
                 return `
                 <tr class="employee-row" data-employee-num="${empNum}" style="cursor: pointer;">
                     <td><div class="font-bold">${empNum}</div></td>
@@ -398,10 +595,10 @@ const App = {
                     <td><span class="text-gradient">${used}</span></td>
                     <td><span class="badge ${balanceClass}">${balance.toFixed(1)}</span></td>
                     <td>
-                        <div style="width: 100px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
-                            <div style="width: ${Math.min(usageRate, 100)}%; height: 100%; background: var(--primary);"></div>
+                        <div class="mini-progress" style="width: 100px; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; position: relative;">
+                            <div class="mini-progress-fill" style="width: ${Math.min(usageRate, 100)}%; height: 100%; background: linear-gradient(90deg, ${rateColor}, ${rateColor}88); border-radius: 4px; box-shadow: ${rateGlow}; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"></div>
                         </div>
-                        <div class="text-xs mt-1 text-right">${usageRate}%</div>
+                        <div class="text-xs mt-1 text-right" style="color: ${rateColor}; font-weight: 500;">${usageRate}%</div>
                     </td>
                 </tr>
             `}).join('');
@@ -2080,6 +2277,7 @@ const App = {
                 if (!res.ok) throw new Error('Approval failed');
 
                 App.ui.showToast('success', '申請を承認しました');
+                App.visualizations.showConfetti(); // Celebrate approval!
                 this.loadPending();
                 this.loadHistory();
                 App.data.fetchEmployees(App.state.year); // Refresh balance

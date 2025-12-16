@@ -142,27 +142,125 @@
             <!-- VIEW: DASHBOARD -->
             <div id="view-dashboard" class="view-section active">
 
-                <!-- Bento Grid Stats -->
+                <!-- Bento Grid Stats with Progress Rings -->
                 <div class="bento-grid">
-                    <div class="glass-panel stat-card col-span-1">
+                    <!-- Usage Ring -->
+                    <div class="glass-panel stat-card stat-card-ring col-span-1">
+                        <div class="progress-ring-container">
+                            <svg class="progress-ring" width="80" height="80">
+                                <circle class="progress-ring__circle-bg" cx="40" cy="40" r="34"></circle>
+                                <circle class="progress-ring__circle progress-ring__circle--success" id="ring-usage" cx="40" cy="40" r="34"
+                                    stroke-dasharray="213.6" stroke-dashoffset="213.6"></circle>
+                            </svg>
+                            <div class="progress-ring__value" id="ring-usage-value">0</div>
+                        </div>
                         <div class="stat-label">Total Usage</div>
-                        <div class="stat-value" id="kpi-used">-</div>
-                        <div class="badge badge-success">Active</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);" id="kpi-used-detail">0 days</div>
                     </div>
-                    <div class="glass-panel stat-card col-span-1">
+
+                    <!-- Balance Ring -->
+                    <div class="glass-panel stat-card stat-card-ring col-span-1">
+                        <div class="progress-ring-container">
+                            <svg class="progress-ring" width="80" height="80">
+                                <circle class="progress-ring__circle-bg" cx="40" cy="40" r="34"></circle>
+                                <circle class="progress-ring__circle progress-ring__circle--warning" id="ring-balance" cx="40" cy="40" r="34"
+                                    stroke-dasharray="213.6" stroke-dashoffset="213.6"></circle>
+                            </svg>
+                            <div class="progress-ring__value" id="ring-balance-value">0</div>
+                        </div>
                         <div class="stat-label">Remaining</div>
-                        <div class="stat-value" id="kpi-balance" style="color: var(--warning);">-</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);" id="kpi-balance-detail">0 days left</div>
                     </div>
-                    <div class="glass-panel stat-card col-span-1">
+
+                    <!-- Utilization Ring -->
+                    <div class="glass-panel stat-card stat-card-ring col-span-1">
+                        <div class="progress-ring-container">
+                            <svg class="progress-ring" width="80" height="80">
+                                <circle class="progress-ring__circle-bg" cx="40" cy="40" r="34"></circle>
+                                <circle class="progress-ring__circle progress-ring__circle--primary" id="ring-rate" cx="40" cy="40" r="34"
+                                    stroke-dasharray="213.6" stroke-dashoffset="213.6"></circle>
+                            </svg>
+                            <div class="progress-ring__value" id="ring-rate-value">0%</div>
+                        </div>
                         <div class="stat-label">Utilization</div>
-                        <div class="stat-value" id="kpi-rate">-</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);" id="kpi-rate-detail">avg rate</div>
                     </div>
+
+                    <!-- Employees Card -->
                     <div class="glass-panel stat-card col-span-1"
                         style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(37, 99, 235, 0.2)); border: 1px solid var(--primary); cursor: pointer;"
                         onclick="App.ui.switchView('employees')">
                         <div class="stat-label">Employees</div>
-                        <div class="stat-value" id="kpi-total">-</div>
-                        <div style="font-size: 0.8rem; margin-top: 5px;">Click to view all →</div>
+                        <div class="stat-value count-up" id="kpi-total">-</div>
+                        <div class="quick-stats">
+                            <div class="quick-stat">
+                                <div class="quick-stat-value" id="qs-haken">0</div>
+                                <div class="quick-stat-label">派遣</div>
+                            </div>
+                            <div class="quick-stat">
+                                <div class="quick-stat-value" id="qs-ukeoi">0</div>
+                                <div class="quick-stat-label">請負</div>
+                            </div>
+                            <div class="quick-stat">
+                                <div class="quick-stat-value" id="qs-staff">0</div>
+                                <div class="quick-stat-label">Staff</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compliance Gauge Row -->
+                <div class="bento-grid" style="margin-bottom: 1.5rem;">
+                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                        <h3 class="stat-label" style="margin-bottom: 1rem;">📊 Compliance Gauge (5日最低消化)</h3>
+                        <div class="gauge-container">
+                            <svg class="gauge-svg" viewBox="0 0 200 120">
+                                <path class="gauge-bg" d="M 20 100 A 80 80 0 0 1 180 100" />
+                                <path class="gauge-fill" id="gauge-compliance" d="M 20 100 A 80 80 0 0 1 180 100"
+                                    stroke-dasharray="251.2" stroke-dashoffset="251.2" stroke="var(--success)" />
+                            </svg>
+                            <div class="gauge-value" id="gauge-value">0%</div>
+                            <div class="gauge-label">compliance rate</div>
+                            <div class="gauge-markers">
+                                <span>0%</span>
+                                <span>100%</span>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+                            <span id="compliance-count">0</span> of <span id="compliance-total">0</span> employees have used ≥5 days
+                        </div>
+                    </div>
+
+                    <!-- Expiring Days Alert -->
+                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                        <h3 class="stat-label" style="margin-bottom: 1rem;">⚠️ Days Expiring Soon</h3>
+                        <div id="expiring-alert">
+                            <div class="countdown-card" id="countdown-container" style="display: none;">
+                                <div class="countdown-icon">⏰</div>
+                                <div class="countdown-info">
+                                    <div class="countdown-title">有給休暇が失効予定</div>
+                                    <div class="countdown-value" id="expiring-days">0 days</div>
+                                    <div class="countdown-detail" id="expiring-detail">from 0 employees</div>
+                                </div>
+                            </div>
+                            <div id="no-expiring" style="text-align: center; padding: 2rem; color: var(--success);">
+                                ✅ No days expiring soon!
+                            </div>
+                        </div>
+                        <div class="quick-stats" style="margin-top: 1rem;">
+                            <div class="quick-stat">
+                                <div class="quick-stat-value" id="critical-count" style="color: var(--danger);">0</div>
+                                <div class="quick-stat-label">Critical (0日)</div>
+                            </div>
+                            <div class="quick-stat">
+                                <div class="quick-stat-value" id="warning-count" style="color: var(--warning);">0</div>
+                                <div class="quick-stat-label">Warning (&lt;3日)</div>
+                            </div>
+                            <div class="quick-stat">
+                                <div class="quick-stat-value" id="healthy-count" style="color: var(--success);">0</div>
+                                <div class="quick-stat-label">Healthy (≥5日)</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
