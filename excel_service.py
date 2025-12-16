@@ -290,6 +290,89 @@ def parse_ukeoi_sheet(file_path):
 
     return data
 
+
+def parse_staff_sheet(file_path):
+    """
+    Parses the DBStaffX sheet from the employee registry Excel file.
+    Includes hire_date (入社日) and leave_date (退社日) for year filtering.
+
+    Expected columns:
+    0:№(status), 1:社員№, 2:事務所, 3:氏名, 4:カナ, 5:性別, 6:国籍,
+    7:生年月日, 8:年齢, 9:ビザ期限, 10:ビザ種類, 11:配偶者,
+    12:〒, 13:住所, 14:建物名, 15:入社日, 16:退社日
+
+    Returns:
+        List of staff employee dicts
+    """
+    wb = load_workbook(file_path, data_only=True)
+
+    if 'DBStaffX' not in wb.sheetnames:
+        raise ValueError("DBStaffX sheet not found in workbook")
+
+    sheet = wb['DBStaffX']
+    data = []
+
+    for row in sheet.iter_rows(min_row=2, values_only=True):  # Skip header
+        if all(c is None for c in row):
+            continue
+
+        # Extract core fields
+        status = str(row[0]) if row[0] is not None else "Unknown"
+        emp_num = str(row[1]) if row[1] is not None else "Unknown"
+        name = str(row[3]) if row[3] is not None else "Unknown"
+
+        # Skip if no employee number or name
+        if emp_num == "Unknown" or name == "Unknown" or emp_num == "0" or name == "0":
+            continue
+
+        # Parse dates
+        def parse_date(val):
+            if val is None:
+                return None
+            if isinstance(val, datetime):
+                return val.strftime('%Y-%m-%d')
+            if isinstance(val, (int, float)) and val > 0:
+                # Excel serial date
+                try:
+                    from datetime import timedelta
+                    excel_epoch = datetime(1899, 12, 30)
+                    return (excel_epoch + timedelta(days=int(val))).strftime('%Y-%m-%d')
+                except:
+                    return None
+            return str(val) if val else None
+
+        birth_date = parse_date(row[7])
+        visa_expiry = parse_date(row[9])
+        hire_date = parse_date(row[15])
+        leave_date = parse_date(row[16])
+
+        emp_id = f"staff_{emp_num}"
+
+        employee = {
+            'id': emp_id,
+            'status': status,
+            'employee_num': emp_num,
+            'office': str(row[2]) if row[2] is not None else "",
+            'name': name,
+            'kana': str(row[4]) if row[4] is not None else "",
+            'gender': str(row[5]) if row[5] is not None else "",
+            'nationality': str(row[6]) if row[6] is not None else "",
+            'birth_date': birth_date,
+            'age': int(row[8]) if row[8] is not None else None,
+            'visa_expiry': visa_expiry,
+            'visa_type': str(row[10]) if row[10] is not None else "",
+            'spouse': str(row[11]) if row[11] is not None else "",
+            'postal_code': str(row[12]) if row[12] is not None else "",
+            'address': str(row[13]) if row[13] is not None else "",
+            'building': str(row[14]) if row[14] is not None else "",
+            'hire_date': hire_date,
+            'leave_date': leave_date
+        }
+        data.append(employee)
+
+    return data
+
+
 def parse_yukyu_usage_details(file_path):
     """
     Parses individual yukyu usage dates from columns R-BE (18-57).

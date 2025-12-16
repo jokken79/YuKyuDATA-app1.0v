@@ -335,6 +335,47 @@ async def reset_ukeoi():
     database.clear_ukeoi()
     return {"status": "success", "message": "Ukeoi database cleared"}
 
+
+# === STAFF Endpoints ===
+
+@app.get("/api/staff")
+async def get_staff_employees(status: str = None, year: int = None, filter_by_year: bool = False):
+    """
+    Returns list of staff employees from DBStaffX.
+
+    Args:
+        status: Optional status filter (e.g., '在職中')
+        year: Optional year for filtering
+        filter_by_year: If True, filters by hire_date/leave_date
+    """
+    try:
+        data = database.get_staff(status=status, year=year, active_in_year=filter_by_year)
+        return {"status": "success", "data": data, "count": len(data)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/sync-staff")
+async def sync_staff():
+    """Syncs DBStaffX sheet from employee registry file."""
+    if not os.path.exists(EMPLOYEE_REGISTRY_PATH):
+        raise HTTPException(status_code=404, detail=f"Employee registry file not found at {EMPLOYEE_REGISTRY_PATH}")
+
+    try:
+        data = excel_service.parse_staff_sheet(EMPLOYEE_REGISTRY_PATH)
+        database.save_staff(data)
+        return {"status": "success", "count": len(data), "message": f"Staff synced: {len(data)} staff employees"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Staff sync failed: {str(e)}")
+
+
+@app.delete("/api/reset-staff")
+async def reset_staff():
+    """Clears staff table."""
+    database.clear_staff()
+    return {"status": "success", "message": "Staff database cleared"}
+
+
 # === STATISTICS Endpoints ===
 
 @app.get("/api/stats/by-factory")
@@ -1136,20 +1177,39 @@ async def get_active_employees(year: int = None):
 
 
 @app.get("/api/employees/by-type")
-async def get_employees_by_type(year: int = None, active_only: bool = True):
+async def get_employees_by_type(year: int = None, active_only: bool = True, filter_by_year: bool = True):
     """
     Obtiene empleados separados por tipo: Haken (派遣), Ukeoi (請負), Staff.
-    Opcionalmente filtra solo activos.
+
+    Args:
+        year: Año fiscal para filtrar datos de vacaciones
+        active_only: Si True, solo muestra empleados con status '在職中'
+        filter_by_year: Si True, filtra empleados que estaban activos durante ese año
+                       (入社日 <= año AND (退社日 IS NULL OR 退社日 >= año))
     """
     try:
         employees = database.get_employees(year=year)
 
-        # Obtener listas de empleados por tipo
-        genzai_list = database.get_genzai(status='在職中' if active_only else None)
-        ukeoi_list = database.get_ukeoi(status='在職中' if active_only else None)
+        # Obtener listas de empleados por tipo con filtros
+        genzai_list = database.get_genzai(
+            status='在職中' if active_only else None,
+            year=year if filter_by_year else None,
+            active_in_year=filter_by_year
+        )
+        ukeoi_list = database.get_ukeoi(
+            status='在職中' if active_only else None,
+            year=year if filter_by_year else None,
+            active_in_year=filter_by_year
+        )
+        staff_list = database.get_staff(
+            status='在職中' if active_only else None,
+            year=year if filter_by_year else None,
+            active_in_year=filter_by_year
+        )
 
         genzai_nums = {str(emp['employee_num']) for emp in genzai_list if emp.get('employee_num')}
         ukeoi_nums = {str(emp['employee_num']) for emp in ukeoi_list if emp.get('employee_num')}
+        staff_nums = {str(emp['employee_num']) for emp in staff_list if emp.get('employee_num')}
 
         # Clasificar empleados
         haken_employees = []
@@ -1169,6 +1229,8 @@ async def get_employees_by_type(year: int = None, active_only: bool = True):
                 emp_enriched['dispatch_name'] = genzai_data.get('dispatch_name', '')
                 emp_enriched['status'] = genzai_data.get('status', '')
                 emp_enriched['hourly_wage'] = genzai_data.get('hourly_wage', 0)
+                emp_enriched['hire_date'] = genzai_data.get('hire_date', '')
+                emp_enriched['leave_date'] = genzai_data.get('leave_date', '')
                 haken_employees.append(emp_enriched)
 
             elif emp_num in ukeoi_nums:
@@ -1178,10 +1240,22 @@ async def get_employees_by_type(year: int = None, active_only: bool = True):
                 emp_enriched['contract_business'] = ukeoi_data.get('contract_business', '')
                 emp_enriched['status'] = ukeoi_data.get('status', '')
                 emp_enriched['hourly_wage'] = ukeoi_data.get('hourly_wage', 0)
+                emp_enriched['hire_date'] = ukeoi_data.get('hire_date', '')
+                emp_enriched['leave_date'] = ukeoi_data.get('leave_date', '')
                 ukeoi_employees.append(emp_enriched)
 
-            elif not active_only or emp_num:  # Staff sin filtro o incluir todos
+            elif emp_num in staff_nums:
+                # Buscar datos adicionales de staff
+                staff_data = next((s for s in staff_list if str(s.get('employee_num')) == emp_num), {})
                 emp_enriched['type'] = 'staff'
+                emp_enriched['office'] = staff_data.get('office', '')
+                emp_enriched['status'] = staff_data.get('status', '')
+                emp_enriched['hire_date'] = staff_data.get('hire_date', '')
+                emp_enriched['leave_date'] = staff_data.get('leave_date', '')
+                staff_employees.append(emp_enriched)
+
+            elif not active_only:  # Incluir todos si no hay filtro activo
+                emp_enriched['type'] = 'unknown'
                 staff_employees.append(emp_enriched)
 
         return {

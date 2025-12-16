@@ -148,11 +148,50 @@ def init_db():
     except sqlite3.OperationalError:
         pass  # Column already exists
 
+    # Add leave_date to genzai if not exists
+    try:
+        c.execute("ALTER TABLE genzai ADD COLUMN leave_date TEXT")
+    except sqlite3.OperationalError:
+        pass
+
     # Add hire_date to ukeoi if not exists
     try:
         c.execute("ALTER TABLE ukeoi ADD COLUMN hire_date TEXT")
     except sqlite3.OperationalError:
         pass
+
+    # Add leave_date to ukeoi if not exists
+    try:
+        c.execute("ALTER TABLE ukeoi ADD COLUMN leave_date TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    # Create Staff table if not exists
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS staff (
+            id TEXT PRIMARY KEY,
+            status TEXT,
+            employee_num TEXT,
+            office TEXT,
+            name TEXT,
+            kana TEXT,
+            gender TEXT,
+            nationality TEXT,
+            birth_date TEXT,
+            age INTEGER,
+            visa_expiry TEXT,
+            visa_type TEXT,
+            spouse TEXT,
+            postal_code TEXT,
+            address TEXT,
+            building TEXT,
+            hire_date TEXT,
+            leave_date TEXT,
+            last_updated TEXT
+        )
+    ''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_staff_emp ON staff(employee_num)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_staff_status ON staff(status)')
 
     # Add grant_year to employees for FIFO tracking
     try:
@@ -273,16 +312,40 @@ def save_genzai(genzai_data):
     conn.commit()
     conn.close()
 
-def get_genzai(status=None):
-    """Retrieves dispatch employees. Optional status filter (e.g., '在職中')."""
+def get_genzai(status=None, year=None, active_in_year=False):
+    """
+    Retrieves dispatch employees with optional filters.
+
+    Args:
+        status: Filter by status (e.g., '在職中')
+        year: Filter by fiscal year
+        active_in_year: If True with year, filters employees who were active during that year
+                       (hire_date <= year AND (leave_date IS NULL OR leave_date >= year))
+    """
     conn = get_db_connection()
     c = conn.cursor()
 
-    if status:
-        rows = c.execute("SELECT * FROM genzai WHERE status = ? ORDER BY name", (status,)).fetchall()
-    else:
-        rows = c.execute("SELECT * FROM genzai ORDER BY name").fetchall()
+    query = "SELECT * FROM genzai WHERE 1=1"
+    params = []
 
+    if status:
+        query += " AND status = ?"
+        params.append(status)
+
+    if year and active_in_year:
+        # Empleado activo durante ese año:
+        # - Entró antes o durante ese año
+        # - No se fue O se fue durante o después de ese año
+        year_start = f"{year}-01-01"
+        year_end = f"{year}-12-31"
+        query += """ AND (
+            (hire_date IS NULL OR hire_date <= ?)
+            AND (leave_date IS NULL OR leave_date >= ?)
+        )"""
+        params.extend([year_end, year_start])
+
+    query += " ORDER BY name"
+    rows = c.execute(query, params).fetchall()
     conn.close()
     return [dict(row) for row in rows]
 
@@ -326,18 +389,121 @@ def save_ukeoi(ukeoi_data):
     conn.commit()
     conn.close()
 
-def get_ukeoi(status=None):
-    """Retrieves contract employees. Optional status filter (e.g., '在職中')."""
+def get_ukeoi(status=None, year=None, active_in_year=False):
+    """
+    Retrieves contract employees with optional filters.
+
+    Args:
+        status: Filter by status (e.g., '在職中')
+        year: Filter by fiscal year
+        active_in_year: If True with year, filters employees who were active during that year
+    """
     conn = get_db_connection()
     c = conn.cursor()
 
-    if status:
-        rows = c.execute("SELECT * FROM ukeoi WHERE status = ? ORDER BY name", (status,)).fetchall()
-    else:
-        rows = c.execute("SELECT * FROM ukeoi ORDER BY name").fetchall()
+    query = "SELECT * FROM ukeoi WHERE 1=1"
+    params = []
 
+    if status:
+        query += " AND status = ?"
+        params.append(status)
+
+    if year and active_in_year:
+        year_start = f"{year}-01-01"
+        year_end = f"{year}-12-31"
+        query += """ AND (
+            (hire_date IS NULL OR hire_date <= ?)
+            AND (leave_date IS NULL OR leave_date >= ?)
+        )"""
+        params.extend([year_end, year_start])
+
+    query += " ORDER BY name"
+    rows = c.execute(query, params).fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+
+# === STAFF Functions ===
+
+def save_staff(staff_data):
+    """Saves staff employee data from DBStaffX sheet."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    timestamp = datetime.now().isoformat()
+
+    for emp in staff_data:
+        c.execute('''
+            INSERT OR REPLACE INTO staff
+            (id, status, employee_num, office, name, kana, gender, nationality,
+             birth_date, age, visa_expiry, visa_type, spouse, postal_code,
+             address, building, hire_date, leave_date, last_updated)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            emp.get('id'),
+            emp.get('status'),
+            emp.get('employee_num'),
+            emp.get('office'),
+            emp.get('name'),
+            emp.get('kana'),
+            emp.get('gender'),
+            emp.get('nationality'),
+            emp.get('birth_date'),
+            emp.get('age'),
+            emp.get('visa_expiry'),
+            emp.get('visa_type'),
+            emp.get('spouse'),
+            emp.get('postal_code'),
+            emp.get('address'),
+            emp.get('building'),
+            emp.get('hire_date'),
+            emp.get('leave_date'),
+            timestamp
+        ))
+
+    conn.commit()
+    conn.close()
+
+
+def get_staff(status=None, year=None, active_in_year=False):
+    """
+    Retrieves staff employees with optional filters.
+
+    Args:
+        status: Filter by status (e.g., '在職中')
+        year: Filter by fiscal year
+        active_in_year: If True with year, filters employees who were active during that year
+    """
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    query = "SELECT * FROM staff WHERE 1=1"
+    params = []
+
+    if status:
+        query += " AND status = ?"
+        params.append(status)
+
+    if year and active_in_year:
+        year_start = f"{year}-01-01"
+        year_end = f"{year}-12-31"
+        query += """ AND (
+            (hire_date IS NULL OR hire_date <= ?)
+            AND (leave_date IS NULL OR leave_date >= ?)
+        )"""
+        params.extend([year_end, year_start])
+
+    query += " ORDER BY name"
+    rows = c.execute(query, params).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def clear_staff():
+    """Clears staff table."""
+    conn = get_db_connection()
+    conn.execute("DELETE FROM staff")
+    conn.commit()
+    conn.close()
 
 def clear_ukeoi():
     """Clears ukeoi table."""

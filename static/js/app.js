@@ -3044,7 +3044,8 @@ const App = {
         async loadData() {
             try {
                 const year = App.state.year || new Date().getFullYear();
-                const res = await fetch(`${App.config.apiBase}/employees/by-type?year=${year}&active_only=${this.activeOnly}`);
+                // filter_by_year=true filtra empleados activos durante ese año (入社日 <= año AND (退社日 IS NULL OR 退社日 >= año))
+                const res = await fetch(`${App.config.apiBase}/employees/by-type?year=${year}&active_only=${this.activeOnly}&filter_by_year=true`);
                 const json = await res.json();
 
                 if (json.status === 'success') {
