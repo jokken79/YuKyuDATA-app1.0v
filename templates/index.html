@@ -334,7 +334,31 @@
                                         </div>
                                     </div>
                                 </div>
-                                <!-- Usage History -->
+                                <!-- Yukyu History Table (2 years) -->
+                                <div id="yukyu-history-table" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                    <div style="margin-bottom: 0.75rem;">
+                                        <span class="stat-label">📊 年度別有給履歴 (2年分)</span>
+                                    </div>
+                                    <table style="width: 100%; font-size: 0.85rem; border-collapse: collapse;">
+                                        <thead>
+                                            <tr style="background: rgba(56, 189, 248, 0.15);">
+                                                <th style="padding: 0.5rem; text-align: left; border-radius: 8px 0 0 0;">年度</th>
+                                                <th style="padding: 0.5rem; text-align: center;">付与日数</th>
+                                                <th style="padding: 0.5rem; text-align: center;">使用日数</th>
+                                                <th style="padding: 0.5rem; text-align: center;">残日数</th>
+                                                <th style="padding: 0.5rem; text-align: center; border-radius: 0 8px 0 0;">消化率</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="yukyu-history-tbody">
+                                            <tr>
+                                                <td colspan="5" style="padding: 1rem; text-align: center; color: var(--muted);">
+                                                    従業員を選択してください
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <!-- Usage History (dates) -->
                                 <div id="usage-history-container" style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1);">
                                     <div style="margin-bottom: 0.5rem;">
                                         <span class="stat-label">📅 使用履歴 (Usage History)</span>

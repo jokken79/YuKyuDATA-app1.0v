@@ -1224,6 +1224,9 @@ const App = {
                         hourlyWageInfo.style.display = 'none';
                     }
 
+                    // Render yukyu history table (2 years)
+                    this.renderYukyuHistoryTable(json.yukyu_history || []);
+
                     // Show usage history
                     this.renderUsageHistory(json);
 
@@ -1241,6 +1244,75 @@ const App = {
             } catch (e) {
                 App.ui.showToast('error', 'Failed to load employee info');
             }
+        },
+
+        renderYukyuHistoryTable(yukyuHistory) {
+            const tbody = document.getElementById('yukyu-history-tbody');
+            if (!tbody) return;
+
+            if (!yukyuHistory || yukyuHistory.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="padding: 1rem; text-align: center; color: var(--muted);">
+                            履歴データがありません
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Sort by year descending (newest first)
+            const sortedHistory = [...yukyuHistory].sort((a, b) => b.year - a.year);
+
+            // Calculate totals
+            const totals = {
+                granted: 0,
+                used: 0,
+                balance: 0
+            };
+
+            let rows = sortedHistory.map(h => {
+                const granted = h.granted || 0;
+                const used = h.used || 0;
+                const balance = h.balance || 0;
+                const rate = h.usage_rate || 0;
+
+                totals.granted += granted;
+                totals.used += used;
+                totals.balance += balance;
+
+                // Color based on usage rate
+                const rateColor = rate >= 75 ? 'var(--success)' : rate >= 50 ? 'var(--warning)' : 'var(--error)';
+                const balanceColor = balance > 5 ? 'var(--success)' : balance > 0 ? 'var(--warning)' : 'var(--error)';
+
+                return `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <td style="padding: 0.5rem; font-weight: 600;">${h.year}年度</td>
+                        <td style="padding: 0.5rem; text-align: center;">${granted.toFixed(1)}</td>
+                        <td style="padding: 0.5rem; text-align: center;">${used.toFixed(1)}</td>
+                        <td style="padding: 0.5rem; text-align: center; color: ${balanceColor}; font-weight: 600;">${balance.toFixed(1)}</td>
+                        <td style="padding: 0.5rem; text-align: center;">
+                            <span style="display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; background: ${rateColor}20; color: ${rateColor}; font-weight: 600;">
+                                ${rate.toFixed(1)}%
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Add totals row
+            const avgRate = totals.granted > 0 ? (totals.used / totals.granted * 100) : 0;
+            rows += `
+                <tr style="background: rgba(56, 189, 248, 0.1); font-weight: 600;">
+                    <td style="padding: 0.5rem; border-radius: 0 0 0 8px;">合計</td>
+                    <td style="padding: 0.5rem; text-align: center;">${totals.granted.toFixed(1)}</td>
+                    <td style="padding: 0.5rem; text-align: center;">${totals.used.toFixed(1)}</td>
+                    <td style="padding: 0.5rem; text-align: center; color: var(--success);">${totals.balance.toFixed(1)}</td>
+                    <td style="padding: 0.5rem; text-align: center; border-radius: 0 0 8px 0;">${avgRate.toFixed(1)}%</td>
+                </tr>
+            `;
+
+            tbody.innerHTML = rows;
         },
 
         toggleLeaveType() {
