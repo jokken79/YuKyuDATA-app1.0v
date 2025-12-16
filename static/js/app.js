@@ -103,12 +103,25 @@ const App = {
     },
 
     data: {
+        // Request counter to prevent race conditions when changing years rapidly
+        _fetchRequestId: 0,
+
         async fetchEmployees(year = null) {
+            // Increment request ID to track this specific request
+            const requestId = ++this._fetchRequestId;
+
             try {
                 let url = `${App.config.apiBase}/employees`;
                 if (year) url += `?year=${year}`;
 
                 const res = await fetch(url);
+
+                // Check if this request is still the most recent one
+                if (requestId !== this._fetchRequestId) {
+                    console.log('Ignoring stale response for year:', year);
+                    return; // Ignore stale responses
+                }
+
                 const json = await res.json();
 
                 App.state.data = json.data.map(emp => ({
@@ -138,12 +151,20 @@ const App = {
                     }
                 }
 
+                // Final check before updating UI
+                if (requestId !== this._fetchRequestId) {
+                    return;
+                }
+
                 await App.ui.updateAll();
                 App.ui.showToast('success', 'Data refresh complete');
 
             } catch (err) {
-                console.error(err);
-                App.ui.showToast('error', 'Failed to load data');
+                // Only show error if this is still the current request
+                if (requestId === this._fetchRequestId) {
+                    console.error(err);
+                    App.ui.showToast('error', 'Failed to load data');
+                }
             }
         },
 
@@ -2086,14 +2107,21 @@ const App = {
                 return;
             }
 
-            const listHtml = backups.map(b => `
+            // Escape HTML to prevent XSS
+            const escapeHtml = (str) => {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            };
+
+            const listHtml = backups.map((b, index) => `
                 <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem;">
                     <div class="flex-between">
                         <div>
-                            <div style="font-weight: 600; font-size: 0.9rem;">${b.filename}</div>
-                            <div style="font-size: 0.75rem; color: var(--muted);">${b.size_mb} MB | ${b.created_at.slice(0, 19).replace('T', ' ')}</div>
+                            <div style="font-weight: 600; font-size: 0.9rem;">${escapeHtml(b.filename)}</div>
+                            <div style="font-size: 0.75rem; color: var(--muted);">${escapeHtml(String(b.size_mb))} MB | ${escapeHtml(b.created_at.slice(0, 19).replace('T', ' '))}</div>
                         </div>
-                        <button class="btn btn-glass" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="App.backup.restore('${b.filename}')">
+                        <button class="btn btn-glass backup-restore-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" data-backup-index="${index}">
                             復元
                         </button>
                     </div>
@@ -2106,11 +2134,27 @@ const App = {
                     ${listHtml}
                 </div>
                 <div style="margin-top: 1rem;">
-                    <button class="btn btn-primary" style="width: 100%;" onclick="App.backup.create(); App.ui.closeModal();">
+                    <button class="btn btn-primary backup-create-btn" style="width: 100%;">
                         📦 新規バックアップ作成
                     </button>
                 </div>
             `;
+
+            // Add event listeners safely (prevent XSS via onclick)
+            document.querySelectorAll('.backup-restore-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.dataset.backupIndex, 10);
+                    if (backups[idx]) {
+                        App.backup.restore(backups[idx].filename);
+                    }
+                });
+            });
+
+            document.querySelector('.backup-create-btn')?.addEventListener('click', () => {
+                App.backup.create();
+                App.ui.closeModal();
+            });
+
             document.getElementById('detail-modal').style.display = 'flex';
         }
     },
@@ -2345,6 +2389,17 @@ const App = {
             }
         },
 
+        // Static header HTML to prevent losing headers on re-render
+        _headerHtml: `
+            <div class="calendar-header">日</div>
+            <div class="calendar-header">月</div>
+            <div class="calendar-header">火</div>
+            <div class="calendar-header">水</div>
+            <div class="calendar-header">木</div>
+            <div class="calendar-header">金</div>
+            <div class="calendar-header">土</div>
+        `,
+
         renderCalendar() {
             const grid = document.getElementById('calendar-grid');
             const title = document.getElementById('calendar-month-title');
@@ -2353,10 +2408,8 @@ const App = {
             const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
             title.innerText = `${this.currentYear}年 ${monthNames[this.currentMonth - 1]}`;
 
-            // Clear existing days (keep headers)
-            const headers = grid.querySelectorAll('.calendar-header');
-            grid.innerHTML = '';
-            headers.forEach(h => grid.appendChild(h));
+            // Clear grid and re-add headers (fixed: headers were being lost)
+            grid.innerHTML = this._headerHtml;
 
             // Get first day and days in month
             const firstDay = new Date(this.currentYear, this.currentMonth - 1, 1).getDay();

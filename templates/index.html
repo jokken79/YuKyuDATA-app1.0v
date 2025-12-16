@@ -61,33 +61,33 @@
                 </div>
             </div>
 
-            <div class="nav-item active" data-view="dashboard" onclick="App.ui.switchView('dashboard')">
-                <span>📊</span> <span>Dashboard</span>
-            </div>
-            <div class="nav-item" data-view="employees" onclick="App.ui.switchView('employees')">
-                <span>👥</span> <span>Employees</span>
-            </div>
-            <div class="nav-item" data-view="factories" onclick="App.ui.switchView('factories')">
-                <span>🏭</span> <span>Factories</span>
-            </div>
-            <div class="nav-item" data-view="requests" onclick="App.ui.switchView('requests')">
-                <span>📝</span> <span>申請</span>
-            </div>
-            <div class="nav-item" data-view="calendar" onclick="App.ui.switchView('calendar')">
-                <span>📅</span> <span>カレンダー</span>
-            </div>
-            <div class="nav-item" data-view="compliance" onclick="App.ui.switchView('compliance')">
-                <span>✅</span> <span>Compliance</span>
-            </div>
-            <div class="nav-item" data-view="analytics" onclick="App.ui.switchView('analytics')">
-                <span>📈</span> <span>分析</span>
-            </div>
-            <div class="nav-item" data-view="reports" onclick="App.ui.switchView('reports')">
-                <span>📋</span> <span>月次レポート</span>
-            </div>
-            <div class="nav-item" style="margin-top: auto;" onclick="App.ui.switchView('settings')">
-                <span>⚙️</span> <span>Settings</span>
-            </div>
+            <button type="button" class="nav-item active" data-view="dashboard" onclick="App.ui.switchView('dashboard')" aria-label="Dashboard">
+                <span aria-hidden="true">📊</span> <span>Dashboard</span>
+            </button>
+            <button type="button" class="nav-item" data-view="employees" onclick="App.ui.switchView('employees')" aria-label="Employees">
+                <span aria-hidden="true">👥</span> <span>Employees</span>
+            </button>
+            <button type="button" class="nav-item" data-view="factories" onclick="App.ui.switchView('factories')" aria-label="Factories">
+                <span aria-hidden="true">🏭</span> <span>Factories</span>
+            </button>
+            <button type="button" class="nav-item" data-view="requests" onclick="App.ui.switchView('requests')" aria-label="申請">
+                <span aria-hidden="true">📝</span> <span>申請</span>
+            </button>
+            <button type="button" class="nav-item" data-view="calendar" onclick="App.ui.switchView('calendar')" aria-label="カレンダー">
+                <span aria-hidden="true">📅</span> <span>カレンダー</span>
+            </button>
+            <button type="button" class="nav-item" data-view="compliance" onclick="App.ui.switchView('compliance')" aria-label="Compliance">
+                <span aria-hidden="true">✅</span> <span>Compliance</span>
+            </button>
+            <button type="button" class="nav-item" data-view="analytics" onclick="App.ui.switchView('analytics')" aria-label="分析">
+                <span aria-hidden="true">📈</span> <span>分析</span>
+            </button>
+            <button type="button" class="nav-item" data-view="reports" onclick="App.ui.switchView('reports')" aria-label="月次レポート">
+                <span aria-hidden="true">📋</span> <span>月次レポート</span>
+            </button>
+            <button type="button" class="nav-item" style="margin-top: auto;" onclick="App.ui.switchView('settings')" aria-label="Settings">
+                <span aria-hidden="true">⚙️</span> <span>Settings</span>
+            </button>
         </nav>
 
         <!-- Main Content -->
@@ -969,11 +969,11 @@
     <div class="toast-container" id="toast-container"></div>
 
     <!-- Simple Modal for Details -->
-    <div class="loader-overlay" id="detail-modal" style="background: rgba(0,0,0,0.7);">
+    <div class="loader-overlay" id="detail-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="background: rgba(0,0,0,0.7);">
         <div class="glass-panel" style="width: 600px; max-width: 95%; max-height: 90vh; overflow-y: auto; position: relative;">
             <button class="btn"
                 style="position: absolute; right: 10px; top: 10px; background: transparent; color: white; z-index: 10;"
-                onclick="App.ui.closeModal()">✕</button>
+                onclick="App.ui.closeModal()" aria-label="Close modal">✕</button>
             <div style="padding: 2rem;">
                 <h2 id="modal-title" style="margin-bottom: 1rem;">Employee Details</h2>
                 <div id="modal-content"></div>

@@ -334,6 +334,13 @@ body::after {
   align-items: center;
   gap: 1rem;
   font-weight: 500;
+  /* Reset button styles for accessibility */
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-size: inherit;
+  font-family: inherit;
 }
 
 .nav-item:hover, .nav-item.active {
