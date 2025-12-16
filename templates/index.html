@@ -8,7 +8,7 @@
 
     <!-- PWA Meta Tags -->
     <meta name="description" content="有給休暇管理システム - Premium Dashboard for managing paid leave">
-    <meta name="theme-color" content="#38bdf8">
+    <meta name="theme-color" content="#c9a961">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="YuKyu">
@@ -28,16 +28,20 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 
-    <!-- Design System -->
+    <!-- Design System - Vibrant Arari Style -->
     <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/sidebar-premium.css">
+    <link rel="stylesheet" href="/static/css/arari-glow.css">
+    <link rel="stylesheet" href="/static/css/light-mode-premium.css">
 
     <!-- Libraries -->
     <!-- ApexCharts - Modern charting library -->
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.1/dist/apexcharts.min.js"></script>
+
+    <!-- Chart.js - For pie and bar charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
     <!-- GSAP - Professional-grade animations -->
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
@@ -46,47 +50,311 @@
 
     <!-- Animate.css - Quick CSS animations -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+    <!-- Flatpickr - Modern Date Picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/themes/dark.css">
+
+    <style>
+        /* Custom Flatpickr Styles - Cyan/Glass Theme */
+        .flatpickr-calendar {
+            background: rgba(15, 23, 42, 0.95) !important;
+            backdrop-filter: blur(20px) saturate(180%) !important;
+            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                        0 0 0 1px rgba(56, 189, 248, 0.1),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+        }
+
+        .flatpickr-months {
+            background: transparent !important;
+            border-bottom: 1px solid rgba(56, 189, 248, 0.2) !important;
+            padding: 10px 0 !important;
+        }
+
+        .flatpickr-current-month {
+            color: #38bdf8 !important;
+            font-weight: 600 !important;
+        }
+
+        .flatpickr-months .flatpickr-prev-month,
+        .flatpickr-months .flatpickr-next-month {
+            fill: #38bdf8 !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .flatpickr-months .flatpickr-prev-month:hover,
+        .flatpickr-months .flatpickr-next-month:hover {
+            fill: #7dd3fc !important;
+            transform: scale(1.1) !important;
+        }
+
+        .flatpickr-weekday {
+            color: #94a3b8 !important;
+            font-weight: 500 !important;
+            font-size: 0.85rem !important;
+        }
+
+        .flatpickr-day {
+            color: #e2e8f0 !important;
+            border-radius: 8px !important;
+            transition: all 0.2s ease !important;
+            border: none !important;
+        }
+
+        .flatpickr-day:hover {
+            background: rgba(56, 189, 248, 0.2) !important;
+            border-color: transparent !important;
+            transform: scale(1.05) !important;
+        }
+
+        .flatpickr-day.selected,
+        .flatpickr-day.startRange,
+        .flatpickr-day.endRange {
+            background: linear-gradient(135deg, #38bdf8, #0ea5e9) !important;
+            border-color: #38bdf8 !important;
+            color: #ffffff !important;
+            font-weight: 600 !important;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4) !important;
+        }
+
+        .flatpickr-day.inRange {
+            background: rgba(56, 189, 248, 0.15) !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+        }
+
+        .flatpickr-day.today {
+            border: 2px solid #f472b6 !important;
+            color: #f472b6 !important;
+            font-weight: 600 !important;
+        }
+
+        .flatpickr-day.today:hover {
+            border-color: #f472b6 !important;
+            background: rgba(244, 114, 182, 0.2) !important;
+        }
+
+        .flatpickr-day.disabled,
+        .flatpickr-day.prevMonthDay,
+        .flatpickr-day.nextMonthDay {
+            color: #475569 !important;
+        }
+
+        .flatpickr-day.disabled:hover,
+        .flatpickr-day.prevMonthDay:hover,
+        .flatpickr-day.nextMonthDay:hover {
+            background: transparent !important;
+            cursor: not-allowed !important;
+            transform: none !important;
+        }
+
+        .numInputWrapper:hover {
+            background: rgba(56, 189, 248, 0.1) !important;
+        }
+
+        .flatpickr-monthDropdown-months,
+        .numInput {
+            background: rgba(15, 23, 42, 0.8) !important;
+            color: #38bdf8 !important;
+            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            border-radius: 6px !important;
+        }
+
+        .flatpickr-monthDropdown-months:hover,
+        .numInput:hover {
+            background: rgba(56, 189, 248, 0.15) !important;
+        }
+
+        .flatpickr-time {
+            border-top: 1px solid rgba(56, 189, 248, 0.2) !important;
+        }
+
+        .flatpickr-time input {
+            color: #38bdf8 !important;
+        }
+
+        .flatpickr-time input:hover,
+        .flatpickr-time input:focus {
+            background: rgba(56, 189, 248, 0.1) !important;
+        }
+
+        /* Glass effect enhancement */
+        .flatpickr-calendar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg,
+                rgba(56, 189, 248, 0.05) 0%,
+                rgba(37, 99, 235, 0.05) 100%);
+            border-radius: 16px;
+            pointer-events: none;
+        }
+
+        /* Animation for calendar opening */
+        .flatpickr-calendar.open {
+            animation: flatpickrFadeIn 0.2s ease-out;
+        }
+
+        @keyframes flatpickrFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
 </head>
 
 <body>
 
     <div class="app-container">
-        <!-- Sidebar Navigation -->
+        <!-- Sidebar Navigation - Premium Design -->
         <nav class="sidebar">
             <div class="logo">
-                <span style="font-size: 2rem;">✨</span>
+                <img src="/static/icons/logo-premium.svg" alt="YuKyu" width="48" height="48">
                 <div>
-                    <div style="font-weight: 800; letter-spacing: -0.5px;">YUKYU</div>
-                    <div style="font-size: 0.7rem; color: var(--primary); letter-spacing: 2px;">PREMIUM</div>
+                    <div>YUKYU</div>
+                    <div>DATA</div>
                 </div>
             </div>
 
-            <div class="nav-item active" data-view="dashboard" onclick="App.ui.switchView('dashboard')">
-                <span>📊</span> <span>Dashboard</span>
+            <div class="nav-section">
+                <!-- Main Navigation Group -->
+                <div class="nav-group">
+                    <div class="nav-group-label">Main</div>
+
+                    <div class="nav-item active" data-view="dashboard" onclick="App.ui.switchView('dashboard')">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                                <rect x="14" y="14" width="7" height="7" rx="1"/>
+                            </svg>
+                        </span>
+                        <span class="nav-text">Dashboard</span>
+                    </div>
+
+                    <div class="nav-item" data-view="employees" onclick="App.ui.switchView('employees')">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
+                                <circle cx="17" cy="7" r="3"/>
+                                <path d="M21 21v-2a3 3 0 0 0-2-2.83"/>
+                            </svg>
+                        </span>
+                        <span class="nav-text">Employees</span>
+                        <span class="nav-badge">1377</span>
+                    </div>
+
+                    <div class="nav-item" data-view="factories" onclick="App.ui.switchView('factories')">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 20V8l6-4v4l6-4v4l6-4v16H2z"/>
+                                <path d="M6 12v4"/>
+                                <path d="M10 12v4"/>
+                                <path d="M14 12v4"/>
+                                <path d="M18 12v4"/>
+                            </svg>
+                        </span>
+                        <span class="nav-text">Factories</span>
+                    </div>
+                </div>
+
+                <!-- Requests Group -->
+                <div class="nav-group">
+                    <div class="nav-group-label">Requests</div>
+
+                    <div class="nav-item" data-view="requests" onclick="App.ui.switchView('requests')">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <line x1="10" y1="9" x2="8" y2="9"/>
+                            </svg>
+                        </span>
+                        <span class="nav-text">申請 Request</span>
+                    </div>
+
+                    <div class="nav-item" data-view="calendar" onclick="App.ui.switchView('calendar')">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                                <path d="M8 14h.01"/>
+                                <path d="M12 14h.01"/>
+                                <path d="M16 14h.01"/>
+                                <path d="M8 18h.01"/>
+                                <path d="M12 18h.01"/>
+                            </svg>
+                        </span>
+                        <span class="nav-text">カレンダー</span>
+                    </div>
+                </div>
+
+                <!-- Analytics Group -->
+                <div class="nav-group">
+                    <div class="nav-group-label">Analytics</div>
+
+                    <div class="nav-item" data-view="compliance" onclick="App.ui.switchView('compliance')">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                <polyline points="9 12 11 14 15 10"/>
+                            </svg>
+                        </span>
+                        <span class="nav-text">Compliance</span>
+                    </div>
+
+                    <div class="nav-item" data-view="analytics" onclick="App.ui.switchView('analytics')">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="20" x2="18" y2="10"/>
+                                <line x1="12" y1="20" x2="12" y2="4"/>
+                                <line x1="6" y1="20" x2="6" y2="14"/>
+                            </svg>
+                        </span>
+                        <span class="nav-text">分析 Analytics</span>
+                    </div>
+
+                    <div class="nav-item" data-view="reports" onclick="App.ui.switchView('reports')">
+                        <span class="nav-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="12" y1="18" x2="12" y2="12"/>
+                                <line x1="9" y1="15" x2="15" y2="15"/>
+                            </svg>
+                        </span>
+                        <span class="nav-text">月次レポート</span>
+                    </div>
+                </div>
             </div>
-            <div class="nav-item" data-view="employees" onclick="App.ui.switchView('employees')">
-                <span>👥</span> <span>Employees</span>
-            </div>
-            <div class="nav-item" data-view="factories" onclick="App.ui.switchView('factories')">
-                <span>🏭</span> <span>Factories</span>
-            </div>
-            <div class="nav-item" data-view="requests" onclick="App.ui.switchView('requests')">
-                <span>📝</span> <span>申請</span>
-            </div>
-            <div class="nav-item" data-view="calendar" onclick="App.ui.switchView('calendar')">
-                <span>📅</span> <span>カレンダー</span>
-            </div>
-            <div class="nav-item" data-view="compliance" onclick="App.ui.switchView('compliance')">
-                <span>✅</span> <span>Compliance</span>
-            </div>
-            <div class="nav-item" data-view="analytics" onclick="App.ui.switchView('analytics')">
-                <span>📈</span> <span>分析</span>
-            </div>
-            <div class="nav-item" data-view="reports" onclick="App.ui.switchView('reports')">
-                <span>📋</span> <span>月次レポート</span>
-            </div>
-            <div class="nav-item" style="margin-top: auto;" onclick="App.ui.switchView('settings')">
-                <span>⚙️</span> <span>Settings</span>
+
+            <!-- Settings at bottom -->
+            <div class="sidebar-footer">
+                <div class="nav-item nav-item-settings" data-view="settings" onclick="App.ui.switchView('settings')">
+                    <span class="nav-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </span>
+                    <span class="nav-text">Settings</span>
+                </div>
             </div>
         </nav>
 
@@ -157,13 +425,13 @@
                     <div class="glass-panel col-span-2" style="padding: 1.5rem; height: 400px;">
                         <h3 class="stat-label" style="margin-bottom: 1rem;">Usage Distribution</h3>
                         <div style="position: relative; height: 320px; width: 100%;">
-                            <canvas id="chart-distribution"></canvas>
+                            <div id="chart-distribution"></div>
                         </div>
                     </div>
                     <div class="glass-panel col-span-2" style="padding: 1.5rem; height: 400px;">
                         <h3 class="stat-label" style="margin-bottom: 1rem;">Monthly Trends (2025)</h3>
                         <div style="position: relative; height: 320px; width: 100%;">
-                            <canvas id="chart-trends"></canvas>
+                            <div id="chart-trends"></div>
                         </div>
                     </div>
                 </div>
@@ -172,13 +440,32 @@
             <!-- VIEW: EMPLOYEES -->
             <div id="view-employees" class="view-section" style="display: none;">
                 <div class="glass-panel" style="padding: 2rem;">
-                    <div class="flex-between" style="margin-bottom: 1.5rem;">
+                    <div class="flex-between" style="margin-bottom: 1rem;">
                         <div class="flex-center" style="gap: 1rem;">
                             <h3 style="font-size: 1.25rem;">Staff Directory</h3>
                             <div class="badge badge-warning" id="emp-count-badge">0 Employees</div>
                         </div>
                         <input type="text" id="search-input" placeholder="Search by name, ID, or factory..."
                             class="input-glass" style="width: 300px;" oninput="App.ui.handleSearch(this.value)">
+                    </div>
+                    <!-- Type Filter Tabs -->
+                    <div id="type-filter-tabs" class="type-filter-tabs" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-glass type-tab active" data-type="all" onclick="App.ui.filterByType('all')">
+                            <span class="tab-label">全員</span>
+                            <span class="tab-count" id="count-all">0</span>
+                        </button>
+                        <button class="btn btn-glass type-tab" data-type="genzai" onclick="App.ui.filterByType('genzai')">
+                            <span class="tab-label">派遣 Dispatch</span>
+                            <span class="tab-count" id="count-genzai">0</span>
+                        </button>
+                        <button class="btn btn-glass type-tab" data-type="ukeoi" onclick="App.ui.filterByType('ukeoi')">
+                            <span class="tab-label">請負 Contract</span>
+                            <span class="tab-count" id="count-ukeoi">0</span>
+                        </button>
+                        <button class="btn btn-glass type-tab" data-type="staff" onclick="App.ui.filterByType('staff')">
+                            <span class="tab-label">社員 Staff</span>
+                            <span class="tab-count" id="count-staff">0</span>
+                        </button>
                     </div>
 
                     <div style="overflow-x: auto; max-height: 70vh;">
@@ -209,7 +496,7 @@
                 <div class="glass-panel" style="padding: 1.5rem; height: 600px;">
                     <h3 class="stat-label" style="margin-bottom: 1rem;">Usage by Factory</h3>
                     <div style="position: relative; height: 500px; width: 100%;">
-                        <canvas id="chart-factories"></canvas>
+                        <div id="chart-factories"></div>
                     </div>
                 </div>
             </div>
@@ -892,7 +1179,7 @@
     <!-- UI Elements -->
     <div class="loader-overlay" id="loader">
         <div class="spinner"></div>
-        <div style="margin-top: 1rem; color: #94a3b8; font-weight: 600;">Processing Intelligence...</div>
+        <div>読み込み中</div>
     </div>
 
     <div class="toast-container" id="toast-container"></div>
@@ -909,6 +1196,118 @@
             </div>
         </div>
     </div>
+
+    <!-- Flatpickr Script -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ja.js"></script>
+
+    <!-- Flatpickr Initialization -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Common Flatpickr configuration
+            const flatpickrConfig = {
+                locale: 'ja',
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: 'Y年m月d日 (D)',
+                allowInput: true,
+                clickOpens: true,
+                theme: 'dark',
+                position: 'auto',
+                animate: true,
+                monthSelectorType: 'dropdown',
+                shorthandCurrentMonth: false,
+                yearSelectorType: 'dropdown',
+                disableMobile: false,
+                onReady: function(selectedDates, dateStr, instance) {
+                    // Add custom icon to the input wrapper
+                    const input = instance.input;
+                    if (!input.parentElement.querySelector('.flatpickr-icon')) {
+                        const icon = document.createElement('span');
+                        icon.className = 'flatpickr-icon';
+                        icon.textContent = '📅';
+                        icon.style.cssText = 'position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; font-size: 1.2rem; opacity: 0.6;';
+                        input.parentElement.style.position = 'relative';
+                        input.parentElement.appendChild(icon);
+                    }
+                },
+                onChange: function(selectedDates, dateStr, instance) {
+                    // Trigger the original onchange event if exists
+                    const event = new Event('change', { bubbles: true });
+                    instance.input.dispatchEvent(event);
+                }
+            };
+
+            // Initialize Start Date picker
+            const startDateInput = document.getElementById('start-date');
+            if (startDateInput) {
+                const startDatePicker = flatpickr(startDateInput, {
+                    ...flatpickrConfig,
+                    onChange: function(selectedDates, dateStr, instance) {
+                        // Update end date minimum
+                        if (endDatePicker && selectedDates.length > 0) {
+                            endDatePicker.set('minDate', selectedDates[0]);
+                        }
+                        // Trigger original validation
+                        if (typeof App !== 'undefined' && App.requests && App.requests.validateDates) {
+                            App.requests.validateDates();
+                        }
+                    }
+                });
+
+                window.startDatePicker = startDatePicker;
+            }
+
+            // Initialize End Date picker
+            const endDateInput = document.getElementById('end-date');
+            if (endDateInput) {
+                const endDatePicker = flatpickr(endDateInput, {
+                    ...flatpickrConfig,
+                    onChange: function(selectedDates, dateStr, instance) {
+                        // Update start date maximum
+                        if (startDatePicker && selectedDates.length > 0) {
+                            startDatePicker.set('maxDate', selectedDates[0]);
+                        }
+                        // Trigger original validation
+                        if (typeof App !== 'undefined' && App.requests && App.requests.validateDates) {
+                            App.requests.validateDates();
+                        }
+                    }
+                });
+
+                window.endDatePicker = endDatePicker;
+            }
+
+            // Initialize Report Date pickers (for custom report range)
+            const reportStartDate = document.getElementById('report-start-date');
+            if (reportStartDate) {
+                const reportStartPicker = flatpickr(reportStartDate, {
+                    ...flatpickrConfig,
+                    onChange: function(selectedDates, dateStr, instance) {
+                        if (reportEndPicker && selectedDates.length > 0) {
+                            reportEndPicker.set('minDate', selectedDates[0]);
+                        }
+                    }
+                });
+                window.reportStartPicker = reportStartPicker;
+            }
+
+            const reportEndDate = document.getElementById('report-end-date');
+            if (reportEndDate) {
+                const reportEndPicker = flatpickr(reportEndDate, {
+                    ...flatpickrConfig,
+                    onChange: function(selectedDates, dateStr, instance) {
+                        if (reportStartPicker && selectedDates.length > 0) {
+                            reportStartPicker.set('maxDate', selectedDates[0]);
+                        }
+                    }
+                });
+                window.reportEndPicker = reportEndPicker;
+            }
+
+            console.log('✅ Flatpickr date pickers initialized with Japanese locale and custom theme');
+        });
+    </script>
 
     <script src="/static/js/app.js"></script>
 

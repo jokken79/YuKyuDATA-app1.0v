@@ -1,0 +1,648 @@
+/* ============================================
+   ARARI-STYLE GLOW EFFECTS
+   Vibrant Cyan/Blue/Purple Theme
+   ============================================ */
+
+/* Ambient Background Glows - SUPER BRIGHT */
+body::before {
+  content: '';
+  position: fixed;
+  top: -5%;
+  left: -5%;
+  width: 50%;
+  height: 50%;
+  background: rgba(6, 182, 212, 0.45);
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+  animation: float-glow 20s ease-in-out infinite;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: 10%;
+  right: -5%;
+  width: 45%;
+  height: 60%;
+  background: rgba(99, 102, 241, 0.40);
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+  animation: float-glow 25s ease-in-out infinite reverse;
+}
+
+/* Third glow at bottom - SUPER BRIGHT */
+.app-container::before {
+  content: '';
+  position: fixed;
+  bottom: -5%;
+  left: 15%;
+  width: 50%;
+  height: 50%;
+  background: rgba(139, 92, 246, 0.35);
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+  animation: float-glow 22s ease-in-out infinite;
+}
+
+/* Fourth glow - center purple */
+.app-container::after {
+  content: '';
+  position: fixed;
+  top: 30%;
+  left: 30%;
+  width: 40%;
+  height: 40%;
+  background: rgba(59, 130, 246, 0.30);
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 0;
+  animation: float-glow 18s ease-in-out infinite;
+}
+
+@keyframes float-glow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(5%, 5%) scale(1.05); }
+  50% { transform: translate(0, 10%) scale(1); }
+  75% { transform: translate(-5%, 5%) scale(0.95); }
+}
+
+/* Enhanced gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, #06b6d4, #3b82f6, #8b5cf6) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+/* Neon button effect */
+.btn-primary {
+  background: linear-gradient(135deg, #06b6d4, #3b82f6) !important;
+  box-shadow:
+    0 0 20px rgba(6, 182, 212, 0.4),
+    0 0 40px rgba(6, 182, 212, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(6, 182, 212, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+.btn-primary:hover {
+  box-shadow:
+    0 0 30px rgba(6, 182, 212, 0.6),
+    0 0 60px rgba(6, 182, 212, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Glass panel with cyan border glow on hover */
+.glass-panel {
+  transition: all 0.3s ease !important;
+}
+
+.glass-panel:hover {
+  border-color: rgba(6, 182, 212, 0.3) !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(6, 182, 212, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Stat card gradient borders */
+.stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.3), rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.3));
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.stat-card:hover::before {
+  opacity: 1;
+}
+
+/* Enhanced stat values */
+.stat-value {
+  text-shadow: 0 0 30px rgba(6, 182, 212, 0.3);
+}
+
+/* Table row glow on hover */
+.modern-table tbody tr:hover td {
+  background: linear-gradient(90deg,
+    rgba(6, 182, 212, 0.08),
+    rgba(59, 130, 246, 0.1),
+    rgba(6, 182, 212, 0.08)) !important;
+}
+
+.modern-table tbody tr:hover td:first-child {
+  border-left: 3px solid #06b6d4 !important;
+}
+
+/* Navigation active state with glow */
+.nav-item.active {
+  background: rgba(6, 182, 212, 0.15) !important;
+  border-left: 3px solid #06b6d4 !important;
+  box-shadow:
+    inset 0 0 20px rgba(6, 182, 212, 0.1),
+    0 0 15px rgba(6, 182, 212, 0.1) !important;
+}
+
+.nav-item:hover {
+  background: rgba(6, 182, 212, 0.08) !important;
+}
+
+/* Badge glow effects */
+.badge-success {
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.3);
+}
+
+.badge-warning {
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
+}
+
+.badge-danger {
+  box-shadow: 0 0 10px rgba(248, 113, 113, 0.3);
+}
+
+/* Input focus glow */
+.input-glass:focus {
+  border-color: #06b6d4 !important;
+  box-shadow:
+    0 0 0 3px rgba(6, 182, 212, 0.2),
+    0 0 20px rgba(6, 182, 212, 0.15) !important;
+}
+
+/* Logo glow */
+.logo span:first-child,
+.logo img {
+  filter: drop-shadow(0 0 10px rgba(6, 182, 212, 0.4));
+}
+
+/* Chart containers subtle glow */
+canvas {
+  filter: drop-shadow(0 0 20px rgba(6, 182, 212, 0.1));
+}
+
+/* Scrollbar with theme color */
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #06b6d4, #3b82f6) !important;
+}
+
+/* Toast with glow */
+.toast {
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(6, 182, 212, 0.1) !important;
+}
+
+/* Loading spinner with glow */
+.spinner::after {
+  border-top-color: #06b6d4 !important;
+  filter: drop-shadow(0 0 10px rgba(6, 182, 212, 0.6)) !important;
+}
+
+.spinner::before {
+  border-top-color: #8b5cf6 !important;
+  filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.5)) !important;
+}
+
+/* Theme toggle glow */
+[data-theme="dark"] .theme-toggle-track {
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+}
+
+/* Real data badge like Arari */
+.badge-success {
+  background: rgba(52, 211, 153, 0.1) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(52, 211, 153, 0.2) !important;
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.2) !important;
+}
+
+/* Staggered entrance animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Disabled CSS animations - using GSAP instead to prevent conflicts */
+.bento-grid > .glass-panel {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* Ensure all panels are always visible */
+.glass-panel, .stat-card {
+  opacity: 1 !important;
+}
+
+/* View sections must be visible when active */
+.view-section {
+  opacity: 1;
+}
+
+.view-section[style*="display: block"] {
+  opacity: 1 !important;
+}
+
+/* Header title gradient like Arari */
+header h1 {
+  background: linear-gradient(135deg, #06b6d4, #3b82f6, #6366f1) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+/* ============================================
+   AJUSTES DE BRILLO Y CONTRASTE - SUPER BRIGHT
+   Máxima visibilidad con estilo Arari vibrante
+   ============================================ */
+
+/* Fondo MUCHO más claro con gradientes intensos */
+body {
+  background-color: #0f1729 !important;
+  background-image:
+    radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.5) 0px, transparent 60%),
+    radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.45) 0px, transparent 60%),
+    radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.4) 0px, transparent 60%),
+    radial-gradient(at 0% 100%, rgba(59, 130, 246, 0.35) 0px, transparent 60%) !important;
+}
+
+/* Paneles glass BRILLANTES con glow */
+.glass-panel {
+  background: rgba(30, 41, 59, 0.75) !important;
+  border: 1px solid rgba(6, 182, 212, 0.35) !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(6, 182, 212, 0.15),
+    inset 0 1px 2px rgba(255, 255, 255, 0.15) !important;
+}
+
+.glass-panel:hover {
+  border-color: rgba(6, 182, 212, 0.5) !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(6, 182, 212, 0.25),
+    inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Sidebar BRILLANTE con glow lateral */
+.sidebar {
+  background: rgba(15, 23, 42, 0.85) !important;
+  border-right: 1px solid rgba(6, 182, 212, 0.3) !important;
+  box-shadow:
+    2px 0 30px rgba(6, 182, 212, 0.2),
+    inset -1px 0 20px rgba(6, 182, 212, 0.1) !important;
+}
+
+/* Stat cards VIBRANTES con glow neón */
+.stat-card {
+  background: rgba(30, 41, 59, 0.8) !important;
+  border: 1px solid rgba(6, 182, 212, 0.25) !important;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    0 0 25px rgba(6, 182, 212, 0.15),
+    inset 0 1px 2px rgba(255, 255, 255, 0.15) !important;
+}
+
+.stat-card:hover {
+  border-color: rgba(6, 182, 212, 0.5) !important;
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.3),
+    0 0 40px rgba(6, 182, 212, 0.25),
+    inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-2px);
+}
+
+/* Textos SUPER legibles con glow */
+.stat-value {
+  color: #ffffff !important;
+  text-shadow:
+    0 0 10px rgba(6, 182, 212, 0.8),
+    0 0 30px rgba(6, 182, 212, 0.5),
+    0 0 50px rgba(6, 182, 212, 0.3) !important;
+  font-weight: 700 !important;
+}
+
+.stat-label {
+  color: #e2e8f0 !important;
+  text-shadow: 0 0 10px rgba(6, 182, 212, 0.3) !important;
+}
+
+/* Inputs SUPER visibles con glow */
+.input-glass {
+  background: rgba(15, 23, 42, 0.7) !important;
+  border: 1px solid rgba(6, 182, 212, 0.35) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.1) !important;
+}
+
+.input-glass:hover {
+  background: rgba(15, 23, 42, 0.8) !important;
+  border-color: rgba(6, 182, 212, 0.5) !important;
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.2) !important;
+}
+
+.input-glass:focus {
+  border-color: #06b6d4 !important;
+  box-shadow:
+    0 0 0 3px rgba(6, 182, 212, 0.3),
+    0 0 30px rgba(6, 182, 212, 0.3) !important;
+}
+
+/* Select dropdowns */
+select.input-glass {
+  background: rgba(15, 23, 42, 0.8) !important;
+  border: 1px solid rgba(6, 182, 212, 0.35) !important;
+  color: #ffffff !important;
+}
+
+/* Tabla BRILLANTE */
+.modern-table thead {
+  background: rgba(6, 182, 212, 0.15) !important;
+}
+
+.modern-table thead th {
+  color: #06b6d4 !important;
+  text-shadow: 0 0 10px rgba(6, 182, 212, 0.5) !important;
+}
+
+.modern-table tbody tr {
+  background: rgba(30, 41, 59, 0.4);
+  transition: all 0.3s ease;
+  border-bottom: 1px solid rgba(6, 182, 212, 0.1) !important;
+}
+
+.modern-table tbody tr:hover {
+  background: rgba(6, 182, 212, 0.2) !important;
+  box-shadow:
+    0 0 30px rgba(6, 182, 212, 0.2),
+    inset 0 0 20px rgba(6, 182, 212, 0.1) !important;
+}
+
+.modern-table td {
+  color: #f1f5f9 !important;
+}
+
+/* Badges SUPER brillantes con glow neón */
+.badge-success {
+  background: rgba(52, 211, 153, 0.3) !important;
+  border: 1px solid rgba(52, 211, 153, 0.6) !important;
+  color: #86efac !important;
+  box-shadow: 0 0 20px rgba(52, 211, 153, 0.4) !important;
+  text-shadow: 0 0 10px rgba(52, 211, 153, 0.5) !important;
+}
+
+.badge-warning {
+  background: rgba(251, 191, 36, 0.3) !important;
+  border: 1px solid rgba(251, 191, 36, 0.6) !important;
+  color: #fde047 !important;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.4) !important;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.5) !important;
+}
+
+.badge-danger {
+  background: rgba(248, 113, 113, 0.3) !important;
+  border: 1px solid rgba(248, 113, 113, 0.6) !important;
+  color: #fecaca !important;
+  box-shadow: 0 0 20px rgba(248, 113, 113, 0.4) !important;
+  text-shadow: 0 0 10px rgba(248, 113, 113, 0.5) !important;
+}
+
+.badge-critical {
+  background: rgba(239, 68, 68, 0.4) !important;
+  border: 1px solid rgba(239, 68, 68, 0.7) !important;
+  color: #fca5a5 !important;
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.5) !important;
+  animation: pulse-danger 2s ease-in-out infinite;
+}
+
+@keyframes pulse-danger {
+  0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 35px rgba(239, 68, 68, 0.6); }
+}
+
+/* Tab buttons BRILLANTES */
+.tab-container {
+  background: rgba(15, 23, 42, 0.7) !important;
+  border: 1px solid rgba(6, 182, 212, 0.2) !important;
+}
+
+.tab-btn {
+  color: #94a3b8 !important;
+}
+
+.tab-btn:hover {
+  color: #06b6d4 !important;
+  background: rgba(6, 182, 212, 0.1) !important;
+}
+
+.tab-btn.active {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.3), rgba(59, 130, 246, 0.3)) !important;
+  box-shadow:
+    0 2px 15px rgba(6, 182, 212, 0.5),
+    0 0 30px rgba(6, 182, 212, 0.3) !important;
+}
+
+/* Toast BRILLANTE */
+.toast {
+  background: rgba(30, 41, 59, 0.95) !important;
+  border: 1px solid rgba(6, 182, 212, 0.4) !important;
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(6, 182, 212, 0.3) !important;
+}
+
+/* Nav items BRILLANTES */
+.nav-item {
+  color: #e2e8f0 !important;
+}
+
+.nav-item:hover {
+  color: #22d3ee !important;
+  background: rgba(6, 182, 212, 0.2) !important;
+  box-shadow:
+    inset 0 0 20px rgba(6, 182, 212, 0.15),
+    0 0 15px rgba(6, 182, 212, 0.1) !important;
+}
+
+.nav-item.active {
+  color: #06b6d4 !important;
+  background: rgba(6, 182, 212, 0.25) !important;
+  border-left: 3px solid #06b6d4 !important;
+  box-shadow:
+    inset 0 0 30px rgba(6, 182, 212, 0.2),
+    0 0 20px rgba(6, 182, 212, 0.15) !important;
+}
+
+/* ============================================
+   FORMULARIOS Y VISTAS ESPECÍFICAS
+   ============================================ */
+
+/* Formulario de solicitudes (申請) */
+form, .form-group {
+  color: #f1f5f9 !important;
+}
+
+label {
+  color: #e2e8f0 !important;
+  text-shadow: 0 0 5px rgba(6, 182, 212, 0.2) !important;
+}
+
+/* Botones más brillantes */
+.btn {
+  font-weight: 600 !important;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #06b6d4, #3b82f6) !important;
+  border: none !important;
+  box-shadow:
+    0 4px 15px rgba(6, 182, 212, 0.4),
+    0 0 30px rgba(6, 182, 212, 0.2) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+.btn-primary:hover {
+  box-shadow:
+    0 6px 25px rgba(6, 182, 212, 0.5),
+    0 0 50px rgba(6, 182, 212, 0.3) !important;
+  transform: translateY(-2px);
+}
+
+.btn-glass {
+  background: rgba(30, 41, 59, 0.7) !important;
+  border: 1px solid rgba(6, 182, 212, 0.3) !important;
+  color: #e2e8f0 !important;
+}
+
+.btn-glass:hover {
+  background: rgba(6, 182, 212, 0.2) !important;
+  border-color: rgba(6, 182, 212, 0.5) !important;
+  color: #06b6d4 !important;
+}
+
+/* Header brillante */
+header h1, .page-title, #page-title {
+  text-shadow:
+    0 0 20px rgba(6, 182, 212, 0.6),
+    0 0 40px rgba(59, 130, 246, 0.4) !important;
+}
+
+/* Filtros de año SUPER visibles */
+#year-filter {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: 400px;
+  overflow-x: auto;
+}
+
+#year-filter .btn,
+.year-filter .btn {
+  min-width: 60px;
+  padding: 0.5rem 1rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  background: rgba(30, 41, 59, 0.8) !important;
+  border: 1px solid rgba(6, 182, 212, 0.3) !important;
+  color: #e2e8f0 !important;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.1) !important;
+  transition: all 0.2s ease !important;
+}
+
+#year-filter .btn:hover {
+  background: rgba(6, 182, 212, 0.2) !important;
+  border-color: rgba(6, 182, 212, 0.5) !important;
+  color: #06b6d4 !important;
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.2) !important;
+}
+
+#year-filter .btn.btn-primary,
+#year-filter .btn-primary {
+  background: linear-gradient(135deg, #06b6d4, #3b82f6) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 0 20px rgba(6, 182, 212, 0.4),
+    0 0 40px rgba(6, 182, 212, 0.2) !important;
+}
+
+/* Loader overlay más brillante */
+.loader-overlay {
+  background: rgba(10, 20, 40, 0.9) !important;
+}
+
+/* Confirm modal más visible */
+.confirm-modal {
+  background: rgba(10, 20, 40, 0.92) !important;
+}
+
+.confirm-modal-content {
+  background: rgba(30, 41, 59, 0.95) !important;
+  border: 1px solid rgba(6, 182, 212, 0.3) !important;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.7),
+    0 0 40px rgba(6, 182, 212, 0.15) !important;
+}
+
+/* Form sections más visibles */
+.form-section {
+  background: rgba(30, 41, 59, 0.4) !important;
+  border: 1px solid rgba(6, 182, 212, 0.1) !important;
+}
+
+/* Headers de tabla más visibles */
+.modern-table th {
+  color: #cbd5e1 !important;
+  border-bottom: 2px solid rgba(6, 182, 212, 0.3) !important;
+}
+
+.modern-table td {
+  color: #e2e8f0 !important;
+}
+
+/* Calendar day más visible */
+.calendar-day {
+  background: rgba(30, 41, 59, 0.4) !important;
+}
+
+.calendar-day:hover {
+  background: rgba(6, 182, 212, 0.15) !important;
+}
+
+/* Efecto de resplandor pulsante en elementos importantes */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(6, 182, 212, 0.5);
+  }
+}
+
+.btn-primary:hover {
+  animation: pulse-glow 2s ease-in-out infinite;
+}

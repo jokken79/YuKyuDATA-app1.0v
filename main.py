@@ -217,10 +217,19 @@ async def read_root():
         return f.read()
 
 @app.get("/api/employees")
-async def get_employees(year: int = None):
-    """Returns list of employees from SQLite."""
+async def get_employees(year: int = None, enhanced: bool = False, active_only: bool = False):
+    """Returns list of employees from SQLite.
+
+    Args:
+        year: Filter by year
+        enhanced: If True, includes employee_type (genzai/ukeoi/staff) and employment_status
+        active_only: If True, only returns employees with status '在職中'
+    """
     try:
-        data = database.get_employees(year)
+        if enhanced:
+            data = database.get_employees_enhanced(year, active_only)
+        else:
+            data = database.get_employees(year)
         years = database.get_available_years()
         return {"data": data, "available_years": years}
     except Exception as e:

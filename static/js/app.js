@@ -103,10 +103,11 @@ const App = {
     },
 
     data: {
-        async fetchEmployees(year = null) {
+        async fetchEmployees(year = null, activeOnly = true) {
             try {
-                let url = `${App.config.apiBase}/employees`;
-                if (year) url += `?year=${year}`;
+                // Use enhanced endpoint with employee type and active status
+                let url = `${App.config.apiBase}/employees?enhanced=true&active_only=${activeOnly}`;
+                if (year) url += `&year=${year}`;
 
                 const res = await fetch(url);
                 const json = await res.json();
@@ -114,7 +115,11 @@ const App = {
                 App.state.data = json.data.map(emp => ({
                     ...emp,
                     employeeNum: emp.employee_num,
-                    usageRate: emp.granted > 0 ? Math.round((emp.used / emp.granted) * 100) : 0
+                    usageRate: emp.granted > 0 ? Math.round((emp.used / emp.granted) * 100) : 0,
+                    // Enhanced fields
+                    employeeType: emp.employee_type || 'staff',
+                    employmentStatus: emp.employment_status || '在職中',
+                    isActive: emp.is_active === 1 || emp.is_active === true
                 }));
                 App.state.availableYears = json.available_years;
 
@@ -191,7 +196,9 @@ const App = {
             const stats = {};
             const data = this.getFiltered();
             data.forEach(e => {
-                const f = e.haken || 'Unknown';
+                const f = e.haken;
+                // Filtrar fábricas sin nombre válido
+                if (!f || f === '0' || f === 'Unknown' || f.trim() === '' || f === 'null') return;
                 if (!stats[f]) stats[f] = 0;
                 stats[f] += e.used;
             });
@@ -314,10 +321,11 @@ const App = {
             document.getElementById('kpi-total').innerText = total;
         },
 
-        renderTable(filterText = '') {
+        renderTable(filterText = '', typeFilter = 'all') {
             const tbody = document.getElementById('table-body');
             let data = App.data.getFiltered();
 
+            // Filter by text search
             if (filterText) {
                 const q = filterText.toLowerCase();
                 data = data.filter(e =>
@@ -327,8 +335,21 @@ const App = {
                 );
             }
 
+            // Filter by employee type (genzai, ukeoi, staff)
+            if (typeFilter && typeFilter !== 'all') {
+                data = data.filter(e => e.employeeType === typeFilter);
+            }
+
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem;">No matching records found</td></tr>';
+                tbody.textContent = '';
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 7;
+                td.style.textAlign = 'center';
+                td.style.padding = '2rem';
+                td.textContent = 'No matching records found';
+                tr.appendChild(td);
+                tbody.appendChild(tr);
                 return;
             }
 
@@ -477,7 +498,7 @@ const App = {
                 legend: {
                     position: 'right',
                     labels: {
-                        colors: '#94a3b8'
+                        colors: '#6b6b6b'
                     },
                     markers: {
                         width: 12,
@@ -593,17 +614,17 @@ const App = {
                         left: 0,
                         blur: 15,
                         opacity: 0.2,
-                        color: '#818cf8'
+                        color: '#06b6d4'
                     }
                 },
-                colors: ['#818cf8'],
+                colors: ['#06b6d4'],
                 fill: {
                     type: 'gradient',
                     gradient: {
                         shade: 'dark',
                         type: 'vertical',
                         shadeIntensity: 0.5,
-                        gradientToColors: ['#38bdf8'],
+                        gradientToColors: ['#8b5cf6'],
                         opacityFrom: 0.7,
                         opacityTo: 0.2,
                         stops: [0, 100]
@@ -612,14 +633,14 @@ const App = {
                 stroke: {
                     curve: 'smooth',
                     width: 3,
-                    colors: ['#818cf8']
+                    colors: ['#06b6d4']
                 },
                 dataLabels: {
                     enabled: false
                 },
                 markers: {
                     size: 5,
-                    colors: ['#818cf8'],
+                    colors: ['#06b6d4'],
                     strokeColors: '#fff',
                     strokeWidth: 2,
                     hover: {
@@ -709,7 +730,7 @@ const App = {
                     labels: ['Haken (Dispatch)', 'Ukeoi (Contract)', 'Staff'],
                     datasets: [{
                         data: typeData.data,
-                        backgroundColor: ['#f472b6', '#818cf8', '#34d399'],
+                        backgroundColor: ['#06b6d4', '#8b5cf6', '#34d399'],
                         borderWidth: 0
                     }]
                 },
@@ -717,7 +738,7 @@ const App = {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'right', labels: { color: '#94a3b8' } }
+                        legend: { position: 'right', labels: { color: '#6b6b6b' } }
                     }
                 }
             });
@@ -808,8 +829,8 @@ const App = {
                         distributed: true
                     }
                 },
-                colors: ['#38bdf8', '#818cf8', '#f472b6', '#34d399', '#fbbf24',
-                    '#60a5fa', '#a78bfa', '#fb923c', '#4ade80', '#facc15'],
+                colors: ['#06b6d4', '#3b82f6', '#8b5cf6', '#f472b6', '#34d399',
+                    '#fbbf24', '#f87171', '#a78bfa', '#22d3ee', '#818cf8'],
                 dataLabels: {
                     enabled: true,
                     style: {
@@ -2323,8 +2344,8 @@ const App = {
                     datasets: [{
                         label: '使用日数',
                         data: data.map(d => d.total_used),
-                        backgroundColor: 'rgba(56, 189, 248, 0.5)',
-                        borderColor: '#38bdf8',
+                        backgroundColor: 'rgba(6, 182, 212, 0.5)',
+                        borderColor: '#06b6d4',
                         borderWidth: 1,
                         borderRadius: 4
                     }]
@@ -2334,8 +2355,8 @@ const App = {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-                        y: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                        x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#6b6b6b' } },
+                        y: { grid: { display: false }, ticks: { color: '#6b6b6b' } }
                     },
                     plugins: { legend: { display: false } }
                 }
@@ -2356,7 +2377,7 @@ const App = {
                     labels: Object.keys(typeStats),
                     datasets: [{
                         data: Object.values(typeStats).map(v => v.used),
-                        backgroundColor: ['#38bdf8', '#818cf8', '#34d399'],
+                        backgroundColor: ['#06b6d4', '#8b5cf6', '#34d399'],
                         borderWidth: 0
                     }]
                 },
@@ -2364,7 +2385,7 @@ const App = {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'right', labels: { color: '#94a3b8' } }
+                        legend: { position: 'right', labels: { color: '#6b6b6b' } }
                     }
                 }
             });
@@ -2873,27 +2894,28 @@ const App = {
             });
         },
 
-        // Animate view transitions
+        // Animate view transitions - FIXED: Use gsap.to instead of gsap.from to prevent opacity issues
         transitionView(viewElement) {
             if (typeof gsap === 'undefined') return;
 
-            gsap.from(viewElement, {
-                duration: 0.5,
-                opacity: 0,
-                y: 20,
-                ease: 'power2.out'
-            });
+            // First ensure the element is visible
+            gsap.set(viewElement, { opacity: 1, y: 0 });
 
-            // Animate children with stagger
+            // Animate children with stagger (only animate transform, not opacity)
             const children = viewElement.querySelectorAll('.glass-panel, .stat-card');
-            gsap.from(children, {
-                duration: 0.6,
-                y: 30,
-                opacity: 0,
-                stagger: 0.08,
-                ease: 'power3.out',
-                delay: 0.1
-            });
+            if (children.length > 0) {
+                gsap.fromTo(children,
+                    { y: 15, opacity: 0.8 },
+                    {
+                        duration: 0.4,
+                        y: 0,
+                        opacity: 1,
+                        stagger: 0.05,
+                        ease: 'power2.out',
+                        clearProps: 'all' // Clear GSAP props after animation
+                    }
+                );
+            }
         }
     }
 };

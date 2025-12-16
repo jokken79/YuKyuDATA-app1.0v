@@ -229,6 +229,55 @@ def get_available_years():
     
     return [row['year'] for row in rows]
 
+def get_employees_enhanced(year=None, active_only=False):
+    """
+    Retrieves employees with type (genzai/ukeoi/staff) and active status.
+    Crosses employees table with genzai and ukeoi to determine employment type and status.
+    """
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    # Query with LEFT JOINs to genzai and ukeoi
+    query = '''
+        SELECT
+            e.*,
+            CASE
+                WHEN g.id IS NOT NULL THEN 'genzai'
+                WHEN u.id IS NOT NULL THEN 'ukeoi'
+                ELSE 'staff'
+            END as employee_type,
+            COALESCE(g.status, u.status, '在職中') as employment_status,
+            CASE
+                WHEN g.status = '在職中' OR u.status = '在職中' OR (g.id IS NULL AND u.id IS NULL) THEN 1
+                ELSE 0
+            END as is_active
+        FROM employees e
+        LEFT JOIN genzai g ON e.employee_num = g.employee_num
+        LEFT JOIN ukeoi u ON e.employee_num = u.employee_num
+    '''
+
+    params = []
+    conditions = []
+
+    if year:
+        conditions.append("e.year = ?")
+        params.append(year)
+
+    if active_only:
+        conditions.append("""
+            (g.status = '在職中' OR u.status = '在職中' OR (g.id IS NULL AND u.id IS NULL))
+        """)
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    query += " ORDER BY e.usage_rate DESC"
+
+    rows = c.execute(query, params).fetchall()
+    conn.close()
+
+    return [dict(row) for row in rows]
+
 def clear_database():
     conn = get_db_connection()
     conn.execute("DELETE FROM employees")
