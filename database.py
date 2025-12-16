@@ -103,15 +103,62 @@ def init_db():
             start_date TEXT NOT NULL,
             end_date TEXT NOT NULL,
             days_requested REAL NOT NULL,
+            hours_requested REAL DEFAULT 0,
+            leave_type TEXT DEFAULT 'full',
             reason TEXT,
             status TEXT DEFAULT 'PENDING',
             requested_at TEXT NOT NULL,
             approved_by TEXT,
             approved_at TEXT,
             year INTEGER NOT NULL,
+            hourly_wage INTEGER DEFAULT 0,
+            cost_estimate REAL DEFAULT 0,
             created_at TEXT NOT NULL
         )
     ''')
+
+    # ============================================
+    # STRATEGIC INDEXES FOR PERFORMANCE
+    # ============================================
+
+    # Indexes for employees table
+    c.execute('CREATE INDEX IF NOT EXISTS idx_emp_num ON employees(employee_num)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_emp_year ON employees(year)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_emp_num_year ON employees(employee_num, year)')
+
+    # Indexes for leave_requests table
+    c.execute('CREATE INDEX IF NOT EXISTS idx_lr_emp_num ON leave_requests(employee_num)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_lr_status ON leave_requests(status)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_lr_year ON leave_requests(year)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_lr_dates ON leave_requests(start_date, end_date)')
+
+    # Indexes for genzai/ukeoi tables
+    c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_emp ON genzai(employee_num)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_status ON genzai(status)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_emp ON ukeoi(employee_num)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_status ON ukeoi(status)')
+
+    # ============================================
+    # SCHEMA MIGRATIONS (add columns if not exist)
+    # ============================================
+
+    # Add hire_date to genzai if not exists
+    try:
+        c.execute("ALTER TABLE genzai ADD COLUMN hire_date TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
+    # Add hire_date to ukeoi if not exists
+    try:
+        c.execute("ALTER TABLE ukeoi ADD COLUMN hire_date TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    # Add grant_year to employees for FIFO tracking
+    try:
+        c.execute("ALTER TABLE employees ADD COLUMN grant_year INTEGER")
+    except sqlite3.OperationalError:
+        pass
 
     conn.commit()
     conn.close()
@@ -361,17 +408,38 @@ def get_stats_by_factory(year=None):
 
 # === LEAVE REQUESTS Functions ===
 
-def create_leave_request(employee_num, employee_name, start_date, end_date, days_requested, reason, year):
-    """Creates a new leave request (yukyu solicitud)."""
+def create_leave_request(employee_num, employee_name, start_date, end_date, days_requested, reason, year,
+                         hours_requested=0, leave_type='full', hourly_wage=0):
+    """Creates a new leave request (yukyu solicitud).
+
+    Args:
+        employee_num: 社員番号
+        employee_name: 氏名
+        start_date: 開始日
+        end_date: 終了日
+        days_requested: 申請日数
+        reason: 理由
+        year: 年度
+        hours_requested: 申請時間 (時間単位有給用)
+        leave_type: 種類 (full/half_am/half_pm/hourly)
+        hourly_wage: 時給 (コスト計算用)
+    """
     conn = get_db_connection()
     c = conn.cursor()
     timestamp = datetime.now().isoformat()
 
+    # Calculate cost estimate
+    # 1 day = 8 hours typical
+    total_hours = (days_requested * 8) + hours_requested
+    cost_estimate = total_hours * hourly_wage if hourly_wage > 0 else 0
+
     c.execute('''
         INSERT INTO leave_requests
-        (employee_num, employee_name, start_date, end_date, days_requested, reason, status, requested_at, year, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?)
-    ''', (employee_num, employee_name, start_date, end_date, days_requested, reason, timestamp, year, timestamp))
+        (employee_num, employee_name, start_date, end_date, days_requested, hours_requested,
+         leave_type, reason, status, requested_at, year, hourly_wage, cost_estimate, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?)
+    ''', (employee_num, employee_name, start_date, end_date, days_requested, hours_requested,
+          leave_type, reason, timestamp, year, hourly_wage, cost_estimate, timestamp))
 
     request_id = c.lastrowid
     conn.commit()
@@ -635,3 +703,216 @@ def clear_yukyu_usage_details():
     c.execute("DELETE FROM yukyu_usage_details")
     conn.commit()
     conn.close()
+
+
+# ============================================
+# CANCEL/REVERT LEAVE REQUESTS
+# ============================================
+
+def cancel_leave_request(request_id):
+    """
+    Cancela una solicitud PENDIENTE.
+    Solo funciona si el status es 'PENDING'.
+
+    Args:
+        request_id: ID de la solicitud
+
+    Returns:
+        dict con info de la solicitud cancelada
+    """
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    # Get request details
+    request = c.execute("SELECT * FROM leave_requests WHERE id = ?", (request_id,)).fetchone()
+
+    if not request:
+        conn.close()
+        raise ValueError(f"Solicitud {request_id} no encontrada")
+
+    if request['status'] != 'PENDING':
+        conn.close()
+        raise ValueError(f"Solo se pueden cancelar solicitudes pendientes. Estado actual: {request['status']}")
+
+    # Delete the request
+    c.execute("DELETE FROM leave_requests WHERE id = ?", (request_id,))
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "request_id": request_id,
+        "employee_num": request['employee_num'],
+        "employee_name": request['employee_name'],
+        "days_requested": request['days_requested']
+    }
+
+
+def revert_approved_request(request_id, reverted_by="Manager"):
+    """
+    Revierte una solicitud YA APROBADA.
+    Devuelve los días usados al balance del empleado.
+
+    Args:
+        request_id: ID de la solicitud
+        reverted_by: Quién revierte la solicitud
+
+    Returns:
+        dict con info de la reversión
+    """
+    conn = get_db_connection()
+    c = conn.cursor()
+    timestamp = datetime.now().isoformat()
+
+    # Get request details
+    request = c.execute("SELECT * FROM leave_requests WHERE id = ?", (request_id,)).fetchone()
+
+    if not request:
+        conn.close()
+        raise ValueError(f"Solicitud {request_id} no encontrada")
+
+    if request['status'] != 'APPROVED':
+        conn.close()
+        raise ValueError(f"Solo se pueden revertir solicitudes aprobadas. Estado actual: {request['status']}")
+
+    # Update request status to CANCELLED
+    c.execute('''
+        UPDATE leave_requests
+        SET status = 'CANCELLED', approved_by = ?, approved_at = ?
+        WHERE id = ?
+    ''', (f"REVERTED by {reverted_by}", timestamp, request_id))
+
+    # Revert employee yukyu balance (subtract from used days)
+    employee_id = f"{request['employee_num']}_{request['year']}"
+
+    employee = c.execute("SELECT * FROM employees WHERE id = ?", (employee_id,)).fetchone()
+
+    days_returned = 0
+    if employee:
+        days_returned = request['days_requested']
+        new_used = max(0, employee['used'] - days_returned)  # No negative
+        new_balance = employee['granted'] - new_used
+        new_usage_rate = round((new_used / employee['granted']) * 100) if employee['granted'] > 0 else 0
+
+        c.execute('''
+            UPDATE employees
+            SET used = ?, balance = ?, usage_rate = ?, last_updated = ?
+            WHERE id = ?
+        ''', (new_used, new_balance, new_usage_rate, timestamp, employee_id))
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "request_id": request_id,
+        "employee_num": request['employee_num'],
+        "employee_name": request['employee_name'],
+        "days_returned": days_returned,
+        "reverted_by": reverted_by
+    }
+
+
+# ============================================
+# BACKUP & RESTORE FUNCTIONS
+# ============================================
+
+def create_backup(backup_dir="backups"):
+    """
+    Crea una copia de seguridad de la base de datos.
+
+    Args:
+        backup_dir: Directorio donde guardar backups
+
+    Returns:
+        dict con info del backup
+    """
+    import shutil
+
+    # Create backup directory if not exists
+    backup_path = Path(backup_dir)
+    backup_path.mkdir(exist_ok=True)
+
+    # Generate backup filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_filename = f"yukyu_backup_{timestamp}.db"
+    backup_filepath = backup_path / backup_filename
+
+    # Copy database file
+    if not Path(DB_NAME).exists():
+        raise ValueError(f"Database file {DB_NAME} not found")
+
+    shutil.copy2(DB_NAME, backup_filepath)
+
+    # Get backup file size
+    file_size = backup_filepath.stat().st_size
+
+    # Clean old backups (keep last 10)
+    backups = sorted(backup_path.glob("yukyu_backup_*.db"), reverse=True)
+    for old_backup in backups[10:]:
+        old_backup.unlink()
+
+    return {
+        "filename": backup_filename,
+        "path": str(backup_filepath),
+        "size_bytes": file_size,
+        "size_mb": round(file_size / (1024 * 1024), 2),
+        "created_at": timestamp
+    }
+
+
+def list_backups(backup_dir="backups"):
+    """
+    Lista todos los backups disponibles.
+
+    Returns:
+        Lista de backups con info
+    """
+    backup_path = Path(backup_dir)
+
+    if not backup_path.exists():
+        return []
+
+    backups = []
+    for backup_file in sorted(backup_path.glob("yukyu_backup_*.db"), reverse=True):
+        stat = backup_file.stat()
+        backups.append({
+            "filename": backup_file.name,
+            "path": str(backup_file),
+            "size_bytes": stat.st_size,
+            "size_mb": round(stat.st_size / (1024 * 1024), 2),
+            "created_at": datetime.fromtimestamp(stat.st_mtime).isoformat()
+        })
+
+    return backups
+
+
+def restore_backup(backup_filename, backup_dir="backups"):
+    """
+    Restaura la base de datos desde un backup.
+    CUIDADO: Esto sobrescribe la base de datos actual.
+
+    Args:
+        backup_filename: Nombre del archivo de backup
+        backup_dir: Directorio de backups
+
+    Returns:
+        dict con info de la restauración
+    """
+    import shutil
+
+    backup_path = Path(backup_dir) / backup_filename
+
+    if not backup_path.exists():
+        raise ValueError(f"Backup file {backup_filename} not found")
+
+    # Create a backup of current DB before restoring
+    current_backup = create_backup(backup_dir)
+
+    # Restore the backup
+    shutil.copy2(backup_path, DB_NAME)
+
+    return {
+        "restored_from": backup_filename,
+        "previous_backup": current_backup['filename'],
+        "restored_at": datetime.now().isoformat()
+    }
