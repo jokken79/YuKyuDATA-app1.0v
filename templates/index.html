@@ -946,9 +946,9 @@
 
     <!-- Simple Modal for Details -->
     <div class="loader-overlay" id="detail-modal" style="background: rgba(0,0,0,0.7);">
-        <div class="glass-panel" style="width: 500px; max-width: 90%; position: relative;">
+        <div class="glass-panel" style="width: 600px; max-width: 95%; max-height: 90vh; overflow-y: auto; position: relative;">
             <button class="btn"
-                style="position: absolute; right: 10px; top: 10px; background: transparent; color: white;"
+                style="position: absolute; right: 10px; top: 10px; background: transparent; color: white; z-index: 10;"
                 onclick="App.ui.closeModal()">✕</button>
             <div style="padding: 2rem;">
                 <h2 id="modal-title" style="margin-bottom: 1rem;">Employee Details</h2>

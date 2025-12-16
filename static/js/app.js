@@ -407,22 +407,132 @@ const App = {
             setTimeout(() => toast.remove(), 4000);
         },
 
-        openModal(id) {
+        async openModal(id) {
             const emp = App.state.data.find(e => e.employeeNum == id);
             if (!emp) return;
 
+            // Mostrar modal con loading
             document.getElementById('modal-title').innerText = emp.name;
             document.getElementById('modal-content').innerHTML = `
-                <div class="bento-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 2rem;">
-                    <div><span class="text-gray-400">ID:</span> ${emp.employeeNum}</div>
-                    <div><span class="text-gray-400">Factory:</span> ${emp.haken}</div>
-                    <div><span class="text-gray-400">Granted:</span> ${emp.granted}</div>
-                    <div><span class="text-gray-400">Used:</span> ${emp.used}</div>
-                    <div><span class="text-gray-400">Balance:</span> ${emp.balance}</div>
-                    <div><span class="text-gray-400">Rate:</span> ${emp.usageRate}%</div>
+                <div style="text-align: center; padding: 2rem;">
+                    <div class="spinner" style="margin: 0 auto;"></div>
+                    <p style="margin-top: 1rem; color: #94a3b8;">Cargando datos...</p>
                 </div>
             `;
             document.getElementById('detail-modal').classList.add('active');
+
+            // Obtener datos completos del empleado
+            try {
+                const res = await fetch(`${App.config.apiBase}/employees/${id}/leave-info`);
+                const json = await res.json();
+
+                if (json.status !== 'success') {
+                    throw new Error('No se pudieron cargar los datos');
+                }
+
+                const employee = json.employee || {};
+                const yukyuHistory = json.yukyu_history || [];
+                const usageHistory = json.usage_history || [];
+                const totalAvailable = json.total_available || 0;
+
+                // Calcular fecha de renovación (基準日 + 1 año)
+                let renewalDate = 'No disponible';
+                if (yukyuHistory.length > 0) {
+                    const latestYear = Math.max(...yukyuHistory.map(h => h.year));
+                    // Renovación típica en noviembre del siguiente año
+                    renewalDate = `${latestYear + 1}年11月頃`;
+                }
+
+                // Generar HTML del historial de 2 años
+                let historyHtml = '';
+                yukyuHistory.sort((a, b) => b.year - a.year).forEach(h => {
+                    historyHtml += `
+                        <div class="glass-panel" style="padding: 1rem; margin-bottom: 0.5rem; background: rgba(56, 189, 248, 0.1);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <strong style="color: #38bdf8;">📅 ${h.year}年度</strong>
+                                <span class="badge" style="background: ${h.usage_rate > 75 ? '#22c55e' : h.usage_rate > 50 ? '#eab308' : '#ef4444'};">
+                                    ${h.usage_rate?.toFixed(1) || 0}%
+                                </span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; font-size: 0.9rem;">
+                                <div><span style="color: #94a3b8;">付与:</span> ${h.granted || 0}日</div>
+                                <div><span style="color: #94a3b8;">使用:</span> ${h.used || 0}日</div>
+                                <div><span style="color: #38bdf8; font-weight: bold;">残:</span> ${h.balance || 0}日</div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                // Generar HTML de fechas de uso recientes
+                let usageDatesHtml = '';
+                if (usageHistory.length > 0) {
+                    const recentUsage = usageHistory.slice(0, 10);
+                    usageDatesHtml = `
+                        <div style="margin-top: 1rem;">
+                            <h4 style="color: #94a3b8; margin-bottom: 0.5rem;">📋 使用履歴 (最近10件)</h4>
+                            <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 0.5rem;">
+                                ${recentUsage.map(u => `
+                                    <div style="display: flex; justify-content: space-between; padding: 0.3rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                        <span>${u.date}</span>
+                                        <span style="color: #38bdf8;">${u.days}日</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                document.getElementById('modal-content').innerHTML = `
+                    <!-- Información básica -->
+                    <div class="bento-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1.5rem; gap: 0.8rem;">
+                        <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
+                            <div style="color: #94a3b8; font-size: 0.8rem;">社員番号</div>
+                            <div style="font-size: 1.2rem; font-weight: bold;">${emp.employeeNum}</div>
+                        </div>
+                        <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
+                            <div style="color: #94a3b8; font-size: 0.8rem;">派遣先</div>
+                            <div style="font-size: 0.9rem; font-weight: bold;">${emp.haken || employee.factory || '-'}</div>
+                        </div>
+                        <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
+                            <div style="color: #94a3b8; font-size: 0.8rem;">タイプ</div>
+                            <div style="font-size: 1rem;">${employee.type || (emp.type === 'haken' ? '派遣' : emp.type === 'ukeoi' ? '請負' : 'スタッフ')}</div>
+                        </div>
+                        <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
+                            <div style="color: #94a3b8; font-size: 0.8rem;">ステータス</div>
+                            <div style="font-size: 1rem; color: ${employee.status === '在職中' ? '#22c55e' : '#ef4444'};">${employee.status || '在職中'}</div>
+                        </div>
+                    </div>
+
+                    <!-- Balance total actual -->
+                    <div class="glass-panel" style="padding: 1rem; margin-bottom: 1rem; background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(56, 189, 248, 0.2)); text-align: center;">
+                        <div style="color: #94a3b8; font-size: 0.9rem;">💰 有給残日数 (合計)</div>
+                        <div style="font-size: 2rem; font-weight: bold; color: #22c55e;">${totalAvailable}日</div>
+                        <div style="color: #94a3b8; font-size: 0.8rem;">次回付与: ${renewalDate}</div>
+                    </div>
+
+                    <!-- Historial de 2 años -->
+                    <h4 style="color: #94a3b8; margin-bottom: 0.5rem;">📊 年度別履歴 (過去2年)</h4>
+                    ${historyHtml || '<p style="color: #64748b;">履歴データがありません</p>'}
+
+                    <!-- Fechas de uso recientes -->
+                    ${usageDatesHtml}
+                `;
+
+            } catch (error) {
+                console.error('Error loading employee details:', error);
+                // Fallback a datos básicos si el API falla
+                document.getElementById('modal-content').innerHTML = `
+                    <div class="bento-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 2rem;">
+                        <div><span class="text-gray-400">ID:</span> ${emp.employeeNum}</div>
+                        <div><span class="text-gray-400">Factory:</span> ${emp.haken}</div>
+                        <div><span class="text-gray-400">Granted:</span> ${emp.granted}</div>
+                        <div><span class="text-gray-400">Used:</span> ${emp.used}</div>
+                        <div><span class="text-gray-400">Balance:</span> ${emp.balance}</div>
+                        <div><span class="text-gray-400">Rate:</span> ${emp.usageRate}%</div>
+                    </div>
+                    <p style="color: #f59e0b; font-size: 0.9rem;">⚠️ 詳細データの取得に失敗しました</p>
+                `;
+            }
         },
 
         closeModal() {
