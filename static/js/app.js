@@ -169,38 +169,59 @@ const App = {
         },
 
         async sync() {
-            App.ui.showLoading();
+            const btn = document.getElementById('btn-sync-main');
+            App.ui.setBtnLoading(btn, true);
             try {
                 const res = await fetch(`${App.config.apiBase}/sync`, { method: 'POST' });
-                if (!res.ok) throw new Error(await res.text());
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    throw new Error(errorText || `Server error: ${res.status}`);
+                }
                 const json = await res.json();
-                App.ui.showToast('success', `Synced ${json.count} records`);
+                App.ui.showToast('success', `✅ ${json.count}件の有給データを同期しました`, 5000);
                 await this.fetchEmployees(App.state.year);
             } catch (err) {
-                App.ui.showToast('error', err.message);
+                console.error('Sync error:', err);
+                if (err.message.includes('fetch') || err.name === 'TypeError') {
+                    App.ui.showToast('error', '🌐 ネットワークエラー: サーバーに接続できません', 6000);
+                } else {
+                    App.ui.showToast('error', `❌ 同期失敗: ${err.message}`, 6000);
+                }
             } finally {
-                App.ui.hideLoading();
+                App.ui.setBtnLoading(btn, false);
             }
         },
 
         async syncGenzai() {
-            App.ui.showLoading();
+            const btn = document.getElementById('btn-sync-genzai');
+            App.ui.setBtnLoading(btn, true);
             try {
                 const res = await fetch(`${App.config.apiBase}/sync-genzai`, { method: 'POST' });
-                if (!res.ok) throw res;
-                App.ui.showToast('success', 'Genzai (Dispatch) Synced');
-            } catch (e) { App.ui.showToast('error', 'Sync Failed'); }
-            finally { App.ui.hideLoading(); }
+                if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                const json = await res.json();
+                App.ui.showToast('success', `✅ 派遣社員データを同期しました (${json.count || 0}件)`, 5000);
+            } catch (err) {
+                console.error('Genzai sync error:', err);
+                App.ui.showToast('error', '❌ 派遣社員の同期に失敗しました', 6000);
+            } finally {
+                App.ui.setBtnLoading(btn, false);
+            }
         },
 
         async syncUkeoi() {
-            App.ui.showLoading();
+            const btn = document.getElementById('btn-sync-ukeoi');
+            App.ui.setBtnLoading(btn, true);
             try {
                 const res = await fetch(`${App.config.apiBase}/sync-ukeoi`, { method: 'POST' });
-                if (!res.ok) throw res;
-                App.ui.showToast('success', 'Ukeoi (contract) Synced');
-            } catch (e) { App.ui.showToast('error', 'Sync Failed'); }
-            finally { App.ui.hideLoading(); }
+                if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                const json = await res.json();
+                App.ui.showToast('success', `✅ 請負社員データを同期しました (${json.count || 0}件)`, 5000);
+            } catch (err) {
+                console.error('Ukeoi sync error:', err);
+                App.ui.showToast('error', '❌ 請負社員の同期に失敗しました', 6000);
+            } finally {
+                App.ui.setBtnLoading(btn, false);
+            }
         },
 
         getFiltered() {
@@ -418,14 +439,100 @@ const App = {
         showLoading() { document.getElementById('loader').classList.add('active'); },
         hideLoading() { document.getElementById('loader').classList.remove('active'); },
 
-        showToast(type, msg) {
+        // Button loading state helper
+        setBtnLoading(btn, isLoading) {
+            if (!btn) return;
+            if (isLoading) {
+                btn.classList.add('is-loading');
+                btn.disabled = true;
+            } else {
+                btn.classList.remove('is-loading');
+                btn.disabled = false;
+            }
+        },
+
+        // Mobile menu toggle functions
+        toggleMobileMenu() {
+            const toggle = document.getElementById('mobile-menu-toggle');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            if (sidebar && toggle) {
+                const isOpen = sidebar.classList.contains('is-open');
+                if (isOpen) {
+                    this.closeMobileMenu();
+                } else {
+                    sidebar.classList.add('is-open');
+                    toggle.classList.add('is-active');
+                    toggle.setAttribute('aria-expanded', 'true');
+                    if (overlay) {
+                        overlay.classList.add('is-active');
+                        overlay.setAttribute('aria-hidden', 'false');
+                    }
+                    // Prevent body scroll when menu is open
+                    document.body.style.overflow = 'hidden';
+                }
+            }
+        },
+
+        closeMobileMenu() {
+            const toggle = document.getElementById('mobile-menu-toggle');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            if (sidebar) {
+                sidebar.classList.remove('is-open');
+            }
+            if (toggle) {
+                toggle.classList.remove('is-active');
+                toggle.setAttribute('aria-expanded', 'false');
+            }
+            if (overlay) {
+                overlay.classList.remove('is-active');
+                overlay.setAttribute('aria-hidden', 'true');
+            }
+            // Restore body scroll
+            document.body.style.overflow = '';
+        },
+
+        showToast(type, msg, duration = 4000) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.style.borderLeft = type === 'success' ? '4px solid var(--success)' : type === 'error' ? '4px solid var(--danger)' : '4px solid var(--primary)';
-            toast.innerHTML = type === 'success' ? `✅ ${msg}` : type === 'error' ? `❌ ${msg}` : `ℹ️ ${msg}`;
+            toast.className = `toast toast-${type}`;
+
+            // Style based on type
+            const styles = {
+                success: { border: 'var(--success)', icon: '', bg: 'rgba(34, 197, 94, 0.1)' },
+                error: { border: 'var(--danger)', icon: '', bg: 'rgba(239, 68, 68, 0.1)' },
+                warning: { border: 'var(--warning)', icon: '', bg: 'rgba(251, 191, 36, 0.1)' },
+                info: { border: 'var(--primary)', icon: '', bg: 'rgba(56, 189, 248, 0.1)' }
+            };
+            const style = styles[type] || styles.info;
+
+            toast.style.cssText = `
+                border-left: 4px solid ${style.border};
+                background: ${style.bg};
+                backdrop-filter: blur(10px);
+            `;
+
+            // Add icon only if message doesn't already have an emoji
+            const hasEmoji = /[\u{1F300}-\u{1F9FF}]/u.test(msg.substring(0, 3));
+            toast.innerHTML = hasEmoji ? msg : `${style.icon} ${msg}`;
+
+            // Add close button
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '×';
+            closeBtn.className = 'toast-close';
+            closeBtn.onclick = () => toast.remove();
+            toast.appendChild(closeBtn);
+
             container.appendChild(toast);
-            setTimeout(() => toast.remove(), 4000);
+
+            // Auto remove with fade out
+            setTimeout(() => {
+                toast.style.animation = 'slideOutRight 0.3s forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
         },
 
         async openModal(id) {
@@ -1089,7 +1196,32 @@ const App = {
                     if (modal && modal.classList.contains('active')) {
                         App.ui.closeModal();
                     }
+                    // Also close mobile menu on ESC
+                    App.ui.closeMobileMenu();
                 }
+            });
+
+            // Mobile hamburger menu toggle
+            const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+            if (mobileMenuToggle) {
+                mobileMenuToggle.addEventListener('click', () => {
+                    App.ui.toggleMobileMenu();
+                });
+            }
+
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', () => {
+                    App.ui.closeMobileMenu();
+                });
+            }
+
+            // Close mobile menu when nav item is clicked
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    App.ui.closeMobileMenu();
+                });
             });
         }
     },
