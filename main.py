@@ -1563,7 +1563,6 @@ async def get_notifications(employee_num: str = None, unread_only: bool = False)
 # === CALENDAR ENDPOINTS ===
 
 @app.get("/api/calendar/events")
-<<<<<<< HEAD
 async def get_calendar_events(year: int = None, month: int = None, source: str = 'requests', active_only: bool = True):
     """
     カレンダー用のイベントデータを取得。
@@ -1613,12 +1612,6 @@ async def get_calendar_events(year: int = None, month: int = None, source: str =
                     filtered_count += 1
                     continue
 
-                leave_type = req.get('leave_type', 'full')
-
-        # 承認済み休暇申請を取得 (source = 'requests' or 'all')
-        if source in ['requests', 'all']:
-            approved_requests = database.get_leave_requests(status='APPROVED', year=year)
-            for req in approved_requests:
                 leave_type = req.get('leave_type', 'full')
                 events.append({
                     'id': f"request_{req['id']}",
