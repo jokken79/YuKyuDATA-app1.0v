@@ -1189,10 +1189,18 @@ async def get_notifications(employee_num: str = None, unread_only: bool = False)
 # === CALENDAR ENDPOINTS ===
 
 @app.get("/api/calendar/events")
-async def get_calendar_events(year: int = None, month: int = None):
+async def get_calendar_events(year: int = None, month: int = None, source: str = 'requests'):
     """
     カレンダー用のイベントデータを取得。
-    承認済み休暇と使用日を返す。
+    承認済み休暇申請のみを返す（デフォルト）。
+
+    Args:
+        year: 年度フィルター
+        month: 月フィルター
+        source: データソース
+            - 'requests': 承認済み申請のみ (デフォルト・推奨)
+            - 'excel': Excel使用詳細のみ
+            - 'all': 両方（重複の可能性あり）
     """
     try:
         if not year:
@@ -1200,57 +1208,61 @@ async def get_calendar_events(year: int = None, month: int = None):
 
         events = []
 
-        # 承認済み休暇申請を取得
-        approved_requests = database.get_leave_requests(status='APPROVED', year=year)
-        for req in approved_requests:
-            # 休暇タイプに応じた色分け
-            type_colors = {
-                'full': '#38bdf8',      # 全日休暇 - 青
-                'half_am': '#818cf8',   # 午前半休 - 紫
-                'half_pm': '#f472b6',   # 午後半休 - ピンク
-                'hourly': '#fbbf24'     # 時間休 - 黄色
-            }
-            type_labels = {
-                'full': '全日',
-                'half_am': '午前半休',
-                'half_pm': '午後半休',
-                'hourly': '時間休'
-            }
-            leave_type = req.get('leave_type', 'full')
+        # 休暇タイプに応じた色分け
+        type_colors = {
+            'full': '#38bdf8',      # 全日休暇 - 青
+            'half_am': '#818cf8',   # 午前半休 - 紫
+            'half_pm': '#f472b6',   # 午後半休 - ピンク
+            'hourly': '#fbbf24'     # 時間休 - 黄色
+        }
+        type_labels = {
+            'full': '全日',
+            'half_am': '午前半休',
+            'half_pm': '午後半休',
+            'hourly': '時間休'
+        }
 
-            events.append({
-                'id': f"request_{req['id']}",
-                'title': f"{req['employee_name']} ({type_labels.get(leave_type, '休暇')})",
-                'start': req['start_date'],
-                'end': req['end_date'],
-                'color': type_colors.get(leave_type, '#38bdf8'),
-                'type': 'approved_request',
-                'employee_num': req['employee_num'],
-                'employee_name': req['employee_name'],
-                'leave_type': leave_type,
-                'days': req.get('days_requested', 0),
-                'hours': req.get('hours_requested', 0)
-            })
+        # 承認済み休暇申請を取得 (source = 'requests' or 'all')
+        if source in ['requests', 'all']:
+            approved_requests = database.get_leave_requests(status='APPROVED', year=year)
+            for req in approved_requests:
+                leave_type = req.get('leave_type', 'full')
+                events.append({
+                    'id': f"request_{req['id']}",
+                    'title': f"{req['employee_name']} ({type_labels.get(leave_type, '休暇')})",
+                    'start': req['start_date'],
+                    'end': req['end_date'],
+                    'color': type_colors.get(leave_type, '#38bdf8'),
+                    'type': 'approved_request',
+                    'employee_num': req['employee_num'],
+                    'employee_name': req['employee_name'],
+                    'leave_type': leave_type,
+                    'days': req.get('days_requested', 0),
+                    'hours': req.get('hours_requested', 0)
+                })
 
-        # 使用日詳細を取得
-        usage_details = database.get_yukyu_usage_details(year=year, month=month)
-        for detail in usage_details:
-            events.append({
-                'id': f"usage_{detail.get('id', '')}",
-                'title': f"{detail['name']} ({detail.get('days_used', 1)}日)",
-                'start': detail['use_date'],
-                'end': detail['use_date'],
-                'color': '#34d399',  # 緑
-                'type': 'usage_detail',
-                'employee_num': detail['employee_num'],
-                'employee_name': detail['name'],
-                'days': detail.get('days_used', 1)
-            })
+        # 使用日詳細を取得 (source = 'excel' or 'all')
+        # 注意: Excelデータは検証されていないため、不正確な場合があります
+        if source in ['excel', 'all']:
+            usage_details = database.get_yukyu_usage_details(year=year, month=month)
+            for detail in usage_details:
+                events.append({
+                    'id': f"usage_{detail.get('id', '')}",
+                    'title': f"{detail['name']} ({detail.get('days_used', 1)}日)",
+                    'start': detail['use_date'],
+                    'end': detail['use_date'],
+                    'color': '#34d399',  # 緑
+                    'type': 'usage_detail',
+                    'employee_num': detail['employee_num'],
+                    'employee_name': detail['name'],
+                    'days': detail.get('days_used', 1)
+                })
 
         return {
             "status": "success",
             "year": year,
             "month": month,
+            "source": source,
             "count": len(events),
             "events": events
         }
@@ -1258,10 +1270,13 @@ async def get_calendar_events(year: int = None, month: int = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/calendar/summary/{year}/{month}")
-async def get_calendar_month_summary(year: int, month: int):
+async def get_calendar_month_summary(year: int, month: int, source: str = 'requests'):
     """
     月別カレンダーサマリーを取得。
     各日の休暇取得人数を返す。
+
+    Args:
+        source: データソース ('requests', 'excel', 'all') - デフォルトは 'requests'
     """
     try:
         import calendar
@@ -1273,40 +1288,43 @@ async def get_calendar_month_summary(year: int, month: int):
         # 日ごとの集計
         daily_counts = defaultdict(lambda: {'count': 0, 'employees': []})
 
-        # 承認済み申請
-        approved = database.get_leave_requests(status='APPROVED', year=year)
-        for req in approved:
-            start = datetime.strptime(req['start_date'], '%Y-%m-%d')
-            end = datetime.strptime(req['end_date'], '%Y-%m-%d')
+        # 承認済み申請 (source = 'requests' or 'all')
+        if source in ['requests', 'all']:
+            approved = database.get_leave_requests(status='APPROVED', year=year)
+            for req in approved:
+                start = datetime.strptime(req['start_date'], '%Y-%m-%d')
+                end = datetime.strptime(req['end_date'], '%Y-%m-%d')
 
-            current = start
-            while current <= end:
-                if current.year == year and current.month == month:
-                    day_key = current.strftime('%Y-%m-%d')
+                current = start
+                while current <= end:
+                    if current.year == year and current.month == month:
+                        day_key = current.strftime('%Y-%m-%d')
+                        daily_counts[day_key]['count'] += 1
+                        daily_counts[day_key]['employees'].append({
+                            'name': req['employee_name'],
+                            'type': req.get('leave_type', 'full')
+                        })
+                    current = current + timedelta(days=1)
+
+        # 使用日詳細 (source = 'excel' or 'all')
+        if source in ['excel', 'all']:
+            usage = database.get_yukyu_usage_details(year=year, month=month)
+            for detail in usage:
+                day_key = detail['use_date']
+                # 重複チェック
+                exists = any(e['name'] == detail['name'] for e in daily_counts[day_key]['employees'])
+                if not exists:
                     daily_counts[day_key]['count'] += 1
                     daily_counts[day_key]['employees'].append({
-                        'name': req['employee_name'],
-                        'type': req.get('leave_type', 'full')
+                        'name': detail['name'],
+                        'type': 'usage'
                     })
-                current = current + timedelta(days=1)
-
-        # 使用日詳細
-        usage = database.get_yukyu_usage_details(year=year, month=month)
-        for detail in usage:
-            day_key = detail['use_date']
-            # 重複チェック
-            exists = any(e['name'] == detail['name'] for e in daily_counts[day_key]['employees'])
-            if not exists:
-                daily_counts[day_key]['count'] += 1
-                daily_counts[day_key]['employees'].append({
-                    'name': detail['name'],
-                    'type': 'usage'
-                })
 
         return {
             "status": "success",
             "year": year,
             "month": month,
+            "source": source,
             "days_in_month": days_in_month,
             "daily_summary": dict(daily_counts)
         }

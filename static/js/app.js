@@ -8,7 +8,8 @@ const App = {
         year: null,
         availableYears: [],
         charts: {},
-        currentView: 'dashboard'
+        currentView: 'dashboard',
+        typeFilter: 'all'
     },
 
     config: {
@@ -209,9 +210,10 @@ const App = {
     ui: {
         async updateAll() {
             await this.renderKPIs();
-            this.renderTable();
+            this.renderTable('', App.state.typeFilter);
             this.renderCharts();
             this.updateYearFilter();
+            this.updateTypeCounts();
             document.getElementById('emp-count-badge').innerText = `${App.data.getFiltered().length} Employees`;
         },
 
@@ -364,10 +366,22 @@ const App = {
                 const usageRate = App.utils.safeNumber(e.usageRate);
                 const balanceClass = balance < 0 ? 'badge-critical' : balance < 5 ? 'badge-danger' : 'badge-success';
 
+                // Employee type badge
+                const typeLabels = { genzai: '派遣', ukeoi: '請負', staff: '社員' };
+                const typeClasses = { genzai: 'type-genzai', ukeoi: 'type-ukeoi', staff: 'type-staff' };
+                const empType = e.employeeType || 'staff';
+                const typeLabel = typeLabels[empType] || '社員';
+                const typeClass = typeClasses[empType] || 'type-staff';
+
                 return `
                 <tr class="employee-row" data-employee-num="${empNum}" style="cursor: pointer;">
                     <td><div class="font-bold">${empNum}</div></td>
-                    <td><div class="font-bold text-white">${name}</div></td>
+                    <td>
+                        <div class="employee-name-cell">
+                            <span class="font-bold text-white">${name}</span>
+                            <span class="badge-type ${typeClass}">${typeLabel}</span>
+                        </div>
+                    </td>
                     <td><div class="text-sm text-gray-400">${haken}</div></td>
                     <td>${granted}</td>
                     <td><span class="text-gradient">${used}</span></td>
@@ -383,7 +397,41 @@ const App = {
         },
 
         handleSearch(val) {
-            this.renderTable(val);
+            this.renderTable(val, App.state.typeFilter);
+        },
+
+        filterByType(type) {
+            App.state.typeFilter = type;
+
+            // Update active tab
+            document.querySelectorAll('.type-tab').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.type === type);
+            });
+
+            // Re-render table with current search and type filter
+            const searchVal = document.getElementById('search-input')?.value || '';
+            this.renderTable(searchVal, type);
+        },
+
+        updateTypeCounts() {
+            const data = App.data.getFiltered();
+            const counts = {
+                all: data.length,
+                genzai: data.filter(e => e.employeeType === 'genzai').length,
+                ukeoi: data.filter(e => e.employeeType === 'ukeoi').length,
+                staff: data.filter(e => e.employeeType === 'staff').length
+            };
+
+            // Update count badges
+            const countAll = document.getElementById('count-all');
+            const countGenzai = document.getElementById('count-genzai');
+            const countUkeoi = document.getElementById('count-ukeoi');
+            const countStaff = document.getElementById('count-staff');
+
+            if (countAll) countAll.textContent = counts.all;
+            if (countGenzai) countGenzai.textContent = counts.genzai;
+            if (countUkeoi) countUkeoi.textContent = counts.ukeoi;
+            if (countStaff) countStaff.textContent = counts.staff;
         },
 
         updateYearFilter() {
