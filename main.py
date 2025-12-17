@@ -1,7 +1,8 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Depends
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, validator
 from typing import Optional, List
 from collections import defaultdict
@@ -9,6 +10,7 @@ from time import time
 import uvicorn
 import shutil
 import os
+import jwt
 from pathlib import Path
 from datetime import datetime, timedelta, date
 
@@ -108,6 +110,118 @@ class RateLimiter:
 
 
 rate_limiter = RateLimiter(max_requests=100, window_seconds=60)
+
+
+# ============================================
+# JWT AUTHENTICATION SYSTEM
+# ============================================
+
+# JWT Configuration
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "yukyu-secret-key-2024-change-in-production")
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_HOURS = 24
+
+# Security
+security = HTTPBearer(auto_error=False)
+
+# User database (simple in-memory for now)
+USERS_DB = {
+    "admin": {
+        "password": "admin123",
+        "role": "admin",
+        "name": "Administrator"
+    }
+}
+
+
+class UserLogin(BaseModel):
+    """Login request model"""
+    username: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
+
+
+class TokenResponse(BaseModel):
+    """Token response model"""
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user: dict
+
+
+def create_jwt_token(username: str, role: str) -> str:
+    """Create a JWT token for authenticated user"""
+    expiration = datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS)
+    payload = {
+        "sub": username,
+        "role": role,
+        "exp": expiration,
+        "iat": datetime.utcnow()
+    }
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def verify_jwt_token(token: str) -> dict:
+    """Verify and decode JWT token"""
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    """
+    Dependency to get current authenticated user.
+    Returns user info if authenticated, None if not.
+    """
+    if credentials is None:
+        return None
+
+    try:
+        payload = verify_jwt_token(credentials.credentials)
+        return {
+            "username": payload.get("sub"),
+            "role": payload.get("role")
+        }
+    except HTTPException:
+        return None
+
+
+async def require_auth(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    """
+    Dependency that requires authentication.
+    Raises 401 if not authenticated.
+    """
+    if credentials is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    payload = verify_jwt_token(credentials.credentials)
+    return {
+        "username": payload.get("sub"),
+        "role": payload.get("role")
+    }
+
+
+async def require_admin(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    """
+    Dependency that requires admin role.
+    Raises 401 if not authenticated, 403 if not admin.
+    """
+    if credentials is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    payload = verify_jwt_token(credentials.credentials)
+    role = payload.get("role")
+
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+
+    return {
+        "username": payload.get("sub"),
+        "role": role
+    }
 
 
 # ============================================
@@ -216,6 +330,94 @@ async def read_root():
     with open("templates/index.html", "r", encoding="utf-8") as f:
         return f.read()
 
+
+# ============================================
+# AUTHENTICATION ENDPOINTS
+# ============================================
+
+@app.post("/api/auth/login")
+async def login(login_data: UserLogin):
+    """
+    Authenticate user and return JWT token.
+
+    Credentials:
+    - username: admin
+    - password: admin123
+    """
+    username = login_data.username
+    password = login_data.password
+
+    # Check if user exists
+    user = USERS_DB.get(username)
+    if not user or user["password"] != password:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid username or password"
+        )
+
+    # Create JWT token
+    token = create_jwt_token(username, user["role"])
+
+    logger.info(f"User '{username}' logged in successfully")
+
+    return {
+        "status": "success",
+        "access_token": token,
+        "token_type": "bearer",
+        "expires_in": JWT_EXPIRATION_HOURS * 3600,
+        "user": {
+            "username": username,
+            "role": user["role"],
+            "name": user["name"]
+        }
+    }
+
+
+@app.get("/api/auth/me")
+async def get_current_user_info(user: dict = Depends(require_auth)):
+    """Get current authenticated user information."""
+    user_data = USERS_DB.get(user["username"])
+    return {
+        "status": "success",
+        "user": {
+            "username": user["username"],
+            "role": user["role"],
+            "name": user_data["name"] if user_data else user["username"]
+        }
+    }
+
+
+@app.post("/api/auth/logout")
+async def logout(user: dict = Depends(get_current_user)):
+    """
+    Logout endpoint (client-side token removal).
+    Server-side we just acknowledge the logout.
+    """
+    if user:
+        logger.info(f"User '{user['username']}' logged out")
+    return {"status": "success", "message": "Logged out successfully"}
+
+
+@app.get("/api/auth/verify")
+async def verify_token(user: dict = Depends(get_current_user)):
+    """Verify if current token is valid."""
+    if user:
+        return {
+            "status": "success",
+            "valid": True,
+            "user": user
+        }
+    return {
+        "status": "success",
+        "valid": False,
+        "user": None
+    }
+
+
+# ============================================
+# API ENDPOINTS
+# ============================================
+
 @app.get("/api/employees")
 async def get_employees(year: int = None, enhanced: bool = False, active_only: bool = False):
     """Returns list of employees from SQLite.
@@ -280,8 +482,10 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 @app.delete("/api/reset")
-async def reset_db():
+async def reset_db(user: dict = Depends(require_admin)):
+    """Reset database - requires admin authentication."""
     database.clear_database()
+    logger.warning(f"Database cleared by admin: {user['username']}")
     return {"status": "success", "message": "Database cleared"}
 
 # === GENZAI (Dispatch Employees) Endpoints ===
@@ -309,9 +513,10 @@ async def sync_genzai():
         raise HTTPException(status_code=500, detail=f"Genzai sync failed: {str(e)}")
 
 @app.delete("/api/reset-genzai")
-async def reset_genzai():
-    """Clears genzai table."""
+async def reset_genzai(user: dict = Depends(require_admin)):
+    """Clears genzai table - requires admin authentication."""
     database.clear_genzai()
+    logger.warning(f"Genzai database cleared by admin: {user['username']}")
     return {"status": "success", "message": "Genzai database cleared"}
 
 # === UKEOI (Contract Employees) Endpoints ===
@@ -339,9 +544,10 @@ async def sync_ukeoi():
         raise HTTPException(status_code=500, detail=f"Ukeoi sync failed: {str(e)}")
 
 @app.delete("/api/reset-ukeoi")
-async def reset_ukeoi():
-    """Clears ukeoi table."""
+async def reset_ukeoi(user: dict = Depends(require_admin)):
+    """Clears ukeoi table - requires admin authentication."""
     database.clear_ukeoi()
+    logger.warning(f"Ukeoi database cleared by admin: {user['username']}")
     return {"status": "success", "message": "Ukeoi database cleared"}
 
 
@@ -379,9 +585,10 @@ async def sync_staff():
 
 
 @app.delete("/api/reset-staff")
-async def reset_staff():
-    """Clears staff table."""
+async def reset_staff(user: dict = Depends(require_admin)):
+    """Clears staff table - requires admin authentication."""
     database.clear_staff()
+    logger.warning(f"Staff database cleared by admin: {user['username']}")
     return {"status": "success", "message": "Staff database cleared"}
 
 
@@ -701,15 +908,15 @@ async def reject_leave_request(request_id: int, rejection_data: dict):
 
 
 @app.delete("/api/leave-requests/{request_id}")
-async def cancel_leave_request(request_id: int):
+async def cancel_leave_request(request_id: int, user: dict = Depends(require_auth)):
     """
-    Cancela una solicitud PENDIENTE.
+    Cancela una solicitud PENDIENTE - requires authentication.
     Solo funciona si el status es 'PENDING'.
     La solicitud se elimina completamente.
     """
     try:
         result = database.cancel_leave_request(request_id)
-        logger.info(f"Leave request {request_id} cancelled: {result}")
+        logger.info(f"Leave request {request_id} cancelled by {user['username']}: {result}")
 
         return {
             "status": "success",
@@ -1563,7 +1770,6 @@ async def get_notifications(employee_num: str = None, unread_only: bool = False)
 # === CALENDAR ENDPOINTS ===
 
 @app.get("/api/calendar/events")
-<<<<<<< HEAD
 async def get_calendar_events(year: int = None, month: int = None, source: str = 'requests', active_only: bool = True):
     """
     カレンダー用のイベントデータを取得。
@@ -1613,12 +1819,6 @@ async def get_calendar_events(year: int = None, month: int = None, source: str =
                     filtered_count += 1
                     continue
 
-                leave_type = req.get('leave_type', 'full')
-
-        # 承認済み休暇申請を取得 (source = 'requests' or 'all')
-        if source in ['requests', 'all']:
-            approved_requests = database.get_leave_requests(status='APPROVED', year=year)
-            for req in approved_requests:
                 leave_type = req.get('leave_type', 'full')
                 events.append({
                     'id': f"request_{req['id']}",
@@ -2643,10 +2843,10 @@ async def list_export_files():
 
 
 @app.delete("/api/export/cleanup")
-async def cleanup_exports(days_to_keep: int = 30):
-    """Elimina exportaciones antiguas"""
+async def cleanup_exports(days_to_keep: int = 30, user: dict = Depends(require_admin)):
+    """Elimina exportaciones antiguas - requires admin authentication."""
     result = cleanup_old_exports(days_to_keep)
-    logger.info(f"Export cleanup: {result}")
+    logger.info(f"Export cleanup by {user['username']}: {result}")
     return {"status": "success", **result}
 
 

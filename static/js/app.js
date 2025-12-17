@@ -279,17 +279,13 @@ const App = {
     },
 
     data: {
-<<<<<<< HEAD
-        async fetchEmployees(year = null, activeOnly = true) {
-=======
         // Request counter to prevent race conditions when changing years rapidly
         _fetchRequestId: 0,
 
-        async fetchEmployees(year = null) {
+        async fetchEmployees(year = null, activeOnly = true) {
             // Increment request ID to track this specific request
             const requestId = ++this._fetchRequestId;
 
->>>>>>> f6037e24624ccbd5a8266d4e3b7d0d4dce9b20e7
             try {
                 // Use enhanced endpoint with employee type and active status
                 let url = `${App.config.apiBase}/employees?enhanced=true&active_only=${activeOnly}`;
@@ -431,13 +427,8 @@ const App = {
     ui: {
         async updateAll() {
             await this.renderKPIs();
-<<<<<<< HEAD
             this.renderTable('', App.state.typeFilter);
-            this.renderCharts();
-=======
-            this.renderTable();
             await this.renderCharts();
->>>>>>> f6037e24624ccbd5a8266d4e3b7d0d4dce9b20e7
             this.updateYearFilter();
             this.updateTypeCounts();
             document.getElementById('emp-count-badge').innerText = `${App.data.getFiltered().length} Employees`;
@@ -614,18 +605,16 @@ const App = {
                 const usageRate = App.utils.safeNumber(e.usageRate);
                 const balanceClass = balance < 0 ? 'badge-critical' : balance < 5 ? 'badge-danger' : 'badge-success';
 
-<<<<<<< HEAD
                 // Employee type badge
                 const typeLabels = { genzai: '派遣', ukeoi: '請負', staff: '社員' };
                 const typeClasses = { genzai: 'type-genzai', ukeoi: 'type-ukeoi', staff: 'type-staff' };
                 const empType = e.employeeType || 'staff';
                 const typeLabel = typeLabels[empType] || '社員';
                 const typeClass = typeClasses[empType] || 'type-staff';
-=======
+
                 // Determine color based on usage rate
                 const rateColor = usageRate >= 80 ? 'var(--success)' : usageRate >= 50 ? 'var(--warning)' : 'var(--danger)';
                 const rateGlow = usageRate >= 80 ? '0 0 8px var(--success)' : usageRate >= 50 ? '0 0 8px var(--warning)' : '0 0 8px var(--danger)';
->>>>>>> f6037e24624ccbd5a8266d4e3b7d0d4dce9b20e7
 
                 return `
                 <tr class="employee-row" data-employee-num="${empNum}" style="cursor: pointer;">
@@ -651,8 +640,12 @@ const App = {
         },
 
         handleSearch(val) {
-<<<<<<< HEAD
-            this.renderTable(val, App.state.typeFilter);
+            // Use employeeTypes module if data is loaded, otherwise use main table
+            if (App.employeeTypes && App.employeeTypes.data && App.employeeTypes.data.all.length > 0) {
+                App.employeeTypes.renderTable(val);
+            } else {
+                this.renderTable(val, App.state.typeFilter);
+            }
         },
 
         filterByType(type) {
@@ -687,14 +680,6 @@ const App = {
             if (countGenzai) countGenzai.textContent = counts.genzai;
             if (countUkeoi) countUkeoi.textContent = counts.ukeoi;
             if (countStaff) countStaff.textContent = counts.staff;
-=======
-            // Use employeeTypes module if data is loaded
-            if (App.employeeTypes.data.all.length > 0) {
-                App.employeeTypes.renderTable(val);
-            } else {
-                this.renderTable(val);
-            }
->>>>>>> f6037e24624ccbd5a8266d4e3b7d0d4dce9b20e7
         },
 
         updateYearFilter() {
