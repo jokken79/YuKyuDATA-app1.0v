@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>YuKyu Premium Dashboard</title>
 
     <!-- PWA Meta Tags -->
@@ -28,7 +29,9 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap"
+        rel="stylesheet">
 
     <!-- Design System - Vibrant Arari Style -->
     <link rel="stylesheet" href="/static/css/main.css">
@@ -49,7 +52,7 @@
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollToPlugin.min.js"></script>
 
     <!-- Animate.css - Quick CSS animations -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 
     <!-- Flatpickr - Modern Date Picker -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
@@ -63,8 +66,8 @@
             border: 1px solid rgba(56, 189, 248, 0.3) !important;
             border-radius: 16px !important;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5),
-                        0 0 0 1px rgba(56, 189, 248, 0.1),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+                0 0 0 1px rgba(56, 189, 248, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
         }
 
         .flatpickr-months {
@@ -189,8 +192,8 @@
             right: 0;
             bottom: 0;
             background: linear-gradient(135deg,
-                rgba(56, 189, 248, 0.05) 0%,
-                rgba(37, 99, 235, 0.05) 100%);
+                    rgba(56, 189, 248, 0.05) 0%,
+                    rgba(37, 99, 235, 0.05) 100%);
             border-radius: 16px;
             pointer-events: none;
         }
@@ -205,6 +208,7 @@
                 opacity: 0;
                 transform: translateY(-10px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -216,964 +220,1394 @@
 <body>
 
     <div class="app-container">
-        <!-- Sidebar Navigation - Premium Design -->
-        <nav class="sidebar">
-            <div class="logo">
-                <img src="/static/icons/logo-premium.svg" alt="YuKyu" width="48" height="48">
-                <div>
-                    <div>YUKYU</div>
-                    <div>DATA</div>
-                </div>
-            </div>
+        <<<<<<< HEAD <!-- Sidebar Navigation - Premium Design -->
+            <nav class="sidebar">
+                =======
+                <!-- Mobile Menu Toggle -->
+                <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle navigation menu"
+                    aria-expanded="false">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
 
-            <div class="nav-section">
-                <!-- Main Navigation Group -->
-                <div class="nav-group">
-                    <div class="nav-group-label">Main</div>
+                <!-- Mobile Sidebar Overlay -->
+                <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
 
-                    <div class="nav-item active" data-view="dashboard" onclick="App.ui.switchView('dashboard')">
-                        <span class="nav-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="3" width="7" height="7" rx="1"/>
-                                <rect x="14" y="3" width="7" height="7" rx="1"/>
-                                <rect x="3" y="14" width="7" height="7" rx="1"/>
-                                <rect x="14" y="14" width="7" height="7" rx="1"/>
-                            </svg>
-                        </span>
-                        <span class="nav-text">Dashboard</span>
+                <!-- Sidebar Navigation - Premium Design -->
+                <nav class="sidebar" id="sidebar">
+                    <div class="logo">
+                        <img src="/static/icons/logo-premium.svg" alt="YuKyu" width="48" height="48">
+                        <div>
+                            <div>YUKYU</div>
+                            <div>DATA</div>
+                        </div>
                     </div>
 
-                    <div class="nav-item" data-view="employees" onclick="App.ui.switchView('employees')">
-                        <span class="nav-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="9" cy="7" r="4"/>
-                                <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
-                                <circle cx="17" cy="7" r="3"/>
-                                <path d="M21 21v-2a3 3 0 0 0-2-2.83"/>
-                            </svg>
-                        </span>
-                        <span class="nav-text">Employees</span>
-                        <span class="nav-badge">1377</span>
-                    </div>
+                    <div class="nav-section">
+                        <!-- Main Navigation Group -->
+                        <div class="nav-group">
+                            <div class="nav-group-label">Main</div>
 
-                    <div class="nav-item" data-view="factories" onclick="App.ui.switchView('factories')">
-                        <span class="nav-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M2 20V8l6-4v4l6-4v4l6-4v16H2z"/>
-                                <path d="M6 12v4"/>
-                                <path d="M10 12v4"/>
-                                <path d="M14 12v4"/>
-                                <path d="M18 12v4"/>
-                            </svg>
-                        </span>
-                        <span class="nav-text">Factories</span>
-                    </div>
-                </div>
+                            <div class="nav-item active" data-view="dashboard" onclick="App.ui.switchView('dashboard')">
+                                <span class="nav-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                                    </svg>
+                                </span>
+                                <span class="nav-text">Dashboard</span>
+                            </div>
 
-                <!-- Requests Group -->
-                <div class="nav-group">
-                    <div class="nav-group-label">Requests</div>
+                            <div class="nav-item" data-view="employees" onclick="App.ui.switchView('employees')">
+                                <span class="nav-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="9" cy="7" r="4" />
+                                        <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+                                        <circle cx="17" cy="7" r="3" />
+                                        <path d="M21 21v-2a3 3 0 0 0-2-2.83" />
+                                    </svg>
+                                </span>
+                                <span class="nav-text">Employees</span>
+                                <span class="nav-badge">1377</span>
+                            </div>
 
-                    <div class="nav-item" data-view="requests" onclick="App.ui.switchView('requests')">
-                        <span class="nav-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                                <line x1="10" y1="9" x2="8" y2="9"/>
-                            </svg>
-                        </span>
-                        <span class="nav-text">申請 Request</span>
-                    </div>
-
-                    <div class="nav-item" data-view="calendar" onclick="App.ui.switchView('calendar')">
-                        <span class="nav-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/>
-                                <line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
-                                <path d="M8 14h.01"/>
-                                <path d="M12 14h.01"/>
-                                <path d="M16 14h.01"/>
-                                <path d="M8 18h.01"/>
-                                <path d="M12 18h.01"/>
-                            </svg>
-                        </span>
-                        <span class="nav-text">カレンダー</span>
-                    </div>
-                </div>
-
-                <!-- Analytics Group -->
-                <div class="nav-group">
-                    <div class="nav-group-label">Analytics</div>
-
-                    <div class="nav-item" data-view="compliance" onclick="App.ui.switchView('compliance')">
-                        <span class="nav-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                                <polyline points="9 12 11 14 15 10"/>
-                            </svg>
-                        </span>
-                        <span class="nav-text">Compliance</span>
-                    </div>
-
-                    <div class="nav-item" data-view="analytics" onclick="App.ui.switchView('analytics')">
-                        <span class="nav-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="18" y1="20" x2="18" y2="10"/>
-                                <line x1="12" y1="20" x2="12" y2="4"/>
-                                <line x1="6" y1="20" x2="6" y2="14"/>
-                            </svg>
-                        </span>
-                        <span class="nav-text">分析 Analytics</span>
-                    </div>
-
-                    <div class="nav-item" data-view="reports" onclick="App.ui.switchView('reports')">
-                        <span class="nav-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="12" y1="18" x2="12" y2="12"/>
-                                <line x1="9" y1="15" x2="15" y2="15"/>
-                            </svg>
-                        </span>
-                        <span class="nav-text">月次レポート</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Settings at bottom -->
-            <div class="sidebar-footer">
-                <div class="nav-item nav-item-settings" data-view="settings" onclick="App.ui.switchView('settings')">
-                    <span class="nav-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                        </svg>
-                    </span>
-                    <span class="nav-text">Settings</span>
-                </div>
-            </div>
-        </nav>
-
-        <!-- Main Content -->
-        <main class="main-content">
-
-            <!-- Header -->
-            <header class="flex-between" style="margin-bottom: 2rem;">
-                <div>
-                    <h1 class="text-gradient" style="font-size: 2.5rem;" id="page-title">Dashboard Overview</h1>
-                    <p style="color: #64748b;" id="page-subtitle">Real-time vacation data analytics</p>
-                </div>
-
-                <div class="flex-center" style="gap: 1rem;">
-                    <div id="year-filter" class="flex-center" style="gap: 0.5rem; margin-right: 1rem;"></div>
-
-                    <!-- Theme Toggle -->
-                    <div class="theme-toggle" onclick="App.theme.toggle()" title="テーマ切替">
-                        <div class="theme-toggle-track">
-                            <div class="theme-toggle-thumb">
-                                <span id="theme-icon">🌙</span>
+                            <div class="nav-item" data-view="factories" onclick="App.ui.switchView('factories')">
+                                <span class="nav-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M2 20V8l6-4v4l6-4v4l6-4v16H2z" />
+                                        <path d="M6 12v4" />
+                                        <path d="M10 12v4" />
+                                        <path d="M14 12v4" />
+                                        <path d="M18 12v4" />
+                                    </svg>
+                                </span>
+                                <span class="nav-text">Factories</span>
                             </div>
                         </div>
-                        <span class="theme-toggle-label" id="theme-label">Dark</span>
-                    </div>
 
-                    <button class="btn btn-primary" onclick="App.data.sync()">
-                        <span>⚡</span> Sync
-                    </button>
-                    <button class="btn btn-glass" onclick="App.data.syncGenzai()" title="Sync Dispatch">
-                        <span>🏢</span>
-                    </button>
-                    <button class="btn btn-glass" onclick="App.data.syncUkeoi()" title="Sync Contract">
-                        <span>🔧</span>
-                    </button>
-                </div>
-            </header>
+                        <!-- Requests Group -->
+                        <div class="nav-group">
+                            <div class="nav-group-label">Requests</div>
 
-            <!-- VIEW: DASHBOARD -->
-            <div id="view-dashboard" class="view-section active">
+                            <div class="nav-item" data-view="requests" onclick="App.ui.switchView('requests')">
+                                <span class="nav-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                        <polyline points="14 2 14 8 20 8" />
+                                        <line x1="16" y1="13" x2="8" y2="13" />
+                                        <line x1="16" y1="17" x2="8" y2="17" />
+                                        <line x1="10" y1="9" x2="8" y2="9" />
+                                    </svg>
+                                </span>
+                                <span class="nav-text">申請 Request</span>
+                            </div>
 
-                <!-- Bento Grid Stats -->
-                <div class="bento-grid">
-                    <div class="glass-panel stat-card col-span-1">
-                        <div class="stat-label">Total Usage</div>
-                        <div class="stat-value" id="kpi-used">-</div>
-                        <div class="badge badge-success">Active</div>
-                    </div>
-                    <div class="glass-panel stat-card col-span-1">
-                        <div class="stat-label">Remaining</div>
-                        <div class="stat-value" id="kpi-balance" style="color: var(--warning);">-</div>
-                    </div>
-                    <div class="glass-panel stat-card col-span-1">
-                        <div class="stat-label">Utilization</div>
-                        <div class="stat-value" id="kpi-rate">-</div>
-                    </div>
-                    <div class="glass-panel stat-card col-span-1"
-                        style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(37, 99, 235, 0.2)); border: 1px solid var(--primary); cursor: pointer;"
-                        onclick="App.ui.switchView('employees')">
-                        <div class="stat-label">Employees</div>
-                        <div class="stat-value" id="kpi-total">-</div>
-                        <div style="font-size: 0.8rem; margin-top: 5px;">Click to view all →</div>
-                    </div>
-                </div>
+                            <div class="nav-item" data-view="calendar" onclick="App.ui.switchView('calendar')">
+                                <span class="nav-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                        <line x1="16" y1="2" x2="16" y2="6" />
+                                        <line x1="8" y1="2" x2="8" y2="6" />
+                                        <line x1="3" y1="10" x2="21" y2="10" />
+                                        <path d="M8 14h.01" />
+                                        <path d="M12 14h.01" />
+                                        <path d="M16 14h.01" />
+                                        <path d="M8 18h.01" />
+                                        <path d="M12 18h.01" />
+                                    </svg>
+                                </span>
+                                <span class="nav-text">カレンダー</span>
+                            </div>
+                        </div>
 
-                <!-- Charts Row -->
-                <div class="bento-grid">
-                    <div class="glass-panel col-span-2" style="padding: 1.5rem; height: 400px;">
-                        <h3 class="stat-label" style="margin-bottom: 1rem;">Usage Distribution</h3>
-                        <div style="position: relative; height: 320px; width: 100%;">
-                            <div id="chart-distribution"></div>
+                        <!-- Analytics Group -->
+                        <div class="nav-group">
+                            <div class="nav-group-label">Analytics</div>
+
+                            <div class="nav-item" data-view="compliance" onclick="App.ui.switchView('compliance')">
+                                <span class="nav-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                        <polyline points="9 12 11 14 15 10" />
+                                    </svg>
+                                </span>
+                                <span class="nav-text">Compliance</span>
+                            </div>
+
+                            <div class="nav-item" data-view="analytics" onclick="App.ui.switchView('analytics')">
+                                <span class="nav-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="18" y1="20" x2="18" y2="10" />
+                                        <line x1="12" y1="20" x2="12" y2="4" />
+                                        <line x1="6" y1="20" x2="6" y2="14" />
+                                    </svg>
+                                </span>
+                                <span class="nav-text">分析 Analytics</span>
+                            </div>
+
+                            <div class="nav-item" data-view="reports" onclick="App.ui.switchView('reports')">
+                                <span class="nav-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                        <polyline points="14 2 14 8 20 8" />
+                                        <line x1="12" y1="18" x2="12" y2="12" />
+                                        <line x1="9" y1="15" x2="15" y2="15" />
+                                    </svg>
+                                </span>
+                                <span class="nav-text">月次レポート</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="glass-panel col-span-2" style="padding: 1.5rem; height: 400px;">
-                        <h3 class="stat-label" style="margin-bottom: 1rem;">Monthly Trends (2025)</h3>
-                        <div style="position: relative; height: 320px; width: 100%;">
-                            <div id="chart-trends"></div>
+
+                    <!-- Settings at bottom -->
+                    <div class="sidebar-footer">
+                        <div class="nav-item nav-item-settings" data-view="settings"
+                            onclick="App.ui.switchView('settings')">
+                            <span class="nav-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="3" />
+                                    <path
+                                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                                </svg>
+                            </span>
+                            <span class="nav-text">Settings</span>
                         </div>
                     </div>
-                </div>
-            </div>
+                </nav>
 
-            <!-- VIEW: EMPLOYEES -->
-            <div id="view-employees" class="view-section" style="display: none;">
-                <div class="glass-panel" style="padding: 2rem;">
-                    <div class="flex-between" style="margin-bottom: 1rem;">
+                <!-- Main Content -->
+                <main class="main-content">
+
+                    <!-- Header -->
+                    <header class="flex-between" style="margin-bottom: 2rem;">
+                        <div>
+                            <h1 class="text-gradient" style="font-size: 2.5rem;" id="page-title">Dashboard Overview</h1>
+                            <p style="color: #64748b;" id="page-subtitle">Real-time vacation data analytics</p>
+                        </div>
+
                         <div class="flex-center" style="gap: 1rem;">
-                            <h3 style="font-size: 1.25rem;">Staff Directory</h3>
-                            <div class="badge badge-warning" id="emp-count-badge">0 Employees</div>
+                            <div id="year-filter" class="flex-center" style="gap: 0.5rem; margin-right: 1rem;"></div>
+
+                            <!-- Theme Toggle -->
+                            <div class="theme-toggle" onclick="App.theme.toggle()" title="テーマ切替">
+                                <div class="theme-toggle-track">
+                                    <div class="theme-toggle-thumb">
+                                        <span id="theme-icon">🌙</span>
+                                    </div>
+                                </div>
+                                <span class="theme-toggle-label" id="theme-label">Dark</span>
+                            </div>
+
+                            <button class="btn btn-primary" id="btn-sync-main" onclick="App.data.sync()">
+                                <span class="btn-icon">⚡</span>
+                                <span class="btn-text">Sync</span>
+                                <span class="btn-spinner" style="display: none;"></span>
+                            </button>
+                            <button class="btn btn-glass" id="btn-sync-genzai" onclick="App.data.syncGenzai()"
+                                title="Sync Dispatch Employees">
+                                <span class="btn-icon">🏢</span>
+                                <span class="btn-spinner" style="display: none;"></span>
+                            </button>
+                            <button class="btn btn-glass" id="btn-sync-ukeoi" onclick="App.data.syncUkeoi()"
+                                title="Sync Contract Employees">
+                                <span class="btn-icon">🔧</span>
+                                <span class="btn-spinner" style="display: none;"></span>
+                            </button>
                         </div>
-                        <input type="text" id="search-input" placeholder="Search by name, ID, or factory..."
-                            class="input-glass" style="width: 300px;" oninput="App.ui.handleSearch(this.value)">
-                    </div>
-                    <!-- Type Filter Tabs -->
-                    <div id="type-filter-tabs" class="type-filter-tabs" style="margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                        <button class="btn btn-glass type-tab active" data-type="all" onclick="App.ui.filterByType('all')">
-                            <span class="tab-label">全員</span>
-                            <span class="tab-count" id="count-all">0</span>
-                        </button>
-                        <button class="btn btn-glass type-tab" data-type="genzai" onclick="App.ui.filterByType('genzai')">
-                            <span class="tab-label">派遣 Dispatch</span>
-                            <span class="tab-count" id="count-genzai">0</span>
-                        </button>
-                        <button class="btn btn-glass type-tab" data-type="ukeoi" onclick="App.ui.filterByType('ukeoi')">
-                            <span class="tab-label">請負 Contract</span>
-                            <span class="tab-count" id="count-ukeoi">0</span>
-                        </button>
-                        <button class="btn btn-glass type-tab" data-type="staff" onclick="App.ui.filterByType('staff')">
-                            <span class="tab-label">社員 Staff</span>
-                            <span class="tab-count" id="count-staff">0</span>
-                        </button>
-                    </div>
+                    </header>
 
-                    <div style="overflow-x: auto; max-height: 70vh;">
-                        <table class="modern-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Employee</th>
-                                    <th>Factory</th>
-                                    <th>Granted</th>
-                                    <th>Used</th>
-                                    <th>Balance</th>
-                                    <th>Rate</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-body">
-                                <tr>
-                                    <td colspan="7" style="text-align:center; padding: 2rem;">Loading data...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+                    <!-- VIEW: DASHBOARD -->
+                    <div id="view-dashboard" class="view-section active">
 
-            <!-- VIEW: FACTORIES -->
-            <div id="view-factories" class="view-section" style="display: none;">
-                <div class="glass-panel" style="padding: 1.5rem; height: 600px;">
-                    <h3 class="stat-label" style="margin-bottom: 1rem;">Usage by Factory</h3>
-                    <div style="position: relative; height: 500px; width: 100%;">
-                        <div id="chart-factories"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW: REQUESTS (申請) -->
-            <div id="view-requests" class="view-section" style="display: none;">
-                <div class="bento-grid">
-                    <!-- New Request Form -->
-                    <div class="glass-panel col-span-2" style="padding: 2rem;">
-                        <h3 style="margin-bottom: 1.5rem; font-size: 1.25rem;">
-                            📝 新規有給休暇申請
-                            <span style="font-size: 0.8rem; color: var(--muted); margin-left: 0.5rem;">New Leave Request</span>
-                        </h3>
-
-                        <div id="request-form">
-                            <!-- Progress Steps -->
-                            <div class="progress-steps">
-                                <div class="progress-step active" id="step-1">
-                                    <div class="progress-step-number">1</div>
-                                    <div class="progress-step-label">従業員選択</div>
+                        <!-- Bento Grid Stats with Progress Rings -->
+                        <div class="bento-grid">
+                            <!-- Usage Ring -->
+                            <div class="glass-panel stat-card stat-card-ring col-span-1">
+                                <div class="progress-ring-container">
+                                    <svg class="progress-ring" width="80" height="80">
+                                        <circle class="progress-ring__circle-bg" cx="40" cy="40" r="34"></circle>
+                                        <circle class="progress-ring__circle progress-ring__circle--success"
+                                            id="ring-usage" cx="40" cy="40" r="34" stroke-dasharray="213.6"
+                                            stroke-dashoffset="213.6"></circle>
+                                    </svg>
+                                    <div class="progress-ring__value" id="ring-usage-value">0</div>
                                 </div>
-                                <div class="progress-step" id="step-2">
-                                    <div class="progress-step-number">2</div>
-                                    <div class="progress-step-label">日程・種類</div>
-                                </div>
-                                <div class="progress-step" id="step-3">
-                                    <div class="progress-step-number">3</div>
-                                    <div class="progress-step-label">確認・送信</div>
+                                <div class="stat-label">Total Usage</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);" id="kpi-used-detail">0 days
                                 </div>
                             </div>
 
-                            <!-- SECTION 1: Employee Selection -->
-                            <div class="form-section">
-                                <div class="form-section-title">👤 従業員を選択</div>
-
-                                <div class="form-group">
-                                    <label>🏭 工場で絞込み (Filter by Factory)</label>
-                                    <select id="factory-filter" class="input-glass" style="width: 100%;"
-                                        onchange="App.requests.filterByFactory()">
-                                        <option value="">すべての工場 (All Factories)</option>
-                                    </select>
+                            <!-- Balance Ring -->
+                            <div class="glass-panel stat-card stat-card-ring col-span-1">
+                                <div class="progress-ring-container">
+                                    <svg class="progress-ring" width="80" height="80">
+                                        <circle class="progress-ring__circle-bg" cx="40" cy="40" r="34"></circle>
+                                        <circle class="progress-ring__circle progress-ring__circle--warning"
+                                            id="ring-balance" cx="40" cy="40" r="34" stroke-dasharray="213.6"
+                                            stroke-dashoffset="213.6"></circle>
+                                    </svg>
+                                    <div class="progress-ring__value" id="ring-balance-value">0</div>
                                 </div>
+                                <div class="stat-label">Remaining</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);" id="kpi-balance-detail">0
+                                    days left</div>
+                            </div>
 
-                                <div class="form-group">
-                                    <label class="required">🔍 従業員を検索 (Search Employee)</label>
-                                    <input type="text" id="emp-search" class="input-glass" style="width: 100%;"
-                                        placeholder="名前または社員番号で検索..." oninput="App.requests.searchEmployee(this.value)">
-                                    <div id="emp-search-validation" class="validation-message"></div>
-                                    <div id="emp-search-results" style="margin-top: 0.5rem; max-height: 200px; overflow-y: auto;"></div>
+                            <!-- Utilization Ring -->
+                            <div class="glass-panel stat-card stat-card-ring col-span-1">
+                                <div class="progress-ring-container">
+                                    <svg class="progress-ring" width="80" height="80">
+                                        <circle class="progress-ring__circle-bg" cx="40" cy="40" r="34"></circle>
+                                        <circle class="progress-ring__circle progress-ring__circle--primary"
+                                            id="ring-rate" cx="40" cy="40" r="34" stroke-dasharray="213.6"
+                                            stroke-dashoffset="213.6"></circle>
+                                    </svg>
+                                    <div class="progress-ring__value" id="ring-rate-value">0%</div>
+                                </div>
+                                <div class="stat-label">Utilization</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);" id="kpi-rate-detail">avg rate
                                 </div>
                             </div>
 
-                            <!-- Selected Employee Info -->
-                            <div id="selected-emp-info" style="display: none; margin-bottom: 1.25rem; padding: 1rem; background: rgba(56, 189, 248, 0.1); border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.2);">
-                                <div class="flex-between">
+                            <!-- Employees Card -->
+                            <div class="glass-panel stat-card col-span-1"
+                                style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(37, 99, 235, 0.2)); border: 1px solid var(--primary); cursor: pointer;"
+                                onclick="App.ui.switchView('employees')">
+                                <div class="stat-label">Employees</div>
+                                <div class="stat-value count-up" id="kpi-total">-</div>
+                                <div class="quick-stats">
+                                    <div class="quick-stat">
+                                        <div class="quick-stat-value" id="qs-haken">0</div>
+                                        <div class="quick-stat-label">派遣</div>
+                                    </div>
+                                    <div class="quick-stat">
+                                        <div class="quick-stat-value" id="qs-ukeoi">0</div>
+                                        <div class="quick-stat-label">請負</div>
+                                    </div>
+                                    <div class="quick-stat">
+                                        <div class="quick-stat-value" id="qs-staff">0</div>
+                                        <div class="quick-stat-label">Staff</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Compliance Gauge Row -->
+                        <div class="bento-grid" style="margin-bottom: 1.5rem;">
+                            <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                                <h3 class="stat-label" style="margin-bottom: 1rem;">📊 Compliance Gauge (5日最低消化)</h3>
+                                <div class="gauge-container">
+                                    <svg class="gauge-svg" viewBox="0 0 200 120">
+                                        <path class="gauge-bg" d="M 20 100 A 80 80 0 0 1 180 100" />
+                                        <path class="gauge-fill" id="gauge-compliance"
+                                            d="M 20 100 A 80 80 0 0 1 180 100" stroke-dasharray="251.2"
+                                            stroke-dashoffset="251.2" stroke="var(--success)" />
+                                    </svg>
+                                    <div class="gauge-value" id="gauge-value">0%</div>
+                                    <div class="gauge-label">compliance rate</div>
+                                    <div class="gauge-markers">
+                                        <span>0%</span>
+                                        <span>100%</span>
+                                    </div>
+                                </div>
+                                <div
+                                    style="text-align: center; margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+                                    <span id="compliance-count">0</span> of <span id="compliance-total">0</span>
+                                    employees have used ≥5 days
+                                </div>
+                            </div>
+
+                            <!-- Expiring Days Alert -->
+                            <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                                <h3 class="stat-label" style="margin-bottom: 1rem;">⚠️ Days Expiring Soon</h3>
+                                <div id="expiring-alert">
+                                    <div class="countdown-card" id="countdown-container" style="display: none;">
+                                        <div class="countdown-icon">⏰</div>
+                                        <div class="countdown-info">
+                                            <div class="countdown-title">有給休暇が失効予定</div>
+                                            <div class="countdown-value" id="expiring-days">0 days</div>
+                                            <div class="countdown-detail" id="expiring-detail">from 0 employees</div>
+                                        </div>
+                                    </div>
+                                    <div id="no-expiring"
+                                        style="text-align: center; padding: 2rem; color: var(--success);">
+                                        ✅ No days expiring soon!
+                                    </div>
+                                </div>
+                                <div class="quick-stats" style="margin-top: 1rem;">
+                                    <div class="quick-stat">
+                                        <div class="quick-stat-value" id="critical-count" style="color: var(--danger);">
+                                            0</div>
+                                        <div class="quick-stat-label">Critical (0日)</div>
+                                    </div>
+                                    <div class="quick-stat">
+                                        <div class="quick-stat-value" id="warning-count" style="color: var(--warning);">
+                                            0</div>
+                                        <div class="quick-stat-label">Warning (&lt;3日)</div>
+                                    </div>
+                                    <div class="quick-stat">
+                                        <div class="quick-stat-value" id="healthy-count" style="color: var(--success);">
+                                            0</div>
+                                        <div class="quick-stat-label">Healthy (≥5日)</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Charts Row -->
+                        <div class="bento-grid">
+                            <div class="glass-panel col-span-2" style="padding: 1.5rem; height: 400px;">
+                                <h3 class="stat-label" style="margin-bottom: 1rem;">Usage Distribution</h3>
+                                <div style="position: relative; height: 320px; width: 100%;">
+                                    <div id="chart-distribution"></div>
+                                </div>
+                            </div>
+                            <div class="glass-panel col-span-2" style="padding: 1.5rem; height: 400px;">
+                                <h3 class="stat-label" style="margin-bottom: 1rem;">Monthly Trends (2025)</h3>
+                                <div style="position: relative; height: 320px; width: 100%;">
+                                    <div id="chart-trends"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW: EMPLOYEES -->
+                    <div id="view-employees" class="view-section" style="display: none;">
+                        <div class="glass-panel" style="padding: 2rem;">
+                            <div class="flex-between" style="margin-bottom: 1rem;">
+                                <div class="flex-center" style="gap: 1rem;">
+                                    <h3 style="font-size: 1.25rem;">従業員一覧</h3>
+                                    <div class="badge badge-warning" id="emp-count-badge">0 Employees</div>
+                                </div>
+                                <div class="flex-center" style="gap: 1rem;">
+                                    <label for="active-only-toggle" class="flex-center"
+                                        style="gap: 0.5rem; cursor: pointer;">
+                                        <input type="checkbox" id="active-only-toggle" checked
+                                            onchange="App.employeeTypes.toggleActiveFilter()">
+                                        <span style="font-size: 0.85rem;">在職中のみ</span>
+                                    </label>
+                                    <label for="search-input" class="sr-only">Search employees</label>
+                                    <input type="text" id="search-input" placeholder="Search by name, ID, or factory..."
+                                        class="input-glass" style="width: 300px;"
+                                        oninput="App.ui.handleSearch(this.value)"
+                                        aria-label="Search employees by name, ID, or factory">
+                                </div>
+                            </div>
+                            <!-- Type Filter Tabs -->
+                            <div id="type-filter-tabs" class="type-filter-tabs"
+                                style="margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button class="btn btn-glass type-tab active" data-type="all"
+                                    onclick="App.ui.filterByType('all')">
+                                    <span class="tab-label">全員</span>
+                                    <span class="tab-count" id="count-all">0</span>
+                                </button>
+                                <button class="btn btn-glass type-tab" data-type="genzai"
+                                    onclick="App.ui.filterByType('genzai')">
+                                    <span class="tab-label">派遣 Dispatch</span>
+                                    <span class="tab-count" id="count-genzai">0</span>
+                                </button>
+                                <button class="btn btn-glass type-tab" data-type="ukeoi"
+                                    onclick="App.ui.filterByType('ukeoi')">
+                                    <span class="tab-label">請負 Contract</span>
+                                    <span class="tab-count" id="count-ukeoi">0</span>
+                                </button>
+                                <button class="btn btn-glass type-tab" data-type="staff"
+                                    onclick="App.ui.filterByType('staff')">
+                                    <span class="tab-label">社員 Staff</span>
+                                    <span class="tab-count" id="count-staff">0</span>
+                                </button>
+                            </div>
+
+                            <!-- Employee Type Tabs -->
+                            <div class="employee-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+                                <button class="btn btn-glass active" id="tab-all"
+                                    onclick="App.employeeTypes.switchTab('all')">
+                                    すべて (All)
+                                    <span class="badge badge-primary" id="count-all"
+                                        style="margin-left: 0.5rem;">0</span>
+                                </button>
+                                <button class="btn btn-glass" id="tab-haken"
+                                    onclick="App.employeeTypes.switchTab('haken')">
+                                    🏭 派遣 (Haken)
+                                    <span class="badge badge-info" id="count-haken"
+                                        style="margin-left: 0.5rem;">0</span>
+                                </button>
+                                <button class="btn btn-glass" id="tab-ukeoi"
+                                    onclick="App.employeeTypes.switchTab('ukeoi')">
+                                    📋 請負 (Ukeoi)
+                                    <span class="badge badge-success" id="count-ukeoi"
+                                        style="margin-left: 0.5rem;">0</span>
+                                </button>
+                                <button class="btn btn-glass" id="tab-staff"
+                                    onclick="App.employeeTypes.switchTab('staff')">
+                                    👔 スタッフ (Staff)
+                                    <span class="badge badge-warning" id="count-staff"
+                                        style="margin-left: 0.5rem;">0</span>
+                                </button>
+                            </div>
+
+                            <!-- Summary Cards by Type -->
+                            <div class="bento-grid"
+                                style="grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                                <div class="kpi-card"
+                                    style="padding: 1rem; background: rgba(56, 189, 248, 0.1); border-left: 3px solid #38bdf8;">
+                                    <div class="stat-label">派遣 使用日数</div>
+                                    <div class="stat-value" id="haken-used">0</div>
+                                </div>
+                                <div class="kpi-card"
+                                    style="padding: 1rem; background: rgba(52, 211, 153, 0.1); border-left: 3px solid #34d399;">
+                                    <div class="stat-label">請負 使用日数</div>
+                                    <div class="stat-value" id="ukeoi-used">0</div>
+                                </div>
+                                <div class="kpi-card"
+                                    style="padding: 1rem; background: rgba(251, 191, 36, 0.1); border-left: 3px solid #fbbf24;">
+                                    <div class="stat-label">スタッフ 使用日数</div>
+                                    <div class="stat-value" id="staff-used">0</div>
+                                </div>
+                                <div class="kpi-card"
+                                    style="padding: 1rem; background: rgba(168, 85, 247, 0.1); border-left: 3px solid #a855f7;">
+                                    <div class="stat-label">合計 使用日数</div>
+                                    <div class="stat-value" id="total-type-used">0</div>
+                                </div>
+                            </div>
+
+                            <div style="overflow-x: auto; max-height: 60vh;">
+                                <table class="modern-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Employee</th>
+                                            <th>Type</th>
+                                            <th>Factory/Business</th>
+                                            <th>Granted</th>
+                                            <th>Used</th>
+                                            <th>Balance</th>
+                                            <th>Rate</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-body">
+                                        <!-- Skeleton loading rows -->
+                                        <tr class="skeleton-row">
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 60px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 100px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 50px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 120px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 40px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 40px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 40px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 50px; height: 16px;">
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr class="skeleton-row">
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 55px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 90px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 45px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 110px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 35px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 35px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 35px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 45px; height: 16px;">
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr class="skeleton-row">
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 65px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 95px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 55px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 100px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 38px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 38px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 38px; height: 16px;">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="skeleton skeleton-text" style="width: 48px; height: 16px;">
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW: FACTORIES -->
+                    <div id="view-factories" class="view-section" style="display: none;">
+                        <div class="glass-panel" style="padding: 1.5rem; height: 600px;">
+                            <h3 class="stat-label" style="margin-bottom: 1rem;">Usage by Factory</h3>
+                            <div style="position: relative; height: 500px; width: 100%;">
+                                <div id="chart-factories"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW: REQUESTS (申請) -->
+                    <div id="view-requests" class="view-section" style="display: none;">
+                        <div class="bento-grid">
+                            <!-- New Request Form -->
+                            <div class="glass-panel col-span-2" style="padding: 2rem;">
+                                <h3 style="margin-bottom: 1.5rem; font-size: 1.25rem;">
+                                    📝 新規有給休暇申請
+                                    <span style="font-size: 0.8rem; color: var(--muted); margin-left: 0.5rem;">New Leave
+                                        Request</span>
+                                </h3>
+
+                                <div id="request-form">
+                                    <!-- Progress Steps -->
+                                    <div class="progress-steps">
+                                        <div class="progress-step active" id="step-1">
+                                            <div class="progress-step-number">1</div>
+                                            <div class="progress-step-label">従業員選択</div>
+                                        </div>
+                                        <div class="progress-step" id="step-2">
+                                            <div class="progress-step-number">2</div>
+                                            <div class="progress-step-label">日程・種類</div>
+                                        </div>
+                                        <div class="progress-step" id="step-3">
+                                            <div class="progress-step-number">3</div>
+                                            <div class="progress-step-label">確認・送信</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SECTION 1: Employee Selection -->
+                                    <div class="form-section">
+                                        <div class="form-section-title">👤 従業員を選択</div>
+
+                                        <div class="form-group">
+                                            <label for="factory-filter">🏭 工場で絞込み (Filter by Factory)</label>
+                                            <select id="factory-filter" class="input-glass" style="width: 100%;"
+                                                onchange="App.requests.filterByFactory()">
+                                                <option value="">すべての工場 (All Factories)</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="emp-search" class="required">🔍 従業員を検索 (Search Employee)</label>
+                                            <input type="text" id="emp-search" class="input-glass" style="width: 100%;"
+                                                placeholder="名前または社員番号で検索..."
+                                                oninput="App.requests.searchEmployee(this.value)"
+                                                aria-describedby="emp-search-validation">
+                                            <div id="emp-search-validation" class="validation-message"></div>
+                                            <div id="emp-search-results"
+                                                style="margin-top: 0.5rem; max-height: 200px; overflow-y: auto;"></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Selected Employee Info -->
+                                    <div id="selected-emp-info"
+                                        style="display: none; margin-bottom: 1.25rem; padding: 1rem; background: rgba(56, 189, 248, 0.1); border-radius: 12px; border: 1px solid rgba(56, 189, 248, 0.2);">
+                                        <div class="flex-between">
+                                            <div>
+                                                <div id="selected-emp-name"
+                                                    style="font-weight: 600; font-size: 1.1rem;"></div>
+                                                <div id="selected-emp-details"
+                                                    style="color: var(--muted); font-size: 0.85rem;"></div>
+                                            </div>
+                                            <div style="text-align: right;">
+                                                <div class="stat-label">残り日数</div>
+                                                <div id="selected-emp-balance"
+                                                    style="font-size: 1.5rem; font-weight: 700; color: var(--success);">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Hourly wage info (shown when available) -->
+                                        <div id="hourly-wage-info"
+                                            style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                            <div class="flex-between">
+                                                <div>
+                                                    <span class="stat-label">時給 (Hourly Wage):</span>
+                                                    <span id="selected-emp-wage"
+                                                        style="font-weight: 600; color: var(--primary); margin-left: 0.5rem;"></span>
+                                                </div>
+                                                <div>
+                                                    <span class="stat-label">時間残高:</span>
+                                                    <span id="selected-emp-hours"
+                                                        style="font-weight: 600; color: var(--warning); margin-left: 0.5rem;"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Yukyu History Table (2 years) -->
+                                        <div id="yukyu-history-table"
+                                            style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                            <div style="margin-bottom: 0.75rem;">
+                                                <span class="stat-label">📊 年度別有給履歴 (2年分)</span>
+                                            </div>
+                                            <table style="width: 100%; font-size: 0.85rem; border-collapse: collapse;">
+                                                <thead>
+                                                    <tr style="background: rgba(56, 189, 248, 0.15);">
+                                                        <th
+                                                            style="padding: 0.5rem; text-align: left; border-radius: 8px 0 0 0;">
+                                                            年度</th>
+                                                        <th style="padding: 0.5rem; text-align: center;">付与日数</th>
+                                                        <th style="padding: 0.5rem; text-align: center;">使用日数</th>
+                                                        <th style="padding: 0.5rem; text-align: center;">残日数</th>
+                                                        <th
+                                                            style="padding: 0.5rem; text-align: center; border-radius: 0 8px 0 0;">
+                                                            消化率</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="yukyu-history-tbody">
+                                                    <tr>
+                                                        <td colspan="5"
+                                                            style="padding: 1rem; text-align: center; color: var(--muted);">
+                                                            従業員を選択してください
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <!-- Usage History (dates) -->
+                                        <div id="usage-history-container"
+                                            style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                            <div style="margin-bottom: 0.5rem;">
+                                                <span class="stat-label">📅 使用履歴 (Usage History)</span>
+                                                <button type="button" onclick="App.requests.toggleUsageHistory()"
+                                                    style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; background: rgba(255,255,255,0.1); border: none; border-radius: 4px; color: var(--muted); cursor: pointer;">
+                                                    詳細を表示
+                                                </button>
+                                            </div>
+                                            <div id="usage-history-summary"
+                                                style="font-size: 0.85rem; color: var(--muted);"></div>
+                                            <div id="usage-history-detail"
+                                                style="display: none; margin-top: 0.5rem; max-height: 200px; overflow-y: auto;">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SECTION 2: Date & Type -->
+                                    <div class="form-section">
+                                        <div class="form-section-title">📅 日程と種類</div>
+
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                            <div class="form-group">
+                                                <label for="start-date" class="required">開始日 (Start Date)</label>
+                                                <input type="date" id="start-date" class="input-glass"
+                                                    style="width: 100%;" onchange="App.requests.validateDates()"
+                                                    aria-describedby="start-date-validation">
+                                                <div id="start-date-validation" class="validation-message"></div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="end-date" class="required">終了日 (End Date)</label>
+                                                <input type="date" id="end-date" class="input-glass"
+                                                    style="width: 100%;" onchange="App.requests.validateDates()"
+                                                    aria-describedby="end-date-validation">
+                                                <div id="end-date-validation" class="validation-message"></div>
+                                            </div>
+                                        </div>
+
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                            <div class="form-group">
+                                                <label for="leave-type" class="required">種類 (Type)</label>
+                                                <select id="leave-type" class="input-glass" style="width: 100%;"
+                                                    onchange="App.requests.toggleLeaveType()">
+                                                    <option value="full">全日休暇 (Full Day)</option>
+                                                    <option value="half_am">午前半休 (AM Half)</option>
+                                                    <option value="half_pm">午後半休 (PM Half)</option>
+                                                    <option value="hourly">時間休 (Hourly)</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group" id="days-input-container">
+                                                <label for="days-requested" class="required">日数 (Days)</label>
+                                                <input type="number" id="days-requested" class="input-glass"
+                                                    style="width: 100%;" min="0.5" step="0.5" value="1"
+                                                    oninput="App.requests.validateDays()"
+                                                    aria-describedby="days-validation">
+                                                <div id="days-validation" class="validation-message"></div>
+                                            </div>
+                                            <div class="form-group" id="hours-input-container" style="display: none;">
+                                                <label for="hours-requested" class="required">時間数 (Hours)</label>
+                                                <input type="number" id="hours-requested" class="input-glass"
+                                                    style="width: 100%;" min="1" max="7" step="1" value="1"
+                                                    oninput="App.requests.updateCostEstimate(); App.requests.validateHours();"
+                                                    aria-describedby="hours-validation hours-hint">
+                                                <div id="hours-validation" class="validation-message"></div>
+                                                <div id="hours-hint"
+                                                    style="font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;">
+                                                    ※ 1日最大7時間まで</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Cost Estimate (shown for hourly leave) -->
+                                    <div id="cost-estimate-container"
+                                        style="display: none; margin-bottom: 1.25rem; padding: 1rem; background: rgba(251, 191, 36, 0.1); border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.3);">
+                                        <div class="flex-between">
+                                            <span class="stat-label">💰 見積コスト (Estimated Cost):</span>
+                                            <span id="cost-estimate"
+                                                style="font-size: 1.25rem; font-weight: 700; color: var(--warning);"></span>
+                                        </div>
+                                    </div>
+
+                                    <!-- SECTION 3: Reason -->
+                                    <div class="form-section">
+                                        <div class="form-section-title">📝 理由</div>
+                                        <div class="form-group">
+                                            <label for="leave-reason">理由 (Reason) - 任意</label>
+                                            <textarea id="leave-reason" class="input-glass"
+                                                style="width: 100%; min-height: 80px; resize: vertical;"
+                                                placeholder="私用、通院、旅行など..." maxlength="200"
+                                                oninput="App.requests.updateCharCounter()"
+                                                aria-describedby="reason-char-counter"></textarea>
+                                            <div class="char-counter" id="reason-char-counter">0 / 200</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Submit Button -->
+                                    <button class="btn btn-primary" id="submit-btn" style="width: 100%; padding: 1rem;"
+                                        onclick="App.requests.showConfirmation()">
+                                        ✓ 内容を確認する (Review & Submit)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Pending Requests -->
+                            <div class="glass-panel col-span-2" style="padding: 2rem;">
+                                <div class="flex-between" style="margin-bottom: 1.5rem;">
+                                    <h3 style="font-size: 1.25rem;">
+                                        ⏳ 承認待ち
+                                        <span
+                                            style="font-size: 0.8rem; color: var(--muted); margin-left: 0.5rem;">Pending
+                                            Approvals</span>
+                                    </h3>
+                                    <button class="btn btn-glass" onclick="App.requests.loadPending()">
+                                        🔄 更新
+                                    </button>
+                                </div>
+
+                                <div id="pending-requests" style="max-height: 400px; overflow-y: auto;">
+                                    <div style="text-align: center; color: var(--muted); padding: 2rem;">
+                                        Loading pending requests...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Request History -->
+                        <div class="glass-panel" style="padding: 2rem; margin-top: 1.5rem;">
+                            <h3 style="margin-bottom: 1.5rem; font-size: 1.25rem;">
+                                📋 申請履歴
+                                <span style="font-size: 0.8rem; color: var(--muted); margin-left: 0.5rem;">Request
+                                    History</span>
+                            </h3>
+                            <div style="overflow-x: auto;">
+                                <table class="modern-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>従業員</th>
+                                            <th>期間</th>
+                                            <th>日数</th>
+                                            <th>理由</th>
+                                            <th>ステータス</th>
+                                            <th>申請日</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="requests-history">
+                                        <tr>
+                                            <td colspan="8" style="text-align: center; padding: 2rem;">Loading...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW: COMPLIANCE -->
+                    <div id="view-compliance" class="view-section" style="display: none;">
+                        <div class="bento-grid">
+                            <!-- 5 Day Compliance -->
+                            <div class="glass-panel col-span-2" style="padding: 2rem;">
+                                <div class="flex-between" style="margin-bottom: 1.5rem;">
+                                    <h3 style="font-size: 1.25rem;">
+                                        📊 5日取得義務 チェック
+                                        <span style="font-size: 0.8rem; color: var(--muted); margin-left: 0.5rem;">5-Day
+                                            Compliance Check</span>
+                                    </h3>
+                                    <button class="btn btn-primary" onclick="App.compliance.check5Day()">
+                                        🔍 チェック実行
+                                    </button>
+                                </div>
+
+                                <div id="compliance-summary"
+                                    style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                                    <div class="stat-card" style="text-align: center;">
+                                        <div class="stat-label">対象者</div>
+                                        <div class="stat-value" id="comp-total">-</div>
+                                    </div>
+                                    <div class="stat-card" style="text-align: center; border-color: var(--success);">
+                                        <div class="stat-label">達成</div>
+                                        <div class="stat-value" id="comp-compliant" style="color: var(--success);">-
+                                        </div>
+                                    </div>
+                                    <div class="stat-card" style="text-align: center; border-color: var(--warning);">
+                                        <div class="stat-label">要注意</div>
+                                        <div class="stat-value" id="comp-atrisk" style="color: var(--warning);">-</div>
+                                    </div>
+                                    <div class="stat-card" style="text-align: center; border-color: var(--danger);">
+                                        <div class="stat-label">未達成</div>
+                                        <div class="stat-value" id="comp-noncompliant" style="color: var(--danger);">-
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="compliance-list" style="max-height: 300px; overflow-y: auto;">
+                                    <div style="text-align: center; color: var(--muted); padding: 2rem;">
+                                        Click "チェック実行" to check compliance
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Alerts -->
+                            <div class="glass-panel col-span-2" style="padding: 2rem;">
+                                <div class="flex-between" style="margin-bottom: 1.5rem;">
+                                    <h3 style="font-size: 1.25rem;">
+                                        🚨 アラート
+                                        <span
+                                            style="font-size: 0.8rem; color: var(--muted); margin-left: 0.5rem;">Compliance
+                                            Alerts</span>
+                                    </h3>
+                                    <button class="btn btn-glass" onclick="App.compliance.loadAlerts()">
+                                        🔄 更新
+                                    </button>
+                                </div>
+
+                                <div id="alerts-container" style="max-height: 400px; overflow-y: auto;">
+                                    <div style="text-align: center; color: var(--muted); padding: 2rem;">
+                                        Loading alerts...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Annual Ledger -->
+                        <div class="glass-panel" style="padding: 2rem; margin-top: 1.5rem;">
+                            <div class="flex-between" style="margin-bottom: 1.5rem;">
+                                <h3 style="font-size: 1.25rem;">
+                                    📒 年次有給休暇管理簿
+                                    <span style="font-size: 0.8rem; color: var(--muted); margin-left: 0.5rem;">Annual
+                                        Leave Ledger (Required by Law)</span>
+                                </h3>
+                                <div class="flex-center" style="gap: 0.5rem;">
+                                    <button class="btn btn-glass" onclick="App.compliance.loadLedger()">
+                                        📄 表示
+                                    </button>
+                                    <button class="btn btn-primary" onclick="App.compliance.exportLedger('csv')">
+                                        💾 CSV出力
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="ledger-container" style="overflow-x: auto; max-height: 400px;">
+                                <div style="text-align: center; color: var(--muted); padding: 2rem;">
+                                    Click "表示" to load the annual ledger
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW: CALENDAR -->
+                    <div id="view-calendar" class="view-section" style="display: none;">
+                        <div class="bento-grid">
+                            <!-- Calendar Controls -->
+                            <div class="glass-panel col-span-4" style="padding: 1.5rem;">
+                                <div class="flex-between" style="margin-bottom: 1rem;">
+                                    <div class="flex-center" style="gap: 1rem;">
+                                        <button class="btn btn-glass" onclick="App.calendar.prevMonth()">◀</button>
+                                        <h3 id="calendar-month-title"
+                                            style="font-size: 1.5rem; min-width: 200px; text-align: center;">2025年 12月
+                                        </h3>
+                                        <button class="btn btn-glass" onclick="App.calendar.nextMonth()">▶</button>
+                                    </div>
+                                    <div class="flex-center" style="gap: 0.5rem;">
+                                        <button class="btn btn-glass" onclick="App.calendar.goToToday()">今日</button>
+                                        <button class="btn btn-primary" onclick="App.calendar.loadEvents()">🔄
+                                            更新</button>
+                                    </div>
+                                </div>
+
+                                <!-- Legend -->
+                                <div class="flex-center" style="gap: 1.5rem; margin-bottom: 1rem; font-size: 0.85rem;">
+                                    <span><span
+                                            style="display: inline-block; width: 12px; height: 12px; background: #38bdf8; border-radius: 2px; margin-right: 0.25rem;"></span>全日休暇</span>
+                                    <span><span
+                                            style="display: inline-block; width: 12px; height: 12px; background: #818cf8; border-radius: 2px; margin-right: 0.25rem;"></span>午前半休</span>
+                                    <span><span
+                                            style="display: inline-block; width: 12px; height: 12px; background: #f472b6; border-radius: 2px; margin-right: 0.25rem;"></span>午後半休</span>
+                                    <span><span
+                                            style="display: inline-block; width: 12px; height: 12px; background: #fbbf24; border-radius: 2px; margin-right: 0.25rem;"></span>時間休</span>
+                                    <span><span
+                                            style="display: inline-block; width: 12px; height: 12px; background: #34d399; border-radius: 2px; margin-right: 0.25rem;"></span>使用日</span>
+                                </div>
+
+                                <!-- Calendar Grid -->
+                                <div id="calendar-grid"
+                                    style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;">
+                                    <!-- Header -->
+                                    <div class="calendar-header">日</div>
+                                    <div class="calendar-header">月</div>
+                                    <div class="calendar-header">火</div>
+                                    <div class="calendar-header">水</div>
+                                    <div class="calendar-header">木</div>
+                                    <div class="calendar-header">金</div>
+                                    <div class="calendar-header">土</div>
+                                    <!-- Days will be rendered by JS -->
+                                </div>
+                            </div>
+
+                            <!-- Day Detail Panel -->
+                            <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                                <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">
+                                    📋 選択日の詳細
+                                    <span id="selected-date-display"
+                                        style="color: var(--primary); margin-left: 0.5rem;">-</span>
+                                </h3>
+                                <div id="day-detail-container" style="max-height: 300px; overflow-y: auto;">
+                                    <div style="text-align: center; color: var(--muted); padding: 2rem;">
+                                        日付をクリックして詳細を表示
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Monthly Summary -->
+                            <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                                <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">📊 月間サマリー</h3>
+                                <div id="monthly-summary-container">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                        <div class="stat-card" style="text-align: center; padding: 1rem;">
+                                            <div class="stat-label">休暇取得者数</div>
+                                            <div class="stat-value" id="cal-month-employees" style="font-size: 2rem;">-
+                                            </div>
+                                        </div>
+                                        <div class="stat-card" style="text-align: center; padding: 1rem;">
+                                            <div class="stat-label">総取得日数</div>
+                                            <div class="stat-value" id="cal-month-days" style="font-size: 2rem;">-</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW: ANALYTICS -->
+                    <div id="view-analytics" class="view-section" style="display: none;">
+                        <div class="bento-grid">
+                            <!-- Summary Cards -->
+                            <div class="glass-panel stat-card col-span-1">
+                                <div class="stat-label">総従業員数</div>
+                                <div class="stat-value" id="ana-total-emp">-</div>
+                            </div>
+                            <div class="glass-panel stat-card col-span-1">
+                                <div class="stat-label">総付与日数</div>
+                                <div class="stat-value" id="ana-total-granted" style="color: var(--primary);">-</div>
+                            </div>
+                            <div class="glass-panel stat-card col-span-1">
+                                <div class="stat-label">総使用日数</div>
+                                <div class="stat-value" id="ana-total-used" style="color: var(--success);">-</div>
+                            </div>
+                            <div class="glass-panel stat-card col-span-1">
+                                <div class="stat-label">平均消化率</div>
+                                <div class="stat-value" id="ana-avg-rate" style="color: var(--warning);">-</div>
+                            </div>
+
+                            <!-- Department Chart -->
+                            <div class="glass-panel col-span-2" style="padding: 1.5rem; height: 400px;">
+                                <h3 class="stat-label" style="margin-bottom: 1rem;">部門別使用日数</h3>
+                                <div style="position: relative; height: 320px; width: 100%;">
+                                    <canvas id="chart-department"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Employee Type Chart -->
+                            <div class="glass-panel col-span-2" style="padding: 1.5rem; height: 400px;">
+                                <h3 class="stat-label" style="margin-bottom: 1rem;">従業員タイプ別</h3>
+                                <div style="position: relative; height: 320px; width: 100%;">
+                                    <canvas id="chart-emp-type"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Top Users -->
+                            <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                                <h3 class="stat-label" style="margin-bottom: 1rem;">🏆 Top 10 使用者</h3>
+                                <div id="top-users-list" style="max-height: 300px; overflow-y: auto;"></div>
+                            </div>
+
+                            <!-- High Balance -->
+                            <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                                <h3 class="stat-label" style="margin-bottom: 1rem;">⚠️ 残日数が多い従業員</h3>
+                                <div id="high-balance-list" style="max-height: 300px; overflow-y: auto;"></div>
+                            </div>
+
+                            <!-- Predictions -->
+                            <div class="glass-panel col-span-4" style="padding: 1.5rem;">
+                                <div class="flex-between" style="margin-bottom: 1rem;">
+                                    <h3 class="stat-label">📈 年末予測・5日義務達成リスク</h3>
+                                    <button class="btn btn-glass" onclick="App.analytics.loadPredictions()">🔄
+                                        更新</button>
+                                </div>
+                                <div id="predictions-container">
+                                    <div
+                                        style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                                        <div class="stat-card" style="text-align: center; padding: 1rem;">
+                                            <div class="stat-label">現在月</div>
+                                            <div id="pred-current-month" style="font-size: 1.5rem; font-weight: 700;">-
+                                            </div>
+                                        </div>
+                                        <div class="stat-card" style="text-align: center; padding: 1rem;">
+                                            <div class="stat-label">残り月数</div>
+                                            <div id="pred-remaining-months"
+                                                style="font-size: 1.5rem; font-weight: 700;">-</div>
+                                        </div>
+                                        <div class="stat-card" style="text-align: center; padding: 1rem;">
+                                            <div class="stat-label">月平均使用</div>
+                                            <div id="pred-avg-monthly" style="font-size: 1.5rem; font-weight: 700;">-
+                                            </div>
+                                        </div>
+                                        <div class="stat-card"
+                                            style="text-align: center; padding: 1rem; border-color: var(--danger);">
+                                            <div class="stat-label">5日未達成リスク</div>
+                                            <div id="pred-at-risk"
+                                                style="font-size: 1.5rem; font-weight: 700; color: var(--danger);">-
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="at-risk-employees" style="max-height: 200px; overflow-y: auto;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Export Section -->
+                        <div class="glass-panel" style="padding: 1.5rem; margin-top: 1.5rem;">
+                            <h3 class="stat-label" style="margin-bottom: 1rem;">📥 データエクスポート</h3>
+                            <div class="flex-center" style="gap: 1rem; flex-wrap: wrap;">
+                                <button class="btn btn-primary" onclick="App.analytics.exportExcel('employees')">
+                                    📊 従業員データ (Excel)
+                                </button>
+                                <button class="btn btn-glass" onclick="App.analytics.exportExcel('requests')">
+                                    📝 申請一覧 (Excel)
+                                </button>
+                                <button class="btn btn-glass" onclick="App.analytics.exportExcel('compliance')">
+                                    ✅ 管理簿 (Excel)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW: MONTHLY REPORTS -->
+                    <div id="view-reports" class="view-section" style="display: none;">
+                        <div class="bento-grid">
+                            <!-- Date Selector with Tabs -->
+                            <div class="glass-panel col-span-4" style="padding: 1.5rem;">
+                                <div class="flex-between" style="margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+                                    <h3 style="font-size: 1.25rem;">📋 レポート期間</h3>
+                                    <button class="btn btn-export" onclick="App.reports.exportReport()">
+                                        📥 Excel出力
+                                    </button>
+                                </div>
+
+                                <!-- Tab Selector -->
+                                <div class="tab-container" style="margin-bottom: 1.25rem;">
+                                    <button class="tab-btn active" id="tab-monthly"
+                                        onclick="App.reports.setMode('monthly')">
+                                        📅 月次 (21日〜20日)
+                                    </button>
+                                    <button class="tab-btn" id="tab-custom" onclick="App.reports.setMode('custom')">
+                                        🔧 期間指定
+                                    </button>
+                                </div>
+
+                                <!-- Monthly Mode -->
+                                <div id="monthly-selector"
+                                    style="display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap;">
                                     <div>
-                                        <div id="selected-emp-name" style="font-weight: 600; font-size: 1.1rem;"></div>
-                                        <div id="selected-emp-details" style="color: var(--muted); font-size: 0.85rem;"></div>
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <div class="stat-label">残り日数</div>
-                                        <div id="selected-emp-balance" style="font-size: 1.5rem; font-weight: 700; color: var(--success);"></div>
-                                    </div>
-                                </div>
-                                <!-- Hourly wage info (shown when available) -->
-                                <div id="hourly-wage-info" style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                                    <div class="flex-between">
-                                        <div>
-                                            <span class="stat-label">時給 (Hourly Wage):</span>
-                                            <span id="selected-emp-wage" style="font-weight: 600; color: var(--primary); margin-left: 0.5rem;"></span>
-                                        </div>
-                                        <div>
-                                            <span class="stat-label">時間残高:</span>
-                                            <span id="selected-emp-hours" style="font-weight: 600; color: var(--warning); margin-left: 0.5rem;"></span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Usage History -->
-                                <div id="usage-history-container" style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                                    <div style="margin-bottom: 0.5rem;">
-                                        <span class="stat-label">📅 使用履歴 (Usage History)</span>
-                                        <button type="button" onclick="App.requests.toggleUsageHistory()"
-                                            style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; background: rgba(255,255,255,0.1); border: none; border-radius: 4px; color: var(--muted); cursor: pointer;">
-                                            詳細を表示
-                                        </button>
-                                    </div>
-                                    <div id="usage-history-summary" style="font-size: 0.85rem; color: var(--muted);"></div>
-                                    <div id="usage-history-detail" style="display: none; margin-top: 0.5rem; max-height: 200px; overflow-y: auto;"></div>
-                                </div>
-                            </div>
-
-                            <!-- SECTION 2: Date & Type -->
-                            <div class="form-section">
-                                <div class="form-section-title">📅 日程と種類</div>
-
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                    <div class="form-group">
-                                        <label class="required">開始日 (Start Date)</label>
-                                        <input type="date" id="start-date" class="input-glass" style="width: 100%;"
-                                            onchange="App.requests.validateDates()">
-                                        <div id="start-date-validation" class="validation-message"></div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="required">終了日 (End Date)</label>
-                                        <input type="date" id="end-date" class="input-glass" style="width: 100%;"
-                                            onchange="App.requests.validateDates()">
-                                        <div id="end-date-validation" class="validation-message"></div>
-                                    </div>
-                                </div>
-
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                    <div class="form-group">
-                                        <label class="required">種類 (Type)</label>
-                                        <select id="leave-type" class="input-glass" style="width: 100%;" onchange="App.requests.toggleLeaveType()">
-                                            <option value="full">全日休暇 (Full Day)</option>
-                                            <option value="half_am">午前半休 (AM Half)</option>
-                                            <option value="half_pm">午後半休 (PM Half)</option>
-                                            <option value="hourly">時間休 (Hourly)</option>
+                                        <label for="report-year" class="sr-only">年度選択</label>
+                                        <select id="report-year" class="input-glass" style="width: 120px;"
+                                            onchange="App.reports.loadMonthList()" aria-label="年度を選択">
                                         </select>
                                     </div>
-                                    <div class="form-group" id="days-input-container">
-                                        <label class="required">日数 (Days)</label>
-                                        <input type="number" id="days-requested" class="input-glass" style="width: 100%;"
-                                            min="0.5" step="0.5" value="1" oninput="App.requests.validateDays()">
-                                        <div id="days-validation" class="validation-message"></div>
+                                    <div>
+                                        <label for="report-month" class="sr-only">月度選択</label>
+                                        <select id="report-month" class="input-glass" style="width: 120px;"
+                                            onchange="App.reports.loadReport()" aria-label="月度を選択">
+                                            <option value="1">1月度</option>
+                                            <option value="2">2月度</option>
+                                            <option value="3">3月度</option>
+                                            <option value="4">4月度</option>
+                                            <option value="5">5月度</option>
+                                            <option value="6">6月度</option>
+                                            <option value="7">7月度</option>
+                                            <option value="8">8月度</option>
+                                            <option value="9">9月度</option>
+                                            <option value="10">10月度</option>
+                                            <option value="11">11月度</option>
+                                            <option value="12">12月度</option>
+                                        </select>
                                     </div>
-                                    <div class="form-group" id="hours-input-container" style="display: none;">
-                                        <label class="required">時間数 (Hours)</label>
-                                        <input type="number" id="hours-requested" class="input-glass" style="width: 100%;"
-                                            min="1" max="7" step="1" value="1" oninput="App.requests.updateCostEstimate(); App.requests.validateHours();">
-                                        <div id="hours-validation" class="validation-message"></div>
-                                        <div style="font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;">※ 1日最大7時間まで</div>
+                                    <button class="btn btn-primary" onclick="App.reports.loadReport()">🔍 表示</button>
+                                </div>
+
+                                <!-- Custom Mode -->
+                                <div id="custom-selector" style="display: none; margin-bottom: 1rem;">
+                                    <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+                                        <div>
+                                            <label for="report-start-date" class="stat-label"
+                                                style="display: block; margin-bottom: 0.25rem; font-size: 0.8rem;">開始日</label>
+                                            <input type="date" id="report-start-date" class="input-glass"
+                                                style="width: 160px;">
+                                        </div>
+                                        <div style="padding-bottom: 0.75rem;" aria-hidden="true">
+                                            <span style="font-size: 1.25rem; color: var(--text-muted);">〜</span>
+                                        </div>
+                                        <div>
+                                            <label for="report-end-date" class="stat-label"
+                                                style="display: block; margin-bottom: 0.25rem; font-size: 0.8rem;">終了日</label>
+                                            <input type="date" id="report-end-date" class="input-glass"
+                                                style="width: 160px;">
+                                        </div>
+                                        <button class="btn btn-primary" onclick="App.reports.loadCustomReport()">🔍
+                                            表示</button>
+                                    </div>
+                                    <div style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">
+                                        ※ 複数月にまたがる期間もOK（例: 1/16 〜 2/20）
+                                    </div>
+                                </div>
+
+                                <!-- Period Display -->
+                                <div id="report-period-display"
+                                    style="text-align: center; padding: 1rem; background: rgba(56, 189, 248, 0.1); border-radius: 8px;">
+                                    <span style="font-size: 1.25rem; font-weight: 600;"
+                                        id="report-period-label">-</span>
+                                </div>
+                            </div>
+
+                            <!-- Summary Cards -->
+                            <div class="glass-panel stat-card col-span-1">
+                                <div class="stat-label">取得者数</div>
+                                <div class="stat-value" id="rpt-emp-count">-</div>
+                            </div>
+                            <div class="glass-panel stat-card col-span-1">
+                                <div class="stat-label">総取得日数</div>
+                                <div class="stat-value" id="rpt-total-days" style="color: var(--primary);">-</div>
+                            </div>
+                            <div class="glass-panel stat-card col-span-1">
+                                <div class="stat-label">総取得時間</div>
+                                <div class="stat-value" id="rpt-total-hours" style="color: var(--warning);">-</div>
+                            </div>
+                            <div class="glass-panel stat-card col-span-1">
+                                <div class="stat-label">1人平均</div>
+                                <div class="stat-value" id="rpt-avg-days" style="color: var(--success);">-</div>
+                            </div>
+
+                            <!-- Employee List -->
+                            <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                                <h3 class="stat-label" style="margin-bottom: 1rem;">👥 取得者一覧</h3>
+                                <div id="report-employee-list" style="max-height: 400px; overflow-y: auto;">
+                                    <div style="text-align: center; color: var(--muted); padding: 2rem;">
+                                        月を選択してレポートを表示
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Cost Estimate (shown for hourly leave) -->
-                            <div id="cost-estimate-container" style="display: none; margin-bottom: 1.25rem; padding: 1rem; background: rgba(251, 191, 36, 0.1); border-radius: 8px; border: 1px solid rgba(251, 191, 36, 0.3);">
-                                <div class="flex-between">
-                                    <span class="stat-label">💰 見積コスト (Estimated Cost):</span>
-                                    <span id="cost-estimate" style="font-size: 1.25rem; font-weight: 700; color: var(--warning);"></span>
+                            <!-- Factory Summary -->
+                            <div class="glass-panel col-span-2" style="padding: 1.5rem;">
+                                <h3 class="stat-label" style="margin-bottom: 1rem;">🏭 派遣先別集計</h3>
+                                <div id="report-factory-list" style="max-height: 400px; overflow-y: auto;">
+                                    <div style="text-align: center; color: var(--muted); padding: 2rem;">
+                                        月を選択してレポートを表示
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- SECTION 3: Reason -->
-                            <div class="form-section">
-                                <div class="form-section-title">📝 理由</div>
-                                <div class="form-group">
-                                    <label>理由 (Reason) - 任意</label>
-                                    <textarea id="leave-reason" class="input-glass" style="width: 100%; min-height: 80px; resize: vertical;"
-                                        placeholder="私用、通院、旅行など..." maxlength="200" oninput="App.requests.updateCharCounter()"></textarea>
-                                    <div class="char-counter" id="reason-char-counter">0 / 200</div>
-                                </div>
-                            </div>
-
-                            <!-- Submit Button -->
-                            <button class="btn btn-primary" id="submit-btn" style="width: 100%; padding: 1rem;" onclick="App.requests.showConfirmation()">
-                                ✓ 内容を確認する (Review & Submit)
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Pending Requests -->
-                    <div class="glass-panel col-span-2" style="padding: 2rem;">
-                        <div class="flex-between" style="margin-bottom: 1.5rem;">
-                            <h3 style="font-size: 1.25rem;">
-                                ⏳ 承認待ち
-                                <span style="font-size: 0.8rem; color: var(--muted); margin-left: 0.5rem;">Pending Approvals</span>
-                            </h3>
-                            <button class="btn btn-glass" onclick="App.requests.loadPending()">
-                                🔄 更新
-                            </button>
-                        </div>
-
-                        <div id="pending-requests" style="max-height: 400px; overflow-y: auto;">
-                            <div style="text-align: center; color: var(--muted); padding: 2rem;">
-                                Loading pending requests...
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Request History -->
-                <div class="glass-panel" style="padding: 2rem; margin-top: 1.5rem;">
-                    <h3 style="margin-bottom: 1.5rem; font-size: 1.25rem;">
-                        📋 申請履歴
-                        <span style="font-size: 0.8rem; color: var(--muted); margin-left: 0.5rem;">Request History</span>
-                    </h3>
-                    <div style="overflow-x: auto;">
-                        <table class="modern-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>従業員</th>
-                                    <th>期間</th>
-                                    <th>日数</th>
-                                    <th>理由</th>
-                                    <th>ステータス</th>
-                                    <th>申請日</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="requests-history">
-                                <tr><td colspan="8" style="text-align: center; padding: 2rem;">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW: COMPLIANCE -->
-            <div id="view-compliance" class="view-section" style="display: none;">
-                <div class="bento-grid">
-                    <!-- 5 Day Compliance -->
-                    <div class="glass-panel col-span-2" style="padding: 2rem;">
-                        <div class="flex-between" style="margin-bottom: 1.5rem;">
-                            <h3 style="font-size: 1.25rem;">
-                                📊 5日取得義務 チェック
-                                <span style="font-size: 0.8rem; color: var(--muted); margin-left: 0.5rem;">5-Day Compliance Check</span>
-                            </h3>
-                            <button class="btn btn-primary" onclick="App.compliance.check5Day()">
-                                🔍 チェック実行
-                            </button>
-                        </div>
-
-                        <div id="compliance-summary" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
-                            <div class="stat-card" style="text-align: center;">
-                                <div class="stat-label">対象者</div>
-                                <div class="stat-value" id="comp-total">-</div>
-                            </div>
-                            <div class="stat-card" style="text-align: center; border-color: var(--success);">
-                                <div class="stat-label">達成</div>
-                                <div class="stat-value" id="comp-compliant" style="color: var(--success);">-</div>
-                            </div>
-                            <div class="stat-card" style="text-align: center; border-color: var(--warning);">
-                                <div class="stat-label">要注意</div>
-                                <div class="stat-value" id="comp-atrisk" style="color: var(--warning);">-</div>
-                            </div>
-                            <div class="stat-card" style="text-align: center; border-color: var(--danger);">
-                                <div class="stat-label">未達成</div>
-                                <div class="stat-value" id="comp-noncompliant" style="color: var(--danger);">-</div>
-                            </div>
-                        </div>
-
-                        <div id="compliance-list" style="max-height: 300px; overflow-y: auto;">
-                            <div style="text-align: center; color: var(--muted); padding: 2rem;">
-                                Click "チェック実行" to check compliance
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Alerts -->
-                    <div class="glass-panel col-span-2" style="padding: 2rem;">
-                        <div class="flex-between" style="margin-bottom: 1.5rem;">
-                            <h3 style="font-size: 1.25rem;">
-                                🚨 アラート
-                                <span style="font-size: 0.8rem; color: var(--muted); margin-left: 0.5rem;">Compliance Alerts</span>
-                            </h3>
-                            <button class="btn btn-glass" onclick="App.compliance.loadAlerts()">
-                                🔄 更新
-                            </button>
-                        </div>
-
-                        <div id="alerts-container" style="max-height: 400px; overflow-y: auto;">
-                            <div style="text-align: center; color: var(--muted); padding: 2rem;">
-                                Loading alerts...
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Annual Ledger -->
-                <div class="glass-panel" style="padding: 2rem; margin-top: 1.5rem;">
-                    <div class="flex-between" style="margin-bottom: 1.5rem;">
-                        <h3 style="font-size: 1.25rem;">
-                            📒 年次有給休暇管理簿
-                            <span style="font-size: 0.8rem; color: var(--muted); margin-left: 0.5rem;">Annual Leave Ledger (Required by Law)</span>
-                        </h3>
-                        <div class="flex-center" style="gap: 0.5rem;">
-                            <button class="btn btn-glass" onclick="App.compliance.loadLedger()">
-                                📄 表示
-                            </button>
-                            <button class="btn btn-primary" onclick="App.compliance.exportLedger('csv')">
-                                💾 CSV出力
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="ledger-container" style="overflow-x: auto; max-height: 400px;">
-                        <div style="text-align: center; color: var(--muted); padding: 2rem;">
-                            Click "表示" to load the annual ledger
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW: CALENDAR -->
-            <div id="view-calendar" class="view-section" style="display: none;">
-                <div class="bento-grid">
-                    <!-- Calendar Controls -->
-                    <div class="glass-panel col-span-4" style="padding: 1.5rem;">
-                        <div class="flex-between" style="margin-bottom: 1rem;">
-                            <div class="flex-center" style="gap: 1rem;">
-                                <button class="btn btn-glass" onclick="App.calendar.prevMonth()">◀</button>
-                                <h3 id="calendar-month-title" style="font-size: 1.5rem; min-width: 200px; text-align: center;">2025年 12月</h3>
-                                <button class="btn btn-glass" onclick="App.calendar.nextMonth()">▶</button>
-                            </div>
-                            <div class="flex-center" style="gap: 0.5rem;">
-                                <button class="btn btn-glass" onclick="App.calendar.goToToday()">今日</button>
-                                <button class="btn btn-primary" onclick="App.calendar.loadEvents()">🔄 更新</button>
-                            </div>
-                        </div>
-
-                        <!-- Legend -->
-                        <div class="flex-center" style="gap: 1.5rem; margin-bottom: 1rem; font-size: 0.85rem;">
-                            <span><span style="display: inline-block; width: 12px; height: 12px; background: #38bdf8; border-radius: 2px; margin-right: 0.25rem;"></span>全日休暇</span>
-                            <span><span style="display: inline-block; width: 12px; height: 12px; background: #818cf8; border-radius: 2px; margin-right: 0.25rem;"></span>午前半休</span>
-                            <span><span style="display: inline-block; width: 12px; height: 12px; background: #f472b6; border-radius: 2px; margin-right: 0.25rem;"></span>午後半休</span>
-                            <span><span style="display: inline-block; width: 12px; height: 12px; background: #fbbf24; border-radius: 2px; margin-right: 0.25rem;"></span>時間休</span>
-                            <span><span style="display: inline-block; width: 12px; height: 12px; background: #34d399; border-radius: 2px; margin-right: 0.25rem;"></span>使用日</span>
-                        </div>
-
-                        <!-- Calendar Grid -->
-                        <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;">
-                            <!-- Header -->
-                            <div class="calendar-header">日</div>
-                            <div class="calendar-header">月</div>
-                            <div class="calendar-header">火</div>
-                            <div class="calendar-header">水</div>
-                            <div class="calendar-header">木</div>
-                            <div class="calendar-header">金</div>
-                            <div class="calendar-header">土</div>
-                            <!-- Days will be rendered by JS -->
-                        </div>
-                    </div>
-
-                    <!-- Day Detail Panel -->
-                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
-                        <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">
-                            📋 選択日の詳細
-                            <span id="selected-date-display" style="color: var(--primary); margin-left: 0.5rem;">-</span>
-                        </h3>
-                        <div id="day-detail-container" style="max-height: 300px; overflow-y: auto;">
-                            <div style="text-align: center; color: var(--muted); padding: 2rem;">
-                                日付をクリックして詳細を表示
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Monthly Summary -->
-                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
-                        <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">📊 月間サマリー</h3>
-                        <div id="monthly-summary-container">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                <div class="stat-card" style="text-align: center; padding: 1rem;">
-                                    <div class="stat-label">休暇取得者数</div>
-                                    <div class="stat-value" id="cal-month-employees" style="font-size: 2rem;">-</div>
-                                </div>
-                                <div class="stat-card" style="text-align: center; padding: 1rem;">
-                                    <div class="stat-label">総取得日数</div>
-                                    <div class="stat-value" id="cal-month-days" style="font-size: 2rem;">-</div>
+                            <!-- Daily Breakdown -->
+                            <div class="glass-panel col-span-4" style="padding: 1.5rem;">
+                                <h3 class="stat-label" style="margin-bottom: 1rem;">📅 日別取得状況</h3>
+                                <div id="report-daily-grid"
+                                    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; max-height: 300px; overflow-y: auto;">
+                                    <div
+                                        style="text-align: center; color: var(--muted); padding: 2rem; grid-column: 1 / -1;">
+                                        月を選択してレポートを表示
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- VIEW: ANALYTICS -->
-            <div id="view-analytics" class="view-section" style="display: none;">
-                <div class="bento-grid">
-                    <!-- Summary Cards -->
-                    <div class="glass-panel stat-card col-span-1">
-                        <div class="stat-label">総従業員数</div>
-                        <div class="stat-value" id="ana-total-emp">-</div>
-                    </div>
-                    <div class="glass-panel stat-card col-span-1">
-                        <div class="stat-label">総付与日数</div>
-                        <div class="stat-value" id="ana-total-granted" style="color: var(--primary);">-</div>
-                    </div>
-                    <div class="glass-panel stat-card col-span-1">
-                        <div class="stat-label">総使用日数</div>
-                        <div class="stat-value" id="ana-total-used" style="color: var(--success);">-</div>
-                    </div>
-                    <div class="glass-panel stat-card col-span-1">
-                        <div class="stat-label">平均消化率</div>
-                        <div class="stat-value" id="ana-avg-rate" style="color: var(--warning);">-</div>
-                    </div>
-
-                    <!-- Department Chart -->
-                    <div class="glass-panel col-span-2" style="padding: 1.5rem; height: 400px;">
-                        <h3 class="stat-label" style="margin-bottom: 1rem;">部門別使用日数</h3>
-                        <div style="position: relative; height: 320px; width: 100%;">
-                            <canvas id="chart-department"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Employee Type Chart -->
-                    <div class="glass-panel col-span-2" style="padding: 1.5rem; height: 400px;">
-                        <h3 class="stat-label" style="margin-bottom: 1rem;">従業員タイプ別</h3>
-                        <div style="position: relative; height: 320px; width: 100%;">
-                            <canvas id="chart-emp-type"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Top Users -->
-                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
-                        <h3 class="stat-label" style="margin-bottom: 1rem;">🏆 Top 10 使用者</h3>
-                        <div id="top-users-list" style="max-height: 300px; overflow-y: auto;"></div>
-                    </div>
-
-                    <!-- High Balance -->
-                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
-                        <h3 class="stat-label" style="margin-bottom: 1rem;">⚠️ 残日数が多い従業員</h3>
-                        <div id="high-balance-list" style="max-height: 300px; overflow-y: auto;"></div>
-                    </div>
-
-                    <!-- Predictions -->
-                    <div class="glass-panel col-span-4" style="padding: 1.5rem;">
-                        <div class="flex-between" style="margin-bottom: 1rem;">
-                            <h3 class="stat-label">📈 年末予測・5日義務達成リスク</h3>
-                            <button class="btn btn-glass" onclick="App.analytics.loadPredictions()">🔄 更新</button>
-                        </div>
-                        <div id="predictions-container">
-                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1rem;">
-                                <div class="stat-card" style="text-align: center; padding: 1rem;">
-                                    <div class="stat-label">現在月</div>
-                                    <div id="pred-current-month" style="font-size: 1.5rem; font-weight: 700;">-</div>
-                                </div>
-                                <div class="stat-card" style="text-align: center; padding: 1rem;">
-                                    <div class="stat-label">残り月数</div>
-                                    <div id="pred-remaining-months" style="font-size: 1.5rem; font-weight: 700;">-</div>
-                                </div>
-                                <div class="stat-card" style="text-align: center; padding: 1rem;">
-                                    <div class="stat-label">月平均使用</div>
-                                    <div id="pred-avg-monthly" style="font-size: 1.5rem; font-weight: 700;">-</div>
-                                </div>
-                                <div class="stat-card" style="text-align: center; padding: 1rem; border-color: var(--danger);">
-                                    <div class="stat-label">5日未達成リスク</div>
-                                    <div id="pred-at-risk" style="font-size: 1.5rem; font-weight: 700; color: var(--danger);">-</div>
-                                </div>
+                        <!-- Year Overview -->
+                        <div class="glass-panel" style="padding: 1.5rem; margin-top: 1.5rem;">
+                            <h3 class="stat-label" style="margin-bottom: 1rem;">📊 年間月別サマリー</h3>
+                            <div style="overflow-x: auto;">
+                                <table class="modern-table">
+                                    <thead>
+                                        <tr>
+                                            <th>月度</th>
+                                            <th>期間</th>
+                                            <th>取得者数</th>
+                                            <th>総日数</th>
+                                            <th>詳細</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="report-year-summary">
+                                        <tr>
+                                            <td colspan="5" style="text-align: center; padding: 2rem;">Loading...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
-                            <div id="at-risk-employees" style="max-height: 200px; overflow-y: auto;"></div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Export Section -->
-                <div class="glass-panel" style="padding: 1.5rem; margin-top: 1.5rem;">
-                    <h3 class="stat-label" style="margin-bottom: 1rem;">📥 データエクスポート</h3>
-                    <div class="flex-center" style="gap: 1rem; flex-wrap: wrap;">
-                        <button class="btn btn-primary" onclick="App.analytics.exportExcel('employees')">
-                            📊 従業員データ (Excel)
-                        </button>
-                        <button class="btn btn-glass" onclick="App.analytics.exportExcel('requests')">
-                            📝 申請一覧 (Excel)
-                        </button>
-                        <button class="btn btn-glass" onclick="App.analytics.exportExcel('compliance')">
-                            ✅ 管理簿 (Excel)
-                        </button>
-                    </div>
-                </div>
-            </div>
+                    <!-- VIEW: SETTINGS -->
+                    <div id="view-settings" class="view-section" style="display: none;">
+                        <div class="glass-panel" style="padding: 2rem;">
+                            <h3 style="margin-bottom: 1.5rem; font-size: 1.25rem;">⚙️ システム設定</h3>
 
-            <!-- VIEW: MONTHLY REPORTS -->
-            <div id="view-reports" class="view-section" style="display: none;">
-                <div class="bento-grid">
-                    <!-- Date Selector with Tabs -->
-                    <div class="glass-panel col-span-4" style="padding: 1.5rem;">
-                        <div class="flex-between" style="margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
-                            <h3 style="font-size: 1.25rem;">📋 レポート期間</h3>
-                            <button class="btn btn-export" onclick="App.reports.exportReport()">
-                                📥 Excel出力
-                            </button>
-                        </div>
-
-                        <!-- Tab Selector -->
-                        <div class="tab-container" style="margin-bottom: 1.25rem;">
-                            <button class="tab-btn active" id="tab-monthly" onclick="App.reports.setMode('monthly')">
-                                📅 月次 (21日〜20日)
-                            </button>
-                            <button class="tab-btn" id="tab-custom" onclick="App.reports.setMode('custom')">
-                                🔧 期間指定
-                            </button>
-                        </div>
-
-                        <!-- Monthly Mode -->
-                        <div id="monthly-selector" style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap;">
-                            <select id="report-year" class="input-glass" style="width: 120px;" onchange="App.reports.loadMonthList()">
-                            </select>
-                            <select id="report-month" class="input-glass" style="width: 120px;" onchange="App.reports.loadReport()">
-                                <option value="1">1月度</option>
-                                <option value="2">2月度</option>
-                                <option value="3">3月度</option>
-                                <option value="4">4月度</option>
-                                <option value="5">5月度</option>
-                                <option value="6">6月度</option>
-                                <option value="7">7月度</option>
-                                <option value="8">8月度</option>
-                                <option value="9">9月度</option>
-                                <option value="10">10月度</option>
-                                <option value="11">11月度</option>
-                                <option value="12">12月度</option>
-                            </select>
-                            <button class="btn btn-primary" onclick="App.reports.loadReport()">🔍 表示</button>
-                        </div>
-
-                        <!-- Custom Mode -->
-                        <div id="custom-selector" style="display: none; margin-bottom: 1rem;">
-                            <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+                            <div style="display: grid; gap: 2rem;">
+                                <!-- System Status -->
                                 <div>
-                                    <label class="stat-label" style="display: block; margin-bottom: 0.25rem; font-size: 0.8rem;">開始日</label>
-                                    <input type="date" id="report-start-date" class="input-glass" style="width: 160px;">
+                                    <h4 class="stat-label" style="margin-bottom: 1rem;">システム状態</h4>
+                                    <div id="system-status"
+                                        style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                                        <div class="stat-card" style="text-align: center;">
+                                            <div class="stat-label">Database Size</div>
+                                            <div class="stat-value" id="sys-db-size">-</div>
+                                        </div>
+                                        <div class="stat-card" style="text-align: center;">
+                                            <div class="stat-label">Total Employees</div>
+                                            <div class="stat-value" id="sys-emp-count">-</div>
+                                        </div>
+                                        <div class="stat-card" style="text-align: center;">
+                                            <div class="stat-label">Health Status</div>
+                                            <div class="stat-value" id="sys-health" style="color: var(--success);">-
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div style="padding-bottom: 0.75rem;">
-                                    <span style="font-size: 1.25rem; color: var(--text-muted);">〜</span>
-                                </div>
+
+                                <!-- Data Management -->
                                 <div>
-                                    <label class="stat-label" style="display: block; margin-bottom: 0.25rem; font-size: 0.8rem;">終了日</label>
-                                    <input type="date" id="report-end-date" class="input-glass" style="width: 160px;">
+                                    <h4 class="stat-label" style="margin-bottom: 1rem;">データ管理</h4>
+                                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                        <button class="btn btn-glass" onclick="App.settings.loadSnapshot()">
+                                            📊 Snapshot更新
+                                        </button>
+                                        <button class="btn btn-glass" onclick="App.settings.viewAuditLog()">
+                                            📜 監査ログ
+                                        </button>
+                                        <button class="btn btn-glass" onclick="App.data.sync()"
+                                            style="background: rgba(56, 189, 248, 0.2);">
+                                            ⚡ データ同期
+                                        </button>
+                                    </div>
                                 </div>
-                                <button class="btn btn-primary" onclick="App.reports.loadCustomReport()">🔍 表示</button>
-                            </div>
-                            <div style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">
-                                ※ 複数月にまたがる期間もOK（例: 1/16 〜 2/20）
-                            </div>
-                        </div>
 
-                        <!-- Period Display -->
-                        <div id="report-period-display" style="text-align: center; padding: 1rem; background: rgba(56, 189, 248, 0.1); border-radius: 8px;">
-                            <span style="font-size: 1.25rem; font-weight: 600;" id="report-period-label">-</span>
-                        </div>
-                    </div>
-
-                    <!-- Summary Cards -->
-                    <div class="glass-panel stat-card col-span-1">
-                        <div class="stat-label">取得者数</div>
-                        <div class="stat-value" id="rpt-emp-count">-</div>
-                    </div>
-                    <div class="glass-panel stat-card col-span-1">
-                        <div class="stat-label">総取得日数</div>
-                        <div class="stat-value" id="rpt-total-days" style="color: var(--primary);">-</div>
-                    </div>
-                    <div class="glass-panel stat-card col-span-1">
-                        <div class="stat-label">総取得時間</div>
-                        <div class="stat-value" id="rpt-total-hours" style="color: var(--warning);">-</div>
-                    </div>
-                    <div class="glass-panel stat-card col-span-1">
-                        <div class="stat-label">1人平均</div>
-                        <div class="stat-value" id="rpt-avg-days" style="color: var(--success);">-</div>
-                    </div>
-
-                    <!-- Employee List -->
-                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
-                        <h3 class="stat-label" style="margin-bottom: 1rem;">👥 取得者一覧</h3>
-                        <div id="report-employee-list" style="max-height: 400px; overflow-y: auto;">
-                            <div style="text-align: center; color: var(--muted); padding: 2rem;">
-                                月を選択してレポートを表示
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Factory Summary -->
-                    <div class="glass-panel col-span-2" style="padding: 1.5rem;">
-                        <h3 class="stat-label" style="margin-bottom: 1rem;">🏭 派遣先別集計</h3>
-                        <div id="report-factory-list" style="max-height: 400px; overflow-y: auto;">
-                            <div style="text-align: center; color: var(--muted); padding: 2rem;">
-                                月を選択してレポートを表示
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Daily Breakdown -->
-                    <div class="glass-panel col-span-4" style="padding: 1.5rem;">
-                        <h3 class="stat-label" style="margin-bottom: 1rem;">📅 日別取得状況</h3>
-                        <div id="report-daily-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; max-height: 300px; overflow-y: auto;">
-                            <div style="text-align: center; color: var(--muted); padding: 2rem; grid-column: 1 / -1;">
-                                月を選択してレポートを表示
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Year Overview -->
-                <div class="glass-panel" style="padding: 1.5rem; margin-top: 1.5rem;">
-                    <h3 class="stat-label" style="margin-bottom: 1rem;">📊 年間月別サマリー</h3>
-                    <div style="overflow-x: auto;">
-                        <table class="modern-table">
-                            <thead>
-                                <tr>
-                                    <th>月度</th>
-                                    <th>期間</th>
-                                    <th>取得者数</th>
-                                    <th>総日数</th>
-                                    <th>詳細</th>
-                                </tr>
-                            </thead>
-                            <tbody id="report-year-summary">
-                                <tr><td colspan="5" style="text-align: center; padding: 2rem;">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW: SETTINGS -->
-            <div id="view-settings" class="view-section" style="display: none;">
-                <div class="glass-panel" style="padding: 2rem;">
-                    <h3 style="margin-bottom: 1.5rem; font-size: 1.25rem;">⚙️ システム設定</h3>
-
-                    <div style="display: grid; gap: 2rem;">
-                        <!-- System Status -->
-                        <div>
-                            <h4 class="stat-label" style="margin-bottom: 1rem;">システム状態</h4>
-                            <div id="system-status" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-                                <div class="stat-card" style="text-align: center;">
-                                    <div class="stat-label">Database Size</div>
-                                    <div class="stat-value" id="sys-db-size">-</div>
+                                <!-- Backup Management -->
+                                <div>
+                                    <h4 class="stat-label" style="margin-bottom: 1rem;">📦 バックアップ管理</h4>
+                                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                        <button class="btn btn-primary" onclick="App.backup.create()">
+                                            📦 バックアップ作成
+                                        </button>
+                                        <button class="btn btn-glass" onclick="App.backup.showBackupList()">
+                                            📋 バックアップ一覧
+                                        </button>
+                                    </div>
+                                    <div style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--muted);">
+                                        ※ サーバー起動時に自動バックアップが作成されます。最大10件保持。
+                                    </div>
                                 </div>
-                                <div class="stat-card" style="text-align: center;">
-                                    <div class="stat-label">Total Employees</div>
-                                    <div class="stat-value" id="sys-emp-count">-</div>
-                                </div>
-                                <div class="stat-card" style="text-align: center;">
-                                    <div class="stat-label">Health Status</div>
-                                    <div class="stat-value" id="sys-health" style="color: var(--success);">-</div>
+
+                                <!-- API Info -->
+                                <div>
+                                    <h4 class="stat-label" style="margin-bottom: 1rem;">API情報</h4>
+                                    <div
+                                        style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">
+                                        <div style="color: var(--muted);">Base URL:</div>
+                                        <div style="color: var(--primary);">http://localhost:8000/api</div>
+                                        <div style="color: var(--muted); margin-top: 0.5rem;">Documentation:</div>
+                                        <div><a href="/docs" target="_blank"
+                                                style="color: var(--primary);">http://localhost:8000/docs</a></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Data Management -->
-                        <div>
-                            <h4 class="stat-label" style="margin-bottom: 1rem;">データ管理</h4>
-                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                                <button class="btn btn-glass" onclick="App.settings.loadSnapshot()">
-                                    📊 Snapshot更新
-                                </button>
-                                <button class="btn btn-glass" onclick="App.settings.viewAuditLog()">
-                                    📜 監査ログ
-                                </button>
-                                <button class="btn btn-glass" onclick="App.data.sync()" style="background: rgba(56, 189, 248, 0.2);">
-                                    ⚡ データ同期
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Backup Management -->
-                        <div>
-                            <h4 class="stat-label" style="margin-bottom: 1rem;">📦 バックアップ管理</h4>
-                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                                <button class="btn btn-primary" onclick="App.backup.create()">
-                                    📦 バックアップ作成
-                                </button>
-                                <button class="btn btn-glass" onclick="App.backup.showBackupList()">
-                                    📋 バックアップ一覧
-                                </button>
-                            </div>
-                            <div style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--muted);">
-                                ※ サーバー起動時に自動バックアップが作成されます。最大10件保持。
-                            </div>
-                        </div>
-
-                        <!-- API Info -->
-                        <div>
-                            <h4 class="stat-label" style="margin-bottom: 1rem;">API情報</h4>
-                            <div style="background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">
-                                <div style="color: var(--muted);">Base URL:</div>
-                                <div style="color: var(--primary);">http://localhost:8000/api</div>
-                                <div style="color: var(--muted); margin-top: 0.5rem;">Documentation:</div>
-                                <div><a href="/docs" target="_blank" style="color: var(--primary);">http://localhost:8000/docs</a></div>
-                            </div>
-                        </div>
                     </div>
-                </div>
-            </div>
 
-        </main>
+                </main>
     </div>
 
     <!-- UI Elements -->
@@ -1185,11 +1619,13 @@
     <div class="toast-container" id="toast-container"></div>
 
     <!-- Simple Modal for Details -->
-    <div class="loader-overlay" id="detail-modal" style="background: rgba(0,0,0,0.7);">
-        <div class="glass-panel" style="width: 500px; max-width: 90%; position: relative;">
+    <div class="loader-overlay" id="detail-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"
+        style="background: rgba(0,0,0,0.7);">
+        <div class="glass-panel"
+            style="width: 600px; max-width: 95%; max-height: 90vh; overflow-y: auto; position: relative;">
             <button class="btn"
-                style="position: absolute; right: 10px; top: 10px; background: transparent; color: white;"
-                onclick="App.ui.closeModal()">✕</button>
+                style="position: absolute; right: 10px; top: 10px; background: transparent; color: white; z-index: 10;"
+                onclick="App.ui.closeModal()" aria-label="Close modal">✕</button>
             <div style="padding: 2rem;">
                 <h2 id="modal-title" style="margin-bottom: 1rem;">Employee Details</h2>
                 <div id="modal-content"></div>
@@ -1203,7 +1639,7 @@
 
     <!-- Flatpickr Initialization -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // Common Flatpickr configuration
             const flatpickrConfig = {
                 locale: 'ja',
@@ -1219,7 +1655,7 @@
                 shorthandCurrentMonth: false,
                 yearSelectorType: 'dropdown',
                 disableMobile: false,
-                onReady: function(selectedDates, dateStr, instance) {
+                onReady: function (selectedDates, dateStr, instance) {
                     // Add custom icon to the input wrapper
                     const input = instance.input;
                     if (!input.parentElement.querySelector('.flatpickr-icon')) {
@@ -1231,7 +1667,7 @@
                         input.parentElement.appendChild(icon);
                     }
                 },
-                onChange: function(selectedDates, dateStr, instance) {
+                onChange: function (selectedDates, dateStr, instance) {
                     // Trigger the original onchange event if exists
                     const event = new Event('change', { bubbles: true });
                     instance.input.dispatchEvent(event);
@@ -1243,7 +1679,7 @@
             if (startDateInput) {
                 const startDatePicker = flatpickr(startDateInput, {
                     ...flatpickrConfig,
-                    onChange: function(selectedDates, dateStr, instance) {
+                    onChange: function (selectedDates, dateStr, instance) {
                         // Update end date minimum
                         if (endDatePicker && selectedDates.length > 0) {
                             endDatePicker.set('minDate', selectedDates[0]);
@@ -1263,7 +1699,7 @@
             if (endDateInput) {
                 const endDatePicker = flatpickr(endDateInput, {
                     ...flatpickrConfig,
-                    onChange: function(selectedDates, dateStr, instance) {
+                    onChange: function (selectedDates, dateStr, instance) {
                         // Update start date maximum
                         if (startDatePicker && selectedDates.length > 0) {
                             startDatePicker.set('maxDate', selectedDates[0]);
@@ -1283,7 +1719,7 @@
             if (reportStartDate) {
                 const reportStartPicker = flatpickr(reportStartDate, {
                     ...flatpickrConfig,
-                    onChange: function(selectedDates, dateStr, instance) {
+                    onChange: function (selectedDates, dateStr, instance) {
                         if (reportEndPicker && selectedDates.length > 0) {
                             reportEndPicker.set('minDate', selectedDates[0]);
                         }
@@ -1296,7 +1732,7 @@
             if (reportEndDate) {
                 const reportEndPicker = flatpickr(reportEndDate, {
                     ...flatpickrConfig,
-                    onChange: function(selectedDates, dateStr, instance) {
+                    onChange: function (selectedDates, dateStr, instance) {
                         if (reportStartPicker && selectedDates.length > 0) {
                             reportStartPicker.set('maxDate', selectedDates[0]);
                         }
@@ -1373,11 +1809,13 @@
                 </div>
                 <div class="confirm-row" id="confirm-reason-row">
                     <span class="confirm-row-label">理由</span>
-                    <span class="confirm-row-value" id="confirm-reason" style="max-width: 200px; text-align: right;">-</span>
+                    <span class="confirm-row-value" id="confirm-reason"
+                        style="max-width: 200px; text-align: right;">-</span>
                 </div>
             </div>
 
-            <div style="padding: 0.75rem; background: rgba(251, 191, 36, 0.1); border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; color: var(--warning);">
+            <div
+                style="padding: 0.75rem; background: rgba(251, 191, 36, 0.1); border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; color: var(--warning);">
                 ⚠️ この内容で申請を送信しますか？
             </div>
 

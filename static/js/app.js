@@ -60,6 +60,181 @@ const App = {
         }
     },
 
+    // ========================================
+    // VISUALIZATIONS MODULE (Advanced Animations)
+    // ========================================
+    visualizations: {
+        // Animate SVG progress ring
+        animateRing(elementId, valueId, value, maxValue, duration = 1000) {
+            const ring = document.getElementById(elementId);
+            const valueEl = document.getElementById(valueId);
+            if (!ring || !valueEl) return;
+
+            const radius = 34;
+            const circumference = 2 * Math.PI * radius; // 213.6
+            const percent = Math.min(value / maxValue, 1);
+            const offset = circumference - (percent * circumference);
+
+            // Animate the ring
+            ring.style.strokeDasharray = circumference;
+            ring.style.strokeDashoffset = circumference;
+
+            // Trigger animation after a small delay
+            setTimeout(() => {
+                ring.style.strokeDashoffset = offset;
+            }, 100);
+
+            // Animate the number
+            this.animateNumber(valueEl, 0, value, duration);
+        },
+
+        // Animate number counting up
+        animateNumber(element, start, end, duration) {
+            const startTime = performance.now();
+            const isFloat = !Number.isInteger(end);
+
+            const animate = (currentTime) => {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                // Ease out cubic
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                const current = start + (end - start) * easeOut;
+
+                if (isFloat) {
+                    element.textContent = current.toFixed(1);
+                } else {
+                    element.textContent = Math.round(current).toLocaleString();
+                }
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            };
+
+            requestAnimationFrame(animate);
+        },
+
+        // Update compliance gauge (semi-circle)
+        updateGauge(complianceRate, compliant = 0, total = 0) {
+            const gauge = document.getElementById('gauge-compliance');
+            const valueEl = document.getElementById('gauge-value');
+            const labelEl = document.querySelector('.gauge-label');
+            const countEl = document.getElementById('compliance-count');
+            const totalEl = document.getElementById('compliance-total');
+            if (!gauge) return;
+
+            // Semi-circle arc length is ~251.2 (π * 80)
+            const arcLength = Math.PI * 80;
+            const percent = Math.min(complianceRate / 100, 1);
+            const offset = arcLength - (percent * arcLength);
+
+            // Set color based on compliance
+            let color = 'var(--danger)';
+            if (complianceRate >= 80) color = 'var(--success)';
+            else if (complianceRate >= 50) color = 'var(--warning)';
+
+            gauge.style.stroke = color;
+            gauge.style.strokeDasharray = arcLength;
+            gauge.style.strokeDashoffset = arcLength;
+
+            setTimeout(() => {
+                gauge.style.strokeDashoffset = offset;
+            }, 200);
+
+            if (valueEl) {
+                this.animateNumber(valueEl, 0, complianceRate, 1500);
+                setTimeout(() => {
+                    valueEl.textContent = Math.round(complianceRate) + '%';
+                }, 1600);
+            }
+
+            if (countEl) countEl.textContent = compliant;
+            if (totalEl) totalEl.textContent = total;
+
+            if (labelEl) {
+                if (complianceRate >= 80) {
+                    labelEl.textContent = '優秀 - Excelente';
+                    labelEl.style.color = 'var(--success)';
+                } else if (complianceRate >= 50) {
+                    labelEl.textContent = '注意 - Atención';
+                    labelEl.style.color = 'var(--warning)';
+                } else {
+                    labelEl.textContent = '要改善 - Mejorar';
+                    labelEl.style.color = 'var(--danger)';
+                }
+            }
+        },
+
+        // Update expiring days countdown
+        updateExpiringDays(data) {
+            const countdownContainer = document.getElementById('countdown-container');
+            const noExpiring = document.getElementById('no-expiring');
+            const expiringDays = document.getElementById('expiring-days');
+            const expiringDetail = document.getElementById('expiring-detail');
+            const criticalCount = document.getElementById('critical-count');
+            const warningCount = document.getElementById('warning-count');
+            const healthyCount = document.getElementById('healthy-count');
+
+            // Calculate categories
+            const critical = data.filter(e => e.balance <= 0).length;
+            const warning = data.filter(e => e.balance > 0 && e.balance < 3).length;
+            const healthy = data.filter(e => e.balance >= 5).length;
+
+            // Update counts with animation
+            if (criticalCount) this.animateNumber(criticalCount, 0, critical, 800);
+            if (warningCount) this.animateNumber(warningCount, 0, warning, 800);
+            if (healthyCount) this.animateNumber(healthyCount, 0, healthy, 800);
+
+            // Filter employees with low balance
+            const expiring = data
+                .filter(e => e.balance < 5 && e.balance > 0)
+                .sort((a, b) => a.balance - b.balance);
+
+            const totalExpiringDays = expiring.reduce((sum, e) => sum + e.balance, 0);
+
+            if (expiring.length === 0) {
+                if (countdownContainer) countdownContainer.style.display = 'none';
+                if (noExpiring) noExpiring.style.display = 'block';
+            } else {
+                if (countdownContainer) countdownContainer.style.display = 'flex';
+                if (noExpiring) noExpiring.style.display = 'none';
+                if (expiringDays) expiringDays.textContent = totalExpiringDays.toFixed(1) + ' days';
+                if (expiringDetail) expiringDetail.textContent = `from ${expiring.length} employees`;
+            }
+        },
+
+        // Show confetti celebration
+        showConfetti() {
+            const colors = ['#00d4ff', '#ff6b6b', '#ffd93d', '#6bcb77', '#c56cf0'];
+            const confettiCount = 50;
+
+            for (let i = 0; i < confettiCount; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+                document.body.appendChild(confetti);
+
+                // Remove after animation
+                setTimeout(() => confetti.remove(), 3500);
+            }
+        },
+
+        // Quick stats for employee types
+        updateQuickStats(hakenCount, ukeoiCount, staffCount) {
+            const hakenEl = document.getElementById('quick-haken');
+            const ukeoiEl = document.getElementById('quick-ukeoi');
+            const staffEl = document.getElementById('quick-staff');
+
+            if (hakenEl) this.animateNumber(hakenEl, 0, hakenCount, 800);
+            if (ukeoiEl) this.animateNumber(ukeoiEl, 0, ukeoiCount, 800);
+            if (staffEl) this.animateNumber(staffEl, 0, staffCount, 800);
+        }
+    },
+
     async init() {
         console.log('🚀 Initializing YuKyu Premium Dashboard...');
         this.ui.showLoading();
@@ -104,13 +279,30 @@ const App = {
     },
 
     data: {
+<<<<<<< HEAD
         async fetchEmployees(year = null, activeOnly = true) {
+=======
+        // Request counter to prevent race conditions when changing years rapidly
+        _fetchRequestId: 0,
+
+        async fetchEmployees(year = null) {
+            // Increment request ID to track this specific request
+            const requestId = ++this._fetchRequestId;
+
+>>>>>>> f6037e24624ccbd5a8266d4e3b7d0d4dce9b20e7
             try {
                 // Use enhanced endpoint with employee type and active status
                 let url = `${App.config.apiBase}/employees?enhanced=true&active_only=${activeOnly}`;
                 if (year) url += `&year=${year}`;
 
                 const res = await fetch(url);
+
+                // Check if this request is still the most recent one
+                if (requestId !== this._fetchRequestId) {
+                    console.log('Ignoring stale response for year:', year);
+                    return; // Ignore stale responses
+                }
+
                 const json = await res.json();
 
                 App.state.data = json.data.map(emp => ({
@@ -144,48 +336,77 @@ const App = {
                     }
                 }
 
+                // Final check before updating UI
+                if (requestId !== this._fetchRequestId) {
+                    return;
+                }
+
                 await App.ui.updateAll();
                 App.ui.showToast('success', 'Data refresh complete');
 
             } catch (err) {
-                console.error(err);
-                App.ui.showToast('error', 'Failed to load data');
+                // Only show error if this is still the current request
+                if (requestId === this._fetchRequestId) {
+                    console.error(err);
+                    App.ui.showToast('error', 'Failed to load data');
+                }
             }
         },
 
         async sync() {
-            App.ui.showLoading();
+            const btn = document.getElementById('btn-sync-main');
+            App.ui.setBtnLoading(btn, true);
             try {
                 const res = await fetch(`${App.config.apiBase}/sync`, { method: 'POST' });
-                if (!res.ok) throw new Error(await res.text());
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    throw new Error(errorText || `Server error: ${res.status}`);
+                }
                 const json = await res.json();
-                App.ui.showToast('success', `Synced ${json.count} records`);
+                App.ui.showToast('success', `✅ ${json.count}件の有給データを同期しました`, 5000);
                 await this.fetchEmployees(App.state.year);
             } catch (err) {
-                App.ui.showToast('error', err.message);
+                console.error('Sync error:', err);
+                if (err.message.includes('fetch') || err.name === 'TypeError') {
+                    App.ui.showToast('error', '🌐 ネットワークエラー: サーバーに接続できません', 6000);
+                } else {
+                    App.ui.showToast('error', `❌ 同期失敗: ${err.message}`, 6000);
+                }
             } finally {
-                App.ui.hideLoading();
+                App.ui.setBtnLoading(btn, false);
             }
         },
 
         async syncGenzai() {
-            App.ui.showLoading();
+            const btn = document.getElementById('btn-sync-genzai');
+            App.ui.setBtnLoading(btn, true);
             try {
                 const res = await fetch(`${App.config.apiBase}/sync-genzai`, { method: 'POST' });
-                if (!res.ok) throw res;
-                App.ui.showToast('success', 'Genzai (Dispatch) Synced');
-            } catch (e) { App.ui.showToast('error', 'Sync Failed'); }
-            finally { App.ui.hideLoading(); }
+                if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                const json = await res.json();
+                App.ui.showToast('success', `✅ 派遣社員データを同期しました (${json.count || 0}件)`, 5000);
+            } catch (err) {
+                console.error('Genzai sync error:', err);
+                App.ui.showToast('error', '❌ 派遣社員の同期に失敗しました', 6000);
+            } finally {
+                App.ui.setBtnLoading(btn, false);
+            }
         },
 
         async syncUkeoi() {
-            App.ui.showLoading();
+            const btn = document.getElementById('btn-sync-ukeoi');
+            App.ui.setBtnLoading(btn, true);
             try {
                 const res = await fetch(`${App.config.apiBase}/sync-ukeoi`, { method: 'POST' });
-                if (!res.ok) throw res;
-                App.ui.showToast('success', 'Ukeoi (contract) Synced');
-            } catch (e) { App.ui.showToast('error', 'Sync Failed'); }
-            finally { App.ui.hideLoading(); }
+                if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                const json = await res.json();
+                App.ui.showToast('success', `✅ 請負社員データを同期しました (${json.count || 0}件)`, 5000);
+            } catch (err) {
+                console.error('Ukeoi sync error:', err);
+                App.ui.showToast('error', '❌ 請負社員の同期に失敗しました', 6000);
+            } finally {
+                App.ui.setBtnLoading(btn, false);
+            }
         },
 
         getFiltered() {
@@ -210,8 +431,13 @@ const App = {
     ui: {
         async updateAll() {
             await this.renderKPIs();
+<<<<<<< HEAD
             this.renderTable('', App.state.typeFilter);
             this.renderCharts();
+=======
+            this.renderTable();
+            await this.renderCharts();
+>>>>>>> f6037e24624ccbd5a8266d4e3b7d0d4dce9b20e7
             this.updateYearFilter();
             this.updateTypeCounts();
             document.getElementById('emp-count-badge').innerText = `${App.data.getFiltered().length} Employees`;
@@ -287,11 +513,16 @@ const App = {
             if (viewName === 'settings') {
                 App.settings.loadSnapshot();
             }
+
+            if (viewName === 'employees') {
+                App.employeeTypes.loadData();
+            }
         },
 
         async renderKPIs() {
             const data = App.data.getFiltered();
             const total = data.length;
+            const granted = data.reduce((s, e) => s + e.granted, 0);
 
             // Fetch TRUE usage from individual dates (R-BE columns)
             // This returns the correct value (~3318) instead of column N sum (~4466)
@@ -311,16 +542,33 @@ const App = {
                 }
             } catch (e) {
                 // Fallback to old calculation if endpoint fails
-                const granted = data.reduce((s, e) => s + e.granted, 0);
                 used = data.reduce((s, e) => s + e.used, 0);
                 balance = granted - used;
                 rate = granted > 0 ? Math.round((used / granted) * 100) : 0;
             }
 
+            // Update traditional KPI displays
             document.getElementById('kpi-used').innerText = Math.round(used).toLocaleString();
             document.getElementById('kpi-balance').innerText = Math.round(balance).toLocaleString();
             document.getElementById('kpi-rate').innerText = rate + '%';
             document.getElementById('kpi-total').innerText = total;
+
+            // Calculate max values for rings
+            const maxUsage = granted > 0 ? granted : 10000;
+            const maxBalance = granted > 0 ? granted : 10000;
+
+            // Animate progress rings
+            App.visualizations.animateRing('ring-usage', 'ring-usage-value', used, maxUsage, 1200);
+            App.visualizations.animateRing('ring-balance', 'ring-balance-value', balance, maxBalance, 1200);
+            App.visualizations.animateRing('ring-rate', 'ring-rate-value', rate, 100, 1200);
+
+            // Calculate compliance (% of employees with >= 5 days used - Japanese law)
+            const compliant = data.filter(e => e.used >= 5).length;
+            const complianceRate = total > 0 ? Math.round((compliant / total) * 100) : 0;
+            App.visualizations.updateGauge(complianceRate, compliant, total);
+
+            // Update expiring days countdown
+            App.visualizations.updateExpiringDays(data);
         },
 
         renderTable(filterText = '', typeFilter = 'all') {
@@ -366,12 +614,18 @@ const App = {
                 const usageRate = App.utils.safeNumber(e.usageRate);
                 const balanceClass = balance < 0 ? 'badge-critical' : balance < 5 ? 'badge-danger' : 'badge-success';
 
+<<<<<<< HEAD
                 // Employee type badge
                 const typeLabels = { genzai: '派遣', ukeoi: '請負', staff: '社員' };
                 const typeClasses = { genzai: 'type-genzai', ukeoi: 'type-ukeoi', staff: 'type-staff' };
                 const empType = e.employeeType || 'staff';
                 const typeLabel = typeLabels[empType] || '社員';
                 const typeClass = typeClasses[empType] || 'type-staff';
+=======
+                // Determine color based on usage rate
+                const rateColor = usageRate >= 80 ? 'var(--success)' : usageRate >= 50 ? 'var(--warning)' : 'var(--danger)';
+                const rateGlow = usageRate >= 80 ? '0 0 8px var(--success)' : usageRate >= 50 ? '0 0 8px var(--warning)' : '0 0 8px var(--danger)';
+>>>>>>> f6037e24624ccbd5a8266d4e3b7d0d4dce9b20e7
 
                 return `
                 <tr class="employee-row" data-employee-num="${empNum}" style="cursor: pointer;">
@@ -387,16 +641,17 @@ const App = {
                     <td><span class="text-gradient">${used}</span></td>
                     <td><span class="badge ${balanceClass}">${balance.toFixed(1)}</span></td>
                     <td>
-                        <div style="width: 100px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
-                            <div style="width: ${Math.min(usageRate, 100)}%; height: 100%; background: var(--primary);"></div>
+                        <div class="mini-progress" style="width: 100px; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; position: relative;">
+                            <div class="mini-progress-fill" style="width: ${Math.min(usageRate, 100)}%; height: 100%; background: linear-gradient(90deg, ${rateColor}, ${rateColor}88); border-radius: 4px; box-shadow: ${rateGlow}; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"></div>
                         </div>
-                        <div class="text-xs mt-1 text-right">${usageRate}%</div>
+                        <div class="text-xs mt-1 text-right" style="color: ${rateColor}; font-weight: 500;">${usageRate}%</div>
                     </td>
                 </tr>
             `}).join('');
         },
 
         handleSearch(val) {
+<<<<<<< HEAD
             this.renderTable(val, App.state.typeFilter);
         },
 
@@ -432,6 +687,14 @@ const App = {
             if (countGenzai) countGenzai.textContent = counts.genzai;
             if (countUkeoi) countUkeoi.textContent = counts.ukeoi;
             if (countStaff) countStaff.textContent = counts.staff;
+=======
+            // Use employeeTypes module if data is loaded
+            if (App.employeeTypes.data.all.length > 0) {
+                App.employeeTypes.renderTable(val);
+            } else {
+                this.renderTable(val);
+            }
+>>>>>>> f6037e24624ccbd5a8266d4e3b7d0d4dce9b20e7
         },
 
         updateYearFilter() {
@@ -446,43 +709,239 @@ const App = {
             `).join('');
         },
 
-        renderCharts() {
+        async renderCharts() {
             App.charts.renderDistribution();
             App.charts.renderTrends();
             App.charts.renderFactoryChart();
             App.charts.renderTypes();
-            App.charts.renderTop10();
+            await App.charts.renderTop10();
         },
 
         showLoading() { document.getElementById('loader').classList.add('active'); },
         hideLoading() { document.getElementById('loader').classList.remove('active'); },
 
-        showToast(type, msg) {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.style.borderLeft = type === 'success' ? '4px solid var(--success)' : type === 'error' ? '4px solid var(--danger)' : '4px solid var(--primary)';
-            toast.innerHTML = type === 'success' ? `✅ ${msg}` : type === 'error' ? `❌ ${msg}` : `ℹ️ ${msg}`;
-            container.appendChild(toast);
-            setTimeout(() => toast.remove(), 4000);
+        // Button loading state helper
+        setBtnLoading(btn, isLoading) {
+            if (!btn) return;
+            if (isLoading) {
+                btn.classList.add('is-loading');
+                btn.disabled = true;
+            } else {
+                btn.classList.remove('is-loading');
+                btn.disabled = false;
+            }
         },
 
-        openModal(id) {
+        // Mobile menu toggle functions
+        toggleMobileMenu() {
+            const toggle = document.getElementById('mobile-menu-toggle');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            if (sidebar && toggle) {
+                const isOpen = sidebar.classList.contains('is-open');
+                if (isOpen) {
+                    this.closeMobileMenu();
+                } else {
+                    sidebar.classList.add('is-open');
+                    toggle.classList.add('is-active');
+                    toggle.setAttribute('aria-expanded', 'true');
+                    if (overlay) {
+                        overlay.classList.add('is-active');
+                        overlay.setAttribute('aria-hidden', 'false');
+                    }
+                    // Prevent body scroll when menu is open
+                    document.body.style.overflow = 'hidden';
+                }
+            }
+        },
+
+        closeMobileMenu() {
+            const toggle = document.getElementById('mobile-menu-toggle');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            if (sidebar) {
+                sidebar.classList.remove('is-open');
+            }
+            if (toggle) {
+                toggle.classList.remove('is-active');
+                toggle.setAttribute('aria-expanded', 'false');
+            }
+            if (overlay) {
+                overlay.classList.remove('is-active');
+                overlay.setAttribute('aria-hidden', 'true');
+            }
+            // Restore body scroll
+            document.body.style.overflow = '';
+        },
+
+        showToast(type, msg, duration = 4000) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+
+            // Style based on type
+            const styles = {
+                success: { border: 'var(--success)', icon: '', bg: 'rgba(34, 197, 94, 0.1)' },
+                error: { border: 'var(--danger)', icon: '', bg: 'rgba(239, 68, 68, 0.1)' },
+                warning: { border: 'var(--warning)', icon: '', bg: 'rgba(251, 191, 36, 0.1)' },
+                info: { border: 'var(--primary)', icon: '', bg: 'rgba(56, 189, 248, 0.1)' }
+            };
+            const style = styles[type] || styles.info;
+
+            toast.style.cssText = `
+                border-left: 4px solid ${style.border};
+                background: ${style.bg};
+                backdrop-filter: blur(10px);
+            `;
+
+            // Add icon only if message doesn't already have an emoji
+            const hasEmoji = /[\u{1F300}-\u{1F9FF}]/u.test(msg.substring(0, 3));
+            toast.innerHTML = hasEmoji ? msg : `${style.icon} ${msg}`;
+
+            // Add close button
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '×';
+            closeBtn.className = 'toast-close';
+            closeBtn.onclick = () => toast.remove();
+            toast.appendChild(closeBtn);
+
+            container.appendChild(toast);
+
+            // Auto remove with fade out
+            setTimeout(() => {
+                toast.style.animation = 'slideOutRight 0.3s forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        },
+
+        async openModal(id) {
             const emp = App.state.data.find(e => e.employeeNum == id);
             if (!emp) return;
 
+            // Mostrar modal con loading
             document.getElementById('modal-title').innerText = emp.name;
             document.getElementById('modal-content').innerHTML = `
-                <div class="bento-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 2rem;">
-                    <div><span class="text-gray-400">ID:</span> ${emp.employeeNum}</div>
-                    <div><span class="text-gray-400">Factory:</span> ${emp.haken}</div>
-                    <div><span class="text-gray-400">Granted:</span> ${emp.granted}</div>
-                    <div><span class="text-gray-400">Used:</span> ${emp.used}</div>
-                    <div><span class="text-gray-400">Balance:</span> ${emp.balance}</div>
-                    <div><span class="text-gray-400">Rate:</span> ${emp.usageRate}%</div>
+                <div style="text-align: center; padding: 2rem;">
+                    <div class="spinner" style="margin: 0 auto;"></div>
+                    <p style="margin-top: 1rem; color: #94a3b8;">Cargando datos...</p>
                 </div>
             `;
             document.getElementById('detail-modal').classList.add('active');
+
+            // Obtener datos completos del empleado
+            try {
+                const res = await fetch(`${App.config.apiBase}/employees/${id}/leave-info`);
+                const json = await res.json();
+
+                if (json.status !== 'success') {
+                    throw new Error('No se pudieron cargar los datos');
+                }
+
+                const employee = json.employee || {};
+                const yukyuHistory = json.yukyu_history || [];
+                const usageHistory = json.usage_history || [];
+                const totalAvailable = json.total_available || 0;
+
+                // Calcular fecha de renovación (基準日 + 1 año)
+                let renewalDate = 'No disponible';
+                if (yukyuHistory.length > 0) {
+                    const latestYear = Math.max(...yukyuHistory.map(h => h.year));
+                    // Renovación típica en noviembre del siguiente año
+                    renewalDate = `${latestYear + 1}年11月頃`;
+                }
+
+                // Generar HTML del historial de 2 años
+                let historyHtml = '';
+                yukyuHistory.sort((a, b) => b.year - a.year).forEach(h => {
+                    historyHtml += `
+                        <div class="glass-panel" style="padding: 1rem; margin-bottom: 0.5rem; background: rgba(56, 189, 248, 0.1);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <strong style="color: #38bdf8;">📅 ${h.year}年度</strong>
+                                <span class="badge" style="background: ${h.usage_rate > 75 ? '#22c55e' : h.usage_rate > 50 ? '#eab308' : '#ef4444'};">
+                                    ${h.usage_rate?.toFixed(1) || 0}%
+                                </span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; font-size: 0.9rem;">
+                                <div><span style="color: #94a3b8;">付与:</span> ${h.granted || 0}日</div>
+                                <div><span style="color: #94a3b8;">使用:</span> ${h.used || 0}日</div>
+                                <div><span style="color: #38bdf8; font-weight: bold;">残:</span> ${h.balance || 0}日</div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                // Generar HTML de fechas de uso recientes
+                let usageDatesHtml = '';
+                if (usageHistory.length > 0) {
+                    const recentUsage = usageHistory.slice(0, 10);
+                    usageDatesHtml = `
+                        <div style="margin-top: 1rem;">
+                            <h4 style="color: #94a3b8; margin-bottom: 0.5rem;">📋 使用履歴 (最近10件)</h4>
+                            <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 0.5rem;">
+                                ${recentUsage.map(u => `
+                                    <div style="display: flex; justify-content: space-between; padding: 0.3rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                        <span>${u.date}</span>
+                                        <span style="color: #38bdf8;">${u.days}日</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                document.getElementById('modal-content').innerHTML = `
+                    <!-- Información básica -->
+                    <div class="bento-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1.5rem; gap: 0.8rem;">
+                        <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
+                            <div style="color: #94a3b8; font-size: 0.8rem;">社員番号</div>
+                            <div style="font-size: 1.2rem; font-weight: bold;">${emp.employeeNum}</div>
+                        </div>
+                        <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
+                            <div style="color: #94a3b8; font-size: 0.8rem;">派遣先</div>
+                            <div style="font-size: 0.9rem; font-weight: bold;">${emp.haken || employee.factory || '-'}</div>
+                        </div>
+                        <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
+                            <div style="color: #94a3b8; font-size: 0.8rem;">タイプ</div>
+                            <div style="font-size: 1rem;">${employee.type || (emp.type === 'haken' ? '派遣' : emp.type === 'ukeoi' ? '請負' : 'スタッフ')}</div>
+                        </div>
+                        <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
+                            <div style="color: #94a3b8; font-size: 0.8rem;">ステータス</div>
+                            <div style="font-size: 1rem; color: ${employee.status === '在職中' ? '#22c55e' : '#ef4444'};">${employee.status || '在職中'}</div>
+                        </div>
+                    </div>
+
+                    <!-- Balance total actual -->
+                    <div class="glass-panel" style="padding: 1rem; margin-bottom: 1rem; background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(56, 189, 248, 0.2)); text-align: center;">
+                        <div style="color: #94a3b8; font-size: 0.9rem;">💰 有給残日数 (合計)</div>
+                        <div style="font-size: 2rem; font-weight: bold; color: #22c55e;">${totalAvailable}日</div>
+                        <div style="color: #94a3b8; font-size: 0.8rem;">次回付与: ${renewalDate}</div>
+                    </div>
+
+                    <!-- Historial de 2 años -->
+                    <h4 style="color: #94a3b8; margin-bottom: 0.5rem;">📊 年度別履歴 (過去2年)</h4>
+                    ${historyHtml || '<p style="color: #64748b;">履歴データがありません</p>'}
+
+                    <!-- Fechas de uso recientes -->
+                    ${usageDatesHtml}
+                `;
+
+            } catch (error) {
+                console.error('Error loading employee details:', error);
+                // Fallback a datos básicos si el API falla
+                document.getElementById('modal-content').innerHTML = `
+                    <div class="bento-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 2rem;">
+                        <div><span class="text-gray-400">ID:</span> ${emp.employeeNum}</div>
+                        <div><span class="text-gray-400">Factory:</span> ${emp.haken}</div>
+                        <div><span class="text-gray-400">Granted:</span> ${emp.granted}</div>
+                        <div><span class="text-gray-400">Used:</span> ${emp.used}</div>
+                        <div><span class="text-gray-400">Balance:</span> ${emp.balance}</div>
+                        <div><span class="text-gray-400">Rate:</span> ${emp.usageRate}%</div>
+                    </div>
+                    <p style="color: #f59e0b; font-size: 0.9rem;">⚠️ 詳細データの取得に失敗しました</p>
+                `;
+            }
         },
 
         closeModal() {
@@ -792,13 +1251,25 @@ const App = {
             });
         },
 
-        renderTop10() {
+        async renderTop10() {
             const ctx = document.getElementById('chart-top10');
             if (!ctx) return;
             this.destroy('top10');
 
-            // Calc top 10 from client data
-            const sorted = [...App.data.getFiltered()].sort((a, b) => b.used - a.used).slice(0, 10);
+            // Fetch Top 10 from API - only ACTIVE employees (在職中)
+            let sorted = [];
+            try {
+                const year = App.state.year || new Date().getFullYear();
+                const res = await fetch(`${App.config.apiBase}/analytics/top10-active/${year}`);
+                const json = await res.json();
+                if (json.status === 'success' && json.data) {
+                    sorted = json.data;
+                }
+            } catch (e) {
+                // Fallback to client-side calculation
+                console.warn('Top10 API failed, using local data', e);
+                sorted = [...App.data.getFiltered()].sort((a, b) => b.used - a.used).slice(0, 10);
+            }
 
             App.state.charts['top10'] = new Chart(ctx, {
                 type: 'bar',
@@ -806,7 +1277,7 @@ const App = {
                 data: {
                     labels: sorted.map(e => e.name),
                     datasets: [{
-                        label: 'Days Used',
+                        label: 'Days Used (在職中のみ)',
                         data: sorted.map(e => e.used),
                         backgroundColor: 'rgba(251, 191, 36, 0.7)',
                         borderColor: '#fbbf24',
@@ -1006,7 +1477,32 @@ const App = {
                     if (modal && modal.classList.contains('active')) {
                         App.ui.closeModal();
                     }
+                    // Also close mobile menu on ESC
+                    App.ui.closeMobileMenu();
                 }
+            });
+
+            // Mobile hamburger menu toggle
+            const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+            if (mobileMenuToggle) {
+                mobileMenuToggle.addEventListener('click', () => {
+                    App.ui.toggleMobileMenu();
+                });
+            }
+
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', () => {
+                    App.ui.closeMobileMenu();
+                });
+            }
+
+            // Close mobile menu when nav item is clicked
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    App.ui.closeMobileMenu();
+                });
             });
         }
     },
@@ -1162,6 +1658,9 @@ const App = {
                         hourlyWageInfo.style.display = 'none';
                     }
 
+                    // Render yukyu history table (2 years)
+                    this.renderYukyuHistoryTable(json.yukyu_history || []);
+
                     // Show usage history
                     this.renderUsageHistory(json);
 
@@ -1179,6 +1678,75 @@ const App = {
             } catch (e) {
                 App.ui.showToast('error', 'Failed to load employee info');
             }
+        },
+
+        renderYukyuHistoryTable(yukyuHistory) {
+            const tbody = document.getElementById('yukyu-history-tbody');
+            if (!tbody) return;
+
+            if (!yukyuHistory || yukyuHistory.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="padding: 1rem; text-align: center; color: var(--muted);">
+                            履歴データがありません
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Sort by year descending (newest first)
+            const sortedHistory = [...yukyuHistory].sort((a, b) => b.year - a.year);
+
+            // Calculate totals
+            const totals = {
+                granted: 0,
+                used: 0,
+                balance: 0
+            };
+
+            let rows = sortedHistory.map(h => {
+                const granted = h.granted || 0;
+                const used = h.used || 0;
+                const balance = h.balance || 0;
+                const rate = h.usage_rate || 0;
+
+                totals.granted += granted;
+                totals.used += used;
+                totals.balance += balance;
+
+                // Color based on usage rate
+                const rateColor = rate >= 75 ? 'var(--success)' : rate >= 50 ? 'var(--warning)' : 'var(--error)';
+                const balanceColor = balance > 5 ? 'var(--success)' : balance > 0 ? 'var(--warning)' : 'var(--error)';
+
+                return `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <td style="padding: 0.5rem; font-weight: 600;">${h.year}年度</td>
+                        <td style="padding: 0.5rem; text-align: center;">${granted.toFixed(1)}</td>
+                        <td style="padding: 0.5rem; text-align: center;">${used.toFixed(1)}</td>
+                        <td style="padding: 0.5rem; text-align: center; color: ${balanceColor}; font-weight: 600;">${balance.toFixed(1)}</td>
+                        <td style="padding: 0.5rem; text-align: center;">
+                            <span style="display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; background: ${rateColor}20; color: ${rateColor}; font-weight: 600;">
+                                ${rate.toFixed(1)}%
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Add totals row
+            const avgRate = totals.granted > 0 ? (totals.used / totals.granted * 100) : 0;
+            rows += `
+                <tr style="background: rgba(56, 189, 248, 0.1); font-weight: 600;">
+                    <td style="padding: 0.5rem; border-radius: 0 0 0 8px;">合計</td>
+                    <td style="padding: 0.5rem; text-align: center;">${totals.granted.toFixed(1)}</td>
+                    <td style="padding: 0.5rem; text-align: center;">${totals.used.toFixed(1)}</td>
+                    <td style="padding: 0.5rem; text-align: center; color: var(--success);">${totals.balance.toFixed(1)}</td>
+                    <td style="padding: 0.5rem; text-align: center; border-radius: 0 0 8px 0;">${avgRate.toFixed(1)}%</td>
+                </tr>
+            `;
+
+            tbody.innerHTML = rows;
         },
 
         toggleLeaveType() {
@@ -1793,6 +2361,7 @@ const App = {
                 if (!res.ok) throw new Error('Approval failed');
 
                 App.ui.showToast('success', '申請を承認しました');
+                App.visualizations.showConfetti(); // Celebrate approval!
                 this.loadPending();
                 this.loadHistory();
                 App.data.fetchEmployees(App.state.year); // Refresh balance
@@ -1952,14 +2521,21 @@ const App = {
                 return;
             }
 
-            const listHtml = backups.map(b => `
+            // Escape HTML to prevent XSS
+            const escapeHtml = (str) => {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            };
+
+            const listHtml = backups.map((b, index) => `
                 <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem;">
                     <div class="flex-between">
                         <div>
-                            <div style="font-weight: 600; font-size: 0.9rem;">${b.filename}</div>
-                            <div style="font-size: 0.75rem; color: var(--muted);">${b.size_mb} MB | ${b.created_at.slice(0, 19).replace('T', ' ')}</div>
+                            <div style="font-weight: 600; font-size: 0.9rem;">${escapeHtml(b.filename)}</div>
+                            <div style="font-size: 0.75rem; color: var(--muted);">${escapeHtml(String(b.size_mb))} MB | ${escapeHtml(b.created_at.slice(0, 19).replace('T', ' '))}</div>
                         </div>
-                        <button class="btn btn-glass" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="App.backup.restore('${b.filename}')">
+                        <button class="btn btn-glass backup-restore-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" data-backup-index="${index}">
                             復元
                         </button>
                     </div>
@@ -1972,11 +2548,27 @@ const App = {
                     ${listHtml}
                 </div>
                 <div style="margin-top: 1rem;">
-                    <button class="btn btn-primary" style="width: 100%;" onclick="App.backup.create(); App.ui.closeModal();">
+                    <button class="btn btn-primary backup-create-btn" style="width: 100%;">
                         📦 新規バックアップ作成
                     </button>
                 </div>
             `;
+
+            // Add event listeners safely (prevent XSS via onclick)
+            document.querySelectorAll('.backup-restore-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.dataset.backupIndex, 10);
+                    if (backups[idx]) {
+                        App.backup.restore(backups[idx].filename);
+                    }
+                });
+            });
+
+            document.querySelector('.backup-create-btn')?.addEventListener('click', () => {
+                App.backup.create();
+                App.ui.closeModal();
+            });
+
             document.getElementById('detail-modal').style.display = 'flex';
         }
     },
@@ -2211,6 +2803,17 @@ const App = {
             }
         },
 
+        // Static header HTML to prevent losing headers on re-render
+        _headerHtml: `
+            <div class="calendar-header">日</div>
+            <div class="calendar-header">月</div>
+            <div class="calendar-header">火</div>
+            <div class="calendar-header">水</div>
+            <div class="calendar-header">木</div>
+            <div class="calendar-header">金</div>
+            <div class="calendar-header">土</div>
+        `,
+
         renderCalendar() {
             const grid = document.getElementById('calendar-grid');
             const title = document.getElementById('calendar-month-title');
@@ -2219,10 +2822,8 @@ const App = {
             const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
             title.innerText = `${this.currentYear}年 ${monthNames[this.currentMonth - 1]}`;
 
-            // Clear existing days (keep headers)
-            const headers = grid.querySelectorAll('.calendar-header');
-            grid.innerHTML = '';
-            headers.forEach(h => grid.appendChild(h));
+            // Clear grid and re-add headers (fixed: headers were being lost)
+            grid.innerHTML = this._headerHtml;
 
             // Get first day and days in month
             const firstDay = new Date(this.currentYear, this.currentMonth - 1, 1).getDay();
@@ -2964,6 +3565,126 @@ const App = {
                     }
                 );
             }
+        }
+    },
+
+    // ========================================
+    // EMPLOYEE TYPES MODULE (Haken/Ukeoi/Staff)
+    // ========================================
+    employeeTypes: {
+        currentTab: 'all',
+        activeOnly: true,
+        data: {
+            haken: [],
+            ukeoi: [],
+            staff: [],
+            all: []
+        },
+
+        async loadData() {
+            try {
+                const year = App.state.year || new Date().getFullYear();
+                // filter_by_year=true filtra empleados activos durante ese año (入社日 <= año AND (退社日 IS NULL OR 退社日 >= año))
+                const res = await fetch(`${App.config.apiBase}/employees/by-type?year=${year}&active_only=${this.activeOnly}&filter_by_year=true`);
+                const json = await res.json();
+
+                if (json.status === 'success') {
+                    this.data.haken = json.haken.employees || [];
+                    this.data.ukeoi = json.ukeoi.employees || [];
+                    this.data.staff = json.staff.employees || [];
+                    this.data.all = [...this.data.haken, ...this.data.ukeoi, ...this.data.staff];
+
+                    // Update counts
+                    document.getElementById('count-all').innerText = this.data.all.length;
+                    document.getElementById('count-haken').innerText = this.data.haken.length;
+                    document.getElementById('count-ukeoi').innerText = this.data.ukeoi.length;
+                    document.getElementById('count-staff').innerText = this.data.staff.length;
+
+                    // Update summary cards
+                    document.getElementById('haken-used').innerText = Math.round(json.haken.total_used);
+                    document.getElementById('ukeoi-used').innerText = Math.round(json.ukeoi.total_used);
+                    document.getElementById('staff-used').innerText = Math.round(json.staff.total_used);
+                    document.getElementById('total-type-used').innerText = Math.round(
+                        json.haken.total_used + json.ukeoi.total_used + json.staff.total_used
+                    );
+
+                    // Render table with current tab
+                    this.renderTable();
+                }
+            } catch (e) {
+                console.error('Failed to load employee types:', e);
+                App.ui.showToast('error', '従業員データの読み込みに失敗しました');
+            }
+        },
+
+        switchTab(tab) {
+            this.currentTab = tab;
+
+            // Update tab buttons
+            document.querySelectorAll('.employee-tabs .btn').forEach(btn => btn.classList.remove('active', 'btn-primary'));
+            document.getElementById(`tab-${tab}`).classList.add('active', 'btn-primary');
+
+            this.renderTable();
+        },
+
+        toggleActiveFilter() {
+            this.activeOnly = document.getElementById('active-only-toggle').checked;
+            this.loadData();
+        },
+
+        renderTable(filterText = '') {
+            const tbody = document.getElementById('table-body');
+            let data = this.data[this.currentTab] || [];
+
+            // Apply search filter
+            if (filterText) {
+                const q = filterText.toLowerCase();
+                data = data.filter(e =>
+                    (e.name && e.name.toLowerCase().includes(q)) ||
+                    (e.employee_num && String(e.employee_num).includes(q)) ||
+                    (e.haken && e.haken.toLowerCase().includes(q)) ||
+                    (e.dispatch_name && e.dispatch_name.toLowerCase().includes(q)) ||
+                    (e.contract_business && e.contract_business.toLowerCase().includes(q))
+                );
+            }
+
+            document.getElementById('emp-count-badge').innerText = `${data.length} Employees`;
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem;">データがありません</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(e => {
+                const empNum = App.utils.escapeAttr(e.employee_num || '');
+                const name = App.utils.escapeHtml(e.name || '');
+                const type = e.type || '';
+                const typeLabel = type === 'haken' ? '🏭 派遣' : type === 'ukeoi' ? '📋 請負' : '👔 スタッフ';
+                const typeBadge = type === 'haken' ? 'badge-info' : type === 'ukeoi' ? 'badge-success' : 'badge-warning';
+                const factory = App.utils.escapeHtml(e.dispatch_name || e.contract_business || e.haken || '-');
+                const granted = App.utils.safeNumber(e.granted).toFixed(1);
+                const used = App.utils.safeNumber(e.used).toFixed(1);
+                const balance = App.utils.safeNumber(e.balance);
+                const usageRate = e.granted > 0 ? Math.round((e.used / e.granted) * 100) : 0;
+                const balanceClass = balance < 0 ? 'badge-critical' : balance < 5 ? 'badge-danger' : 'badge-success';
+
+                return `
+                <tr class="employee-row" data-employee-num="${empNum}" style="cursor: pointer;">
+                    <td><div class="font-bold">${empNum}</div></td>
+                    <td><div class="font-bold text-white">${name}</div></td>
+                    <td><span class="badge ${typeBadge}">${typeLabel}</span></td>
+                    <td><div class="text-sm text-gray-400">${factory}</div></td>
+                    <td>${granted}</td>
+                    <td><span class="text-gradient">${used}</span></td>
+                    <td><span class="badge ${balanceClass}">${balance.toFixed(1)}</span></td>
+                    <td>
+                        <div style="width: 100px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                            <div style="width: ${Math.min(usageRate, 100)}%; height: 100%; background: var(--primary);"></div>
+                        </div>
+                        <div class="text-xs mt-1 text-right">${usageRate}%</div>
+                    </td>
+                </tr>
+            `}).join('');
         }
     }
 };
