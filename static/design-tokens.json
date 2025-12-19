@@ -1,0 +1,135 @@
+{
+  "$themes": [],
+  "$metadata": {
+    "tokenSetOrder": [
+      "global",
+      "light",
+      "dark"
+    ]
+  },
+  "global": {
+    "color": {
+      "bg-dark": {
+        "value": "#f1f5f9",
+        "type": "color",
+        "description": "Extracted from static/css/main.css"
+      },
+      "bg-dark-deep": {
+        "value": "#ffffff",
+        "type": "color",
+        "description": "Extracted from static/css/main.css"
+      },
+      "bg-card": {
+        "value": "#1e293b",
+        "type": "color",
+        "description": "Extracted from static/css/main.css"
+      },
+      "bg-card-hover": {
+        "value": "#f1f5f9",
+        "type": "color",
+        "description": "Extracted from static/css/main.css"
+      },
+      "text-primary": {
+        "value": "#000000",
+        "type": "color",
+        "description": "Extracted from static/css/main.css"
+      },
+      "text-secondary": {
+        "value": "#1f2937",
+        "type": "color",
+        "description": "Extracted from static/css/main.css"
+      },
+      "text-muted": {
+        "value": "#374151",
+        "type": "color",
+        "description": "Extracted from static/css/main.css"
+      },
+      "primary": {
+        "value": "#06b6d4",
+        "type": "color",
+        "description": "Extracted from static/css/main.css"
+      },
+      "primary-glow": {
+        "value": "#06b6d4",
+        "type": "color",
+        "description": "Extracted from static/css/main.css"
+      },
+      "secondary": {
+        "value": "#0891b2",
+        "type": "color",
+        "description": "Extracted from static/css/main.css"
+      },
+      "accent": {
+        "value": "#22d3ee",
+        "type": "color",
+        "description": "Extracted from static/css/main.css"
+      },
+      "success": {
+        "value": "#34d399",
+        "type": "color",
+        "description": "Extracted from static/css/main.css"
+      },
+      "warning": {
+        "value": "#fbbf24",
+        "type": "color",
+        "description": "Extracted from static/css/main.css"
+      },
+      "danger": {
+        "value": "#f87171",
+        "type": "color",
+        "description": "Extracted from static/css/main.css"
+      },
+      "background": {
+        "value": "#000000",
+        "type": "color",
+        "description": "Extracted from static/css/theme-override.css"
+      },
+      "foreground": {
+        "value": "#fafafa",
+        "type": "color",
+        "description": "Extracted from static/css/theme-override.css"
+      },
+      "card": {
+        "value": "#0f0f0f",
+        "type": "color",
+        "description": "Extracted from static/css/theme-override.css"
+      },
+      "popover": {
+        "value": "#000000",
+        "type": "color",
+        "description": "Extracted from static/css/theme-override.css"
+      },
+      "primary-foreground": {
+        "value": "#000000",
+        "type": "color",
+        "description": "Extracted from static/css/theme-override.css"
+      },
+      "muted-foreground": {
+        "value": "#a1a1aa",
+        "type": "color",
+        "description": "Extracted from static/css/theme-override.css"
+      },
+      "neon-blue": {
+        "value": "#00f2ea",
+        "type": "color",
+        "description": "Extracted from static/css/theme-override.css"
+      },
+      "neon-cyan": {
+        "value": "#06b6d4",
+        "type": "color",
+        "description": "Extracted from static/css/theme-override.css"
+      },
+      "neon-dark": {
+        "value": "#000000",
+        "type": "color",
+        "description": "Extracted from static/css/theme-override.css"
+      }
+    },
+    "borderRadius": {
+      "radius": {
+        "value": "12.0px",
+        "type": "borderRadius"
+      }
+    }
+  }
+}
