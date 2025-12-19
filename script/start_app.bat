@@ -6,7 +6,7 @@ echo YuKyu Dashboard v5.0 (SQLite Edition)
 echo ========================================
 echo.
 
-cd /d %~dp0
+cd /d %~dp0..
 
 REM Ask for port number
 set /p PORT="Ingrese el puerto (por defecto 8000): "
