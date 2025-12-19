@@ -60,37 +60,37 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/themes/dark.css">
 
     <style>
-        /* Custom Flatpickr Styles - Cyan/Glass Theme */
+        /* Custom Flatpickr Styles - Cyan/Glass Theme - PURE BLACK */
         .flatpickr-calendar {
-            background: rgba(15, 23, 42, 0.95) !important;
+            background: rgba(5, 5, 5, 0.98) !important;
             backdrop-filter: blur(20px) saturate(180%) !important;
-            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            border: 1px solid rgba(6, 182, 212, 0.3) !important;
             border-radius: 16px !important;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5),
-                0 0 0 1px rgba(56, 189, 248, 0.1),
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7),
+                0 0 0 1px rgba(6, 182, 212, 0.1),
                 inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
         }
 
         .flatpickr-months {
             background: transparent !important;
-            border-bottom: 1px solid rgba(56, 189, 248, 0.2) !important;
+            border-bottom: 1px solid rgba(6, 182, 212, 0.2) !important;
             padding: 10px 0 !important;
         }
 
         .flatpickr-current-month {
-            color: #38bdf8 !important;
+            color: #06b6d4 !important;
             font-weight: 600 !important;
         }
 
         .flatpickr-months .flatpickr-prev-month,
         .flatpickr-months .flatpickr-next-month {
-            fill: #38bdf8 !important;
+            fill: #06b6d4 !important;
             transition: all 0.2s ease !important;
         }
 
         .flatpickr-months .flatpickr-prev-month:hover,
         .flatpickr-months .flatpickr-next-month:hover {
-            fill: #7dd3fc !important;
+            fill: #22d3ee !important;
             transform: scale(1.1) !important;
         }
 
@@ -108,7 +108,7 @@
         }
 
         .flatpickr-day:hover {
-            background: rgba(56, 189, 248, 0.2) !important;
+            background: rgba(6, 182, 212, 0.2) !important;
             border-color: transparent !important;
             transform: scale(1.05) !important;
         }
@@ -116,15 +116,15 @@
         .flatpickr-day.selected,
         .flatpickr-day.startRange,
         .flatpickr-day.endRange {
-            background: linear-gradient(135deg, #38bdf8, #0ea5e9) !important;
-            border-color: #38bdf8 !important;
+            background: linear-gradient(135deg, #06b6d4, #0891b2) !important;
+            border-color: #06b6d4 !important;
             color: #ffffff !important;
             font-weight: 600 !important;
-            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4) !important;
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4) !important;
         }
 
         .flatpickr-day.inRange {
-            background: rgba(56, 189, 248, 0.15) !important;
+            background: rgba(6, 182, 212, 0.15) !important;
             border-color: transparent !important;
             box-shadow: none !important;
         }
@@ -155,33 +155,33 @@
         }
 
         .numInputWrapper:hover {
-            background: rgba(56, 189, 248, 0.1) !important;
+            background: rgba(6, 182, 212, 0.1) !important;
         }
 
         .flatpickr-monthDropdown-months,
         .numInput {
-            background: rgba(15, 23, 42, 0.8) !important;
-            color: #38bdf8 !important;
-            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            background: rgba(5, 5, 5, 0.9) !important;
+            color: #06b6d4 !important;
+            border: 1px solid rgba(6, 182, 212, 0.3) !important;
             border-radius: 6px !important;
         }
 
         .flatpickr-monthDropdown-months:hover,
         .numInput:hover {
-            background: rgba(56, 189, 248, 0.15) !important;
+            background: rgba(6, 182, 212, 0.15) !important;
         }
 
         .flatpickr-time {
-            border-top: 1px solid rgba(56, 189, 248, 0.2) !important;
+            border-top: 1px solid rgba(6, 182, 212, 0.2) !important;
         }
 
         .flatpickr-time input {
-            color: #38bdf8 !important;
+            color: #06b6d4 !important;
         }
 
         .flatpickr-time input:hover,
         .flatpickr-time input:focus {
-            background: rgba(56, 189, 248, 0.1) !important;
+            background: rgba(6, 182, 212, 0.1) !important;
         }
 
         /* Glass effect enhancement */
@@ -193,8 +193,8 @@
             right: 0;
             bottom: 0;
             background: linear-gradient(135deg,
-                    rgba(56, 189, 248, 0.05) 0%,
-                    rgba(37, 99, 235, 0.05) 100%);
+                    rgba(6, 182, 212, 0.05) 0%,
+                    rgba(8, 145, 178, 0.03) 100%);
             border-radius: 16px;
             pointer-events: none;
         }
@@ -1180,11 +1180,11 @@
                         <!-- Legend -->
                         <div class="flex-center" style="gap: 1.5rem; margin-bottom: 1rem; font-size: 0.85rem;">
                             <span><span
-                                    style="display: inline-block; width: 12px; height: 12px; background: #38bdf8; border-radius: 2px; margin-right: 0.25rem;"></span>全日休暇</span>
+                                    style="display: inline-block; width: 12px; height: 12px; background: #06b6d4; border-radius: 2px; margin-right: 0.25rem;"></span>全日休暇</span>
                             <span><span
-                                    style="display: inline-block; width: 12px; height: 12px; background: #818cf8; border-radius: 2px; margin-right: 0.25rem;"></span>午前半休</span>
+                                    style="display: inline-block; width: 12px; height: 12px; background: #0891b2; border-radius: 2px; margin-right: 0.25rem;"></span>午前半休</span>
                             <span><span
-                                    style="display: inline-block; width: 12px; height: 12px; background: #f472b6; border-radius: 2px; margin-right: 0.25rem;"></span>午後半休</span>
+                                    style="display: inline-block; width: 12px; height: 12px; background: #67e8f9; border-radius: 2px; margin-right: 0.25rem;"></span>午後半休</span>
                             <span><span
                                     style="display: inline-block; width: 12px; height: 12px; background: #fbbf24; border-radius: 2px; margin-right: 0.25rem;"></span>時間休</span>
                             <span><span
