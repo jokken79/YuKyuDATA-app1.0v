@@ -2,7 +2,7 @@
 YUKYU PREMIUM - Sistema de Agentes Inteligentes
 ================================================
 
-Sistema completo de agentes especializados para análisis y gestión.
+Sistema completo de 12 agentes especializados para análisis y gestión.
 
 Agentes Disponibles:
 --------------------
@@ -67,6 +67,18 @@ Agentes Disponibles:
     - Snapshots del sistema
     - Reportes de actividad
 
+11. FigmaAgent (Integración Figma)
+    - Exportación de Design Tokens
+    - Generación de Figma Variables
+    - Sincronización de Design System
+    - Formato Tokens Studio
+
+12. CanvasAgent (Canvas/SVG)
+    - Análisis de archivos SVG
+    - Optimización de SVG
+    - Generación de gráficos (Chart.js/ApexCharts)
+    - Análisis de código Canvas
+
 Uso Básico:
 -----------
 
@@ -128,6 +140,8 @@ from .ux_analyst import UXAnalystAgent, get_ux_analyst_agent
 from .security import SecurityAgent, get_security_agent
 from .performance import PerformanceAgent, get_performance_agent
 from .testing import TestingAgent, get_testing_agent
+from .figma import FigmaAgent, get_figma_agent
+from .canvas import CanvasAgent, get_canvas_agent
 
 __all__ = [
     # Orquestador
@@ -157,10 +171,14 @@ __all__ = [
     'get_performance_agent',
     'TestingAgent',
     'get_testing_agent',
+    'FigmaAgent',
+    'get_figma_agent',
+    'CanvasAgent',
+    'get_canvas_agent',
 ]
 
 # Versión del sistema de agentes
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 
 # Metadata
 __author__ = "YuKyuDATA Team"

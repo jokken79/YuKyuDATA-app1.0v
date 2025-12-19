@@ -2,7 +2,7 @@
 Orchestrator Agent - Coordinador Central del Sistema de Agentes
 ================================================================
 
-El "cerebro" del sistema que orquesta todos los agentes especializados:
+El "cerebro" del sistema que orquesta todos los 12 agentes especializados:
 - NerdAgent: Análisis técnico profundo
 - UIDesignerAgent: Diseño visual y Figma
 - UXAnalystAgent: Experiencia de usuario
@@ -12,6 +12,8 @@ El "cerebro" del sistema que orquesta todos los agentes especializados:
 - DataParserAgent: Parsing de datos Excel
 - ComplianceAgent: Cumplimiento legal japonés
 - DocumentorAgent: Documentación y memoria
+- FigmaAgent: Integración con Figma y Design Tokens
+- CanvasAgent: Canvas/SVG y visualizaciones
 """
 
 import logging
@@ -45,6 +47,8 @@ class AgentType(Enum):
     DATA_PARSER = "data_parser"
     COMPLIANCE = "compliance"
     DOCUMENTOR = "documentor"
+    FIGMA = "figma"
+    CANVAS = "canvas"
 
 
 @dataclass
@@ -232,6 +236,14 @@ class OrchestratorAgent:
             elif agent_type == AgentType.DOCUMENTOR:
                 from .documentor import DocumentorAgent
                 return DocumentorAgent()
+
+            elif agent_type == AgentType.FIGMA:
+                from .figma import FigmaAgent
+                return FigmaAgent(self.project_root)
+
+            elif agent_type == AgentType.CANVAS:
+                from .canvas import CanvasAgent
+                return CanvasAgent(self.project_root)
 
         except ImportError as e:
             logger.error(f"Error importando agente {agent_type.value}: {e}")
