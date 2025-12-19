@@ -9,13 +9,13 @@
 
     <!-- PWA Meta Tags -->
     <meta name="description" content="有給休暇管理システム - Premium Dashboard for managing paid leave">
-    <meta name="theme-color" content="#c9a961">
+    <meta name="theme-color" content="#06b6d4">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="YuKyu">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="YuKyu Premium">
-    <meta name="msapplication-TileColor" content="#020617">
+    <meta name="msapplication-TileColor" content="#000000">
     <meta name="msapplication-tap-highlight" content="no">
     <meta name="format-detection" content="telephone=no">
 
@@ -39,6 +39,7 @@
     <link rel="stylesheet" href="/static/css/arari-glow.css">
     <link rel="stylesheet" href="/static/css/theme-override.css">
     <link rel="stylesheet" href="/static/css/light-mode-premium.css">
+    <link rel="stylesheet" href="/static/css/modern-2025.css">
 
     <!-- Libraries -->
     <!-- ApexCharts - Modern charting library -->
@@ -216,6 +217,9 @@
             }
         }
     </style>
+
+    <!-- Modern UI Enhancements 2025 -->
+    <script src="/static/js/modern-ui.js" defer></script>
 </head>
 
 <body>
@@ -429,9 +433,9 @@
             <div id="view-dashboard" class="view-section active">
 
                 <!-- Bento Grid Stats with Progress Rings -->
-                <div class="bento-grid">
+                <div class="bento-grid stagger-children">
                     <!-- Usage Ring -->
-                    <div class="glass-panel stat-card stat-card-ring col-span-1">
+                    <div class="glass-panel stat-card stat-card-ring col-span-1 glow-hover">
                         <div class="progress-ring-container">
                             <svg class="progress-ring" width="80" height="80">
                                 <circle class="progress-ring__circle-bg" cx="40" cy="40" r="34"></circle>
@@ -446,7 +450,7 @@
                     </div>
 
                     <!-- Balance Ring -->
-                    <div class="glass-panel stat-card stat-card-ring col-span-1">
+                    <div class="glass-panel stat-card stat-card-ring col-span-1 glow-hover">
                         <div class="progress-ring-container">
                             <svg class="progress-ring" width="80" height="80">
                                 <circle class="progress-ring__circle-bg" cx="40" cy="40" r="34"></circle>
@@ -461,7 +465,7 @@
                     </div>
 
                     <!-- Utilization Ring -->
-                    <div class="glass-panel stat-card stat-card-ring col-span-1">
+                    <div class="glass-panel stat-card stat-card-ring col-span-1 glow-hover">
                         <div class="progress-ring-container">
                             <svg class="progress-ring" width="80" height="80">
                                 <circle class="progress-ring__circle-bg" cx="40" cy="40" r="34"></circle>
