@@ -1,0 +1,321 @@
+{
+  "version": "1.0",
+  "collections": [
+    {
+      "name": "Design System",
+      "modes": [
+        "Light",
+        "Dark"
+      ],
+      "variables": [
+        {
+          "name": "bg-dark",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.9450980392156862,
+              "g": 0.9607843137254902,
+              "b": 0.9764705882352941,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/main.css"
+        },
+        {
+          "name": "bg-dark-deep",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/main.css"
+        },
+        {
+          "name": "bg-card",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.11764705882352941,
+              "g": 0.1607843137254902,
+              "b": 0.23137254901960785,
+              "a": 0.95
+            }
+          },
+          "description": "Extracted from static/css/main.css"
+        },
+        {
+          "name": "bg-card-hover",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.9450980392156862,
+              "g": 0.9607843137254902,
+              "b": 0.9764705882352941,
+              "a": 0.98
+            }
+          },
+          "description": "Extracted from static/css/main.css"
+        },
+        {
+          "name": "text-primary",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.0,
+              "g": 0.0,
+              "b": 0.0,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/main.css"
+        },
+        {
+          "name": "text-secondary",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.12156862745098039,
+              "g": 0.1607843137254902,
+              "b": 0.21568627450980393,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/main.css"
+        },
+        {
+          "name": "text-muted",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.21568627450980393,
+              "g": 0.2549019607843137,
+              "b": 0.3176470588235294,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/main.css"
+        },
+        {
+          "name": "primary",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.023529411764705882,
+              "g": 0.7137254901960784,
+              "b": 0.8313725490196079,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/main.css"
+        },
+        {
+          "name": "primary-glow",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.023529411764705882,
+              "g": 0.7137254901960784,
+              "b": 0.8313725490196079,
+              "a": 0.5
+            }
+          },
+          "description": "Extracted from static/css/main.css"
+        },
+        {
+          "name": "secondary",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.03137254901960784,
+              "g": 0.5686274509803921,
+              "b": 0.6980392156862745,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/main.css"
+        },
+        {
+          "name": "accent",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.13333333333333333,
+              "g": 0.8274509803921568,
+              "b": 0.9333333333333333,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/main.css"
+        },
+        {
+          "name": "success",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.20392156862745098,
+              "g": 0.8274509803921568,
+              "b": 0.6,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/main.css"
+        },
+        {
+          "name": "warning",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.984313725490196,
+              "g": 0.7490196078431373,
+              "b": 0.1411764705882353,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/main.css"
+        },
+        {
+          "name": "danger",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.9725490196078431,
+              "g": 0.44313725490196076,
+              "b": 0.44313725490196076,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/main.css"
+        },
+        {
+          "name": "background",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.0,
+              "g": 0.0,
+              "b": 0.0,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/theme-override.css"
+        },
+        {
+          "name": "foreground",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.9803921568627451,
+              "g": 0.9803921568627451,
+              "b": 0.9803921568627451,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/theme-override.css"
+        },
+        {
+          "name": "card",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.058823529411764705,
+              "g": 0.058823529411764705,
+              "b": 0.058823529411764705,
+              "a": 0.85
+            }
+          },
+          "description": "Extracted from static/css/theme-override.css"
+        },
+        {
+          "name": "popover",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.0,
+              "g": 0.0,
+              "b": 0.0,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/theme-override.css"
+        },
+        {
+          "name": "primary-foreground",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.0,
+              "g": 0.0,
+              "b": 0.0,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/theme-override.css"
+        },
+        {
+          "name": "muted-foreground",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.6313725490196078,
+              "g": 0.6313725490196078,
+              "b": 0.6666666666666666,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/theme-override.css"
+        },
+        {
+          "name": "neon-blue",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.0,
+              "g": 0.9490196078431372,
+              "b": 0.9176470588235294,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/theme-override.css"
+        },
+        {
+          "name": "neon-cyan",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.023529411764705882,
+              "g": 0.7137254901960784,
+              "b": 0.8313725490196079,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/theme-override.css"
+        },
+        {
+          "name": "neon-dark",
+          "resolvedType": "COLOR",
+          "valuesByMode": {
+            "default": {
+              "r": 0.0,
+              "g": 0.0,
+              "b": 0.0,
+              "a": 1.0
+            }
+          },
+          "description": "Extracted from static/css/theme-override.css"
+        },
+        {
+          "name": "radius/radius",
+          "resolvedType": "FLOAT",
+          "valuesByMode": {
+            "default": 12.0
+          },
+          "description": "Border radius: 12.0px"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "color": {
+    "neutral": {
+      "bg-dark": {
+        "value": "#f1f5f9",
+        "type": "color"
+      },
+      "bg-dark-deep": {
+        "value": "#ffffff",
+        "type": "color"
+      },
+      "bg-card": {
+        "value": "#1e293b",
+        "type": "color"
+      },
+      "bg-card-hover": {
+        "value": "#f1f5f9",
+        "type": "color"
+      },
+      "text-muted": {
+        "value": "#374151",
+        "type": "color"
+      },
+      "muted-foreground": {
+        "value": "#a1a1aa",
+        "type": "color"
+      }
+    },
+    "primary": {
+      "text-primary": {
+        "value": "#000000",
+        "type": "color"
+      },
+      "primary": {
+        "value": "#06b6d4",
+        "type": "color"
+      },
+      "primary-glow": {
+        "value": "#06b6d4",
+        "type": "color"
+      },
+      "primary-foreground": {
+        "value": "#000000",
+        "type": "color"
+      }
+    },
+    "secondary": {
+      "text-secondary": {
+        "value": "#1f2937",
+        "type": "color"
+      },
+      "secondary": {
+        "value": "#0891b2",
+        "type": "color"
+      }
+    },
+    "other": {
+      "accent": {
+        "value": "#22d3ee",
+        "type": "color"
+      },
+      "success": {
+        "value": "#34d399",
+        "type": "color"
+      },
+      "warning": {
+        "value": "#fbbf24",
+        "type": "color"
+      },
+      "danger": {
+        "value": "#f87171",
+        "type": "color"
+      },
+      "background": {
+        "value": "#000000",
+        "type": "color"
+      },
+      "foreground": {
+        "value": "#fafafa",
+        "type": "color"
+      },
+      "card": {
+        "value": "#0f0f0f",
+        "type": "color"
+      },
+      "popover": {
+        "value": "#000000",
+        "type": "color"
+      },
+      "neon-blue": {
+        "value": "#00f2ea",
+        "type": "color"
+      },
+      "neon-cyan": {
+        "value": "#06b6d4",
+        "type": "color"
+      },
+      "neon-dark": {
+        "value": "#000000",
+        "type": "color"
+      }
+    }
+  },
+  "size": {},
+  "font": {},
+  "spacing": {},
+  "borderRadius": {
+    "radius": {
+      "value": "12.0px",
+      "type": "dimension"
+    }
+  }
+}

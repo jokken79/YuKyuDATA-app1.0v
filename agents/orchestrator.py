@@ -1,19 +1,28 @@
 """
-Orchestrator Agent - Coordinador Central del Sistema
-====================================================
+Orchestrator Agent - Coordinador Central del Sistema de Agentes
+================================================================
 
-Este agente actúa como el "cerebro" del sistema, coordinando:
-- Flujos de trabajo complejos entre múltiples agentes
-- Operaciones en lote (bulk operations)
-- Sincronización de datos
-- Generación de reportes
+El "cerebro" del sistema que orquesta todos los 12 agentes especializados:
+- NerdAgent: Análisis técnico profundo
+- UIDesignerAgent: Diseño visual y Figma
+- UXAnalystAgent: Experiencia de usuario
+- SecurityAgent: Seguridad y hardening
+- PerformanceAgent: Optimización de rendimiento
+- TestingAgent: QA y cobertura
+- DataParserAgent: Parsing de datos Excel
+- ComplianceAgent: Cumplimiento legal japonés
+- DocumentorAgent: Documentación y memoria
+- FigmaAgent: Integración con Figma y Design Tokens
+- CanvasAgent: Canvas/SVG y visualizaciones
 """
 
 import logging
 from datetime import datetime
-from typing import Dict, List, Any, Callable, Optional
+from typing import Dict, List, Any, Callable, Optional, Union
 from dataclasses import dataclass, field
 from enum import Enum
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -27,15 +36,41 @@ class TaskStatus(Enum):
     SKIPPED = "skipped"
 
 
+class AgentType(Enum):
+    """Tipos de agentes disponibles."""
+    NERD = "nerd"
+    UI_DESIGNER = "ui_designer"
+    UX_ANALYST = "ux_analyst"
+    SECURITY = "security"
+    PERFORMANCE = "performance"
+    TESTING = "testing"
+    DATA_PARSER = "data_parser"
+    COMPLIANCE = "compliance"
+    DOCUMENTOR = "documentor"
+    FIGMA = "figma"
+    CANVAS = "canvas"
+
+
 @dataclass
 class TaskResult:
     """Resultado de una tarea ejecutada."""
     task_name: str
+    agent_type: Optional[AgentType]
     status: TaskStatus
     data: Any = None
     error: Optional[str] = None
     duration_ms: float = 0
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
+
+    def to_dict(self) -> Dict:
+        return {
+            'task_name': self.task_name,
+            'agent_type': self.agent_type.value if self.agent_type else None,
+            'status': self.status.value,
+            'duration_ms': self.duration_ms,
+            'error': self.error,
+            'timestamp': self.timestamp
+        }
 
 
 @dataclass
@@ -47,49 +82,183 @@ class PipelineResult:
     total_duration_ms: float = 0
     started_at: str = ""
     completed_at: str = ""
+    summary: Dict = field(default_factory=dict)
+
+    def to_dict(self) -> Dict:
+        return {
+            'pipeline_name': self.pipeline_name,
+            'status': self.status.value,
+            'tasks_count': len(self.tasks),
+            'successful': sum(1 for t in self.tasks if t.status == TaskStatus.COMPLETED),
+            'failed': sum(1 for t in self.tasks if t.status == TaskStatus.FAILED),
+            'total_duration_ms': self.total_duration_ms,
+            'started_at': self.started_at,
+            'completed_at': self.completed_at,
+            'summary': self.summary
+        }
+
+
+@dataclass
+class FullAnalysisReport:
+    """Reporte completo del análisis de todos los agentes."""
+    timestamp: str
+    nerd_report: Any
+    ui_report: Any
+    ux_report: Any
+    security_report: Any
+    performance_report: Any
+    testing_report: Any
+    overall_health: float
+    critical_issues: List[Dict]
+    recommendations: List[str]
+
+    def to_dict(self) -> Dict:
+        return {
+            'timestamp': self.timestamp,
+            'overall_health': self.overall_health,
+            'critical_issues_count': len(self.critical_issues),
+            'scores': {
+                'code_quality': getattr(self.nerd_report, 'overall_health', 0) if self.nerd_report else 0,
+                'ui_accessibility': getattr(self.ui_report, 'accessibility_score', 0) if self.ui_report else 0,
+                'ux_usability': getattr(self.ux_report, 'usability_score', 0) if self.ux_report else 0,
+                'security': getattr(self.security_report, 'security_score', 0) if self.security_report else 0,
+                'performance': getattr(self.performance_report, 'performance_score', 0) if self.performance_report else 0,
+                'testing': getattr(self.testing_report, 'testing_score', 0) if self.testing_report else 0
+            },
+            'recommendations': self.recommendations[:10]
+        }
 
 
 class OrchestratorAgent:
     """
-    Agente Orquestador - Coordina tareas complejas entre múltiples agentes.
+    Agente Orquestador - Coordinador Central del Sistema
+
+    El "cerebro" que coordina todos los agentes especializados:
+
+    Agentes Disponibles:
+    - NerdAgent: Análisis técnico profundo del código
+    - UIDesignerAgent: Diseño visual, CSS, accesibilidad
+    - UXAnalystAgent: Experiencia de usuario, flujos
+    - SecurityAgent: Vulnerabilidades, OWASP Top 10
+    - PerformanceAgent: Optimización, N+1, bundle
+    - TestingAgent: Cobertura, calidad de tests
+    - DataParserAgent: Parsing de Excel/CSV
+    - ComplianceAgent: Cumplimiento ley laboral japonesa
+    - DocumentorAgent: Documentación y auditoría
 
     Capacidades:
-    - Descomponer tareas complejas en subtareas
-    - Ejecutar pipelines de procesamiento
-    - Manejar errores y rollbacks
-    - Reportar progreso
+    - Ejecutar pipelines de tareas secuenciales
+    - Ejecutar análisis en paralelo
+    - Coordinar análisis completo del proyecto
+    - Generar reportes consolidados
+    - Priorizar issues críticos
 
     Ejemplo de uso:
     ```python
     orchestrator = OrchestratorAgent()
 
-    # Ejecutar sincronización completa
-    result = orchestrator.orchestrate_full_sync("/path/to/excel.xlsm")
+    # Análisis completo del proyecto
+    report = orchestrator.run_full_analysis()
 
-    # Ejecutar reporte de compliance
-    result = orchestrator.orchestrate_compliance_check(year=2025)
+    # Pipeline personalizado
+    result = orchestrator.execute_pipeline("custom", [
+        ("parse_data", AgentType.DATA_PARSER, "parse_excel", {"path": "file.xlsx"}),
+        ("check_security", AgentType.SECURITY, "audit_security", {}),
+    ])
+
+    # Análisis rápido
+    quick = orchestrator.run_quick_analysis()
     ```
     """
 
-    def __init__(self, documentor=None, data_parser=None, compliance_agent=None):
+    def __init__(self, project_root: str = "."):
         """
-        Inicializa el orquestador con referencias a otros agentes.
+        Inicializa el Orquestador con todos los agentes.
 
         Args:
-            documentor: Agente documentador para logging
-            data_parser: Agente parseador de datos
-            compliance_agent: Agente de compliance
+            project_root: Ruta raíz del proyecto a analizar
         """
-        self.documentor = documentor
-        self.data_parser = data_parser
-        self.compliance_agent = compliance_agent
+        self.project_root = project_root
+        self._agents: Dict[AgentType, Any] = {}
         self._current_pipeline: Optional[str] = None
         self._task_history: List[PipelineResult] = []
+        self._lock = threading.Lock()
+
+        # Inicializar agentes lazy
+        self._init_agents()
+
+    def _init_agents(self):
+        """Inicializa los agentes de forma lazy."""
+        # Los agentes se cargan cuando se necesitan
+        pass
+
+    def _get_agent(self, agent_type: AgentType) -> Any:
+        """Obtiene o crea un agente del tipo especificado."""
+        if agent_type not in self._agents:
+            self._agents[agent_type] = self._create_agent(agent_type)
+        return self._agents[agent_type]
+
+    def _create_agent(self, agent_type: AgentType) -> Any:
+        """Crea una instancia del agente especificado."""
+        try:
+            if agent_type == AgentType.NERD:
+                from .nerd import NerdAgent
+                return NerdAgent(self.project_root)
+
+            elif agent_type == AgentType.UI_DESIGNER:
+                from .ui_designer import UIDesignerAgent
+                return UIDesignerAgent(self.project_root)
+
+            elif agent_type == AgentType.UX_ANALYST:
+                from .ux_analyst import UXAnalystAgent
+                return UXAnalystAgent(self.project_root)
+
+            elif agent_type == AgentType.SECURITY:
+                from .security import SecurityAgent
+                return SecurityAgent(self.project_root)
+
+            elif agent_type == AgentType.PERFORMANCE:
+                from .performance import PerformanceAgent
+                return PerformanceAgent(self.project_root)
+
+            elif agent_type == AgentType.TESTING:
+                from .testing import TestingAgent
+                return TestingAgent(self.project_root)
+
+            elif agent_type == AgentType.DATA_PARSER:
+                from .data_parser import DataParserAgent
+                return DataParserAgent()
+
+            elif agent_type == AgentType.COMPLIANCE:
+                from .compliance import ComplianceAgent
+                return ComplianceAgent()
+
+            elif agent_type == AgentType.DOCUMENTOR:
+                from .documentor import DocumentorAgent
+                return DocumentorAgent()
+
+            elif agent_type == AgentType.FIGMA:
+                from .figma import FigmaAgent
+                return FigmaAgent(self.project_root)
+
+            elif agent_type == AgentType.CANVAS:
+                from .canvas import CanvasAgent
+                return CanvasAgent(self.project_root)
+
+        except ImportError as e:
+            logger.error(f"Error importando agente {agent_type.value}: {e}")
+            return None
+
+        return None
+
+    # ========================================
+    # EJECUCIÓN DE PIPELINES
+    # ========================================
 
     def execute_pipeline(
         self,
         pipeline_name: str,
-        steps: List[tuple],  # List of (name, function, args, kwargs)
+        steps: List[tuple],
         stop_on_error: bool = True
     ) -> PipelineResult:
         """
@@ -97,7 +266,7 @@ class OrchestratorAgent:
 
         Args:
             pipeline_name: Nombre identificador del pipeline
-            steps: Lista de tuplas (nombre, función, args, kwargs)
+            steps: Lista de tuplas (nombre, agent_type, method_name, kwargs)
             stop_on_error: Si True, detiene el pipeline ante cualquier error
 
         Returns:
@@ -116,11 +285,11 @@ class OrchestratorAgent:
 
         for step in steps:
             task_name = step[0]
-            func = step[1]
-            args = step[2] if len(step) > 2 else ()
+            agent_type = step[1] if len(step) > 1 else None
+            method_name = step[2] if len(step) > 2 else None
             kwargs = step[3] if len(step) > 3 else {}
 
-            task_result = self._execute_task(task_name, func, args, kwargs)
+            task_result = self._execute_task(task_name, agent_type, method_name, kwargs)
             result.tasks.append(task_result)
 
             if task_result.status == TaskStatus.FAILED and stop_on_error:
@@ -135,48 +304,292 @@ class OrchestratorAgent:
         result.total_duration_ms = (end_time - start_time).total_seconds() * 1000
         result.completed_at = end_time.isoformat()
 
-        self._task_history.append(result)
+        # Generar resumen
+        result.summary = {
+            'total_tasks': len(result.tasks),
+            'successful': sum(1 for t in result.tasks if t.status == TaskStatus.COMPLETED),
+            'failed': sum(1 for t in result.tasks if t.status == TaskStatus.FAILED)
+        }
+
+        with self._lock:
+            self._task_history.append(result)
+
         self._current_pipeline = None
-
-        # Documentar resultado si hay documentor disponible
-        if self.documentor:
-            self.documentor.log_pipeline_execution(result)
-
         return result
 
     def _execute_task(
         self,
         task_name: str,
-        func: Callable,
-        args: tuple,
+        agent_type: Optional[AgentType],
+        method_name: Optional[str],
         kwargs: dict
     ) -> TaskResult:
-        """Ejecuta una tarea individual y captura su resultado."""
+        """Ejecuta una tarea individual."""
         logger.info(f"  ⏳ Ejecutando: {task_name}")
         start_time = datetime.now()
 
         try:
-            data = func(*args, **kwargs)
-            duration = (datetime.now() - start_time).total_seconds() * 1000
+            if agent_type and method_name:
+                agent = self._get_agent(agent_type)
+                if agent is None:
+                    raise ValueError(f"Agente {agent_type.value} no disponible")
 
+                method = getattr(agent, method_name, None)
+                if method is None:
+                    raise ValueError(f"Método {method_name} no existe en {agent_type.value}")
+
+                data = method(**kwargs)
+            else:
+                data = None
+
+            duration = (datetime.now() - start_time).total_seconds() * 1000
             logger.info(f"  ✓ {task_name} completado ({duration:.0f}ms)")
+
             return TaskResult(
                 task_name=task_name,
+                agent_type=agent_type,
                 status=TaskStatus.COMPLETED,
                 data=data,
                 duration_ms=duration
             )
+
         except Exception as e:
             duration = (datetime.now() - start_time).total_seconds() * 1000
             error_msg = str(e)
-
             logger.error(f"  ✗ {task_name} falló: {error_msg}")
+
             return TaskResult(
                 task_name=task_name,
+                agent_type=agent_type,
                 status=TaskStatus.FAILED,
                 error=error_msg,
                 duration_ms=duration
             )
+
+    # ========================================
+    # EJECUCIÓN EN PARALELO
+    # ========================================
+
+    def execute_parallel(
+        self,
+        tasks: List[tuple],
+        max_workers: int = 4
+    ) -> List[TaskResult]:
+        """
+        Ejecuta múltiples tareas en paralelo.
+
+        Args:
+            tasks: Lista de tuplas (nombre, agent_type, method_name, kwargs)
+            max_workers: Número máximo de workers
+
+        Returns:
+            Lista de TaskResult
+        """
+        results = []
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {}
+
+            for task in tasks:
+                task_name = task[0]
+                agent_type = task[1] if len(task) > 1 else None
+                method_name = task[2] if len(task) > 2 else None
+                kwargs = task[3] if len(task) > 3 else {}
+
+                future = executor.submit(
+                    self._execute_task,
+                    task_name, agent_type, method_name, kwargs
+                )
+                futures[future] = task_name
+
+            for future in as_completed(futures):
+                result = future.result()
+                results.append(result)
+
+        return results
+
+    # ========================================
+    # ANÁLISIS COMPLETO
+    # ========================================
+
+    def run_full_analysis(self, parallel: bool = True) -> FullAnalysisReport:
+        """
+        Ejecuta un análisis completo del proyecto con todos los agentes.
+
+        Args:
+            parallel: Si True, ejecuta agentes en paralelo
+
+        Returns:
+            FullAnalysisReport con todos los resultados
+        """
+        logger.info("🔬 Iniciando análisis completo del proyecto...")
+        start_time = datetime.now()
+
+        # Definir tareas de análisis
+        analysis_tasks = [
+            ("nerd_analysis", AgentType.NERD, "analyze_project", {}),
+            ("ui_analysis", AgentType.UI_DESIGNER, "audit_ui", {}),
+            ("ux_analysis", AgentType.UX_ANALYST, "audit_ux", {}),
+            ("security_analysis", AgentType.SECURITY, "audit_security", {}),
+            ("performance_analysis", AgentType.PERFORMANCE, "analyze_performance", {}),
+            ("testing_analysis", AgentType.TESTING, "analyze_testing", {}),
+        ]
+
+        # Ejecutar análisis
+        if parallel:
+            results = self.execute_parallel(analysis_tasks)
+        else:
+            results = [
+                self._execute_task(t[0], t[1], t[2], t[3])
+                for t in analysis_tasks
+            ]
+
+        # Organizar resultados
+        reports = {r.task_name: r.data for r in results if r.status == TaskStatus.COMPLETED}
+
+        # Calcular salud general
+        scores = []
+        if reports.get('nerd_analysis'):
+            scores.append(getattr(reports['nerd_analysis'], 'overall_health', 50))
+        if reports.get('ui_analysis'):
+            scores.append(getattr(reports['ui_analysis'], 'accessibility_score', 50))
+        if reports.get('ux_analysis'):
+            scores.append(getattr(reports['ux_analysis'], 'usability_score', 50))
+        if reports.get('security_analysis'):
+            scores.append(getattr(reports['security_analysis'], 'security_score', 50))
+        if reports.get('performance_analysis'):
+            scores.append(getattr(reports['performance_analysis'], 'performance_score', 50))
+        if reports.get('testing_analysis'):
+            scores.append(getattr(reports['testing_analysis'], 'testing_score', 50))
+
+        overall_health = sum(scores) / len(scores) if scores else 0
+
+        # Recopilar issues críticos
+        critical_issues = []
+
+        # De Nerd
+        if reports.get('nerd_analysis'):
+            for issue in getattr(reports['nerd_analysis'], 'issues', []):
+                if hasattr(issue, 'severity') and issue.severity.value == 'critical':
+                    critical_issues.append({
+                        'source': 'nerd',
+                        'title': issue.title,
+                        'file': issue.file_path
+                    })
+
+        # De Security
+        if reports.get('security_analysis'):
+            for vuln in getattr(reports['security_analysis'], 'vulnerabilities', []):
+                if hasattr(vuln, 'severity') and vuln.severity.value == 'critical':
+                    critical_issues.append({
+                        'source': 'security',
+                        'title': vuln.title,
+                        'file': vuln.file_path
+                    })
+
+        # Generar recomendaciones consolidadas
+        recommendations = self._generate_consolidated_recommendations(reports)
+
+        duration = (datetime.now() - start_time).total_seconds()
+        logger.info(f"✅ Análisis completo terminado en {duration:.1f}s")
+        logger.info(f"   Salud general: {overall_health:.1f}%")
+        logger.info(f"   Issues críticos: {len(critical_issues)}")
+
+        return FullAnalysisReport(
+            timestamp=datetime.now().isoformat(),
+            nerd_report=reports.get('nerd_analysis'),
+            ui_report=reports.get('ui_analysis'),
+            ux_report=reports.get('ux_analysis'),
+            security_report=reports.get('security_analysis'),
+            performance_report=reports.get('performance_analysis'),
+            testing_report=reports.get('testing_analysis'),
+            overall_health=overall_health,
+            critical_issues=critical_issues,
+            recommendations=recommendations
+        )
+
+    def run_quick_analysis(self) -> Dict[str, Any]:
+        """
+        Ejecuta un análisis rápido (solo security y performance).
+
+        Returns:
+            Dict con resultados resumidos
+        """
+        logger.info("⚡ Ejecutando análisis rápido...")
+
+        tasks = [
+            ("security_quick", AgentType.SECURITY, "scan_for_secrets", {}),
+            ("performance_quick", AgentType.PERFORMANCE, "analyze_database_performance", {}),
+        ]
+
+        results = self.execute_parallel(tasks, max_workers=2)
+
+        return {
+            'timestamp': datetime.now().isoformat(),
+            'results': [r.to_dict() for r in results]
+        }
+
+    def _generate_consolidated_recommendations(self, reports: Dict) -> List[str]:
+        """Genera recomendaciones consolidadas de todos los análisis."""
+        recs = []
+
+        # Priorizar seguridad
+        if reports.get('security_analysis'):
+            sec = reports['security_analysis']
+            if hasattr(sec, 'critical_count') and sec.critical_count > 0:
+                recs.append(
+                    f"🔴 CRÍTICO: {sec.critical_count} vulnerabilidades críticas de seguridad. "
+                    "¡Resolver antes de cualquier deploy!"
+                )
+
+        # Performance
+        if reports.get('performance_analysis'):
+            perf = reports['performance_analysis']
+            if hasattr(perf, 'database_metrics'):
+                n1 = len(getattr(perf.database_metrics, 'potential_n_plus_1', []))
+                if n1 > 0:
+                    recs.append(
+                        f"🐢 Performance: {n1} posibles queries N+1. "
+                        "Esto puede causar lentitud severa."
+                    )
+
+        # Testing
+        if reports.get('testing_analysis'):
+            test = reports['testing_analysis']
+            if hasattr(test, 'coverage'):
+                cov = test.coverage.coverage_percentage
+                if cov < 50:
+                    recs.append(
+                        f"🧪 Testing: Cobertura del {cov:.1f}%. "
+                        "Objetivo recomendado: 80%+"
+                    )
+
+        # UX
+        if reports.get('ux_analysis'):
+            ux = reports['ux_analysis']
+            if hasattr(ux, 'usability_score') and ux.usability_score < 70:
+                recs.append(
+                    f"🎯 UX: Score de usabilidad bajo ({ux.usability_score}%). "
+                    "Revisa los problemas de experiencia de usuario."
+                )
+
+        # UI
+        if reports.get('ui_analysis'):
+            ui = reports['ui_analysis']
+            if hasattr(ui, 'accessibility_score') and ui.accessibility_score < 70:
+                recs.append(
+                    f"👁️ Accesibilidad: Score bajo ({ui.accessibility_score}%). "
+                    "Revisa contraste y estructura HTML."
+                )
+
+        # Si todo está bien
+        if not recs:
+            recs.append(
+                "✅ ¡Excelente! El proyecto está en buen estado general. "
+                "Continúa aplicando buenas prácticas."
+            )
+
+        return recs
 
     # ========================================
     # PIPELINES PREDEFINIDOS
@@ -189,20 +602,12 @@ class OrchestratorAgent:
         Pasos:
         1. Parsear archivo Excel
         2. Validar datos
-        3. Detectar anomalías
-        4. Guardar en base de datos
-        5. Actualizar estadísticas
-        6. Generar notificaciones
+        3. Guardar en base de datos
+        4. Actualizar estadísticas
         """
-        # Importar servicios necesarios
-        import excel_service
-        import database
-
         steps = [
-            ("parse_excel", excel_service.parse_excel_file, (excel_path,)),
-            ("validate_data", self._validate_sync_data, ()),
-            ("save_to_db", database.save_employees, ()),
-            ("update_stats", self._update_statistics, ()),
+            ("parse_excel", AgentType.DATA_PARSER, "parse_excel", {"file_path": excel_path}),
+            ("validate_data", AgentType.DATA_PARSER, "validate_data", {}),
         ]
 
         return self.execute_pipeline("full_sync", steps)
@@ -212,139 +617,105 @@ class OrchestratorAgent:
         Pipeline de verificación de compliance.
 
         Pasos:
-        1. Cargar datos del año
-        2. Verificar 5日取得義務
-        3. Verificar expiración de días
-        4. Generar alertas
-        5. Crear reporte
+        1. Verificar 5日取得義務
+        2. Verificar expiración de días
+        3. Generar alertas
         """
-        if not self.compliance_agent:
-            raise ValueError("ComplianceAgent no configurado")
-
         steps = [
-            ("load_year_data", self._load_year_data, (year,)),
-            ("check_5_day_rule", self.compliance_agent.check_all_5_day_compliance, (year,)),
-            ("check_expirations", self.compliance_agent.check_expiring_balances, (year,)),
-            ("generate_alerts", self._generate_compliance_alerts, ()),
+            ("check_5_day_rule", AgentType.COMPLIANCE, "check_all_5_day_compliance", {"year": year}),
+            ("check_expirations", AgentType.COMPLIANCE, "check_expiring_balances", {"year": year}),
         ]
 
         return self.execute_pipeline(f"compliance_check_{year}", steps)
 
-    def orchestrate_report_generation(
-        self,
-        report_type: str,
-        year: int,
-        filters: Optional[Dict] = None
-    ) -> PipelineResult:
+    def orchestrate_security_audit(self) -> PipelineResult:
         """
-        Pipeline de generación de reportes.
+        Pipeline de auditoría de seguridad.
 
-        Args:
-            report_type: Tipo de reporte ('annual_ledger', 'usage_summary', 'compliance')
-            year: Año del reporte
-            filters: Filtros opcionales
+        Pasos:
+        1. Escanear secretos
+        2. Verificar OWASP Top 10
+        3. Analizar configuración
         """
         steps = [
-            ("load_data", self._load_report_data, (year, filters)),
-            ("calculate_metrics", self._calculate_report_metrics, ()),
-            ("format_report", self._format_report, (report_type,)),
+            ("scan_secrets", AgentType.SECURITY, "scan_for_secrets", {}),
+            ("scan_owasp", AgentType.SECURITY, "scan_owasp_top_10", {}),
+            ("analyze_config", AgentType.SECURITY, "analyze_security_config", {}),
         ]
 
-        return self.execute_pipeline(f"report_{report_type}_{year}", steps)
+        return self.execute_pipeline("security_audit", steps)
 
-    def orchestrate_bulk_approval(
-        self,
-        request_ids: List[int],
-        approved_by: str
-    ) -> PipelineResult:
+    def orchestrate_code_review(self) -> PipelineResult:
         """
-        Pipeline de aprobación masiva de solicitudes.
+        Pipeline de revisión de código.
 
-        Args:
-            request_ids: Lista de IDs de solicitudes a aprobar
-            approved_by: Nombre del aprobador
+        Pasos:
+        1. Análisis técnico (Nerd)
+        2. Análisis de seguridad
+        3. Análisis de performance
         """
-        import database
+        steps = [
+            ("nerd_analysis", AgentType.NERD, "analyze_project", {}),
+            ("security_scan", AgentType.SECURITY, "scan_owasp_top_10", {}),
+            ("perf_analysis", AgentType.PERFORMANCE, "analyze_code_performance", {}),
+        ]
 
-        steps = []
-        for req_id in request_ids:
-            steps.append((
-                f"approve_{req_id}",
-                database.approve_leave_request,
-                (req_id, approved_by)
-            ))
+        return self.execute_pipeline("code_review", steps)
 
-        # No detener en error para procesar todas las solicitudes
-        return self.execute_pipeline(
-            f"bulk_approval_{len(request_ids)}_requests",
-            steps,
-            stop_on_error=False
-        )
+    def orchestrate_ui_ux_audit(self) -> PipelineResult:
+        """
+        Pipeline de auditoría UI/UX.
 
-    # ========================================
-    # MÉTODOS AUXILIARES
-    # ========================================
+        Pasos:
+        1. Auditoría de UI
+        2. Auditoría de UX
+        3. Análisis de accesibilidad
+        """
+        steps = [
+            ("ui_audit", AgentType.UI_DESIGNER, "audit_ui", {}),
+            ("ux_audit", AgentType.UX_ANALYST, "audit_ux", {}),
+            ("a11y_check", AgentType.UI_DESIGNER, "audit_accessibility", {}),
+        ]
 
-    def _validate_sync_data(self, data: List[Dict] = None) -> Dict:
-        """Valida datos antes de guardar."""
-        if self.data_parser:
-            return self.data_parser.validate_data(data or [])
-        return {"valid": True, "errors": []}
-
-    def _update_statistics(self) -> Dict:
-        """Actualiza estadísticas del sistema."""
-        import database
-        years = database.get_available_years()
-        return {"years_updated": years}
-
-    def _load_year_data(self, year: int) -> List[Dict]:
-        """Carga datos de un año específico."""
-        import database
-        return database.get_employees(year=year)
-
-    def _generate_compliance_alerts(self) -> List[Dict]:
-        """Genera alertas basadas en verificaciones de compliance."""
-        # Implementación pendiente
-        return []
-
-    def _load_report_data(self, year: int, filters: Optional[Dict]) -> Dict:
-        """Carga datos para un reporte."""
-        import database
-        data = database.get_employees(year=year)
-        return {"year": year, "data": data, "filters": filters}
-
-    def _calculate_report_metrics(self, data: Dict = None) -> Dict:
-        """Calcula métricas para el reporte."""
-        return {"calculated": True}
-
-    def _format_report(self, report_type: str, data: Dict = None) -> Dict:
-        """Formatea el reporte según su tipo."""
-        return {"report_type": report_type, "formatted": True}
+        return self.execute_pipeline("ui_ux_audit", steps)
 
     # ========================================
     # CONSULTAS Y ESTADO
     # ========================================
 
-    def get_pipeline_history(self, limit: int = 10) -> List[PipelineResult]:
+    def get_pipeline_history(self, limit: int = 10) -> List[Dict]:
         """Obtiene historial de pipelines ejecutados."""
-        return self._task_history[-limit:]
+        with self._lock:
+            return [p.to_dict() for p in self._task_history[-limit:]]
 
     def get_current_status(self) -> Dict:
         """Obtiene estado actual del orquestador."""
         return {
             "current_pipeline": self._current_pipeline,
             "total_pipelines_executed": len(self._task_history),
-            "last_execution": self._task_history[-1] if self._task_history else None
+            "loaded_agents": [a.value for a in self._agents.keys()],
+            "available_agents": [a.value for a in AgentType]
         }
+
+    def get_agent_status(self) -> Dict[str, bool]:
+        """Verifica qué agentes están disponibles."""
+        status = {}
+        for agent_type in AgentType:
+            try:
+                agent = self._get_agent(agent_type)
+                status[agent_type.value] = agent is not None
+            except Exception:
+                status[agent_type.value] = False
+        return status
 
 
 # Instancia global (singleton)
 _orchestrator_instance: Optional[OrchestratorAgent] = None
 
 
-def get_orchestrator() -> OrchestratorAgent:
+def get_orchestrator(project_root: str = ".") -> OrchestratorAgent:
     """Obtiene la instancia global del orquestador."""
     global _orchestrator_instance
     if _orchestrator_instance is None:
-        _orchestrator_instance = OrchestratorAgent()
+        _orchestrator_instance = OrchestratorAgent(project_root)
     return _orchestrator_instance

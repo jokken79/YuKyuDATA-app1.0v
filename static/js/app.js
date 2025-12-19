@@ -762,16 +762,52 @@ const App = {
         },
 
         showToast(type, msg, duration = 4000) {
+            // Use modern toast system if available
+            if (typeof ModernUI !== 'undefined' && ModernUI.Toast) {
+                // Parse message for title (emoji prefix) and content
+                const hasEmoji = /^[\u{1F300}-\u{1F9FF}]/u.test(msg);
+                let title = '';
+                let message = msg;
+
+                // Extract title from emoji-prefixed messages
+                if (hasEmoji) {
+                    const parts = msg.split(' ');
+                    if (parts.length > 1) {
+                        title = parts[0];
+                        message = parts.slice(1).join(' ');
+                    }
+                } else {
+                    // Default titles
+                    const titles = {
+                        success: 'Success',
+                        error: 'Error',
+                        warning: 'Warning',
+                        info: 'Info'
+                    };
+                    title = titles[type] || 'Notification';
+                }
+
+                ModernUI.Toast.show({
+                    type,
+                    title,
+                    message,
+                    duration
+                });
+                return;
+            }
+
+            // Fallback to original toast system
             const container = document.getElementById('toast-container');
+            if (!container) return;
+
             const toast = document.createElement('div');
             toast.className = `toast toast-${type}`;
 
-            // Style based on type
             const styles = {
-                success: { border: 'var(--success)', icon: '', bg: 'rgba(34, 197, 94, 0.1)' },
-                error: { border: 'var(--danger)', icon: '', bg: 'rgba(239, 68, 68, 0.1)' },
-                warning: { border: 'var(--warning)', icon: '', bg: 'rgba(251, 191, 36, 0.1)' },
-                info: { border: 'var(--primary)', icon: '', bg: 'rgba(56, 189, 248, 0.1)' }
+                success: { border: 'var(--success)', bg: 'rgba(34, 197, 94, 0.1)' },
+                error: { border: 'var(--danger)', bg: 'rgba(239, 68, 68, 0.1)' },
+                warning: { border: 'var(--warning)', bg: 'rgba(251, 191, 36, 0.1)' },
+                info: { border: 'var(--primary)', bg: 'rgba(56, 189, 248, 0.1)' }
             };
             const style = styles[type] || styles.info;
 
@@ -780,12 +816,8 @@ const App = {
                 background: ${style.bg};
                 backdrop-filter: blur(10px);
             `;
+            toast.innerHTML = msg;
 
-            // Add icon only if message doesn't already have an emoji
-            const hasEmoji = /[\u{1F300}-\u{1F9FF}]/u.test(msg.substring(0, 3));
-            toast.innerHTML = hasEmoji ? msg : `${style.icon} ${msg}`;
-
-            // Add close button
             const closeBtn = document.createElement('button');
             closeBtn.innerHTML = '×';
             closeBtn.className = 'toast-close';
@@ -794,7 +826,6 @@ const App = {
 
             container.appendChild(toast);
 
-            // Auto remove with fade out
             setTimeout(() => {
                 toast.style.animation = 'slideOutRight 0.3s forwards';
                 setTimeout(() => toast.remove(), 300);
@@ -2381,9 +2412,23 @@ const App = {
         },
 
         async cancel(requestId) {
-            if (!confirm(`申請 #${requestId} をキャンセルしますか？\n\nこの操作は取り消せません。`)) {
-                return;
+            // Use modern dialog if available
+            let confirmed = false;
+            if (typeof ModernUI !== 'undefined' && ModernUI.Dialog) {
+                const result = await ModernUI.Dialog.show({
+                    type: 'danger',
+                    title: '申請キャンセル',
+                    message: `申請 #${requestId} をキャンセルしますか？この操作は取り消せません。`,
+                    confirmText: 'キャンセルする',
+                    cancelText: '戻る',
+                    danger: true
+                });
+                confirmed = result.confirmed;
+            } else {
+                confirmed = confirm(`申請 #${requestId} をキャンセルしますか？\n\nこの操作は取り消せません。`);
             }
+
+            if (!confirmed) return;
 
             App.ui.showLoading();
             try {
@@ -2408,9 +2453,22 @@ const App = {
         },
 
         async revert(requestId) {
-            if (!confirm(`申請 #${requestId} を取り消しますか？\n\n承認済みの休暇が取り消され、日数が返却されます。`)) {
-                return;
+            // Use modern dialog if available
+            let confirmed = false;
+            if (typeof ModernUI !== 'undefined' && ModernUI.Dialog) {
+                const result = await ModernUI.Dialog.show({
+                    type: 'warning',
+                    title: '承認取り消し',
+                    message: `申請 #${requestId} を取り消しますか？承認済みの休暇が取り消され、日数が返却されます。`,
+                    confirmText: '取り消す',
+                    cancelText: 'キャンセル'
+                });
+                confirmed = result.confirmed;
+            } else {
+                confirmed = confirm(`申請 #${requestId} を取り消しますか？\n\n承認済みの休暇が取り消され、日数が返却されます。`);
             }
+
+            if (!confirmed) return;
 
             App.ui.showLoading();
             try {
@@ -2473,9 +2531,22 @@ const App = {
         },
 
         async restore(filename) {
-            if (!confirm(`バックアップ "${filename}" から復元しますか？\n\n⚠️ 現在のデータは上書きされます。\n（復元前に自動バックアップが作成されます）`)) {
-                return;
+            // Use modern dialog if available
+            let confirmed = false;
+            if (typeof ModernUI !== 'undefined' && ModernUI.Dialog) {
+                const result = await ModernUI.Dialog.show({
+                    type: 'warning',
+                    title: 'バックアップ復元',
+                    message: `"${filename}" から復元しますか？現在のデータは上書きされます。復元前に自動バックアップが作成されます。`,
+                    confirmText: '復元する',
+                    cancelText: 'キャンセル'
+                });
+                confirmed = result.confirmed;
+            } else {
+                confirmed = confirm(`バックアップ "${filename}" から復元しますか？\n\n⚠️ 現在のデータは上書きされます。\n（復元前に自動バックアップが作成されます）`);
             }
+
+            if (!confirmed) return;
 
             App.ui.showLoading();
             try {
