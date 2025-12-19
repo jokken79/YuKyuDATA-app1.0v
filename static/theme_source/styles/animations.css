@@ -1,0 +1,435 @@
+/**
+ * ArariPRO Premium Theme - Animation Styles
+ *
+ * Additional animation classes and effects for micro-interactions.
+ * Import after globals.css for best results.
+ *
+ * @version 1.0.0
+ */
+
+/* ======================
+   HOVER EFFECTS
+   ====================== */
+
+/* Scale on hover (for cards, buttons) */
+.hover-scale {
+  @apply transition-transform duration-300;
+}
+
+.hover-scale:hover {
+  @apply scale-[1.02];
+}
+
+.hover-scale:active {
+  @apply scale-[0.98];
+}
+
+/* Lift on hover (for cards) */
+.hover-lift {
+  @apply transition-all duration-300;
+}
+
+.hover-lift:hover {
+  @apply -translate-y-1 shadow-lg;
+}
+
+/* Glow on hover (for interactive elements) */
+.hover-glow {
+  @apply transition-all duration-300;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(0, 242, 234, 0.3);
+}
+
+/* Border glow on hover */
+.hover-border-glow {
+  @apply transition-all duration-300;
+}
+
+.hover-border-glow:hover {
+  border-color: hsl(var(--primary) / 0.5);
+}
+
+/* ======================
+   BUTTON PRESS EFFECT
+   ====================== */
+.button-press {
+  @apply transition-transform duration-100;
+}
+
+.button-press:active {
+  @apply scale-[0.98];
+}
+
+/* ======================
+   FADE ANIMATIONS
+   ====================== */
+.fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.fade-out {
+  animation: fadeOut 0.3s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* ======================
+   SLIDE ANIMATIONS
+   ====================== */
+.slide-up {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+.slide-down {
+  animation: slideDown 0.3s ease-out forwards;
+}
+
+.slide-left {
+  animation: slideLeft 0.3s ease-out forwards;
+}
+
+.slide-right {
+  animation: slideRight 0.3s ease-out forwards;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideRight {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ======================
+   STAGGERED CHILDREN ANIMATION
+   ====================== */
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 350ms; }
+.stagger-children > *:nth-child(9) { animation-delay: 400ms; }
+.stagger-children > *:nth-child(10) { animation-delay: 450ms; }
+
+/* ======================
+   SKELETON LOADING VARIANTS
+   ====================== */
+.skeleton-wave {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--muted) / 0.5) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonWave 1.5s ease-in-out infinite;
+}
+
+@keyframes skeletonWave {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ======================
+   LOADING STATES
+   ====================== */
+
+/* Pulsing dot loader */
+.loading-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.loading-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: loadingDots 1.4s ease-in-out infinite both;
+}
+
+.loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+.loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+.loading-dots span:nth-child(3) { animation-delay: 0s; }
+
+@keyframes loadingDots {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Spinning loader */
+.loading-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ======================
+   NOTIFICATION/BADGE PULSE
+   ====================== */
+.badge-pulse {
+  position: relative;
+}
+
+.badge-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  animation: badgePulse 2s ease-out infinite;
+}
+
+@keyframes badgePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+/* ======================
+   TOOLTIP ANIMATIONS
+   ====================== */
+.tooltip-enter {
+  animation: tooltipEnter 0.2s ease-out forwards;
+}
+
+.tooltip-exit {
+  animation: tooltipExit 0.15s ease-out forwards;
+}
+
+@keyframes tooltipEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes tooltipExit {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+}
+
+/* ======================
+   MODAL ANIMATIONS
+   ====================== */
+.modal-overlay-enter {
+  animation: overlayEnter 0.2s ease-out forwards;
+}
+
+.modal-overlay-exit {
+  animation: overlayExit 0.15s ease-out forwards;
+}
+
+.modal-content-enter {
+  animation: modalEnter 0.3s ease-out forwards;
+}
+
+.modal-content-exit {
+  animation: modalExit 0.2s ease-out forwards;
+}
+
+@keyframes overlayEnter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlayExit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modalExit {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+}
+
+/* ======================
+   DROPDOWN/MENU ANIMATIONS
+   ====================== */
+.dropdown-enter {
+  animation: dropdownEnter 0.2s ease-out forwards;
+}
+
+.dropdown-exit {
+  animation: dropdownExit 0.15s ease-out forwards;
+}
+
+@keyframes dropdownEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes dropdownExit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* ======================
+   SUCCESS/ERROR ANIMATIONS
+   ====================== */
+.success-checkmark {
+  animation: checkmark 0.4s ease-out forwards;
+}
+
+@keyframes checkmark {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.error-shake {
+  animation: shake 0.4s ease-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+/* ======================
+   FOCUS RING ANIMATION
+   ====================== */
+.focus-ring-animate:focus-visible {
+  animation: focusRing 0.15s ease-out;
+}
+
+@keyframes focusRing {
+  0% {
+    box-shadow: 0 0 0 0 hsl(var(--ring) / 0.7);
+  }
+  100% {
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.3);
+  }
+}

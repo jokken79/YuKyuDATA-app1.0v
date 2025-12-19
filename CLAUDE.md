@@ -26,8 +26,8 @@ YuKyuDATA-app is an employee management system with three main databases:
 # Start the server with auto-reload
 python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-# Or use the batch file (Windows)
-start_app.bat
+# Start the server with dynamic port selection (Recommended)
+script\start_app_dynamic.bat
 ```
 
 The application will be available at http://localhost:8000

@@ -1,0 +1,306 @@
+/**
+ * ArariPRO Premium Theme - Utility Classes
+ *
+ * Additional utility classes for common patterns.
+ * Import after globals.css.
+ *
+ * @version 1.0.0
+ */
+
+/* ======================
+   LAYOUT UTILITIES
+   ====================== */
+
+/* Center content */
+.center-content {
+  @apply flex items-center justify-center;
+}
+
+/* Stack layout (vertical) */
+.stack {
+  @apply flex flex-col;
+}
+
+.stack-1 { @apply gap-1; }
+.stack-2 { @apply gap-2; }
+.stack-3 { @apply gap-3; }
+.stack-4 { @apply gap-4; }
+.stack-6 { @apply gap-6; }
+.stack-8 { @apply gap-8; }
+
+/* Cluster layout (horizontal) */
+.cluster {
+  @apply flex flex-wrap items-center;
+}
+
+.cluster-1 { @apply gap-1; }
+.cluster-2 { @apply gap-2; }
+.cluster-3 { @apply gap-3; }
+.cluster-4 { @apply gap-4; }
+.cluster-6 { @apply gap-6; }
+
+/* Sidebar layout */
+.with-sidebar {
+  @apply flex flex-wrap;
+}
+
+.with-sidebar > :first-child {
+  flex-basis: 280px;
+  flex-grow: 1;
+}
+
+.with-sidebar > :last-child {
+  flex-basis: 0;
+  flex-grow: 999;
+  min-width: 60%;
+}
+
+/* ======================
+   TEXT UTILITIES
+   ====================== */
+
+/* Truncate with ellipsis */
+.truncate-1 {
+  @apply truncate;
+}
+
+.truncate-2 {
+  @apply line-clamp-2;
+}
+
+.truncate-3 {
+  @apply line-clamp-3;
+}
+
+/* Text balance for headings */
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Prose styles for content */
+.prose-sm {
+  @apply text-sm leading-relaxed;
+}
+
+.prose-sm p + p {
+  @apply mt-4;
+}
+
+/* ======================
+   VISUAL UTILITIES
+   ====================== */
+
+/* Gradient overlays */
+.gradient-overlay {
+  @apply relative;
+}
+
+.gradient-overlay::after {
+  content: '';
+  @apply absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none;
+}
+
+/* Frosted glass effect (stronger) */
+.frosted {
+  @apply backdrop-blur-lg bg-white/10;
+}
+
+.light .frosted {
+  @apply bg-black/5;
+}
+
+/* Subtle border */
+.border-subtle {
+  @apply border border-black/5;
+}
+
+.dark .border-subtle {
+  @apply border-white/10;
+}
+
+/* ======================
+   INTERACTIVE STATES
+   ====================== */
+
+/* Clickable area expansion */
+.click-area {
+  @apply relative;
+}
+
+.click-area::before {
+  content: '';
+  @apply absolute -inset-2;
+}
+
+/* Disabled state */
+.is-disabled {
+  @apply opacity-50 pointer-events-none cursor-not-allowed;
+}
+
+/* Active/selected state */
+.is-active {
+  @apply bg-primary/10 text-primary;
+}
+
+/* ======================
+   STATUS INDICATORS
+   ====================== */
+
+/* Status dot */
+.status-dot {
+  @apply inline-block w-2 h-2 rounded-full;
+}
+
+.status-dot-success { @apply bg-emerald-500; }
+.status-dot-warning { @apply bg-amber-500; }
+.status-dot-danger { @apply bg-red-500; }
+.status-dot-info { @apply bg-blue-500; }
+.status-dot-muted { @apply bg-muted-foreground; }
+
+/* Animated status dot */
+.status-dot-pulse {
+  @apply status-dot relative;
+}
+
+.status-dot-pulse::before {
+  content: '';
+  @apply absolute inset-0 rounded-full animate-ping;
+  background-color: inherit;
+  opacity: 0.75;
+}
+
+/* ======================
+   CARD UTILITIES
+   ====================== */
+
+/* Card with hover effect */
+.card-interactive {
+  @apply transition-all duration-300;
+}
+
+.card-interactive:hover {
+  @apply shadow-lg -translate-y-1;
+}
+
+/* Card gradient background */
+.card-gradient {
+  @apply bg-gradient-to-br from-card via-card to-primary/5;
+}
+
+/* Card with left accent */
+.card-accent-left {
+  @apply border-l-4 border-l-primary;
+}
+
+/* ======================
+   FORM UTILITIES
+   ====================== */
+
+/* Required field indicator */
+.required::after {
+  content: '*';
+  @apply text-red-500 ml-0.5;
+}
+
+/* Form group */
+.form-group {
+  @apply space-y-2;
+}
+
+/* Form label */
+.form-label {
+  @apply text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70;
+}
+
+/* Form helper text */
+.form-helper {
+  @apply text-xs text-muted-foreground mt-1;
+}
+
+/* Form error message */
+.form-error {
+  @apply text-xs text-red-500 mt-1;
+}
+
+/* ======================
+   SPACING UTILITIES
+   ====================== */
+
+/* Section spacing */
+.section-sm { @apply py-8; }
+.section-md { @apply py-12; }
+.section-lg { @apply py-16; }
+.section-xl { @apply py-24; }
+
+/* Container padding */
+.container-padding {
+  @apply px-4 md:px-6 lg:px-8;
+}
+
+/* ======================
+   RESPONSIVE UTILITIES
+   ====================== */
+
+/* Show/hide based on viewport */
+.mobile-only {
+  @apply md:hidden;
+}
+
+.desktop-only {
+  @apply hidden md:block;
+}
+
+/* Responsive text */
+.text-responsive {
+  @apply text-sm md:text-base;
+}
+
+.heading-responsive {
+  @apply text-xl md:text-2xl lg:text-3xl;
+}
+
+/* ======================
+   TABLE UTILITIES
+   ====================== */
+
+/* Sticky table header */
+.table-sticky-header thead {
+  @apply sticky top-0 z-10 bg-background;
+}
+
+/* Zebra striping */
+.table-zebra tbody tr:nth-child(even) {
+  @apply bg-muted/30;
+}
+
+/* Compact table */
+.table-compact td,
+.table-compact th {
+  @apply py-2 px-3 text-sm;
+}
+
+/* ======================
+   ACCESSIBILITY UTILITIES
+   ====================== */
+
+/* Screen reader only */
+.sr-only {
+  @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+  clip: rect(0, 0, 0, 0);
+}
+
+/* Not screen reader only (revert sr-only) */
+.not-sr-only {
+  @apply static w-auto h-auto p-0 m-0 overflow-visible whitespace-normal;
+  clip: auto;
+}
+
+/* Focus visible ring */
+.focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+}
+
+/* Skip to content link */
+.skip-link {
+  @apply sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-background focus:text-foreground focus:rounded-md focus:shadow-lg;
+}

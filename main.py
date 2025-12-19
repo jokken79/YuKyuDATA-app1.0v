@@ -235,19 +235,30 @@ app = FastAPI(
 )
 
 # Configure CORS - Restricted to specific origins
+# Get ports from environment variables (defaults for safe fallback)
+SERVER_PORT = int(os.getenv("PORT", "8000"))
+FRONTEND_PORT = int(os.getenv("FRONTEND_PORT", "3000"))
+
 ALLOWED_ORIGINS = [
+    f"http://localhost:{SERVER_PORT}",
+    f"http://127.0.0.1:{SERVER_PORT}",
+    f"http://localhost:{FRONTEND_PORT}",
+    f"http://127.0.0.1:{FRONTEND_PORT}",
+    # Also allow standard ports just in case
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
 
+logger.info(f"CORS Configured for Server Port: {SERVER_PORT}, Frontend Port: {FRONTEND_PORT}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type", "Accept"],
+    allow_credentials=True,  # Changed to True to allow cookies/auth headers if needed
+    allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"],
+    allow_headers=["*"],     # Allow all headers including Authorization
 )
 
 # Constants

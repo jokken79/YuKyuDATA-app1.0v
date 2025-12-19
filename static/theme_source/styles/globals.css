@@ -1,0 +1,298 @@
+/**
+ * ArariPRO Premium Theme - Global Styles
+ *
+ * CSS Variables for dark/light mode theming with glassmorphism effects.
+ * Import this file at the top of your main CSS/entry file.
+ *
+ * @version 1.0.0
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ======================
+   CSS VARIABLES - DARK MODE (DEFAULT)
+   ====================== */
+@layer base {
+  :root {
+    /* Premium Dark Theme Default */
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 189 94% 43%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --radius: 0.75rem;
+
+    /* Success/Warning colors */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+
+    /* Custom glass effect colors */
+    --glass-bg: rgba(0, 0, 0, 0.4);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-card-bg: rgba(21, 21, 21, 0.8);
+    --glass-card-border: rgba(255, 255, 255, 0.05);
+
+    /* Body gradient colors */
+    --body-gradient-1: rgba(6, 182, 212, 0.1);
+    --body-gradient-2: rgba(99, 102, 241, 0.05);
+  }
+
+  /* ======================
+     CSS VARIABLES - LIGHT MODE
+     ====================== */
+  .light {
+    --background: 0 0% 98%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+
+    /* Success/Warning colors - light mode */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+
+    /* Light mode glass colors */
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-card-bg: rgba(255, 255, 255, 0.9);
+    --glass-card-border: rgba(0, 0, 0, 0.05);
+
+    /* Body gradient colors - light mode */
+    --body-gradient-1: rgba(59, 130, 246, 0.05);
+    --body-gradient-2: rgba(99, 102, 241, 0.03);
+  }
+}
+
+/* ======================
+   BASE STYLES
+   ====================== */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    background-image:
+      radial-gradient(circle at 50% 0%, var(--body-gradient-1) 0%, transparent 50%),
+      radial-gradient(circle at 100% 0%, var(--body-gradient-2) 0%, transparent 40%);
+    background-attachment: fixed;
+  }
+
+  /* Focus visible for accessibility */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+/* ======================
+   UTILITY CLASSES
+   ====================== */
+@layer utilities {
+  /* Glass Effect - Header/Sidebar */
+  .glass {
+    background-color: var(--glass-bg);
+    @apply backdrop-blur-xl shadow-2xl;
+    border: 1px solid var(--glass-border);
+  }
+
+  /* Glass Card Effect */
+  .glass-card {
+    background-color: var(--glass-card-bg);
+    @apply backdrop-blur-md transition-colors duration-300;
+    border: 1px solid var(--glass-card-border);
+  }
+
+  .glass-card:hover {
+    border-color: hsl(var(--primary) / 0.3);
+  }
+
+  /* Text Gradients */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600;
+  }
+
+  .text-gradient-gold {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500;
+  }
+
+  /* Light mode text gradient adjustment */
+  .light .text-gradient {
+    @apply from-blue-600 via-indigo-600 to-purple-600;
+  }
+
+  /* Neon Glow Effects */
+  .neon-glow-blue {
+    @apply shadow-neon-blue;
+  }
+
+  .neon-glow-purple {
+    @apply shadow-neon-purple;
+  }
+
+  /* Active state with neon indicator */
+  .neon-active {
+    @apply bg-neon-blue/10 text-neon-blue border border-neon-blue/20;
+    box-shadow: 0 0 15px rgba(0, 242, 234, 0.1);
+  }
+
+  /* Animation delays for staggered animations */
+  .animate-delay-100 {
+    animation-delay: 100ms;
+  }
+  .animate-delay-200 {
+    animation-delay: 200ms;
+  }
+  .animate-delay-300 {
+    animation-delay: 300ms;
+  }
+  .animate-delay-400 {
+    animation-delay: 400ms;
+  }
+  .animate-delay-500 {
+    animation-delay: 500ms;
+  }
+
+  /* Shimmer loading effect */
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent
+    );
+    animation: shimmer 2s infinite;
+  }
+}
+
+/* ======================
+   SCROLLBAR STYLES
+   ====================== */
+/* Dark mode scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-600;
+}
+
+/* Light mode scrollbar */
+.light ::-webkit-scrollbar-thumb {
+  @apply bg-slate-300;
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400;
+}
+
+/* ======================
+   JAPANESE YEN FORMATTING
+   ====================== */
+.yen::before {
+  content: '\00a5';
+}
+
+/* ======================
+   SKELETON LOADING
+   ====================== */
+.skeleton {
+  @apply animate-pulse rounded bg-muted;
+}
+
+.skeleton-text {
+  @apply h-4 w-full rounded bg-muted animate-pulse;
+}
+
+.skeleton-circle {
+  @apply rounded-full bg-muted animate-pulse;
+}
+
+.skeleton-card {
+  @apply rounded-xl border bg-card p-6 animate-pulse;
+}
+
+/* ======================
+   LOADING SPINNER
+   ====================== */
+.spinner {
+  @apply inline-block h-5 w-5 animate-spin rounded-full border-2 border-solid border-current border-r-transparent;
+}
+
+/* ======================
+   TABLE STYLES
+   ====================== */
+.table-header-cell {
+  @apply px-4 py-3 text-left text-sm font-medium text-muted-foreground cursor-pointer hover:bg-muted transition-colors;
+}
+
+.table-cell {
+  @apply px-4 py-3 text-sm;
+}
+
+.table-row {
+  @apply border-b last:border-0 hover:bg-muted/50 transition-colors;
+}
+
+/* ======================
+   FORM FOCUS STATES
+   ====================== */
+.input-focus {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+}
