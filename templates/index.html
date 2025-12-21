@@ -398,14 +398,14 @@
         <main class="main-content" id="main-content">
 
             <!-- Header -->
-            <header class="flex-between" class="mb-2xl">
+            <header class="flex-between mb-lg">
                 <div>
                     <h1 class="text-gradient" style="font-size: 2.5rem;" id="page-title">Dashboard Overview</h1>
                     <p class="text-muted" id="page-subtitle">Real-time vacation data analytics</p>
                 </div>
 
-                <div class="flex-center" class="gap-md">
-                    <div id="year-filter" class="flex-center" class="gap-sm" class="mr-md"></div>
+                <div class="flex-center gap-md">
+                    <div class="flex-center gap-sm mr-md" id="year-filter"></div>
 
                     <!-- Theme Toggle -->
                     <button class="theme-toggle" onclick="App.theme.toggle()" title="テーマ切替" aria-label="Toggle theme" type="button">
@@ -420,17 +420,17 @@
                     <button class="btn btn-primary" id="btn-sync-main" onclick="App.data.sync()" aria-label="Sync vacation data" type="button">
                         <span class="btn-icon" aria-hidden="true">⚡</span>
                         <span class="btn-text">Sync</span>
-                        <span class="btn-spinner" class="d-none"></span>
+                        <span class="btn-spinner d-none"></span>
                     </button>
                     <button class="btn btn-glass" id="btn-sync-genzai" onclick="App.data.syncGenzai()"
                         title="Sync Dispatch Employees" aria-label="Sync dispatch employees" type="button">
                         <span class="btn-icon" aria-hidden="true">🏢</span>
-                        <span class="btn-spinner" class="d-none"></span>
+                        <span class="btn-spinner d-none"></span>
                     </button>
                     <button class="btn btn-glass" id="btn-sync-ukeoi" onclick="App.data.syncUkeoi()"
                         title="Sync Contract Employees" aria-label="Sync contract employees" type="button">
                         <span class="btn-icon" aria-hidden="true">🔧</span>
-                        <span class="btn-spinner" class="d-none"></span>
+                        <span class="btn-spinner d-none"></span>
                     </button>
                 </div>
             </header>
@@ -509,9 +509,9 @@
                 </div>
 
                 <!-- Compliance Gauge Row -->
-                <div class="bento-grid" class="mb-2xl">
-                    <div class="glass-panel col-span-2" class="p-lg">
-                        <h3 class="stat-label" class="mb-lg">📊 Compliance Gauge (5日最低消化)</h3>
+                <div class="bento-grid mb-lg">
+                    <div class="glass-panel col-span-2 p-md">
+                        <h3 class="stat-label mb-lg">📊 Compliance Gauge (5日最低消化)</h3>
                         <div class="gauge-container">
                             <svg class="gauge-svg" viewBox="0 0 200 120">
                                 <path class="gauge-bg" d="M 20 100 A 80 80 0 0 1 180 100" />
@@ -533,10 +533,10 @@
                     </div>
 
                     <!-- Expiring Days Alert -->
-                    <div class="glass-panel col-span-2" class="p-lg">
-                        <h3 class="stat-label" class="mb-lg">⚠️ Days Expiring Soon</h3>
+                    <div class="glass-panel col-span-2 p-md">
+                        <h3 class="stat-label mb-lg">⚠️ Days Expiring Soon</h3>
                         <div id="expiring-alert">
-                            <div class="countdown-card" id="countdown-container" class="d-none">
+                            <div class="countdown-card d-none" id="countdown-container">
                                 <div class="countdown-icon">⏰</div>
                                 <div class="countdown-info">
                                     <div class="countdown-title">有給休暇が失効予定</div>
@@ -548,19 +548,19 @@
                                 ✅ No days expiring soon!
                             </div>
                         </div>
-                        <div class="quick-stats" class="mt-lg">
+                        <div class="quick-stats mt-lg">
                             <div class="quick-stat">
-                                <div class="quick-stat-value" id="critical-count" class="text-danger">
+                                <div class="quick-stat-value text-danger" id="critical-count">
                                     0</div>
                                 <div class="quick-stat-label">Critical (0日)</div>
                             </div>
                             <div class="quick-stat">
-                                <div class="quick-stat-value" id="warning-count" class="text-warning">
+                                <div class="quick-stat-value text-warning" id="warning-count">
                                     0</div>
                                 <div class="quick-stat-label">Warning (&lt;3日)</div>
                             </div>
                             <div class="quick-stat">
-                                <div class="quick-stat-value" id="healthy-count" class="text-success">
+                                <div class="quick-stat-value text-success" id="healthy-count">
                                     0</div>
                                 <div class="quick-stat-label">Healthy (≥5日)</div>
                             </div>
@@ -570,14 +570,14 @@
 
                 <!-- Charts Row -->
                 <div class="bento-grid">
-                    <div class="glass-panel col-span-2" class="p-lg" style="height: 400px;">
-                        <h3 class="stat-label" class="mb-lg">Usage Distribution</h3>
+                    <div class="glass-panel col-span-2 p-md" style="height: 400px;">
+                        <h3 class="stat-label mb-lg">Usage Distribution</h3>
                         <div class="chart-container-sm">
                             <div id="chart-distribution"></div>
                         </div>
                     </div>
-                    <div class="glass-panel col-span-2" class="p-lg" style="height: 400px;">
-                        <h3 class="stat-label" class="mb-lg">Monthly Trends (2025)</h3>
+                    <div class="glass-panel col-span-2 p-md" style="height: 400px;">
+                        <h3 class="stat-label mb-lg">Monthly Trends (2025)</h3>
                         <div class="chart-container-sm">
                             <div id="chart-trends"></div>
                         </div>
@@ -586,15 +586,15 @@
             </div>
 
             <!-- VIEW: EMPLOYEES -->
-            <div id="view-employees" class="view-section" class="d-none">
-                <div class="glass-panel" class="p-xl">
-                    <div class="flex-between" class="mb-lg">
-                        <div class="flex-center" class="gap-md">
+            <div class="view-section d-none" id="view-employees">
+                <div class="glass-panel p-lg">
+                    <div class="flex-between mb-lg">
+                        <div class="flex-center gap-md">
                             <h3 class="text-xl">従業員一覧</h3>
                             <div class="badge badge-warning" id="emp-count-badge">0 Employees</div>
                         </div>
-                        <div class="flex-center" class="gap-md">
-                            <label for="active-only-toggle" class="flex-center" class="gap-sm cursor-pointer">
+                        <div class="flex-center gap-md">
+                            <label class="flex-center gap-sm cursor-pointer" for="active-only-toggle">
                                 <input type="checkbox" id="active-only-toggle" checked
                                     onchange="App.employeeTypes.toggleActiveFilter()">
                                 <span class="text-sm">在職中のみ</span>
@@ -606,8 +606,7 @@
                         </div>
                     </div>
                     <!-- Type Filter Tabs -->
-                    <div id="type-filter-tabs" class="type-filter-tabs"
-                        class="mb-lg flex gap-sm flex-wrap">
+                    <div class="type-filter-tabs mb-lg flex gap-sm flex-wrap" id="type-filter-tabs">
                         <button class="btn btn-glass type-tab active" data-type="all"
                             onclick="App.ui.filterByType('all')">
                             <span class="tab-label">全員</span>
@@ -629,28 +628,27 @@
                     </div>
 
                     <!-- Employee Type Tabs -->
-                    <div class="employee-tabs" class="flex gap-sm mb-2xl">
+                    <div class="employee-tabs flex gap-sm mb-lg">
                         <button class="btn btn-glass active" id="tab-all" onclick="App.employeeTypes.switchTab('all')">
                             すべて (All)
-                            <span class="badge badge-primary" id="count-all" class="ml-sm">0</span>
+                            <span class="badge badge-primary ml-sm" id="count-all">0</span>
                         </button>
                         <button class="btn btn-glass" id="tab-haken" onclick="App.employeeTypes.switchTab('haken')">
                             🏭 派遣 (Haken)
-                            <span class="badge badge-info" id="count-haken" class="ml-sm">0</span>
+                            <span class="badge badge-info ml-sm" id="count-haken">0</span>
                         </button>
                         <button class="btn btn-glass" id="tab-ukeoi" onclick="App.employeeTypes.switchTab('ukeoi')">
                             📋 請負 (Ukeoi)
-                            <span class="badge badge-success" id="count-ukeoi" class="ml-sm">0</span>
+                            <span class="badge badge-success ml-sm" id="count-ukeoi">0</span>
                         </button>
                         <button class="btn btn-glass" id="tab-staff" onclick="App.employeeTypes.switchTab('staff')">
                             👔 スタッフ (Staff)
-                            <span class="badge badge-warning" id="count-staff" class="ml-sm">0</span>
+                            <span class="badge badge-warning ml-sm" id="count-staff">0</span>
                         </button>
                     </div>
 
                     <!-- Summary Cards by Type -->
-                    <div class="bento-grid"
-                        class="gap-md mb-2xl" style="grid-template-columns: repeat(4, 1fr);">
+                    <div class="bento-grid gap-md mb-lg" style="grid-template-columns: repeat(4, 1fr);">
                         <div class="kpi-card info-card-cyan">
                             <div class="stat-label">派遣 使用日数</div>
                             <div class="stat-value" id="haken-used">0</div>
@@ -794,9 +792,9 @@
             </div>
 
             <!-- VIEW: FACTORIES -->
-            <div id="view-factories" class="view-section" class="d-none">
-                <div class="glass-panel" class="p-lg" style="height: 600px;">
-                    <h3 class="stat-label" class="mb-lg">Usage by Factory</h3>
+            <div class="view-section d-none" id="view-factories">
+                <div class="glass-panel p-md" style="height: 600px;">
+                    <h3 class="stat-label mb-lg">Usage by Factory</h3>
                     <div class="chart-container-lg">
                         <div id="chart-factories"></div>
                     </div>
@@ -804,10 +802,10 @@
             </div>
 
             <!-- VIEW: REQUESTS (申請) -->
-            <div id="view-requests" class="view-section" class="d-none">
+            <div class="view-section d-none" id="view-requests">
                 <div class="bento-grid">
                     <!-- New Request Form -->
-                    <div class="glass-panel col-span-2" class="p-xl">
+                    <div class="glass-panel col-span-2 p-lg">
                         <h3 class="mb-2xl text-xl">
                             📝 新規有給休暇申請
                             <span class="text-xs text-muted ml-sm">New Leave
@@ -837,7 +835,7 @@
 
                                 <div class="form-group">
                                     <label for="factory-filter">🏭 工場で絞込み (Filter by Factory)</label>
-                                    <select id="factory-filter" class="input-glass" class="w-full"
+                                    <select class="input-glass w-full" id="factory-filter"
                                         onchange="App.requests.filterByFactory()">
                                         <option value="">すべての工場 (All Factories)</option>
                                     </select>
@@ -845,7 +843,7 @@
 
                                 <div class="form-group">
                                     <label for="emp-search" class="required">🔍 従業員を検索 (Search Employee)</label>
-                                    <input type="text" id="emp-search" class="input-glass" class="w-full"
+                                    <input class="input-glass w-full" type="text" id="emp-search"
                                         placeholder="名前または社員番号で検索..." oninput="App.requests.searchEmployee(this.value)"
                                         aria-describedby="emp-search-validation">
                                     <div id="emp-search-validation" class="validation-message"></div>
@@ -941,14 +939,14 @@
                                 <div class="d-grid gap-md" style="grid-template-columns: 1fr 1fr;">
                                     <div class="form-group">
                                         <label for="start-date" class="required">開始日 (Start Date)</label>
-                                        <input type="date" id="start-date" class="input-glass" class="w-full"
+                                        <input class="input-glass w-full" type="date" id="start-date"
                                             onchange="App.requests.validateDates()"
                                             aria-describedby="start-date-validation">
                                         <div id="start-date-validation" class="validation-message"></div>
                                     </div>
                                     <div class="form-group">
                                         <label for="end-date" class="required">終了日 (End Date)</label>
-                                        <input type="date" id="end-date" class="input-glass" class="w-full"
+                                        <input class="input-glass w-full" type="date" id="end-date"
                                             onchange="App.requests.validateDates()"
                                             aria-describedby="end-date-validation">
                                         <div id="end-date-validation" class="validation-message"></div>
@@ -958,7 +956,7 @@
                                 <div class="d-grid gap-md" style="grid-template-columns: 1fr 1fr;">
                                     <div class="form-group">
                                         <label for="leave-type" class="required">種類 (Type)</label>
-                                        <select id="leave-type" class="input-glass" class="w-full"
+                                        <select class="input-glass w-full" id="leave-type"
                                             onchange="App.requests.toggleLeaveType()">
                                             <option value="full">全日休暇 (Full Day)</option>
                                             <option value="half_am">午前半休 (AM Half)</option>
@@ -968,15 +966,13 @@
                                     </div>
                                     <div class="form-group" id="days-input-container">
                                         <label for="days-requested" class="required">日数 (Days)</label>
-                                        <input type="number" id="days-requested" class="input-glass"
-                                            class="w-full" min="0.5" step="0.5" value="1"
+                                        <input class="input-glass w-full" type="number" id="days-requested" min="0.5" step="0.5" value="1"
                                             oninput="App.requests.validateDays()" aria-describedby="days-validation">
                                         <div id="days-validation" class="validation-message"></div>
                                     </div>
-                                    <div class="form-group" id="hours-input-container" class="d-none">
+                                    <div class="form-group d-none" id="hours-input-container">
                                         <label for="hours-requested" class="required">時間数 (Hours)</label>
-                                        <input type="number" id="hours-requested" class="input-glass"
-                                            class="w-full" min="1" max="7" step="1" value="1"
+                                        <input class="input-glass w-full" type="number" id="hours-requested" min="1" max="7" step="1" value="1"
                                             oninput="App.requests.updateCostEstimate(); App.requests.validateHours();"
                                             aria-describedby="hours-validation hours-hint">
                                         <div id="hours-validation" class="validation-message"></div>
@@ -1002,8 +998,7 @@
                                 <div class="form-section-title">📝 理由</div>
                                 <div class="form-group">
                                     <label for="leave-reason">理由 (Reason) - 任意</label>
-                                    <textarea id="leave-reason" class="input-glass"
-                                        class="w-full" style="min-height: 80px; resize: vertical;"
+                                    <textarea class="input-glass w-full" id="leave-reason" style="min-height: 80px; resize: vertical;"
                                         placeholder="私用、通院、旅行など..." maxlength="200"
                                         oninput="App.requests.updateCharCounter()"
                                         aria-describedby="reason-char-counter"></textarea>
@@ -1012,7 +1007,7 @@
                             </div>
 
                             <!-- Submit Button -->
-                            <button class="btn btn-primary" id="submit-btn" class="w-full p-md"
+                            <button class="btn btn-primary w-full p-md" id="submit-btn"
                                 onclick="App.requests.showConfirmation()">
                                 ✓ 内容を確認する (Review & Submit)
                             </button>
@@ -1020,8 +1015,8 @@
                     </div>
 
                     <!-- Pending Requests -->
-                    <div class="glass-panel col-span-2" class="p-xl">
-                        <div class="flex-between" class="mb-2xl">
+                    <div class="glass-panel col-span-2 p-lg">
+                        <div class="flex-between mb-lg">
                             <h3 class="text-xl">
                                 ⏳ 承認待ち
                                 <span class="text-xs text-muted ml-sm">Pending
@@ -1041,7 +1036,7 @@
                 </div>
 
                 <!-- Request History -->
-                <div class="glass-panel" class="p-xl" class="mt-2xl">
+                <div class="glass-panel p-lg mt-2xl">
                     <h3 class="mb-2xl text-xl">
                         📋 申請履歴
                         <span class="text-xs text-muted ml-sm">Request
@@ -1072,11 +1067,11 @@
             </div>
 
             <!-- VIEW: COMPLIANCE -->
-            <div id="view-compliance" class="view-section" class="d-none">
+            <div class="view-section d-none" id="view-compliance">
                 <div class="bento-grid">
                     <!-- 5 Day Compliance -->
-                    <div class="glass-panel col-span-2" class="p-xl">
-                        <div class="flex-between" class="mb-2xl">
+                    <div class="glass-panel col-span-2 p-lg">
+                        <div class="flex-between mb-lg">
                             <h3 class="text-xl">
                                 📊 5日取得義務 チェック
                                 <span class="text-xs text-muted ml-sm">5-Day
@@ -1089,22 +1084,22 @@
 
                         <div id="compliance-summary"
                             class="d-grid gap-md mb-2xl" style="grid-template-columns: repeat(4, 1fr);">
-                            <div class="stat-card" class="text-center">
+                            <div class="stat-card text-center">
                                 <div class="stat-label">対象者</div>
                                 <div class="stat-value" id="comp-total">-</div>
                             </div>
-                            <div class="stat-card" class="text-center" style="border-color: var(--success);">
+                            <div class="stat-card text-center" style="border-color: var(--success);">
                                 <div class="stat-label">達成</div>
-                                <div class="stat-value" id="comp-compliant" class="text-success">-
+                                <div class="stat-value text-success" id="comp-compliant">-
                                 </div>
                             </div>
-                            <div class="stat-card" class="text-center" style="border-color: var(--warning);">
+                            <div class="stat-card text-center" style="border-color: var(--warning);">
                                 <div class="stat-label">要注意</div>
-                                <div class="stat-value" id="comp-atrisk" class="text-warning">-</div>
+                                <div class="stat-value text-warning" id="comp-atrisk">-</div>
                             </div>
-                            <div class="stat-card" class="text-center" style="border-color: var(--danger);">
+                            <div class="stat-card text-center" style="border-color: var(--danger);">
                                 <div class="stat-label">未達成</div>
-                                <div class="stat-value" id="comp-noncompliant" class="text-danger">-
+                                <div class="stat-value text-danger" id="comp-noncompliant">-
                                 </div>
                             </div>
                         </div>
@@ -1117,8 +1112,8 @@
                     </div>
 
                     <!-- Alerts -->
-                    <div class="glass-panel col-span-2" class="p-xl">
-                        <div class="flex-between" class="mb-2xl">
+                    <div class="glass-panel col-span-2 p-lg">
+                        <div class="flex-between mb-lg">
                             <h3 class="text-xl">
                                 🚨 アラート
                                 <span class="text-xs text-muted ml-sm">Compliance
@@ -1138,14 +1133,14 @@
                 </div>
 
                 <!-- Annual Ledger -->
-                <div class="glass-panel" class="p-xl" class="mt-2xl">
-                    <div class="flex-between" class="mb-2xl">
+                <div class="glass-panel p-lg mt-2xl">
+                    <div class="flex-between mb-lg">
                         <h3 class="text-xl">
                             📒 年次有給休暇管理簿
                             <span class="text-xs text-muted ml-sm">Annual
                                 Leave Ledger (Required by Law)</span>
                         </h3>
-                        <div class="flex-center" class="gap-sm">
+                        <div class="flex-center gap-sm">
                             <button class="btn btn-glass" onclick="App.compliance.loadLedger()">
                                 📄 表示
                             </button>
@@ -1164,19 +1159,19 @@
             </div>
 
             <!-- VIEW: CALENDAR -->
-            <div id="view-calendar" class="view-section" class="d-none">
+            <div class="view-section d-none" id="view-calendar">
                 <div class="bento-grid">
                     <!-- Calendar Controls -->
-                    <div class="glass-panel col-span-4" class="p-lg">
-                        <div class="flex-between" class="mb-lg">
-                            <div class="flex-center" class="gap-md">
+                    <div class="glass-panel col-span-4 p-md">
+                        <div class="flex-between mb-lg">
+                            <div class="flex-center gap-md">
                                 <button class="btn btn-glass" onclick="App.calendar.prevMonth()">◀</button>
                                 <h3 id="calendar-month-title"
                                     class="text-2xl text-center" style="min-width: 200px;">2025年 12月
                                 </h3>
                                 <button class="btn btn-glass" onclick="App.calendar.nextMonth()">▶</button>
                             </div>
-                            <div class="flex-center" class="gap-sm">
+                            <div class="flex-center gap-sm">
                                 <button class="btn btn-glass" onclick="App.calendar.goToToday()">今日</button>
                                 <button class="btn btn-primary" onclick="App.calendar.loadEvents()">🔄
                                     更新</button>
@@ -1184,7 +1179,7 @@
                         </div>
 
                         <!-- Legend -->
-                        <div class="flex-center" class="gap-lg mb-lg text-sm">
+                        <div class="flex-center gap-lg mb-lg text-sm">
                             <span><span
                                     class="legend-box legend-box-cyan"></span>全日休暇</span>
                             <span><span
@@ -1212,7 +1207,7 @@
                     </div>
 
                     <!-- Day Detail Panel -->
-                    <div class="glass-panel col-span-2" class="p-lg">
+                    <div class="glass-panel col-span-2 p-md">
                         <h3 class="mb-lg text-lg">
                             📋 選択日の詳細
                             <span id="selected-date-display"
@@ -1226,18 +1221,18 @@
                     </div>
 
                     <!-- Monthly Summary -->
-                    <div class="glass-panel col-span-2" class="p-lg">
+                    <div class="glass-panel col-span-2 p-md">
                         <h3 class="mb-lg text-lg">📊 月間サマリー</h3>
                         <div id="monthly-summary-container">
                             <div class="d-grid gap-md" style="grid-template-columns: 1fr 1fr;">
-                                <div class="stat-card" class="text-center p-md">
+                                <div class="stat-card text-center p-md">
                                     <div class="stat-label">休暇取得者数</div>
-                                    <div class="stat-value" id="cal-month-employees" class="text-2xl">-
+                                    <div class="stat-value text-2xl" id="cal-month-employees">-
                                     </div>
                                 </div>
-                                <div class="stat-card" class="text-center p-md">
+                                <div class="stat-card text-center p-md">
                                     <div class="stat-label">総取得日数</div>
-                                    <div class="stat-value" id="cal-month-days" class="text-2xl">-</div>
+                                    <div class="stat-value text-2xl" id="cal-month-days">-</div>
                                 </div>
                             </div>
                         </div>
@@ -1246,7 +1241,7 @@
             </div>
 
             <!-- VIEW: ANALYTICS -->
-            <div id="view-analytics" class="view-section" class="d-none">
+            <div class="view-section d-none" id="view-analytics">
                 <div class="bento-grid">
                     <!-- Summary Cards -->
                     <div class="glass-panel stat-card col-span-1">
@@ -1255,48 +1250,48 @@
                     </div>
                     <div class="glass-panel stat-card col-span-1">
                         <div class="stat-label">総付与日数</div>
-                        <div class="stat-value" id="ana-total-granted" class="text-cyan">-</div>
+                        <div class="stat-value text-cyan" id="ana-total-granted">-</div>
                     </div>
                     <div class="glass-panel stat-card col-span-1">
                         <div class="stat-label">総使用日数</div>
-                        <div class="stat-value" id="ana-total-used" class="text-success">-</div>
+                        <div class="stat-value text-success" id="ana-total-used">-</div>
                     </div>
                     <div class="glass-panel stat-card col-span-1">
                         <div class="stat-label">平均消化率</div>
-                        <div class="stat-value" id="ana-avg-rate" class="text-warning">-</div>
+                        <div class="stat-value text-warning" id="ana-avg-rate">-</div>
                     </div>
 
                     <!-- Department Chart -->
-                    <div class="glass-panel col-span-2" class="p-lg" style="height: 400px;">
-                        <h3 class="stat-label" class="mb-lg">部門別使用日数</h3>
+                    <div class="glass-panel col-span-2 p-md" style="height: 400px;">
+                        <h3 class="stat-label mb-lg">部門別使用日数</h3>
                         <div class="chart-container-sm">
                             <canvas id="chart-department"></canvas>
                         </div>
                     </div>
 
                     <!-- Employee Type Chart -->
-                    <div class="glass-panel col-span-2" class="p-lg" style="height: 400px;">
-                        <h3 class="stat-label" class="mb-lg">従業員タイプ別</h3>
+                    <div class="glass-panel col-span-2 p-md" style="height: 400px;">
+                        <h3 class="stat-label mb-lg">従業員タイプ別</h3>
                         <div class="chart-container-sm">
                             <canvas id="chart-emp-type"></canvas>
                         </div>
                     </div>
 
                     <!-- Top Users -->
-                    <div class="glass-panel col-span-2" class="p-lg">
-                        <h3 class="stat-label" class="mb-lg">🏆 Top 10 使用者</h3>
+                    <div class="glass-panel col-span-2 p-md">
+                        <h3 class="stat-label mb-lg">🏆 Top 10 使用者</h3>
                         <div id="top-users-list" class="overflow-y-auto" style="max-height: 300px;"></div>
                     </div>
 
                     <!-- High Balance -->
-                    <div class="glass-panel col-span-2" class="p-lg">
-                        <h3 class="stat-label" class="mb-lg">⚠️ 残日数が多い従業員</h3>
+                    <div class="glass-panel col-span-2 p-md">
+                        <h3 class="stat-label mb-lg">⚠️ 残日数が多い従業員</h3>
                         <div id="high-balance-list" class="overflow-y-auto" style="max-height: 300px;"></div>
                     </div>
 
                     <!-- Predictions -->
-                    <div class="glass-panel col-span-4" class="p-lg">
-                        <div class="flex-between" class="mb-lg">
+                    <div class="glass-panel col-span-4 p-md">
+                        <div class="flex-between mb-lg">
                             <h3 class="stat-label">📈 年末予測・5日義務達成リスク</h3>
                             <button class="btn btn-glass" onclick="App.analytics.loadPredictions()">🔄
                                 更新</button>
@@ -1304,22 +1299,21 @@
                         <div id="predictions-container">
                             <div
                                 class="d-grid gap-md mb-lg" style="grid-template-columns: repeat(4, 1fr);">
-                                <div class="stat-card" class="text-center p-md">
+                                <div class="stat-card text-center p-md">
                                     <div class="stat-label">現在月</div>
                                     <div id="pred-current-month" class="text-2xl font-bold">-
                                     </div>
                                 </div>
-                                <div class="stat-card" class="text-center p-md">
+                                <div class="stat-card text-center p-md">
                                     <div class="stat-label">残り月数</div>
                                     <div id="pred-remaining-months" class="text-2xl font-bold">-</div>
                                 </div>
-                                <div class="stat-card" class="text-center p-md">
+                                <div class="stat-card text-center p-md">
                                     <div class="stat-label">月平均使用</div>
                                     <div id="pred-avg-monthly" class="text-2xl font-bold">-
                                     </div>
                                 </div>
-                                <div class="stat-card"
-                                    class="text-center p-md" style="border-color: var(--danger);">
+                                <div class="stat-card text-center p-md" style="border-color: var(--danger);">
                                     <div class="stat-label">5日未達成リスク</div>
                                     <div id="pred-at-risk"
                                         class="text-2xl font-bold text-danger">-
@@ -1332,9 +1326,9 @@
                 </div>
 
                 <!-- Export Section -->
-                <div class="glass-panel" class="p-lg" class="mt-2xl">
-                    <h3 class="stat-label" class="mb-lg">📥 データエクスポート</h3>
-                    <div class="flex-center" class="gap-md flex-wrap">
+                <div class="glass-panel p-md mt-2xl">
+                    <h3 class="stat-label mb-lg">📥 データエクスポート</h3>
+                    <div class="flex-center gap-md flex-wrap">
                         <button class="btn btn-primary" onclick="App.analytics.exportExcel('employees')">
                             📊 従業員データ (Excel)
                         </button>
@@ -1349,11 +1343,11 @@
             </div>
 
             <!-- VIEW: MONTHLY REPORTS -->
-            <div id="view-reports" class="view-section" class="d-none">
+            <div class="view-section d-none" id="view-reports">
                 <div class="bento-grid">
                     <!-- Date Selector with Tabs -->
-                    <div class="glass-panel col-span-4" class="p-lg">
-                        <div class="flex-between" class="mb-xl flex-wrap gap-md">
+                    <div class="glass-panel col-span-4 p-md">
+                        <div class="flex-between mb-xl flex-wrap gap-md">
                             <h3 class="text-xl">📋 レポート期間</h3>
                             <button class="btn btn-export" onclick="App.reports.exportReport()">
                                 📥 Excel出力
@@ -1361,7 +1355,7 @@
                         </div>
 
                         <!-- Tab Selector -->
-                        <div class="tab-container" class="mb-xl">
+                        <div class="tab-container mb-xl">
                             <button class="tab-btn active" id="tab-monthly" onclick="App.reports.setMode('monthly')">
                                 📅 月次 (21日〜20日)
                             </button>
@@ -1404,16 +1398,14 @@
                         <div id="custom-selector" class="d-none mb-lg">
                             <div class="flex gap-md align-end flex-wrap">
                                 <div>
-                                    <label for="report-start-date" class="stat-label"
-                                        class="d-block mb-xs text-xs">開始日</label>
+                                    <label class="stat-label d-block mb-xs text-xs" for="report-start-date">開始日</label>
                                     <input type="date" id="report-start-date" class="input-glass" style="width: 160px;">
                                 </div>
                                 <div class="pb-md" aria-hidden="true">
                                     <span class="text-xl text-muted">〜</span>
                                 </div>
                                 <div>
-                                    <label for="report-end-date" class="stat-label"
-                                        class="d-block mb-xs text-xs">終了日</label>
+                                    <label class="stat-label d-block mb-xs text-xs" for="report-end-date">終了日</label>
                                     <input type="date" id="report-end-date" class="input-glass" style="width: 160px;">
                                 </div>
                                 <button class="btn btn-primary" onclick="App.reports.loadCustomReport()">🔍
@@ -1438,20 +1430,20 @@
                     </div>
                     <div class="glass-panel stat-card col-span-1">
                         <div class="stat-label">総取得日数</div>
-                        <div class="stat-value" id="rpt-total-days" class="text-cyan">-</div>
+                        <div class="stat-value text-cyan" id="rpt-total-days">-</div>
                     </div>
                     <div class="glass-panel stat-card col-span-1">
                         <div class="stat-label">総取得時間</div>
-                        <div class="stat-value" id="rpt-total-hours" class="text-warning">-</div>
+                        <div class="stat-value text-warning" id="rpt-total-hours">-</div>
                     </div>
                     <div class="glass-panel stat-card col-span-1">
                         <div class="stat-label">1人平均</div>
-                        <div class="stat-value" id="rpt-avg-days" class="text-success">-</div>
+                        <div class="stat-value text-success" id="rpt-avg-days">-</div>
                     </div>
 
                     <!-- Employee List -->
-                    <div class="glass-panel col-span-2" class="p-lg">
-                        <h3 class="stat-label" class="mb-lg">👥 取得者一覧</h3>
+                    <div class="glass-panel col-span-2 p-md">
+                        <h3 class="stat-label mb-lg">👥 取得者一覧</h3>
                         <div id="report-employee-list" class="overflow-y-auto" style="max-height: 400px;">
                             <div class="empty-state">
                                 月を選択してレポートを表示
@@ -1460,8 +1452,8 @@
                     </div>
 
                     <!-- Factory Summary -->
-                    <div class="glass-panel col-span-2" class="p-lg">
-                        <h3 class="stat-label" class="mb-lg">🏭 派遣先別集計</h3>
+                    <div class="glass-panel col-span-2 p-md">
+                        <h3 class="stat-label mb-lg">🏭 派遣先別集計</h3>
                         <div id="report-factory-list" class="overflow-y-auto" style="max-height: 400px;">
                             <div class="empty-state">
                                 月を選択してレポートを表示
@@ -1470,8 +1462,8 @@
                     </div>
 
                     <!-- Daily Breakdown -->
-                    <div class="glass-panel col-span-4" class="p-lg">
-                        <h3 class="stat-label" class="mb-lg">📅 日別取得状況</h3>
+                    <div class="glass-panel col-span-4 p-md">
+                        <h3 class="stat-label mb-lg">📅 日別取得状況</h3>
                         <div id="report-daily-grid"
                             class="d-grid gap-sm overflow-y-auto" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); max-height: 300px;">
                             <div class="empty-state col-span-full">
@@ -1482,8 +1474,8 @@
                 </div>
 
                 <!-- Year Overview -->
-                <div class="glass-panel" class="p-lg" class="mt-2xl">
-                    <h3 class="stat-label" class="mb-lg">📊 年間月別サマリー</h3>
+                <div class="glass-panel p-md mt-2xl">
+                    <h3 class="stat-label mb-lg">📊 年間月別サマリー</h3>
                     <div class="overflow-auto">
                         <table class="modern-table">
                             <thead>
@@ -1506,27 +1498,27 @@
             </div>
 
             <!-- VIEW: SETTINGS -->
-            <div id="view-settings" class="view-section" class="d-none">
-                <div class="glass-panel" class="p-xl">
+            <div class="view-section d-none" id="view-settings">
+                <div class="glass-panel p-lg">
                     <h3 class="mb-2xl text-xl">⚙️ システム設定</h3>
 
-                    <div class="d-grid" class="gap-xl">
+                    <div class="d-grid gap-xl">
                         <!-- System Status -->
                         <div>
-                            <h4 class="stat-label" class="mb-lg">システム状態</h4>
+                            <h4 class="stat-label mb-lg">システム状態</h4>
                             <div id="system-status"
                                 class="d-grid gap-md" style="grid-template-columns: repeat(3, 1fr);">
-                                <div class="stat-card" class="text-center">
+                                <div class="stat-card text-center">
                                     <div class="stat-label">Database Size</div>
                                     <div class="stat-value" id="sys-db-size">-</div>
                                 </div>
-                                <div class="stat-card" class="text-center">
+                                <div class="stat-card text-center">
                                     <div class="stat-label">Total Employees</div>
                                     <div class="stat-value" id="sys-emp-count">-</div>
                                 </div>
-                                <div class="stat-card" class="text-center">
+                                <div class="stat-card text-center">
                                     <div class="stat-label">Health Status</div>
-                                    <div class="stat-value" id="sys-health" class="text-success">-
+                                    <div class="stat-value text-success" id="sys-health">-
                                     </div>
                                 </div>
                             </div>
@@ -1534,7 +1526,7 @@
 
                         <!-- Data Management -->
                         <div>
-                            <h4 class="stat-label" class="mb-lg">データ管理</h4>
+                            <h4 class="stat-label mb-lg">データ管理</h4>
                             <div class="flex gap-md flex-wrap">
                                 <button class="btn btn-glass" onclick="App.settings.loadSnapshot()">
                                     📊 Snapshot更新
@@ -1551,7 +1543,7 @@
 
                         <!-- Backup Management -->
                         <div>
-                            <h4 class="stat-label" class="mb-lg">📦 バックアップ管理</h4>
+                            <h4 class="stat-label mb-lg">📦 バックアップ管理</h4>
                             <div class="flex gap-md flex-wrap">
                                 <button class="btn btn-primary" onclick="App.backup.create()">
                                     📦 バックアップ作成
@@ -1567,7 +1559,7 @@
 
                         <!-- API Info -->
                         <div>
-                            <h4 class="stat-label" class="mb-lg">API情報</h4>
+                            <h4 class="stat-label mb-lg">API情報</h4>
                             <div
                                 class="p-md rounded text-sm" style="background: rgba(0,0,0,0.3); font-family: 'JetBrains Mono', monospace;">
                                 <div class="text-muted">Base URL:</div>
@@ -1595,11 +1587,9 @@
     <!-- Simple Modal for Details -->
     <div class="loader-overlay" id="detail-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"
         style="background: rgba(0,0,0,0.7);">
-        <div class="glass-panel"
-            class="modal-content-container">
-            <button class="btn"
-                class="modal-close-btn"
-                onclick="App.ui.closeModal()" aria-label="Close modal">✕</button>
+        <div class="glass-panel modal-content-container">
+            <button
+ class="btn modal-close-btn"                onclick="App.ui.closeModal()" aria-label="Close modal">✕</button>
             <div class="p-xl">
                 <h2 id="modal-title" class="mb-lg">Employee Details</h2>
                 <div id="modal-content"></div>
@@ -1778,9 +1768,9 @@
                     <span class="confirm-row-label">日数/時間</span>
                     <span class="confirm-row-value highlight" id="confirm-amount">-</span>
                 </div>
-                <div class="confirm-row" id="confirm-cost-row" class="d-none">
+                <div class="confirm-row d-none" id="confirm-cost-row">
                     <span class="confirm-row-label">見積コスト</span>
-                    <span class="confirm-row-value" class="text-warning" id="confirm-cost">-</span>
+                    <span class="confirm-row-value text-warning" id="confirm-cost">-</span>
                 </div>
                 <div class="confirm-row">
                     <span class="confirm-row-label">残り日数</span>
@@ -1788,8 +1778,7 @@
                 </div>
                 <div class="confirm-row" id="confirm-reason-row">
                     <span class="confirm-row-label">理由</span>
-                    <span class="confirm-row-value" id="confirm-reason"
-                        class="text-right" style="max-width: 200px;">-</span>
+                    <span class="confirm-row-value text-right" id="confirm-reason" style="max-width: 200px;">-</span>
                 </div>
             </div>
 
