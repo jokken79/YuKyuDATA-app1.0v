@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tests - Theme Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .summary {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #00d4ff;
+        }
+        .summary h2 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .stats {
+            display: flex;
+            gap: 30px;
+            font-size: 16px;
+        }
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .pass { color: #34d399; }
+        .fail { color: #f87171; }
+        .test-result {
+            background: #1a1a1a;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid transparent;
+        }
+        .test-result.passed {
+            border-left-color: #34d399;
+        }
+        .test-result.failed {
+            border-left-color: #f87171;
+            background: #2a1a1a;
+        }
+        .test-name {
+            flex: 1;
+        }
+        .test-status {
+            font-weight: bold;
+            font-size: 18px;
+            margin-right: 10px;
+        }
+        .test-time {
+            color: #888;
+            font-size: 12px;
+        }
+        .error-details {
+            margin-top: 10px;
+            padding: 10px;
+            background: #1a0a0a;
+            border-radius: 4px;
+            color: #ff8888;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .coverage {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        .coverage h2 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+        }
+        .coverage-bar {
+            height: 30px;
+            background: #0a0a0a;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        .coverage-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #34d399, #00d4ff);
+            transition: width 1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-weight: bold;
+        }
+        /* Mock UI elements */
+        #theme-icon, #theme-label {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Mock UI elements para tests -->
+    <div id="theme-icon"></div>
+    <div id="theme-label"></div>
+
+    <div class="container">
+        <h1>🌓 Theme Manager - Tests de Gestión de Temas</h1>
+        <p class="subtitle">Tests de cambio de tema, persistencia y actualización de UI</p>
+
+        <div class="summary">
+            <h2>Resumen de Ejecución</h2>
+            <div class="stats">
+                <div class="stat">
+                    <span>Total:</span>
+                    <span class="stat-value" id="total-tests">0</span>
+                </div>
+                <div class="stat pass">
+                    <span>✓ Pasados:</span>
+                    <span class="stat-value" id="passed-tests">0</span>
+                </div>
+                <div class="stat fail">
+                    <span>✗ Fallidos:</span>
+                    <span class="stat-value" id="failed-tests">0</span>
+                </div>
+                <div class="stat">
+                    <span>⏱️ Tiempo:</span>
+                    <span class="stat-value" id="total-time">0ms</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="test-results"></div>
+
+        <div class="coverage">
+            <h2>Cobertura de Código</h2>
+            <div class="coverage-bar">
+                <div class="coverage-fill" id="coverage-bar" style="width: 0%">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { ThemeManager } from '../../static/js/modules/theme-manager.js';
+
+        // Simple Test Runner
+        class TestRunner {
+            constructor() {
+                this.tests = [];
+                this.passed = 0;
+                this.failed = 0;
+                this.startTime = 0;
+                this.totalMethods = 8; // Total de métodos públicos
+                this.coveredMethods = new Set();
+            }
+
+            test(name, fn) {
+                const start = performance.now();
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'test-result';
+
+                try {
+                    fn();
+                    this.passed++;
+                    resultDiv.classList.add('passed');
+                    resultDiv.innerHTML = `
+                        <span class="test-name">${name}</span>
+                        <span class="test-status pass">✓</span>
+                        <span class="test-time">${(performance.now() - start).toFixed(2)}ms</span>
+                    `;
+                    console.log('✓', name);
+                } catch (e) {
+                    this.failed++;
+                    resultDiv.classList.add('failed');
+                    resultDiv.innerHTML = `
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="test-name">${name}</span>
+                                <span class="test-status fail">✗</span>
+                                <span class="test-time">${(performance.now() - start).toFixed(2)}ms</span>
+                            </div>
+                            <div class="error-details">${e.message}</div>
+                        </div>
+                    `;
+                    console.error('✗', name, e);
+                }
+
+                document.getElementById('test-results').appendChild(resultDiv);
+            }
+
+            assert(condition, message) {
+                if (!condition) {
+                    throw new Error(message || 'Assertion failed');
+                }
+            }
+
+            assertEqual(actual, expected, message) {
+                if (actual !== expected) {
+                    throw new Error(
+                        message ||
+                        `Expected "${expected}" but got "${actual}"`
+                    );
+                }
+            }
+
+            trackCoverage(methodName) {
+                this.coveredMethods.add(methodName);
+            }
+
+            finish() {
+                const totalTime = performance.now() - this.startTime;
+                const total = this.passed + this.failed;
+                const coverage = (this.coveredMethods.size / this.totalMethods) * 100;
+
+                document.getElementById('total-tests').textContent = total;
+                document.getElementById('passed-tests').textContent = this.passed;
+                document.getElementById('failed-tests').textContent = this.failed;
+                document.getElementById('total-time').textContent = totalTime.toFixed(0) + 'ms';
+
+                const coverageBar = document.getElementById('coverage-bar');
+                setTimeout(() => {
+                    coverageBar.style.width = coverage + '%';
+                    coverageBar.textContent = coverage.toFixed(1) + '%';
+                }, 100);
+
+                console.log(`\n📊 Resumen: ${this.passed}/${total} tests pasados (${coverage.toFixed(1)}% coverage)`);
+            }
+
+            run() {
+                this.startTime = performance.now();
+                this.runTests();
+                this.finish();
+            }
+
+            runTests() {
+                // Limpiar localStorage antes de empezar
+                localStorage.removeItem('yukyu-theme');
+
+                // ========== Tests del constructor ==========
+                this.test('Constructor - Tema por defecto es dark', () => {
+                    const tm = new ThemeManager();
+                    this.assertEqual(tm.current, 'dark', 'Tema inicial debe ser dark');
+                    this.assertEqual(tm.storageKey, 'yukyu-theme', 'Storage key correcto');
+                });
+
+                // ========== Tests de init() ==========
+                this.test('init() - Sin tema guardado usa dark', () => {
+                    this.trackCoverage('init');
+                    localStorage.removeItem('yukyu-theme');
+                    const tm = new ThemeManager();
+                    tm.init();
+                    this.assertEqual(tm.current, 'dark', 'Debe usar dark por defecto');
+                });
+
+                this.test('init() - Restaura tema guardado', () => {
+                    this.trackCoverage('init');
+                    localStorage.setItem('yukyu-theme', 'light');
+                    const tm = new ThemeManager();
+                    tm.init();
+                    this.assertEqual(tm.current, 'light', 'Debe restaurar light desde localStorage');
+                    localStorage.removeItem('yukyu-theme');
+                });
+
+                // ========== Tests de toggle() ==========
+                this.test('toggle() - Cambia de dark a light', () => {
+                    this.trackCoverage('toggle');
+                    const tm = new ThemeManager();
+                    tm.current = 'dark';
+                    tm.toggle();
+                    this.assertEqual(tm.current, 'light', 'Debe cambiar a light');
+                });
+
+                this.test('toggle() - Cambia de light a dark', () => {
+                    this.trackCoverage('toggle');
+                    const tm = new ThemeManager();
+                    tm.current = 'light';
+                    tm.toggle();
+                    this.assertEqual(tm.current, 'dark', 'Debe cambiar a dark');
+                });
+
+                this.test('toggle() - Guarda en localStorage', () => {
+                    this.trackCoverage('toggle');
+                    localStorage.removeItem('yukyu-theme');
+                    const tm = new ThemeManager();
+                    tm.current = 'dark';
+                    tm.toggle();
+                    const saved = localStorage.getItem('yukyu-theme');
+                    this.assertEqual(saved, 'light', 'Debe guardar el nuevo tema');
+                });
+
+                this.test('toggle() - Callback showToast funciona', () => {
+                    this.trackCoverage('toggle');
+                    let toastCalled = false;
+                    let toastMessage = '';
+                    const mockToast = (type, msg) => {
+                        toastCalled = true;
+                        toastMessage = msg;
+                    };
+
+                    const tm = new ThemeManager();
+                    tm.current = 'dark';
+                    tm.toggle(mockToast);
+
+                    this.assert(toastCalled, 'Debe llamar a showToast');
+                    this.assert(toastMessage.includes('ライト'), 'Mensaje debe indicar light mode');
+                });
+
+                // ========== Tests de apply() ==========
+                this.test('apply() - Actualiza data-theme en document', () => {
+                    this.trackCoverage('apply');
+                    const tm = new ThemeManager();
+                    tm.current = 'light';
+                    tm.apply();
+                    const theme = document.documentElement.getAttribute('data-theme');
+                    this.assertEqual(theme, 'light', 'data-theme debe ser light');
+                });
+
+                // ========== Tests de updateThemeButton() ==========
+                this.test('updateThemeButton() - Actualiza icono dark', () => {
+                    this.trackCoverage('updateThemeButton');
+                    const tm = new ThemeManager();
+                    tm.current = 'dark';
+                    tm.updateThemeButton();
+                    const icon = document.getElementById('theme-icon');
+                    this.assertEqual(icon.textContent, '🌙', 'Icono debe ser luna');
+                });
+
+                this.test('updateThemeButton() - Actualiza icono light', () => {
+                    this.trackCoverage('updateThemeButton');
+                    const tm = new ThemeManager();
+                    tm.current = 'light';
+                    tm.updateThemeButton();
+                    const icon = document.getElementById('theme-icon');
+                    this.assertEqual(icon.textContent, '☀️', 'Icono debe ser sol');
+                });
+
+                this.test('updateThemeButton() - Actualiza label dark', () => {
+                    this.trackCoverage('updateThemeButton');
+                    const tm = new ThemeManager();
+                    tm.current = 'dark';
+                    tm.updateThemeButton();
+                    const label = document.getElementById('theme-label');
+                    this.assertEqual(label.textContent, 'Dark', 'Label debe ser Dark');
+                });
+
+                this.test('updateThemeButton() - Actualiza label light', () => {
+                    this.trackCoverage('updateThemeButton');
+                    const tm = new ThemeManager();
+                    tm.current = 'light';
+                    tm.updateThemeButton();
+                    const label = document.getElementById('theme-label');
+                    this.assertEqual(label.textContent, 'Light', 'Label debe ser Light');
+                });
+
+                // ========== Tests de getCurrent() ==========
+                this.test('getCurrent() - Retorna tema actual', () => {
+                    this.trackCoverage('getCurrent');
+                    const tm = new ThemeManager();
+                    tm.current = 'light';
+                    this.assertEqual(tm.getCurrent(), 'light', 'Debe retornar tema actual');
+                });
+
+                // ========== Tests de setTheme() ==========
+                this.test('setTheme() - Establece dark', () => {
+                    this.trackCoverage('setTheme');
+                    const tm = new ThemeManager();
+                    tm.setTheme('dark');
+                    this.assertEqual(tm.current, 'dark', 'Debe establecer dark');
+                });
+
+                this.test('setTheme() - Establece light', () => {
+                    this.trackCoverage('setTheme');
+                    const tm = new ThemeManager();
+                    tm.setTheme('light');
+                    this.assertEqual(tm.current, 'light', 'Debe establecer light');
+                });
+
+                this.test('setTheme() - Ignora valores inválidos', () => {
+                    this.trackCoverage('setTheme');
+                    const tm = new ThemeManager();
+                    tm.current = 'dark';
+                    tm.setTheme('invalid');
+                    this.assertEqual(tm.current, 'dark', 'Debe ignorar valor inválido');
+                });
+
+                this.test('setTheme() - Guarda en localStorage', () => {
+                    this.trackCoverage('setTheme');
+                    localStorage.removeItem('yukyu-theme');
+                    const tm = new ThemeManager();
+                    tm.setTheme('light');
+                    const saved = localStorage.getItem('yukyu-theme');
+                    this.assertEqual(saved, 'light', 'Debe guardar en localStorage');
+                });
+
+                // ========== Tests de isDark() ==========
+                this.test('isDark() - Retorna true cuando es dark', () => {
+                    this.trackCoverage('isDark');
+                    const tm = new ThemeManager();
+                    tm.current = 'dark';
+                    this.assert(tm.isDark(), 'Debe retornar true para dark');
+                });
+
+                this.test('isDark() - Retorna false cuando es light', () => {
+                    this.trackCoverage('isDark');
+                    const tm = new ThemeManager();
+                    tm.current = 'light';
+                    this.assert(!tm.isDark(), 'Debe retornar false para light');
+                });
+
+                // ========== Tests de persistencia ==========
+                this.test('Persistencia - Ciclo completo init-toggle-reinit', () => {
+                    localStorage.removeItem('yukyu-theme');
+
+                    // Primera instancia
+                    const tm1 = new ThemeManager();
+                    tm1.init();
+                    this.assertEqual(tm1.current, 'dark', 'Primera carga debe ser dark');
+
+                    // Toggle
+                    tm1.toggle();
+                    this.assertEqual(tm1.current, 'light', 'Toggle debe cambiar a light');
+
+                    // Segunda instancia (simula reload)
+                    const tm2 = new ThemeManager();
+                    tm2.init();
+                    this.assertEqual(tm2.current, 'light', 'Después de reload debe ser light');
+                });
+
+                // ========== Tests de updateFlatpickr() ==========
+                this.test('updateFlatpickr() - No falla sin Flatpickr', () => {
+                    this.trackCoverage('updateFlatpickr');
+                    const tm = new ThemeManager();
+                    // No debe lanzar error aunque Flatpickr no exista
+                    tm.updateFlatpickr();
+                    this.assert(true, 'No debe fallar sin Flatpickr');
+                });
+
+                // Limpiar localStorage al final
+                localStorage.removeItem('yukyu-theme');
+            }
+        }
+
+        // Ejecutar tests
+        const runner = new TestRunner();
+        runner.run();
+    </script>
+</body>
+</html>

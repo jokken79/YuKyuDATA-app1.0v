@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tests Integración - Theme System</title>
+    <style>
+        :root {
+            --primary: #00d4ff;
+            --background: #ffffff;
+            --text: #000000;
+        }
+
+        [data-theme="dark"] {
+            --primary: #00d4ff;
+            --background: #0a0a0a;
+            --text: #e0e0e0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--background);
+            color: var(--text);
+            padding: 20px;
+            transition: background 0.3s, color 0.3s;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .summary {
+            background: var(--background);
+            border: 1px solid var(--text);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid var(--primary);
+        }
+        .summary h2 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .stats {
+            display: flex;
+            gap: 30px;
+            font-size: 16px;
+        }
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .pass { color: #34d399; }
+        .fail { color: #f87171; }
+        .test-result {
+            background: rgba(255,255,255,0.05);
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid transparent;
+        }
+        .test-result.passed {
+            border-left-color: #34d399;
+        }
+        .test-result.failed {
+            border-left-color: #f87171;
+            background: rgba(255,0,0,0.1);
+        }
+        .test-name {
+            flex: 1;
+        }
+        .test-status {
+            font-weight: bold;
+            font-size: 18px;
+            margin-right: 10px;
+        }
+        .test-time {
+            color: #888;
+            font-size: 12px;
+        }
+        .error-details {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
+            color: #ff8888;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .coverage {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        .coverage h2 {
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+        .coverage-bar {
+            height: 30px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        .coverage-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #34d399, #00d4ff);
+            transition: width 1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-weight: bold;
+        }
+
+        /* Test UI elements */
+        .test-ui {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .test-ui h3 {
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+        #theme-toggle-btn {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #test-element {
+            background: var(--background);
+            color: var(--text);
+            padding: 10px;
+            border: 1px solid var(--primary);
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Mock UI elements -->
+    <div id="theme-icon"></div>
+    <div id="theme-label"></div>
+
+    <div class="container">
+        <h1>🔄 Integración Theme System - Tests E2E</h1>
+        <p class="subtitle">Tests de integración completa del sistema de temas</p>
+
+        <div class="test-ui">
+            <h3>UI de Prueba</h3>
+            <button id="theme-toggle-btn">Toggle Theme</button>
+            <div id="test-element">
+                Este elemento debe cambiar de color con el tema
+            </div>
+        </div>
+
+        <div class="summary">
+            <h2>Resumen de Ejecución</h2>
+            <div class="stats">
+                <div class="stat">
+                    <span>Total:</span>
+                    <span class="stat-value" id="total-tests">0</span>
+                </div>
+                <div class="stat pass">
+                    <span>✓ Pasados:</span>
+                    <span class="stat-value" id="passed-tests">0</span>
+                </div>
+                <div class="stat fail">
+                    <span>✗ Fallidos:</span>
+                    <span class="stat-value" id="failed-tests">0</span>
+                </div>
+                <div class="stat">
+                    <span>⏱️ Tiempo:</span>
+                    <span class="stat-value" id="total-time">0ms</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="test-results"></div>
+
+        <div class="coverage">
+            <h2>Cobertura de Flujos</h2>
+            <div class="coverage-bar">
+                <div class="coverage-fill" id="coverage-bar" style="width: 0%">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { ThemeManager } from '../../static/js/modules/theme-manager.js';
+
+        // Test Runner para tests de integración
+        class IntegrationTestRunner {
+            constructor() {
+                this.tests = [];
+                this.passed = 0;
+                this.failed = 0;
+                this.startTime = 0;
+                this.totalFlows = 5; // Total de flujos E2E
+                this.coveredFlows = new Set();
+            }
+
+            async test(name, fn) {
+                const start = performance.now();
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'test-result';
+
+                try {
+                    await fn();
+                    this.passed++;
+                    resultDiv.classList.add('passed');
+                    resultDiv.innerHTML = `
+                        <span class="test-name">${name}</span>
+                        <span class="test-status pass">✓</span>
+                        <span class="test-time">${(performance.now() - start).toFixed(2)}ms</span>
+                    `;
+                    console.log('✓', name);
+                } catch (e) {
+                    this.failed++;
+                    resultDiv.classList.add('failed');
+                    resultDiv.innerHTML = `
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="test-name">${name}</span>
+                                <span class="test-status fail">✗</span>
+                                <span class="test-time">${(performance.now() - start).toFixed(2)}ms</span>
+                            </div>
+                            <div class="error-details">${e.message}</div>
+                        </div>
+                    `;
+                    console.error('✗', name, e);
+                }
+
+                document.getElementById('test-results').appendChild(resultDiv);
+            }
+
+            assert(condition, message) {
+                if (!condition) {
+                    throw new Error(message || 'Assertion failed');
+                }
+            }
+
+            assertEqual(actual, expected, message) {
+                if (actual !== expected) {
+                    throw new Error(
+                        message ||
+                        `Expected "${expected}" but got "${actual}"`
+                    );
+                }
+            }
+
+            trackFlow(flowName) {
+                this.coveredFlows.add(flowName);
+            }
+
+            finish() {
+                const totalTime = performance.now() - this.startTime;
+                const total = this.passed + this.failed;
+                const coverage = (this.coveredFlows.size / this.totalFlows) * 100;
+
+                document.getElementById('total-tests').textContent = total;
+                document.getElementById('passed-tests').textContent = this.passed;
+                document.getElementById('failed-tests').textContent = this.failed;
+                document.getElementById('total-time').textContent = totalTime.toFixed(0) + 'ms';
+
+                const coverageBar = document.getElementById('coverage-bar');
+                setTimeout(() => {
+                    coverageBar.style.width = coverage + '%';
+                    coverageBar.textContent = coverage.toFixed(1) + '% flows';
+                }, 100);
+
+                console.log(`\n📊 Resumen: ${this.passed}/${total} tests pasados (${coverage.toFixed(1)}% flow coverage)`);
+            }
+
+            async run() {
+                this.startTime = performance.now();
+                await this.runTests();
+                this.finish();
+            }
+
+            async runTests() {
+                // Limpiar localStorage
+                localStorage.removeItem('yukyu-theme');
+
+                // ========== Test E2E: Flujo completo de inicialización ==========
+                await this.test('E2E - Inicialización completa del tema', async () => {
+                    this.trackFlow('initialization');
+
+                    const tm = new ThemeManager();
+                    tm.init();
+
+                    // Verificar que el tema se aplica al documento
+                    const dataTheme = document.documentElement.getAttribute('data-theme');
+                    this.assertEqual(dataTheme, 'dark', 'data-theme debe ser dark');
+
+                    // Verificar que los CSS variables están activos
+                    const computedStyle = getComputedStyle(document.documentElement);
+                    const bgColor = computedStyle.getPropertyValue('--background').trim();
+                    this.assert(bgColor !== '', 'CSS variable --background debe estar definida');
+                });
+
+                // ========== Test E2E: Toggle y actualización visual ==========
+                await this.test('E2E - Toggle cambia visualización completa', async () => {
+                    this.trackFlow('toggle');
+
+                    const tm = new ThemeManager();
+                    tm.current = 'dark';
+                    tm.apply();
+
+                    // Capturar color inicial
+                    let initialBg = getComputedStyle(document.body).backgroundColor;
+
+                    // Toggle
+                    tm.toggle();
+
+                    // Esperar a que se apliquen los cambios
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    // Verificar cambio en documento
+                    const newTheme = document.documentElement.getAttribute('data-theme');
+                    this.assertEqual(newTheme, 'light', 'Tema debe cambiar a light');
+
+                    // Verificar cambio visual
+                    let newBg = getComputedStyle(document.body).backgroundColor;
+                    this.assert(initialBg !== newBg, 'Background debe cambiar visualmente');
+                });
+
+                // ========== Test E2E: Persistencia y recarga ==========
+                await this.test('E2E - Persistencia a través de recargas', async () => {
+                    this.trackFlow('persistence');
+
+                    // Primera sesión
+                    localStorage.removeItem('yukyu-theme');
+                    const tm1 = new ThemeManager();
+                    tm1.init();
+                    tm1.setTheme('light');
+
+                    // Verificar guardado
+                    const saved = localStorage.getItem('yukyu-theme');
+                    this.assertEqual(saved, 'light', 'Debe guardar en localStorage');
+
+                    // Segunda sesión (simula reload)
+                    const tm2 = new ThemeManager();
+                    tm2.init();
+
+                    this.assertEqual(tm2.current, 'light', 'Debe restaurar tema guardado');
+                    const dataTheme = document.documentElement.getAttribute('data-theme');
+                    this.assertEqual(dataTheme, 'light', 'Debe aplicar tema restaurado');
+                });
+
+                // ========== Test E2E: Actualización de botón UI ==========
+                await this.test('E2E - Botón de tema se actualiza correctamente', async () => {
+                    this.trackFlow('ui-update');
+
+                    const tm = new ThemeManager();
+
+                    // Dark mode
+                    tm.setTheme('dark');
+                    const iconDark = document.getElementById('theme-icon').textContent;
+                    const labelDark = document.getElementById('theme-label').textContent;
+
+                    this.assertEqual(iconDark, '🌙', 'Icono debe ser luna en dark');
+                    this.assertEqual(labelDark, 'Dark', 'Label debe ser Dark');
+
+                    // Light mode
+                    tm.setTheme('light');
+                    const iconLight = document.getElementById('theme-icon').textContent;
+                    const labelLight = document.getElementById('theme-label').textContent;
+
+                    this.assertEqual(iconLight, '☀️', 'Icono debe ser sol en light');
+                    this.assertEqual(labelLight, 'Light', 'Label debe ser Light');
+                });
+
+                // ========== Test E2E: CSS Variables reactivas ==========
+                await this.test('E2E - CSS Variables se actualizan en tiempo real', async () => {
+                    this.trackFlow('css-reactivity');
+
+                    const tm = new ThemeManager();
+                    const testElement = document.getElementById('test-element');
+
+                    // Dark mode
+                    tm.setTheme('dark');
+                    await new Promise(resolve => setTimeout(resolve, 50));
+
+                    const darkBg = getComputedStyle(testElement).backgroundColor;
+
+                    // Light mode
+                    tm.setTheme('light');
+                    await new Promise(resolve => setTimeout(resolve, 50));
+
+                    const lightBg = getComputedStyle(testElement).backgroundColor;
+
+                    this.assert(darkBg !== lightBg,
+                        'Background debe cambiar entre dark y light');
+                });
+
+                // ========== Test E2E: Múltiples toggles rápidos ==========
+                await this.test('E2E - Múltiples toggles rápidos', async () => {
+                    const tm = new ThemeManager();
+                    tm.setTheme('dark');
+
+                    // 5 toggles rápidos
+                    for (let i = 0; i < 5; i++) {
+                        tm.toggle();
+                    }
+
+                    // Debe terminar en light (empezó en dark, 5 toggles = impar)
+                    this.assertEqual(tm.current, 'light', 'Debe terminar en light después de 5 toggles');
+                    const dataTheme = document.documentElement.getAttribute('data-theme');
+                    this.assertEqual(dataTheme, 'light', 'DOM debe reflejar light');
+                });
+
+                // ========== Test E2E: Callback de notificación ==========
+                await this.test('E2E - Callback showToast se ejecuta', async () => {
+                    let toastCalled = false;
+                    let toastType = '';
+                    let toastMessage = '';
+
+                    const mockToast = (type, msg) => {
+                        toastCalled = true;
+                        toastType = type;
+                        toastMessage = msg;
+                    };
+
+                    const tm = new ThemeManager();
+                    tm.setTheme('dark');
+                    tm.toggle(mockToast);
+
+                    this.assert(toastCalled, 'showToast debe ser llamado');
+                    this.assertEqual(toastType, 'info', 'Tipo debe ser info');
+                    this.assert(toastMessage.includes('ライト'), 'Mensaje debe indicar modo');
+                });
+
+                // ========== Test E2E: Estado inicial sin localStorage ==========
+                await this.test('E2E - Estado inicial correcto sin datos guardados', async () => {
+                    localStorage.removeItem('yukyu-theme');
+
+                    const tm = new ThemeManager();
+                    tm.init();
+
+                    this.assertEqual(tm.current, 'dark', 'Debe iniciar en dark sin datos');
+                    const dataTheme = document.documentElement.getAttribute('data-theme');
+                    this.assertEqual(dataTheme, 'dark', 'DOM debe reflejar dark');
+                    this.assert(tm.isDark(), 'isDark() debe retornar true');
+                });
+
+                // ========== Test E2E: Consistencia estado interno vs DOM ==========
+                await this.test('E2E - Consistencia entre estado interno y DOM', async () => {
+                    const tm = new ThemeManager();
+
+                    const themes = ['dark', 'light', 'dark', 'light'];
+                    for (const theme of themes) {
+                        tm.setTheme(theme);
+
+                        // Verificar consistencia
+                        const domTheme = document.documentElement.getAttribute('data-theme');
+                        this.assertEqual(tm.current, theme, 'Estado interno correcto');
+                        this.assertEqual(domTheme, theme, 'DOM debe reflejar estado interno');
+                        this.assertEqual(tm.getCurrent(), theme, 'getCurrent() consistente');
+                        this.assertEqual(tm.isDark(), theme === 'dark', 'isDark() consistente');
+                    }
+                });
+
+                // ========== Test E2E: Interacción con botón real ==========
+                await this.test('E2E - Interacción con botón de toggle', async () => {
+                    const tm = new ThemeManager();
+                    tm.setTheme('dark');
+
+                    const btn = document.getElementById('theme-toggle-btn');
+                    btn.onclick = () => tm.toggle();
+
+                    // Simular click
+                    btn.click();
+
+                    this.assertEqual(tm.current, 'light', 'Click debe cambiar a light');
+
+                    // Otro click
+                    btn.click();
+
+                    this.assertEqual(tm.current, 'dark', 'Segundo click debe volver a dark');
+                });
+
+                // Limpiar
+                localStorage.removeItem('yukyu-theme');
+            }
+        }
+
+        // Ejecutar tests
+        const runner = new IntegrationTestRunner();
+        runner.run();
+    </script>
+</body>
+</html>

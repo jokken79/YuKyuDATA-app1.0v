@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tests - Data Service</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .summary {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #00d4ff;
+        }
+        .summary h2 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .stats {
+            display: flex;
+            gap: 30px;
+            font-size: 16px;
+        }
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .pass { color: #34d399; }
+        .fail { color: #f87171; }
+        .test-result {
+            background: #1a1a1a;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid transparent;
+        }
+        .test-result.passed {
+            border-left-color: #34d399;
+        }
+        .test-result.failed {
+            border-left-color: #f87171;
+            background: #2a1a1a;
+        }
+        .test-name {
+            flex: 1;
+        }
+        .test-status {
+            font-weight: bold;
+            font-size: 18px;
+            margin-right: 10px;
+        }
+        .test-time {
+            color: #888;
+            font-size: 12px;
+        }
+        .error-details {
+            margin-top: 10px;
+            padding: 10px;
+            background: #1a0a0a;
+            border-radius: 4px;
+            color: #ff8888;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .coverage {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        .coverage h2 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+        }
+        .coverage-bar {
+            height: 30px;
+            background: #0a0a0a;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        .coverage-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #34d399, #00d4ff);
+            transition: width 1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Data Service - Tests de API y Filtrado</h1>
+        <p class="subtitle">Tests de obtención de datos, filtrado por año y race conditions</p>
+
+        <div class="summary">
+            <h2>Resumen de Ejecución</h2>
+            <div class="stats">
+                <div class="stat">
+                    <span>Total:</span>
+                    <span class="stat-value" id="total-tests">0</span>
+                </div>
+                <div class="stat pass">
+                    <span>✓ Pasados:</span>
+                    <span class="stat-value" id="passed-tests">0</span>
+                </div>
+                <div class="stat fail">
+                    <span>✗ Fallidos:</span>
+                    <span class="stat-value" id="failed-tests">0</span>
+                </div>
+                <div class="stat">
+                    <span>⏱️ Tiempo:</span>
+                    <span class="stat-value" id="total-time">0ms</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="test-results"></div>
+
+        <div class="coverage">
+            <h2>Cobertura de Código</h2>
+            <div class="coverage-bar">
+                <div class="coverage-fill" id="coverage-bar" style="width: 0%">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { DataService } from '../../static/js/modules/data-service.js';
+
+        // Mock de fetch global
+        const originalFetch = window.fetch;
+
+        function mockFetch(response) {
+            window.fetch = async (url, options) => {
+                return {
+                    ok: response.ok !== false,
+                    status: response.status || 200,
+                    json: async () => response.data,
+                    text: async () => response.text || JSON.stringify(response.data)
+                };
+            };
+        }
+
+        function restoreFetch() {
+            window.fetch = originalFetch;
+        }
+
+        // Simple Test Runner
+        class TestRunner {
+            constructor() {
+                this.tests = [];
+                this.passed = 0;
+                this.failed = 0;
+                this.startTime = 0;
+                this.totalMethods = 5; // getFiltered, getFactoryStats, fetchEmployees, sync, syncGenzai, syncUkeoi
+                this.coveredMethods = new Set();
+            }
+
+            async test(name, fn) {
+                const start = performance.now();
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'test-result';
+
+                try {
+                    await fn();
+                    this.passed++;
+                    resultDiv.classList.add('passed');
+                    resultDiv.innerHTML = `
+                        <span class="test-name">${name}</span>
+                        <span class="test-status pass">✓</span>
+                        <span class="test-time">${(performance.now() - start).toFixed(2)}ms</span>
+                    `;
+                    console.log('✓', name);
+                } catch (e) {
+                    this.failed++;
+                    resultDiv.classList.add('failed');
+                    resultDiv.innerHTML = `
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="test-name">${name}</span>
+                                <span class="test-status fail">✗</span>
+                                <span class="test-time">${(performance.now() - start).toFixed(2)}ms</span>
+                            </div>
+                            <div class="error-details">${e.message}</div>
+                        </div>
+                    `;
+                    console.error('✗', name, e);
+                }
+
+                document.getElementById('test-results').appendChild(resultDiv);
+            }
+
+            assert(condition, message) {
+                if (!condition) {
+                    throw new Error(message || 'Assertion failed');
+                }
+            }
+
+            assertEqual(actual, expected, message) {
+                if (actual !== expected) {
+                    throw new Error(
+                        message ||
+                        `Expected "${expected}" but got "${actual}"`
+                    );
+                }
+            }
+
+            trackCoverage(methodName) {
+                this.coveredMethods.add(methodName);
+            }
+
+            finish() {
+                const totalTime = performance.now() - this.startTime;
+                const total = this.passed + this.failed;
+                const coverage = (this.coveredMethods.size / this.totalMethods) * 100;
+
+                document.getElementById('total-tests').textContent = total;
+                document.getElementById('passed-tests').textContent = this.passed;
+                document.getElementById('failed-tests').textContent = this.failed;
+                document.getElementById('total-time').textContent = totalTime.toFixed(0) + 'ms';
+
+                const coverageBar = document.getElementById('coverage-bar');
+                setTimeout(() => {
+                    coverageBar.style.width = coverage + '%';
+                    coverageBar.textContent = coverage.toFixed(1) + '%';
+                }, 100);
+
+                console.log(`\n📊 Resumen: ${this.passed}/${total} tests pasados (${coverage.toFixed(1)}% coverage)`);
+            }
+
+            async run() {
+                this.startTime = performance.now();
+                await this.runTests();
+                this.finish();
+            }
+
+            async runTests() {
+                // ========== Tests del constructor ==========
+                await this.test('Constructor - API base por defecto', async () => {
+                    const ds = new DataService();
+                    this.assertEqual(ds.apiBase, 'http://localhost:8000/api', 'API base correcto');
+                });
+
+                await this.test('Constructor - API base custom', async () => {
+                    const ds = new DataService('http://test.com/api');
+                    this.assertEqual(ds.apiBase, 'http://test.com/api', 'Debe aceptar API custom');
+                });
+
+                await this.test('Constructor - Request ID inicial es 0', async () => {
+                    const ds = new DataService();
+                    this.assertEqual(ds._fetchRequestId, 0, 'Request ID inicial debe ser 0');
+                });
+
+                // ========== Tests de getFiltered() ==========
+                await this.test('getFiltered() - Sin filtro retorna todos', async () => {
+                    this.trackCoverage('getFiltered');
+                    const ds = new DataService();
+                    const data = [
+                        { year: 2023, name: 'A' },
+                        { year: 2024, name: 'B' },
+                        { year: 2024, name: 'C' }
+                    ];
+                    const result = ds.getFiltered(data, null);
+                    this.assertEqual(result.length, 3, 'Debe retornar todos los datos');
+                });
+
+                await this.test('getFiltered() - Filtra por año correctamente', async () => {
+                    this.trackCoverage('getFiltered');
+                    const ds = new DataService();
+                    const data = [
+                        { year: 2023, name: 'A' },
+                        { year: 2024, name: 'B' },
+                        { year: 2024, name: 'C' }
+                    ];
+                    const result = ds.getFiltered(data, 2024);
+                    this.assertEqual(result.length, 2, 'Debe retornar solo 2024');
+                    this.assert(result.every(e => e.year === 2024), 'Todos deben ser 2024');
+                });
+
+                await this.test('getFiltered() - Array vacío retorna vacío', async () => {
+                    this.trackCoverage('getFiltered');
+                    const ds = new DataService();
+                    const result = ds.getFiltered([], 2024);
+                    this.assertEqual(result.length, 0, 'Debe retornar array vacío');
+                });
+
+                // ========== Tests de getFactoryStats() ==========
+                await this.test('getFactoryStats() - Calcula totales correctamente', async () => {
+                    this.trackCoverage('getFactoryStats');
+                    const ds = new DataService();
+                    const data = [
+                        { haken: 'Factory A', used: 10 },
+                        { haken: 'Factory A', used: 5 },
+                        { haken: 'Factory B', used: 8 }
+                    ];
+                    const stats = ds.getFactoryStats(data);
+                    this.assertEqual(stats.length, 2, 'Debe haber 2 fábricas');
+                    this.assertEqual(stats[0][0], 'Factory A', 'Primera debe ser Factory A');
+                    this.assertEqual(stats[0][1], 15, 'Factory A debe tener 15 días');
+                });
+
+                await this.test('getFactoryStats() - Ordena por días descendente', async () => {
+                    this.trackCoverage('getFactoryStats');
+                    const ds = new DataService();
+                    const data = [
+                        { haken: 'Low', used: 3 },
+                        { haken: 'High', used: 20 },
+                        { haken: 'Mid', used: 10 }
+                    ];
+                    const stats = ds.getFactoryStats(data);
+                    this.assertEqual(stats[0][0], 'High', 'Primera debe ser la más alta');
+                    this.assertEqual(stats[1][0], 'Mid', 'Segunda debe ser Mid');
+                    this.assertEqual(stats[2][0], 'Low', 'Tercera debe ser Low');
+                });
+
+                await this.test('getFactoryStats() - Filtra fábricas inválidas', async () => {
+                    this.trackCoverage('getFactoryStats');
+                    const ds = new DataService();
+                    const data = [
+                        { haken: 'Valid', used: 10 },
+                        { haken: '0', used: 5 },
+                        { haken: 'Unknown', used: 8 },
+                        { haken: '', used: 3 },
+                        { haken: null, used: 2 }
+                    ];
+                    const stats = ds.getFactoryStats(data);
+                    this.assertEqual(stats.length, 1, 'Solo debe contar Valid');
+                    this.assertEqual(stats[0][0], 'Valid', 'Debe ser Valid');
+                });
+
+                // ========== Tests de fetchEmployees() con mock ==========
+                await this.test('fetchEmployees() - Llama al endpoint correcto', async () => {
+                    this.trackCoverage('fetchEmployees');
+                    let calledUrl = '';
+                    window.fetch = async (url) => {
+                        calledUrl = url;
+                        return {
+                            ok: true,
+                            json: async () => ({ data: [], available_years: [] })
+                        };
+                    };
+
+                    const ds = new DataService('http://test.com/api');
+                    await ds.fetchEmployees(2024);
+
+                    this.assert(calledUrl.includes('http://test.com/api/employees'), 'Debe llamar a /employees');
+                    this.assert(calledUrl.includes('year=2024'), 'Debe incluir year=2024');
+                    this.assert(calledUrl.includes('enhanced=true'), 'Debe incluir enhanced=true');
+
+                    restoreFetch();
+                });
+
+                await this.test('fetchEmployees() - Procesa datos correctamente', async () => {
+                    this.trackCoverage('fetchEmployees');
+                    mockFetch({
+                        data: [
+                            {
+                                employee_num: '001',
+                                name: 'Test',
+                                granted: 10,
+                                used: 5
+                            }
+                        ],
+                        available_years: [2024]
+                    });
+
+                    const state = { data: [], availableYears: [] };
+                    const ds = new DataService();
+                    await ds.fetchEmployees(2024, true, state);
+
+                    this.assertEqual(state.data.length, 1, 'Debe tener 1 empleado');
+                    this.assertEqual(state.data[0].usageRate, 50, 'Usage rate debe ser 50%');
+                    this.assertEqual(state.data[0].employeeNum, '001', 'Employee num correcto');
+
+                    restoreFetch();
+                });
+
+                await this.test('fetchEmployees() - Previene race conditions', async () => {
+                    this.trackCoverage('fetchEmployees');
+
+                    let requestCount = 0;
+                    window.fetch = async (url) => {
+                        requestCount++;
+                        // Primera request demora más
+                        const delay = url.includes('year=2023') ? 100 : 10;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        return {
+                            ok: true,
+                            json: async () => ({
+                                data: url.includes('year=2023') ?
+                                    [{ employee_num: 'OLD' }] :
+                                    [{ employee_num: 'NEW' }],
+                                available_years: []
+                            })
+                        };
+                    };
+
+                    const state = { data: [] };
+                    const ds = new DataService();
+
+                    // Disparar dos requests rápidos
+                    const promise1 = ds.fetchEmployees(2023, true, state);
+                    const promise2 = ds.fetchEmployees(2024, true, state);
+
+                    await Promise.all([promise1, promise2]);
+
+                    // La segunda request debería ganar
+                    this.assertEqual(state.data[0].employee_num, 'NEW',
+                        'Debe usar la request más reciente');
+
+                    restoreFetch();
+                });
+
+                await this.test('fetchEmployees() - Maneja errores', async () => {
+                    this.trackCoverage('fetchEmployees');
+
+                    window.fetch = async () => {
+                        throw new Error('Network error');
+                    };
+
+                    let errorShown = false;
+                    const mockToast = (type, msg) => {
+                        if (type === 'error') errorShown = true;
+                    };
+
+                    const ds = new DataService();
+                    await ds.fetchEmployees(2024, true, null, null, mockToast);
+
+                    this.assert(errorShown, 'Debe mostrar error en toast');
+
+                    restoreFetch();
+                });
+
+                // ========== Tests de sync() con mock ==========
+                await this.test('sync() - Llama al endpoint de sync', async () => {
+                    this.trackCoverage('sync');
+
+                    let calledUrl = '';
+                    window.fetch = async (url, options) => {
+                        calledUrl = url;
+                        return {
+                            ok: true,
+                            json: async () => ({ count: 10 })
+                        };
+                    };
+
+                    const ds = new DataService('http://test.com/api');
+                    await ds.sync();
+
+                    this.assert(calledUrl.includes('http://test.com/api/sync'),
+                        'Debe llamar a /sync');
+
+                    restoreFetch();
+                });
+
+                await this.test('sync() - Muestra toast de éxito', async () => {
+                    this.trackCoverage('sync');
+
+                    mockFetch({ count: 42 });
+
+                    let successMessage = '';
+                    const mockToast = (type, msg) => {
+                        if (type === 'success') successMessage = msg;
+                    };
+
+                    const ds = new DataService();
+                    await ds.sync(null, mockToast);
+
+                    this.assert(successMessage.includes('42'), 'Debe mostrar count en mensaje');
+
+                    restoreFetch();
+                });
+
+                await this.test('sync() - Maneja errores de red', async () => {
+                    this.trackCoverage('sync');
+
+                    window.fetch = async () => {
+                        throw new TypeError('Failed to fetch');
+                    };
+
+                    let errorMessage = '';
+                    const mockToast = (type, msg) => {
+                        if (type === 'error') errorMessage = msg;
+                    };
+
+                    const ds = new DataService();
+                    await ds.sync(null, mockToast);
+
+                    this.assert(errorMessage.includes('ネットワーク'),
+                        'Debe mostrar error de red');
+
+                    restoreFetch();
+                });
+
+                // ========== Tests de incremento de requestId ==========
+                await this.test('fetchEmployees() - Incrementa requestId', async () => {
+                    mockFetch({ data: [], available_years: [] });
+
+                    const ds = new DataService();
+                    const initialId = ds._fetchRequestId;
+
+                    await ds.fetchEmployees(2024);
+                    this.assertEqual(ds._fetchRequestId, initialId + 1,
+                        'RequestId debe incrementarse');
+
+                    restoreFetch();
+                });
+
+                // ========== Tests de cálculo de usageRate ==========
+                await this.test('fetchEmployees() - Calcula usageRate con granted=0', async () => {
+                    mockFetch({
+                        data: [{ employee_num: '001', granted: 0, used: 5 }],
+                        available_years: []
+                    });
+
+                    const state = { data: [] };
+                    const ds = new DataService();
+                    await ds.fetchEmployees(2024, true, state);
+
+                    this.assertEqual(state.data[0].usageRate, 0,
+                        'UsageRate debe ser 0 cuando granted=0');
+
+                    restoreFetch();
+                });
+
+                restoreFetch();
+            }
+        }
+
+        // Ejecutar tests
+        const runner = new TestRunner();
+        runner.run();
+    </script>
+</body>
+</html>
