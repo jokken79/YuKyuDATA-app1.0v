@@ -763,12 +763,78 @@ select.input-glass {
   }
 }
 
-/* Reduced motion support */
+/* ========================================
+   PERFORMANCE OPTIMIZATIONS
+   ======================================== */
+
+/* GPU Acceleration - Solo en elementos que se transforman frecuentemente */
+.glass-panel,
+.btn,
+.modern-table tbody tr,
+.toast,
+.modal,
+.loader-overlay {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* will-change - Solo durante interacciones */
+.glass-panel:hover,
+.btn:hover,
+.modern-table tbody tr:hover {
+  will-change: transform, box-shadow;
+}
+
+/* Remover will-change después de la animación */
+.glass-panel,
+.btn,
+.modern-table tbody tr {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-panel:not(:hover),
+.btn:not(:hover),
+.modern-table tbody tr:not(:hover) {
+  will-change: auto;
+}
+
+/* Optimización de scroll */
+.virtual-scroll-container {
+  contain: layout style paint;
+  content-visibility: auto;
+}
+
+/* Reduced motion support - MEJORADO */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Desactivar animaciones de background */
+  body::before,
+  body::after {
+    animation: none !important;
+  }
+
+  /* Desactivar hover effects complejos */
+  .glass-panel:hover,
+  .btn:hover,
+  .modern-table tbody tr:hover {
+    transform: none !important;
+    will-change: auto !important;
+  }
+
+  /* Mantener transiciones esenciales pero muy rápidas */
+  .btn,
+  .input-glass,
+  .nav-item {
+    transition-duration: 0.05s !important;
   }
 }
 

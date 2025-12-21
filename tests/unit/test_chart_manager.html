@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tests - Chart Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .summary {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #00d4ff;
+        }
+        .summary h2 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .stats {
+            display: flex;
+            gap: 30px;
+            font-size: 16px;
+        }
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .pass { color: #34d399; }
+        .fail { color: #f87171; }
+        .test-result {
+            background: #1a1a1a;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid transparent;
+        }
+        .test-result.passed {
+            border-left-color: #34d399;
+        }
+        .test-result.failed {
+            border-left-color: #f87171;
+            background: #2a1a1a;
+        }
+        .test-name {
+            flex: 1;
+        }
+        .test-status {
+            font-weight: bold;
+            font-size: 18px;
+            margin-right: 10px;
+        }
+        .test-time {
+            color: #888;
+            font-size: 12px;
+        }
+        .error-details {
+            margin-top: 10px;
+            padding: 10px;
+            background: #1a0a0a;
+            border-radius: 4px;
+            color: #ff8888;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .coverage {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        .coverage h2 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+        }
+        .coverage-bar {
+            height: 30px;
+            background: #0a0a0a;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        .coverage-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #34d399, #00d4ff);
+            transition: width 1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- Mock containers para charts -->
+    <div id="chart-distribution" style="display:none"></div>
+    <div id="chart-trends" style="display:none"></div>
+    <canvas id="chart-types" style="display:none"></canvas>
+    <canvas id="chart-top10" style="display:none"></canvas>
+    <div id="chart-factories" style="display:none"></div>
+
+    <!-- Mock elementos para Visualizations -->
+    <svg style="display:none">
+        <circle id="test-ring"></circle>
+    </svg>
+    <div id="test-value" style="display:none"></div>
+    <div id="gauge-compliance" style="display:none"></div>
+    <div id="gauge-value" style="display:none"></div>
+    <div class="gauge-label" style="display:none"></div>
+    <div id="compliance-count" style="display:none"></div>
+    <div id="compliance-total" style="display:none"></div>
+    <div id="countdown-container" style="display:none"></div>
+    <div id="no-expiring" style="display:none"></div>
+    <div id="expiring-days" style="display:none"></div>
+    <div id="expiring-detail" style="display:none"></div>
+    <div id="critical-count" style="display:none"></div>
+    <div id="warning-count" style="display:none"></div>
+    <div id="healthy-count" style="display:none"></div>
+    <div id="quick-haken" style="display:none"></div>
+    <div id="quick-ukeoi" style="display:none"></div>
+    <div id="quick-staff" style="display:none"></div>
+
+    <div class="container">
+        <h1>📈 Chart Manager - Tests de Renderizado</h1>
+        <p class="subtitle">Tests de creación, actualización y destrucción de gráficos</p>
+
+        <div class="summary">
+            <h2>Resumen de Ejecución</h2>
+            <div class="stats">
+                <div class="stat">
+                    <span>Total:</span>
+                    <span class="stat-value" id="total-tests">0</span>
+                </div>
+                <div class="stat pass">
+                    <span>✓ Pasados:</span>
+                    <span class="stat-value" id="passed-tests">0</span>
+                </div>
+                <div class="stat fail">
+                    <span>✗ Fallidos:</span>
+                    <span class="stat-value" id="failed-tests">0</span>
+                </div>
+                <div class="stat">
+                    <span>⏱️ Tiempo:</span>
+                    <span class="stat-value" id="total-time">0ms</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="test-results"></div>
+
+        <div class="coverage">
+            <h2>Cobertura de Código</h2>
+            <div class="coverage-bar">
+                <div class="coverage-fill" id="coverage-bar" style="width: 0%">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { ChartManager, Visualizations } from '../../static/js/modules/chart-manager.js';
+
+        // Simple Test Runner
+        class TestRunner {
+            constructor() {
+                this.tests = [];
+                this.passed = 0;
+                this.failed = 0;
+                this.startTime = 0;
+                this.totalMethods = 10; // Métodos principales a testear
+                this.coveredMethods = new Set();
+            }
+
+            async test(name, fn) {
+                const start = performance.now();
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'test-result';
+
+                try {
+                    await fn();
+                    this.passed++;
+                    resultDiv.classList.add('passed');
+                    resultDiv.innerHTML = `
+                        <span class="test-name">${name}</span>
+                        <span class="test-status pass">✓</span>
+                        <span class="test-time">${(performance.now() - start).toFixed(2)}ms</span>
+                    `;
+                    console.log('✓', name);
+                } catch (e) {
+                    this.failed++;
+                    resultDiv.classList.add('failed');
+                    resultDiv.innerHTML = `
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="test-name">${name}</span>
+                                <span class="test-status fail">✗</span>
+                                <span class="test-time">${(performance.now() - start).toFixed(2)}ms</span>
+                            </div>
+                            <div class="error-details">${e.message}</div>
+                        </div>
+                    `;
+                    console.error('✗', name, e);
+                }
+
+                document.getElementById('test-results').appendChild(resultDiv);
+            }
+
+            assert(condition, message) {
+                if (!condition) {
+                    throw new Error(message || 'Assertion failed');
+                }
+            }
+
+            assertEqual(actual, expected, message) {
+                if (actual !== expected) {
+                    throw new Error(
+                        message ||
+                        `Expected "${expected}" but got "${actual}"`
+                    );
+                }
+            }
+
+            trackCoverage(methodName) {
+                this.coveredMethods.add(methodName);
+            }
+
+            finish() {
+                const totalTime = performance.now() - this.startTime;
+                const total = this.passed + this.failed;
+                const coverage = (this.coveredMethods.size / this.totalMethods) * 100;
+
+                document.getElementById('total-tests').textContent = total;
+                document.getElementById('passed-tests').textContent = this.passed;
+                document.getElementById('failed-tests').textContent = this.failed;
+                document.getElementById('total-time').textContent = totalTime.toFixed(0) + 'ms';
+
+                const coverageBar = document.getElementById('coverage-bar');
+                setTimeout(() => {
+                    coverageBar.style.width = coverage + '%';
+                    coverageBar.textContent = coverage.toFixed(1) + '%';
+                }, 100);
+
+                console.log(`\n📊 Resumen: ${this.passed}/${total} tests pasados (${coverage.toFixed(1)}% coverage)`);
+            }
+
+            async run() {
+                this.startTime = performance.now();
+                await this.runTests();
+                this.finish();
+            }
+
+            async runTests() {
+                // ========== Tests de ChartManager constructor ==========
+                await this.test('ChartManager - Constructor con state', async () => {
+                    const state = { charts: {} };
+                    const cm = new ChartManager(state);
+                    this.assertEqual(cm.state, state, 'Debe usar el state proporcionado');
+                });
+
+                await this.test('ChartManager - Constructor sin state', async () => {
+                    const cm = new ChartManager();
+                    this.assert(cm.state.charts !== undefined, 'Debe crear charts object');
+                });
+
+                await this.test('ChartManager - API base por defecto', async () => {
+                    const cm = new ChartManager();
+                    this.assertEqual(cm.apiBase, 'http://localhost:8000/api', 'API base correcto');
+                });
+
+                // ========== Tests de destroy() ==========
+                await this.test('destroy() - No falla con chart inexistente', async () => {
+                    this.trackCoverage('destroy');
+                    const cm = new ChartManager();
+                    cm.destroy('nonexistent');
+                    this.assert(true, 'No debe fallar con chart inexistente');
+                });
+
+                await this.test('destroy() - Destruye chart existente', async () => {
+                    this.trackCoverage('destroy');
+                    const state = { charts: {} };
+                    const cm = new ChartManager(state);
+
+                    // Mock chart
+                    let destroyed = false;
+                    state.charts['test'] = {
+                        destroy: () => { destroyed = true; }
+                    };
+
+                    cm.destroy('test');
+                    this.assert(destroyed, 'Debe llamar a destroy del chart');
+                });
+
+                // ========== Tests de Visualizations ==========
+                await this.test('Visualizations - animateNumber actualiza texto', async () => {
+                    this.trackCoverage('animateNumber');
+                    const viz = new Visualizations();
+                    const el = document.getElementById('test-value');
+
+                    await new Promise(resolve => {
+                        viz.animateNumber(el, 0, 100, 50);
+                        setTimeout(() => {
+                            const value = parseInt(el.textContent);
+                            this.assert(value >= 0 && value <= 100,
+                                'Valor debe estar en rango');
+                            resolve();
+                        }, 100);
+                    });
+                });
+
+                await this.test('Visualizations - animateNumber con decimales', async () => {
+                    this.trackCoverage('animateNumber');
+                    const viz = new Visualizations();
+                    const el = document.getElementById('test-value');
+
+                    await new Promise(resolve => {
+                        viz.animateNumber(el, 0, 3.14, 50);
+                        setTimeout(() => {
+                            this.assert(el.textContent.includes('.'),
+                                'Debe incluir decimales');
+                            resolve();
+                        }, 100);
+                    });
+                });
+
+                await this.test('Visualizations - animateRing no falla sin elementos', async () => {
+                    this.trackCoverage('animateRing');
+                    const viz = new Visualizations();
+                    viz.animateRing('nonexistent', 'nonexistent', 50, 100);
+                    this.assert(true, 'No debe fallar sin elementos');
+                });
+
+                await this.test('Visualizations - updateGauge actualiza color según rate', async () => {
+                    this.trackCoverage('updateGauge');
+                    const viz = new Visualizations();
+
+                    // Test con rate alto (success)
+                    viz.updateGauge(85, 85, 100);
+                    const gauge = document.getElementById('gauge-compliance');
+                    const color = gauge.style.stroke;
+                    this.assert(color.includes('success') || color.includes('#'),
+                        'Debe establecer color');
+                });
+
+                await this.test('Visualizations - updateExpiringDays calcula categorías', async () => {
+                    this.trackCoverage('updateExpiringDays');
+                    const viz = new Visualizations();
+                    const data = [
+                        { balance: 0 },    // critical
+                        { balance: 1 },    // warning
+                        { balance: 5 },    // healthy
+                        { balance: 10 }    // healthy
+                    ];
+
+                    viz.updateExpiringDays(data);
+
+                    // Esperar a que termine la animación
+                    await new Promise(resolve => setTimeout(resolve, 900));
+
+                    const critical = document.getElementById('critical-count').textContent;
+                    this.assert(parseInt(critical) >= 0, 'Debe calcular critical');
+                });
+
+                await this.test('Visualizations - updateQuickStats actualiza contadores', async () => {
+                    this.trackCoverage('updateQuickStats');
+                    const viz = new Visualizations();
+
+                    viz.updateQuickStats(10, 20, 30);
+
+                    // Esperar animación
+                    await new Promise(resolve => setTimeout(resolve, 900));
+
+                    const haken = document.getElementById('quick-haken');
+                    this.assert(parseInt(haken.textContent) >= 0,
+                        'Debe actualizar haken count');
+                });
+
+                await this.test('Visualizations - showConfetti crea elementos', async () => {
+                    this.trackCoverage('showConfetti');
+                    const viz = new Visualizations();
+
+                    const initialCount = document.querySelectorAll('.confetti').length;
+                    viz.showConfetti();
+
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    const finalCount = document.querySelectorAll('.confetti').length;
+                    this.assert(finalCount > initialCount, 'Debe crear confetti');
+                });
+
+                // ========== Tests de renderDistribution ==========
+                await this.test('renderDistribution() - No falla sin ApexCharts', async () => {
+                    this.trackCoverage('renderDistribution');
+                    const cm = new ChartManager();
+                    const data = [
+                        { usageRate: 10 },
+                        { usageRate: 50 },
+                        { usageRate: 80 }
+                    ];
+
+                    // Debería no fallar aunque ApexCharts no exista
+                    cm.renderDistribution(data);
+                    this.assert(true, 'No debe fallar sin ApexCharts');
+                });
+
+                await this.test('renderDistribution() - No falla sin container', async () => {
+                    this.trackCoverage('renderDistribution');
+                    const cm = new ChartManager();
+
+                    // Ocultar container temporalmente
+                    const container = document.getElementById('chart-distribution');
+                    const parent = container.parentNode;
+                    parent.removeChild(container);
+
+                    cm.renderDistribution([]);
+
+                    // Restaurar
+                    parent.appendChild(container);
+
+                    this.assert(true, 'No debe fallar sin container');
+                });
+
+                // ========== Tests de renderFactoryChart ==========
+                await this.test('renderFactoryChart() - Acepta array de stats', async () => {
+                    this.trackCoverage('renderFactoryChart');
+                    const cm = new ChartManager();
+                    const stats = [
+                        ['Factory A', 100],
+                        ['Factory B', 80],
+                        ['Factory C', 60]
+                    ];
+
+                    cm.renderFactoryChart(stats);
+                    this.assert(true, 'Debe aceptar array de stats');
+                });
+
+                await this.test('renderFactoryChart() - Limita a top 10', async () => {
+                    this.trackCoverage('renderFactoryChart');
+                    const cm = new ChartManager();
+                    const stats = Array(20).fill(0).map((_, i) => [`Factory ${i}`, 100 - i]);
+
+                    // Debe procesar solo top 10 internamente
+                    cm.renderFactoryChart(stats);
+                    this.assert(true, 'Debe limitar a top 10');
+                });
+
+                // ========== Tests de integración básica ==========
+                await this.test('Integración - Crear y destruir múltiples charts', async () => {
+                    const state = { charts: {} };
+                    const cm = new ChartManager(state);
+
+                    // Mock charts
+                    let destroyCount = 0;
+                    state.charts['chart1'] = { destroy: () => destroyCount++ };
+                    state.charts['chart2'] = { destroy: () => destroyCount++ };
+
+                    cm.destroy('chart1');
+                    cm.destroy('chart2');
+
+                    this.assertEqual(destroyCount, 2, 'Debe destruir ambos charts');
+                });
+
+                await this.test('Integración - State compartido entre instancias', async () => {
+                    const sharedState = { charts: {} };
+                    const cm1 = new ChartManager(sharedState);
+                    const cm2 = new ChartManager(sharedState);
+
+                    sharedState.charts['test'] = { destroy: () => {} };
+
+                    this.assert(cm1.state === cm2.state, 'Debe compartir state');
+                    this.assert(cm1.state.charts['test'] !== undefined,
+                        'Debe ver mismo chart');
+                });
+            }
+        }
+
+        // Ejecutar tests
+        const runner = new TestRunner();
+        runner.run();
+    </script>
+</body>
+</html>

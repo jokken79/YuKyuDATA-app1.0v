@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tests - Utils Module (XSS Prevention)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .summary {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #00d4ff;
+        }
+        .summary h2 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .stats {
+            display: flex;
+            gap: 30px;
+            font-size: 16px;
+        }
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .pass { color: #34d399; }
+        .fail { color: #f87171; }
+        .test-result {
+            background: #1a1a1a;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid transparent;
+        }
+        .test-result.passed {
+            border-left-color: #34d399;
+        }
+        .test-result.failed {
+            border-left-color: #f87171;
+            background: #2a1a1a;
+        }
+        .test-name {
+            flex: 1;
+        }
+        .test-status {
+            font-weight: bold;
+            font-size: 18px;
+            margin-right: 10px;
+        }
+        .test-time {
+            color: #888;
+            font-size: 12px;
+        }
+        .error-details {
+            margin-top: 10px;
+            padding: 10px;
+            background: #1a0a0a;
+            border-radius: 4px;
+            color: #ff8888;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .coverage {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        .coverage h2 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+        }
+        .coverage-bar {
+            height: 30px;
+            background: #0a0a0a;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        .coverage-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #34d399, #00d4ff);
+            transition: width 1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Utils Module - Test de Seguridad XSS</h1>
+        <p class="subtitle">Tests de prevención de ataques XSS y validación de datos</p>
+
+        <div class="summary">
+            <h2>Resumen de Ejecución</h2>
+            <div class="stats">
+                <div class="stat">
+                    <span>Total:</span>
+                    <span class="stat-value" id="total-tests">0</span>
+                </div>
+                <div class="stat pass">
+                    <span>✓ Pasados:</span>
+                    <span class="stat-value" id="passed-tests">0</span>
+                </div>
+                <div class="stat fail">
+                    <span>✗ Fallidos:</span>
+                    <span class="stat-value" id="failed-tests">0</span>
+                </div>
+                <div class="stat">
+                    <span>⏱️ Tiempo:</span>
+                    <span class="stat-value" id="total-time">0ms</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="test-results"></div>
+
+        <div class="coverage">
+            <h2>Cobertura de Código</h2>
+            <div class="coverage-bar">
+                <div class="coverage-fill" id="coverage-bar" style="width: 0%">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import {
+            escapeHtml,
+            escapeAttr,
+            safeNumber,
+            isValidYear,
+            isValidString,
+            formatNumber
+        } from '../../static/js/modules/utils.js';
+
+        // Simple Test Runner
+        class TestRunner {
+            constructor() {
+                this.tests = [];
+                this.passed = 0;
+                this.failed = 0;
+                this.startTime = 0;
+                this.totalFunctions = 6; // Total de funciones a testear
+                this.coveredFunctions = new Set();
+            }
+
+            test(name, fn) {
+                const start = performance.now();
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'test-result';
+
+                try {
+                    fn();
+                    this.passed++;
+                    resultDiv.classList.add('passed');
+                    resultDiv.innerHTML = `
+                        <span class="test-name">${name}</span>
+                        <span class="test-status pass">✓</span>
+                        <span class="test-time">${(performance.now() - start).toFixed(2)}ms</span>
+                    `;
+                    console.log('✓', name);
+                } catch (e) {
+                    this.failed++;
+                    resultDiv.classList.add('failed');
+                    resultDiv.innerHTML = `
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="test-name">${name}</span>
+                                <span class="test-status fail">✗</span>
+                                <span class="test-time">${(performance.now() - start).toFixed(2)}ms</span>
+                            </div>
+                            <div class="error-details">${e.message}</div>
+                        </div>
+                    `;
+                    console.error('✗', name, e);
+                }
+
+                document.getElementById('test-results').appendChild(resultDiv);
+            }
+
+            assert(condition, message) {
+                if (!condition) {
+                    throw new Error(message || 'Assertion failed');
+                }
+            }
+
+            assertEqual(actual, expected, message) {
+                if (actual !== expected) {
+                    throw new Error(
+                        message ||
+                        `Expected "${expected}" but got "${actual}"`
+                    );
+                }
+            }
+
+            trackCoverage(functionName) {
+                this.coveredFunctions.add(functionName);
+            }
+
+            finish() {
+                const totalTime = performance.now() - this.startTime;
+                const total = this.passed + this.failed;
+                const coverage = (this.coveredFunctions.size / this.totalFunctions) * 100;
+
+                document.getElementById('total-tests').textContent = total;
+                document.getElementById('passed-tests').textContent = this.passed;
+                document.getElementById('failed-tests').textContent = this.failed;
+                document.getElementById('total-time').textContent = totalTime.toFixed(0) + 'ms';
+
+                const coverageBar = document.getElementById('coverage-bar');
+                setTimeout(() => {
+                    coverageBar.style.width = coverage + '%';
+                    coverageBar.textContent = coverage.toFixed(1) + '%';
+                }, 100);
+
+                console.log(`\n📊 Resumen: ${this.passed}/${total} tests pasados (${coverage.toFixed(1)}% coverage)`);
+            }
+
+            run() {
+                this.startTime = performance.now();
+                this.runTests();
+                this.finish();
+            }
+
+            runTests() {
+                // ========== Tests de escapeHtml ==========
+                this.test('escapeHtml - Script tag básico', () => {
+                    this.trackCoverage('escapeHtml');
+                    const malicious = '<script>alert("XSS")</script>';
+                    const escaped = escapeHtml(malicious);
+                    this.assert(!escaped.includes('<script>'), 'No debe contener tag script');
+                    this.assert(escaped.includes('&lt;script&gt;'), 'Debe escapar < y >');
+                });
+
+                this.test('escapeHtml - Img tag con onerror', () => {
+                    this.trackCoverage('escapeHtml');
+                    const malicious = '<img src=x onerror="alert(1)">';
+                    const escaped = escapeHtml(malicious);
+                    this.assert(!escaped.includes('<img'), 'No debe contener tag img');
+                    this.assert(!escaped.includes('onerror'), 'Debe eliminar onerror como texto');
+                });
+
+                this.test('escapeHtml - Texto normal', () => {
+                    this.trackCoverage('escapeHtml');
+                    const normal = 'Juan Pérez - 田中太郎';
+                    const escaped = escapeHtml(normal);
+                    this.assertEqual(escaped, normal, 'Texto normal no debe cambiar');
+                });
+
+                this.test('escapeHtml - Null y undefined', () => {
+                    this.trackCoverage('escapeHtml');
+                    this.assertEqual(escapeHtml(null), '', 'Null debe retornar string vacío');
+                    this.assertEqual(escapeHtml(undefined), '', 'Undefined debe retornar string vacío');
+                });
+
+                this.test('escapeHtml - Números', () => {
+                    this.trackCoverage('escapeHtml');
+                    this.assertEqual(escapeHtml(123), '123', 'Números deben convertirse a string');
+                    this.assertEqual(escapeHtml(0), '0', 'Cero debe convertirse a string');
+                });
+
+                // ========== Tests de escapeAttr ==========
+                this.test('escapeAttr - Comillas dobles', () => {
+                    this.trackCoverage('escapeAttr');
+                    const input = 'value="malicious"';
+                    const escaped = escapeAttr(input);
+                    this.assert(escaped.includes('&quot;'), 'Debe escapar comillas dobles');
+                    this.assert(!escaped.includes('"'), 'No debe contener comillas sin escapar');
+                });
+
+                this.test('escapeAttr - Comillas simples', () => {
+                    this.trackCoverage('escapeAttr');
+                    const input = "value='malicious'";
+                    const escaped = escapeAttr(input);
+                    this.assert(escaped.includes('&#39;'), 'Debe escapar comillas simples');
+                });
+
+                this.test('escapeAttr - Ampersand', () => {
+                    this.trackCoverage('escapeAttr');
+                    const input = 'value&test';
+                    const escaped = escapeAttr(input);
+                    this.assert(escaped.includes('&amp;'), 'Debe escapar ampersand');
+                });
+
+                this.test('escapeAttr - Múltiples caracteres especiales', () => {
+                    this.trackCoverage('escapeAttr');
+                    const input = '"><script>alert(1)</script>';
+                    const escaped = escapeAttr(input);
+                    this.assert(!escaped.includes('<'), 'No debe contener <');
+                    this.assert(!escaped.includes('>'), 'No debe contener >');
+                    this.assert(escaped.includes('&quot;'), 'Debe escapar comillas');
+                });
+
+                // ========== Tests de safeNumber ==========
+                this.test('safeNumber - Número válido', () => {
+                    this.trackCoverage('safeNumber');
+                    this.assertEqual(safeNumber(123), 123, 'Debe retornar número válido');
+                    this.assertEqual(safeNumber(0), 0, 'Debe manejar cero');
+                    this.assertEqual(safeNumber(-5), -5, 'Debe manejar negativos');
+                });
+
+                this.test('safeNumber - String numérico', () => {
+                    this.trackCoverage('safeNumber');
+                    this.assertEqual(safeNumber('123'), 123, 'Debe convertir string');
+                    this.assertEqual(safeNumber('3.14'), 3.14, 'Debe manejar decimales');
+                });
+
+                this.test('safeNumber - Valor inválido con default', () => {
+                    this.trackCoverage('safeNumber');
+                    this.assertEqual(safeNumber('abc'), 0, 'Debe retornar default 0');
+                    this.assertEqual(safeNumber('abc', 100), 100, 'Debe retornar default custom');
+                    this.assertEqual(safeNumber(null, 50), 50, 'Null debe usar default');
+                    this.assertEqual(safeNumber(undefined, 50), 50, 'Undefined debe usar default');
+                });
+
+                this.test('safeNumber - NaN e Infinity', () => {
+                    this.trackCoverage('safeNumber');
+                    this.assertEqual(safeNumber(NaN), 0, 'NaN debe retornar default');
+                    this.assertEqual(safeNumber(Infinity), 0, 'Infinity debe retornar default');
+                    this.assertEqual(safeNumber(-Infinity), 0, '-Infinity debe retornar default');
+                });
+
+                // ========== Tests de isValidYear ==========
+                this.test('isValidYear - Años válidos', () => {
+                    this.trackCoverage('isValidYear');
+                    this.assert(isValidYear(2024), 'Año actual debe ser válido');
+                    this.assert(isValidYear(2000), 'Año 2000 debe ser válido');
+                    this.assert(isValidYear(2100), 'Año 2100 debe ser válido');
+                });
+
+                this.test('isValidYear - Años inválidos', () => {
+                    this.trackCoverage('isValidYear');
+                    this.assert(!isValidYear(1999), 'Año 1999 debe ser inválido');
+                    this.assert(!isValidYear(2101), 'Año 2101 debe ser inválido');
+                    this.assert(!isValidYear('abc'), 'String no numérico debe ser inválido');
+                });
+
+                this.test('isValidYear - String numérico válido', () => {
+                    this.trackCoverage('isValidYear');
+                    this.assert(isValidYear('2024'), 'String numérico válido debe pasar');
+                    this.assert(isValidYear('2050'), 'String "2050" debe ser válido');
+                });
+
+                this.test('isValidYear - Valores especiales', () => {
+                    this.trackCoverage('isValidYear');
+                    this.assert(!isValidYear(null), 'Null debe ser inválido');
+                    this.assert(!isValidYear(undefined), 'Undefined debe ser inválido');
+                    this.assert(!isValidYear(2024.5), 'Decimal debe ser inválido');
+                });
+
+                // ========== Tests de isValidString ==========
+                this.test('isValidString - Strings válidos', () => {
+                    this.trackCoverage('isValidString');
+                    this.assert(isValidString('test'), 'String normal debe ser válido');
+                    this.assert(isValidString('田中'), 'String japonés debe ser válido');
+                    this.assert(isValidString('123'), 'String numérico debe ser válido');
+                });
+
+                this.test('isValidString - Strings inválidos', () => {
+                    this.trackCoverage('isValidString');
+                    this.assert(!isValidString(''), 'String vacío debe ser inválido');
+                    this.assert(!isValidString('   '), 'String solo espacios debe ser inválido');
+                    this.assert(!isValidString(null), 'Null debe ser inválido');
+                    this.assert(!isValidString(undefined), 'Undefined debe ser inválido');
+                });
+
+                this.test('isValidString - Conversión automática', () => {
+                    this.trackCoverage('isValidString');
+                    this.assert(isValidString(123), 'Número debe convertirse y ser válido');
+                    this.assert(isValidString(true), 'Boolean debe convertirse y ser válido');
+                });
+
+                // ========== Tests de formatNumber ==========
+                this.test('formatNumber - Enteros', () => {
+                    this.trackCoverage('formatNumber');
+                    const result = formatNumber(1000);
+                    this.assert(result.includes('1'), 'Debe contener el número');
+                    // Diferentes locales pueden dar diferentes separadores
+                });
+
+                this.test('formatNumber - Decimales', () => {
+                    this.trackCoverage('formatNumber');
+                    this.assertEqual(formatNumber(3.14159, 2), '3.14', 'Debe formatear con 2 decimales');
+                    this.assertEqual(formatNumber(10.5, 1), '10.5', 'Debe formatear con 1 decimal');
+                });
+
+                this.test('formatNumber - Valores especiales', () => {
+                    this.trackCoverage('formatNumber');
+                    this.assertEqual(formatNumber('abc'), '0', 'String inválido debe ser 0');
+                    const zero = formatNumber(0);
+                    this.assert(zero === '0', 'Cero debe formatearse correctamente');
+                });
+
+                // ========== Tests de inyección SQL (conceptuales) ==========
+                this.test('Seguridad - Prevención SQL Injection conceptual', () => {
+                    const sqlInjection = "'; DROP TABLE users; --";
+                    const escaped = escapeHtml(sqlInjection);
+                    this.assert(!escaped.includes("';"), 'Debe escapar comillas en contexto SQL');
+                });
+
+                // ========== Tests de casos extremos ==========
+                this.test('Casos extremos - Múltiples tags anidados', () => {
+                    const nested = '<div><span><script>alert(1)</script></span></div>';
+                    const escaped = escapeHtml(nested);
+                    this.assert(!escaped.includes('<div>'), 'No debe contener tags sin escapar');
+                });
+
+                this.test('Casos extremos - Unicode y emojis', () => {
+                    const unicode = 'Test 🎉 ユーザー名';
+                    const escaped = escapeHtml(unicode);
+                    this.assert(escaped.includes('🎉'), 'Debe preservar emojis');
+                    this.assert(escaped.includes('ユーザー'), 'Debe preservar caracteres japoneses');
+                });
+            }
+        }
+
+        // Ejecutar tests
+        const runner = new TestRunner();
+        runner.run();
+    </script>
+</body>
+</html>
