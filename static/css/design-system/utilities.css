@@ -1,0 +1,567 @@
+/**
+ * YuKyuDATA Design System - Utility Classes
+ * Migracion de estilos inline hardcoded a clases reutilizables
+ * Respeta las variables CSS del tema (dark/light mode)
+ */
+
+/* ===========================
+   COLOR UTILITIES
+   =========================== */
+
+/* Text Colors - Respeta variables del tema */
+.text-muted {
+  color: var(--text-muted) !important;
+}
+
+.text-primary {
+  color: var(--text-primary) !important;
+}
+
+.text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+.text-cyan {
+  color: var(--primary) !important;
+}
+
+.text-success {
+  color: var(--success) !important;
+}
+
+.text-warning {
+  color: var(--warning) !important;
+}
+
+.text-danger {
+  color: var(--danger) !important;
+}
+
+.text-accent {
+  color: var(--accent) !important;
+}
+
+/* Background Colors - Con opacidad para glass effect */
+.bg-cyan-highlight {
+  background: rgba(56, 189, 248, 0.1) !important;
+  border-radius: 12px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.bg-cyan-subtle {
+  background: rgba(6, 182, 212, 0.1) !important;
+}
+
+.bg-success-subtle {
+  background: rgba(52, 211, 153, 0.1) !important;
+}
+
+.bg-warning-subtle {
+  background: rgba(251, 191, 36, 0.1) !important;
+}
+
+.bg-purple-subtle {
+  background: rgba(168, 85, 247, 0.1) !important;
+}
+
+.bg-glass {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(10px);
+}
+
+.bg-glass-strong {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(20px);
+}
+
+/* Border Utilities */
+.border-cyan {
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.border-cyan-left {
+  border-left: 3px solid #38bdf8;
+}
+
+.border-success-left {
+  border-left: 3px solid #34d399;
+}
+
+.border-warning-left {
+  border-left: 3px solid #fbbf24;
+}
+
+.border-purple-left {
+  border-left: 3px solid #a855f7;
+}
+
+.border-top-subtle {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ===========================
+   LAYOUT UTILITIES
+   =========================== */
+
+/* Position */
+.position-relative {
+  position: relative !important;
+}
+
+.position-absolute {
+  position: absolute !important;
+}
+
+.position-fixed {
+  position: fixed !important;
+}
+
+/* Positioning helpers */
+.top-right {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+}
+
+/* Flexbox Utilities */
+.flex {
+  display: flex !important;
+}
+
+.flex-row {
+  flex-direction: row !important;
+}
+
+.flex-column {
+  flex-direction: column !important;
+}
+
+.flex-wrap {
+  flex-wrap: wrap !important;
+}
+
+.flex-nowrap {
+  flex-wrap: nowrap !important;
+}
+
+.flex-center {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.flex-start {
+  display: flex !important;
+  align-items: flex-start !important;
+}
+
+.flex-end {
+  display: flex !important;
+  align-items: flex-end !important;
+}
+
+.align-center {
+  align-items: center !important;
+}
+
+.align-start {
+  align-items: flex-start !important;
+}
+
+.align-end {
+  align-items: flex-end !important;
+}
+
+.justify-center {
+  justify-content: center !important;
+}
+
+.justify-start {
+  justify-content: flex-start !important;
+}
+
+.justify-end {
+  justify-content: flex-end !important;
+}
+
+.justify-between {
+  justify-content: space-between !important;
+}
+
+/* Gap utilities */
+.gap-xs {
+  gap: 0.25rem !important;
+}
+
+.gap-sm {
+  gap: 0.5rem !important;
+}
+
+.gap-md {
+  gap: 1rem !important;
+}
+
+.gap-lg {
+  gap: 1.5rem !important;
+}
+
+.gap-xl {
+  gap: 2rem !important;
+}
+
+/* ===========================
+   SPACING UTILITIES
+   =========================== */
+
+/* Margin utilities */
+.m-0 { margin: 0 !important; }
+.mt-xs { margin-top: 0.25rem !important; }
+.mt-sm { margin-top: 0.5rem !important; }
+.mt-md { margin-top: 0.75rem !important; }
+.mt-lg { margin-top: 1rem !important; }
+.mt-xl { margin-top: 1.25rem !important; }
+.mt-2xl { margin-top: 1.5rem !important; }
+
+.mb-xs { margin-bottom: 0.25rem !important; }
+.mb-sm { margin-bottom: 0.5rem !important; }
+.mb-md { margin-bottom: 0.75rem !important; }
+.mb-lg { margin-bottom: 1rem !important; }
+.mb-xl { margin-bottom: 1.25rem !important; }
+.mb-2xl { margin-bottom: 1.5rem !important; }
+
+.ml-xs { margin-left: 0.25rem !important; }
+.ml-sm { margin-left: 0.5rem !important; }
+.ml-md { margin-left: 0.75rem !important; }
+.ml-lg { margin-left: 1rem !important; }
+
+.mr-xs { margin-right: 0.25rem !important; }
+.mr-sm { margin-right: 0.5rem !important; }
+.mr-md { margin-right: 0.75rem !important; }
+
+/* Padding utilities */
+.p-0 { padding: 0 !important; }
+.p-sm { padding: 0.5rem !important; }
+.p-md { padding: 1rem !important; }
+.p-lg { padding: 1.5rem !important; }
+.p-xl { padding: 2rem !important; }
+
+.pt-sm { padding-top: 0.5rem !important; }
+.pt-md { padding-top: 0.75rem !important; }
+.pt-lg { padding-top: 1rem !important; }
+
+.pb-sm { padding-bottom: 0.5rem !important; }
+.pb-md { padding-bottom: 0.75rem !important; }
+.pb-lg { padding-bottom: 1rem !important; }
+
+.px-sm {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+
+.px-md {
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+.py-sm {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+.py-md {
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+}
+
+/* ===========================
+   DISPLAY UTILITIES
+   =========================== */
+
+.d-none {
+  display: none !important;
+}
+
+.d-block {
+  display: block !important;
+}
+
+.d-inline {
+  display: inline !important;
+}
+
+.d-inline-block {
+  display: inline-block !important;
+}
+
+.d-grid {
+  display: grid !important;
+}
+
+/* ===========================
+   SIZING UTILITIES
+   =========================== */
+
+.w-full {
+  width: 100% !important;
+}
+
+.w-auto {
+  width: auto !important;
+}
+
+.h-full {
+  height: 100% !important;
+}
+
+.h-auto {
+  height: auto !important;
+}
+
+/* Chart container heights */
+.chart-container-sm {
+  position: relative;
+  height: 320px;
+  width: 100%;
+}
+
+.chart-container-md {
+  position: relative;
+  height: 400px;
+  width: 100%;
+}
+
+.chart-container-lg {
+  position: relative;
+  height: 500px;
+  width: 100%;
+}
+
+/* Max height for scrollable areas */
+.max-h-200 {
+  max-height: 200px !important;
+  overflow-y: auto;
+}
+
+.max-h-90vh {
+  max-height: 90vh !important;
+}
+
+/* ===========================
+   OVERFLOW UTILITIES
+   =========================== */
+
+.overflow-auto {
+  overflow: auto !important;
+}
+
+.overflow-y-auto {
+  overflow-y: auto !important;
+}
+
+.overflow-hidden {
+  overflow: hidden !important;
+}
+
+/* ===========================
+   BORDER RADIUS UTILITIES
+   =========================== */
+
+.rounded-none { border-radius: 0 !important; }
+.rounded-sm { border-radius: 4px !important; }
+.rounded { border-radius: 8px !important; }
+.rounded-md { border-radius: 12px !important; }
+.rounded-lg { border-radius: 16px !important; }
+
+.rounded-tl { border-radius: 8px 0 0 0 !important; }
+.rounded-tr { border-radius: 0 8px 0 0 !important; }
+
+/* ===========================
+   TEXT UTILITIES
+   =========================== */
+
+.text-center {
+  text-align: center !important;
+}
+
+.text-left {
+  text-align: left !important;
+}
+
+.text-right {
+  text-align: right !important;
+}
+
+/* Font sizes */
+.text-xs { font-size: 0.75rem !important; }
+.text-sm { font-size: 0.85rem !important; }
+.text-base { font-size: 1rem !important; }
+.text-lg { font-size: 1.1rem !important; }
+.text-xl { font-size: 1.25rem !important; }
+.text-2xl { font-size: 1.5rem !important; }
+
+/* Font weights */
+.font-normal { font-weight: 400 !important; }
+.font-medium { font-weight: 500 !important; }
+.font-semibold { font-weight: 600 !important; }
+.font-bold { font-weight: 700 !important; }
+
+/* ===========================
+   OPACITY UTILITIES
+   =========================== */
+
+.opacity-0 { opacity: 0 !important; }
+.opacity-50 { opacity: 0.5 !important; }
+.opacity-60 { opacity: 0.6 !important; }
+.opacity-70 { opacity: 0.7 !important; }
+.opacity-80 { opacity: 0.8 !important; }
+.opacity-90 { opacity: 0.9 !important; }
+.opacity-100 { opacity: 1 !important; }
+
+/* ===========================
+   Z-INDEX UTILITIES
+   =========================== */
+
+.z-0 { z-index: 0 !important; }
+.z-10 { z-index: 10 !important; }
+.z-20 { z-index: 20 !important; }
+.z-30 { z-index: 30 !important; }
+.z-40 { z-index: 40 !important; }
+.z-50 { z-index: 50 !important; }
+
+/* ===========================
+   CURSOR UTILITIES
+   =========================== */
+
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
+.cursor-not-allowed {
+  cursor: not-allowed !important;
+}
+
+/* ===========================
+   SHADOW UTILITIES
+   =========================== */
+
+.shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+.shadow {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+.shadow-md {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ===========================
+   LEGEND INDICATOR (Color boxes)
+   =========================== */
+
+.legend-box {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  margin-right: 0.25rem;
+}
+
+.legend-box-cyan { background: #06b6d4; }
+.legend-box-cyan-dark { background: #0891b2; }
+.legend-box-cyan-light { background: #67e8f9; }
+.legend-box-warning { background: #fbbf24; }
+.legend-box-success { background: #34d399; }
+
+/* ===========================
+   SPECIAL COMPONENT CLASSES
+   =========================== */
+
+/* Empty state message */
+.empty-state {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 2rem;
+}
+
+/* Info card with accent border */
+.info-card-cyan {
+  padding: 1rem;
+  background: rgba(56, 189, 248, 0.1);
+  border-left: 3px solid #38bdf8;
+}
+
+.info-card-success {
+  padding: 1rem;
+  background: rgba(52, 211, 153, 0.1);
+  border-left: 3px solid #34d399;
+}
+
+.info-card-warning {
+  padding: 1rem;
+  background: rgba(251, 191, 36, 0.1);
+  border-left: 3px solid #fbbf24;
+}
+
+.info-card-purple {
+  padding: 1rem;
+  background: rgba(168, 85, 247, 0.1);
+  border-left: 3px solid #a855f7;
+}
+
+/* Table header with subtle background */
+.table-header-highlight {
+  background: rgba(56, 189, 248, 0.15);
+}
+
+/* Modal container */
+.modal-content-container {
+  width: 600px;
+  max-width: 95%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Modal close button positioned */
+.modal-close-btn {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  background: transparent;
+  color: white;
+  z-index: 10;
+}
+
+/* Grid column span utilities */
+.col-span-full {
+  grid-column: 1 / -1;
+}
+
+/* ===========================
+   RESPONSIVE UTILITIES
+   =========================== */
+
+@media (max-width: 768px) {
+  .mobile-hidden {
+    display: none !important;
+  }
+
+  .chart-container-sm,
+  .chart-container-md,
+  .chart-container-lg {
+    height: 280px;
+  }
+
+  .modal-content-container {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+@media (min-width: 769px) {
+  .desktop-hidden {
+    display: none !important;
+  }
+}

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Módulos ES6 Refactorizados</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+        .test-section {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .test-result {
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+        }
+        .success {
+            background: rgba(34, 197, 94, 0.2);
+            border-left: 4px solid #22c55e;
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.2);
+            border-left: 4px solid #ef4444;
+        }
+        h1 { color: #38bdf8; }
+        h2 { color: #94a3b8; font-size: 1.2rem; }
+        pre {
+            background: #0f172a;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test de Módulos ES6 Refactorizados</h1>
+    <div id="test-results"></div>
+
+    <script type="module">
+        import * as Utils from './modules/utils.js';
+        import { ThemeManager } from './modules/theme-manager.js';
+        import { DataService } from './modules/data-service.js';
+        import { Visualizations, ChartManager } from './modules/chart-manager.js';
+        import UIManager from './modules/ui-manager.js';
+        import { ExportService } from './modules/export-service.js';
+
+        const resultsContainer = document.getElementById('test-results');
+        const results = [];
+
+        function addResult(title, success, message) {
+            results.push({ title, success, message });
+        }
+
+        function displayResults() {
+            resultsContainer.innerHTML = results.map(r => `
+                <div class="test-section">
+                    <h2>${r.title}</h2>
+                    <div class="test-result ${r.success ? 'success' : 'error'}">
+                        ${r.success ? '✅' : '❌'} ${r.message}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Test 1: Utils Module
+        try {
+            const escaped = Utils.escapeHtml('<script>alert("xss")</script>');
+            const isValid = escaped === '&lt;script&gt;alert("xss")&lt;/script&gt;';
+            addResult('Utils Module', isValid,
+                isValid ? 'escapeHtml funciona correctamente' : 'Error en escapeHtml'
+            );
+        } catch (e) {
+            addResult('Utils Module', false, `Error: ${e.message}`);
+        }
+
+        // Test 2: ThemeManager
+        try {
+            const theme = new ThemeManager();
+            theme.init();
+            const current = theme.getCurrent();
+            addResult('ThemeManager', true, `Tema actual: ${current}`);
+        } catch (e) {
+            addResult('ThemeManager', false, `Error: ${e.message}`);
+        }
+
+        // Test 3: DataService
+        try {
+            const dataService = new DataService('http://localhost:8000/api');
+            const hasMethod = typeof dataService.fetchEmployees === 'function';
+            addResult('DataService', hasMethod,
+                hasMethod ? 'Métodos disponibles correctamente' : 'Falta método fetchEmployees'
+            );
+        } catch (e) {
+            addResult('DataService', false, `Error: ${e.message}`);
+        }
+
+        // Test 4: Visualizations
+        try {
+            const viz = new Visualizations();
+            const hasMethod = typeof viz.animateRing === 'function';
+            addResult('Visualizations', hasMethod,
+                hasMethod ? 'Métodos de animación disponibles' : 'Falta método animateRing'
+            );
+        } catch (e) {
+            addResult('Visualizations', false, `Error: ${e.message}`);
+        }
+
+        // Test 5: ChartManager
+        try {
+            const chartManager = new ChartManager();
+            const hasMethod = typeof chartManager.renderDistribution === 'function';
+            addResult('ChartManager', hasMethod,
+                hasMethod ? 'Métodos de gráficos disponibles' : 'Falta método renderDistribution'
+            );
+        } catch (e) {
+            addResult('ChartManager', false, `Error: ${e.message}`);
+        }
+
+        // Test 6: UIManager
+        try {
+            const state = { data: [], year: null, availableYears: [], charts: {}, typeFilter: 'all' };
+            const config = { apiBase: 'http://localhost:8000/api' };
+            const viz = new Visualizations();
+            const chartManager = new ChartManager();
+            const uiManager = new UIManager(state, config, viz, chartManager);
+            const hasMethod = typeof uiManager.showToast === 'function';
+            addResult('UIManager', hasMethod,
+                hasMethod ? 'Métodos de UI disponibles' : 'Falta método showToast'
+            );
+        } catch (e) {
+            addResult('UIManager', false, `Error: ${e.message}`);
+        }
+
+        // Test 7: ExportService
+        try {
+            const exportService = new ExportService();
+            const hasMethod = typeof exportService.exportToCSV === 'function';
+            addResult('ExportService', hasMethod,
+                hasMethod ? 'Métodos de exportación disponibles' : 'Falta método exportToCSV'
+            );
+        } catch (e) {
+            addResult('ExportService', false, `Error: ${e.message}`);
+        }
+
+        // Test 8: Verificar que Utils tiene todas las funciones
+        try {
+            const requiredFunctions = ['escapeHtml', 'escapeAttr', 'safeNumber', 'isValidYear'];
+            const missing = requiredFunctions.filter(fn => typeof Utils[fn] !== 'function');
+            addResult('Utils - Funciones completas', missing.length === 0,
+                missing.length === 0 ? 'Todas las funciones presentes' : `Faltan: ${missing.join(', ')}`
+            );
+        } catch (e) {
+            addResult('Utils - Funciones completas', false, `Error: ${e.message}`);
+        }
+
+        // Display all results
+        displayResults();
+
+        // Summary
+        const passed = results.filter(r => r.success).length;
+        const total = results.length;
+        const percentage = Math.round((passed / total) * 100);
+
+        resultsContainer.innerHTML += `
+            <div class="test-section" style="background: ${percentage === 100 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(251, 191, 36, 0.1)'};">
+                <h2>📊 Resumen</h2>
+                <div style="font-size: 2rem; font-weight: bold; color: ${percentage === 100 ? '#22c55e' : '#fbbf24'};">
+                    ${passed}/${total} tests pasados (${percentage}%)
+                </div>
+            </div>
+        `;
+    </script>
+</body>
+</html>
