@@ -256,52 +256,17 @@ const App = {
         current: 'dark',
 
         init() {
-            // Enhanced initialization with system preference support
+            // Load saved theme or default to dark
             const saved = localStorage.getItem('yukyu-theme');
-            const preference = localStorage.getItem('yukyu-theme-preference');
-
-            if (preference === 'auto' && !saved) {
-                // Respect system preference (dark/light mode)
-                this.current = window.matchMedia('(prefers-color-scheme: dark)').matches
-                    ? 'dark'
-                    : 'light';
-                console.log('🎨 Theme: Using system preference (' + this.current + ')');
-            } else {
-                // Use saved theme or default to dark
-                this.current = saved || 'dark';
-                console.log('🎨 Theme: Using saved preference (' + this.current + ')');
-            }
-
+            this.current = saved || 'dark';
             this.apply();
-
-            // Listen for system theme changes
-            if (window.matchMedia) {
-                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-                    if (localStorage.getItem('yukyu-theme-preference') === 'auto') {
-                        this.current = e.matches ? 'dark' : 'light';
-                        this.apply();
-                        console.log('🎨 System theme changed to: ' + this.current);
-                    }
-                });
-            }
         },
 
         toggle() {
-            // Toggle between dark and light, marking as manually selected
             this.current = this.current === 'dark' ? 'light' : 'dark';
             this.apply();
             localStorage.setItem('yukyu-theme', this.current);
-            localStorage.setItem('yukyu-theme-preference', 'manual');
             App.ui.showToast('info', this.current === 'dark' ? '🌙 ダークモード' : '☀️ ライトモード');
-        },
-
-        /**
-         * Set theme to auto (follow system preference)
-         */
-        setAuto() {
-            localStorage.setItem('yukyu-theme-preference', 'auto');
-            this.init(); // Re-initialize to apply system preference
-            App.ui.showToast('info', '🎨 Auto mode: Following system preference');
         },
 
         apply() {
@@ -312,12 +277,6 @@ const App = {
             const label = document.getElementById('theme-label');
             if (icon) icon.textContent = this.current === 'dark' ? '🌙' : '☀️';
             if (label) label.textContent = this.current === 'dark' ? 'Dark' : 'Light';
-
-            // Update theme display in settings
-            const themeModeDisplay = document.getElementById('theme-mode-display');
-            if (themeModeDisplay) {
-                themeModeDisplay.textContent = this.current === 'dark' ? 'Dark' : 'Light';
-            }
 
             // ============================================
             // ACTUALIZAR FLATPICKR DINÁMICAMENTE

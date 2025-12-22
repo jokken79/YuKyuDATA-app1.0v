@@ -2,191 +2,126 @@
 
 ## Resumen de Cambios / Summary of Changes
 
-Se han implementado dos mejoras avanzadas al sistema de gestión de temas del YuKyu Dashboard para mejorar la experiencia del usuario y la compatibilidad con preferencias del sistema operativo.
+Se ha implementado una mejora al sistema de gestión de temas del YuKyu Dashboard manteniendo la simplicidad: **solo control manual dark/light sin automáticos**.
 
-Two advanced improvements have been implemented to the YuKyu Dashboard's theme management system to enhance user experience and support for operating system preferences.
-
-**Mejora C (Transiciones suaves) fue revertida** por preferencia del usuario, manteniendo el cambio instantáneo de tema.
+One improvement has been implemented to the YuKyu Dashboard's theme management system maintaining simplicity: **manual dark/light control only, no automatic modes**.
 
 ---
 
-## 1️⃣ **Mejora A: Soporte PWA Mejorado con Preferencia Manual/Auto**
+## ✅ **Mejora Implementada: Persistencia de Tema Manual**
 
 ### Cambios en `static/js/app.js`
 
-#### Función `toggle()` (línea 289-296)
+#### Función `init()` (línea 258-263)
+```javascript
+init() {
+    // Load saved theme or default to dark
+    const saved = localStorage.getItem('yukyu-theme');
+    this.current = saved || 'dark';
+    this.apply();
+}
+```
+
+**Características:**
+- Lee tema guardado de localStorage
+- Default a 'dark' si no hay preferencia guardada
+- Aplica tema al cargar página
+
+#### Función `toggle()` (línea 265-270)
 ```javascript
 toggle() {
     this.current = this.current === 'dark' ? 'light' : 'dark';
     this.apply();
     localStorage.setItem('yukyu-theme', this.current);
-    localStorage.setItem('yukyu-theme-preference', 'manual');  // ← NUEVO
-    App.ui.showToast('info', '...');
-}
-```
-
-**Cambios:**
-- Ahora registra el cambio como preferencia **manual**
-- Nueva clave localStorage: `'yukyu-theme-preference'`
-- Valores: `'manual'` o `'auto'`
-
-#### Nueva función `setAuto()` (línea 298-305)
-```javascript
-setAuto() {
-    localStorage.setItem('yukyu-theme-preference', 'auto');
-    this.init(); // Re-initialize to apply system preference
-    App.ui.showToast('info', '🎨 Auto mode: Following system preference');
+    App.ui.showToast('info', this.current === 'dark' ? '🌙 ダークモード' : '☀️ ライトモード');
 }
 ```
 
 **Características:**
-- Establece modo automático
-- Re-inicializa para aplicar preferencia del sistema
-- Disponible en Settings
+- Alterna entre dark y light
+- Guarda preferencia en localStorage
+- Muestra notificación al usuario
+- **Cambio instantáneo** sin transiciones
 
-### localStorage Keys
-| Clave | Valor | Propósito |
-|-------|-------|----------|
-| `yukyu-theme` | `'dark'` \| `'light'` | Tema actual |
-| `yukyu-theme-preference` | `'manual'` \| `'auto'` | Modo de selección |
-
----
-
-## 2️⃣ **Mejora B: Respeto por Preferencia del Sistema Operativo**
-
-### Cambios en `static/js/app.js`
-
-#### Función `init()` mejorada (línea 258-287)
-
-**Características nuevas:**
-
-1. **Detección de preferencia del SO**:
+#### Función `apply()` (línea 272-320)
 ```javascript
-const preference = localStorage.getItem('yukyu-theme-preference');
+apply() {
+    document.documentElement.setAttribute('data-theme', this.current);
 
-if (preference === 'auto' && !saved) {
-    this.current = window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light';
-    console.log('🎨 Theme: Using system preference (' + this.current + ')');
+    // Update theme toggle button
+    const icon = document.getElementById('theme-icon');
+    const label = document.getElementById('theme-label');
+    if (icon) icon.textContent = this.current === 'dark' ? '🌙' : '☀️';
+    if (label) label.textContent = this.current === 'dark' ? 'Dark' : 'Light';
+
+    // Actualizar Flatpickr y selectores...
 }
 ```
 
-2. **Listener para cambios del sistema en tiempo real**:
-```javascript
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-    if (localStorage.getItem('yukyu-theme-preference') === 'auto') {
-        this.current = e.matches ? 'dark' : 'light';
-        this.apply();
-        console.log('🎨 System theme changed to: ' + this.current);
-    }
-});
-```
+**Lo que hace:**
+- Aplica atributo `data-theme` al HTML
+- Actualiza icono en header (🌙/☀️)
+- Actualiza label en header
+- Refresca Flatpickr calendarios
+- Refresca selectores HTML
 
-**Comportamiento:**
-- ✅ Si está en modo `'auto'`, sigue la preferencia del SO
-- ✅ Si el usuario cambia tema en Windows/macOS/Linux, se actualiza automáticamente
-- ✅ Si está en modo `'manual'`, ignora los cambios del SO
-- ✅ Logs en consola para debugging
+### localStorage
 
-### Flujo de Decisión
-```
-┌─ localStorage.getItem('yukyu-theme-preference') ─┐
-│                                                    │
-├─ 'auto'  ──→ ¿Hay 'yukyu-theme' guardado?
-│              │
-│              ├─ Sí  → Usar savedNo  → Usar prefers-color-scheme del SO
-│
-└─ 'manual' → Usar localStorage.getItem('yukyu-theme')
-```
+| Clave | Valor | Propósito |
+|-------|-------|----------|
+| `yukyu-theme` | `'dark'` \| `'light'` | Tema actual guardado |
 
 ---
 
-## 3️⃣ **Mejora C: Transiciones Suaves (REVERTIDA)**
+## 🎨 **Nueva Sección en Settings**
 
-**Estado:** ❌ Revertida por preferencia del usuario
+### Cambios en `templates/index.html` (línea 1506-1517)
 
-Se decidió no implementar transiciones suaves en cambios de tema porque:
-- ✅ El usuario prefiere el cambio instantáneo "sprint" (snap)
-- ✅ Carga, spinners y animaciones mantienen su comportamiento ágil
-- ✅ Respeta la experiencia de usuario deseada
-
-**Resultado:** El cambio de tema es **instantáneo** sin transiciones de 0.3s
-
----
-
-## 4️⃣ **Mejoras en UI: Nueva Sección de Configuración**
-
-### Cambios en `templates/index.html` (línea 1506-1521)
-
-#### Nueva sección "Appearance Settings"
+#### Appearance Settings
 ```html
 <h4 class="stat-label mb-lg">🎨 外観設定 (Appearance)</h4>
 <div class="flex gap-md flex-wrap">
-    <button class="btn btn-glass" onclick="App.theme.toggle()">
-        🌙 Manual Mode (Current: <span id="theme-mode-display">Dark</span>)
+    <button class="btn btn-glass" onclick="App.theme.toggle()"
+            title="Toggle between dark and light theme">
+        🌙 Toggle Theme
     </button>
-    <button class="btn btn-glass" onclick="App.theme.setAuto()">
-        🎨 Auto Mode (System Preference)
-    </button>
+</div>
+<div class="mt-md text-sm text-muted">
+    Click to switch between dark and light mode. Your preference is saved automatically.
 </div>
 ```
 
-**Ubicación:** Settings → Appearance Settings
+**Ubicación:** Settings → Appearance
 
 **Elementos:**
-- Botón Manual Mode: Alterna entre dark/light
-- Botón Auto Mode: Sigue preferencia del SO
-- Display dinámico del tema actual
-- Descripción bilingüe (Japonés/Inglés)
-
-### Función `apply()` mejorada (línea 316-320)
-```javascript
-const themeModeDisplay = document.getElementById('theme-mode-display');
-if (themeModeDisplay) {
-    themeModeDisplay.textContent = this.current === 'dark' ? 'Dark' : 'Light';
-}
-```
-
-**Beneficio:** El display en Settings se actualiza automáticamente
+- Botón simple "Toggle Theme"
+- Alterna entre dark/light
+- Preferencia se guarda automáticamente
+- Descripción clara
 
 ---
 
 ## 🧪 Cómo Probar / How to Test
 
-### Test 1: Preferencia Manual
+### Test 1: Toggle Manual
 ```bash
-# 1. Abrir app en dark mode
-# 2. Settings → Appearance → Click "Manual Mode"
-# 3. Verificar que alterna dark/light
-# 4. Recargar página (F5)
-# 5. Debe mantener el tema elegido ✅
+# 1. Settings → Appearance → Click "Toggle Theme"
+# 2. Observar cambio instantáneo entre dark/light ⚡
+# 3. Recargar página (F5)
+# 4. Debe mantener el tema elegido ✅
 ```
 
-### Test 2: Modo Auto
-```bash
-# 1. Settings → Appearance → Click "Auto Mode"
-# 2. Cambiar tema en Windows Settings (dark/light)
-#    - Windows: Settings → Personalization → Colors
-#    - macOS: System Preferences → General
-#    - Linux: Settings → Appearance
-# 3. Refrescar app (F5)
-# 4. Debe seguir preferencia del SO ✅
-```
-
-### Test 3: Cambio Instantáneo de Tema
-```bash
-# 1. Settings → Appearance → Click botón manual
-# 2. Observar que cambio es INSTANTÁNEO (sin transiciones)
-# 3. Confetti mantiene animaciones ágiles ✅
-# 4. Spinners mantienen velocidad ✅
-```
-
-### Test 4: Persistencia localStorage
+### Test 2: Persistencia localStorage
 ```javascript
 // En browser console (F12)
-localStorage.getItem('yukyu-theme')      // 'dark' o 'light'
-localStorage.getItem('yukyu-theme-preference')  // 'manual' o 'auto'
+localStorage.getItem('yukyu-theme')  // 'dark' o 'light'
+```
+
+### Test 3: Cambio en Header
+```bash
+# 1. Settings → Appearance → Click "Toggle Theme"
+# 2. Observar que icono en header cambia (🌙 ↔ ☀️)
+# 3. Label cambia (Dark ↔ Light)
 ```
 
 ---
@@ -195,38 +130,22 @@ localStorage.getItem('yukyu-theme-preference')  // 'manual' o 'auto'
 
 | Aspecto | Antes | Después |
 |---------|-------|---------|
-| **Persistencia** | ✅ Basic localStorage | ✅ Enhanced con preferencias |
-| **Modo Manual** | ✅ Solo toggle() | ✅ Explícitamente guardado |
-| **Modo Auto** | ❌ No soportado | ✅ Sigue SO automáticamente |
-| **Cambios SO en vivo** | ❌ No detecta | ✅ Listener activo |
-| **Transiciones** | ✅ Instantáneo | ✅ Instantáneo (sin cambios) |
-| **Console logs** | ❌ Ninguno | ✅ Debug info |
-| **UI Settings** | ⚠️ Mínimo | ✅ Completa y bilingüe |
+| **Persistencia** | ✅ Basic localStorage | ✅ localStorage |
+| **Toggle Manual** | ✅ Funciona | ✅ Simplificado |
+| **Automáticos** | ❌ No | ❌ No (quitados) |
+| **Transiciones** | ✅ Instantáneo | ✅ Instantáneo |
+| **Console logs** | ❌ Ninguno | ❌ Ninguno |
+| **UI Settings** | ⚠️ Compleja | ✅ Simple |
 
 ---
 
 ## 🔧 Debugging
-
-### Console Logs Útiles
-```javascript
-// Al cargar página
-🎨 Theme: Using system preference (dark)
-// O
-🎨 Theme: Using saved preference (light)
-
-// Si cambia tema del SO
-🎨 System theme changed to: light
-
-// Si hace toggle
-// Toast: 🌙 ダークモード
-```
 
 ### Verificar Estado
 ```javascript
 // En Developer Tools (F12)
 console.log(App.theme.current)           // 'dark' o 'light'
 localStorage.getItem('yukyu-theme')      // 'dark' o 'light'
-localStorage.getItem('yukyu-theme-preference')  // 'manual' o 'auto'
 ```
 
 ---
@@ -234,37 +153,30 @@ localStorage.getItem('yukyu-theme-preference')  // 'manual' o 'auto'
 ## 💾 Cambios de Archivo
 
 ### Archivos modificados:
-1. ✅ `static/js/app.js` (52 líneas añadidas)
-   - Función `init()` mejorada
-   - Función `toggle()` mejorada
-   - Nueva función `setAuto()`
-   - Función `apply()` mejorada
+1. ✅ `static/js/app.js` (simplificado)
+   - Función `init()` simplificada
+   - Función `toggle()` sin flags
+   - Función `apply()` básica
+   - **Removidas:** `setAuto()`, listeners, lógica de preferencias
 
-2. ⏸️ `static/css/main.css` (29 líneas añadidas y luego revertidas)
-   - Sección "SMOOTH THEME TRANSITIONS" → REVERTIDA
-   - Se mantiene cambio instantáneo de tema (sin transiciones)
+2. ✅ `templates/index.html` (simplificado)
+   - Sección "Appearance Settings" con un solo botón
+   - Removido botón "Auto Mode"
+   - Removido elemento `theme-mode-display`
 
-3. ✅ `templates/index.html` (16 líneas añadidas)
-   - Nueva sección "Appearance Settings"
-   - Dos botones para Manual/Auto mode
-   - Elemento para display del tema actual
-
-### Total: 68 líneas de código final (sin transiciones CSS)
+### Total: 20 líneas de código (simple y limpio)
 
 ---
 
 ## 🚀 Conclusión
 
-Estas mejoras **no requieren cambio de framework** y mantienen la simpleza de vanilla JS mientras agregan:
+Sistema de temas **simple y limpio**:
 
-- ✅ Control manual/automático del tema
-- ✅ Compatibilidad con preferencias del SO
-- ✅ Cambio instantáneo de tema (sin transiciones)
-- ✅ Mejor documentación y debugging
-- ✅ UI intuitiva en Settings
-
-**Mejoras implementadas:** 2 (Mejora A + B)
-**Mejora C (transiciones):** Revertida por preferencia del usuario
+- ✅ Control manual dark/light
+- ✅ Persistencia automática
+- ✅ Cambio instantáneo (sin transiciones)
+- ✅ Sin lógica automática
+- ✅ UI intuitiva
 
 **Estado:** Production-ready ✅
 
@@ -273,9 +185,11 @@ Estas mejoras **no requieren cambio de framework** y mantienen la simpleza de va
 ## 📝 Commit Info
 
 ```
-Commit: d2df8a8
-Branch: claude/evaluate-framework-choice-pifKx
-Message: feat: Implementa mejoras avanzadas de persistencia y gestión del tema
-
-3 files changed, 92 insertions(+), 2 deletions(-)
+Commits:
+- d2df8a8 - feat: Implementa mejoras avanzadas de persistencia y gestión del tema
+- d4ac857 - docs: Agregar documentación detallada de mejoras de temas
+- c03426b - refactor: Revertir Mejora C (transiciones suaves) por preferencia del usuario
+- NUEVO   - refactor: Remover Mejora B, mantener solo toggle manual simple
 ```
+
+**Branch:** `claude/evaluate-framework-choice-pifKx`
