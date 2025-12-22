@@ -407,15 +407,16 @@
                 <div class="flex-center gap-md">
                     <div class="flex-center gap-sm mr-md" id="year-filter"></div>
 
-                    <!-- Theme Toggle -->
-                    <button class="theme-toggle" onclick="App.theme.toggle()" title="テーマ切替" aria-label="Toggle theme" type="button">
-                        <div class="theme-toggle-track">
-                            <div class="theme-toggle-thumb">
-                                <span id="theme-icon">🌙</span>
-                            </button>
-                        </div>
-                        <span class="theme-toggle-label" id="theme-label">Dark</span>
-                    </div>
+                    <!-- Theme Toggle - Premium -->
+                    <button class="theme-toggle-premium"
+                            onclick="App.theme.toggle()"
+                            title="テーマ切替 (Ctrl+Shift+T)"
+                            aria-label="Toggle dark/light theme. Current theme: dark"
+                            aria-pressed="false"
+                            type="button">
+                        <span class="theme-toggle-icon" id="theme-icon" aria-hidden="true">🌙</span>
+                        <span class="theme-toggle-text" id="theme-label">Dark</span>
+                    </button>
 
                     <button class="btn btn-primary" id="btn-sync-main" onclick="App.data.sync()" aria-label="Sync vacation data" type="button">
                         <span class="btn-icon" aria-hidden="true">⚡</span>
@@ -1503,19 +1504,6 @@
                     <h3 class="mb-2xl text-xl">⚙️ システム設定</h3>
 
                     <div class="d-grid gap-xl">
-                        <!-- Appearance Settings -->
-                        <div>
-                            <h4 class="stat-label mb-lg">🎨 外観設定 (Appearance)</h4>
-                            <div class="flex gap-md flex-wrap">
-                                <button class="btn btn-glass" onclick="App.theme.toggle()" title="Toggle between dark and light theme">
-                                    🌙 Toggle Theme
-                                </button>
-                            </div>
-                            <div class="mt-md text-sm text-muted">
-                                Click to switch between dark and light mode. Your preference is saved automatically.
-                            </div>
-                        </div>
-
                         <!-- System Status -->
                         <div>
                             <h4 class="stat-label mb-lg">システム状態</h4>

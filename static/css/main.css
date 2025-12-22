@@ -523,6 +523,89 @@ body::after {
 }
 
 /* ========================================
+   THEME TOGGLE - Premium 10/10 UX
+   ======================================== */
+.theme-toggle-premium {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-toggle-premium::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(34, 211, 238, 0.1));
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.theme-toggle-premium:hover {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: rgba(6, 182, 212, 0.5);
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.2);
+  transform: translateY(-1px);
+}
+
+.theme-toggle-premium:hover::before {
+  opacity: 1;
+}
+
+.theme-toggle-premium:active {
+  transform: translateY(0);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.15);
+}
+
+.theme-toggle-premium:focus {
+  outline: none;
+  ring: 2px solid var(--primary);
+  box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.2);
+}
+
+.theme-toggle-icon {
+  font-size: 1.2rem;
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.theme-toggle-premium:hover .theme-toggle-icon {
+  transform: rotate(15deg) scale(1.1);
+}
+
+.theme-toggle-premium:active .theme-toggle-icon {
+  transform: rotate(0deg) scale(0.95);
+}
+
+.theme-toggle-text {
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* Light theme adjustments */
+[data-theme="light"] .theme-toggle-premium {
+  background: rgba(6, 182, 212, 0.1);
+  border-color: rgba(6, 182, 212, 0.25);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .theme-toggle-premium:hover {
+  background: rgba(6, 182, 212, 0.2);
+  border-color: rgba(6, 182, 212, 0.4);
+}
+
+/* ========================================
    INPUTS - Enhanced Focus States
    ======================================== */
 .input-glass {
