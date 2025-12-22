@@ -125,6 +125,36 @@
 /* Base Setup */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ========================================
+   SMOOTH THEME TRANSITIONS
+   ======================================== */
+body,
+body * {
+  transition: background-color 0.3s ease,
+              color 0.3s ease,
+              border-color 0.3s ease,
+              box-shadow 0.3s ease;
+}
+
+/* Exclude elements that shouldn't transition */
+.confetti,
+.spinner,
+.progress-ring__circle,
+.gauge-fill {
+  transition: none !important;
+}
+
+/* Smoother transition for glassmorphic elements */
+.glass-panel,
+.glass-card,
+.input-glass,
+.btn-glass {
+  transition: background-color 0.3s ease,
+              border-color 0.3s ease,
+              box-shadow 0.3s ease,
+              backdrop-filter 0.3s ease;
+}
+
 body {
   background-color: var(--bg-dark-deep);
   background-image:

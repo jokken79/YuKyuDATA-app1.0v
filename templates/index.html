@@ -1503,6 +1503,23 @@
                     <h3 class="mb-2xl text-xl">⚙️ システム設定</h3>
 
                     <div class="d-grid gap-xl">
+                        <!-- Appearance Settings -->
+                        <div>
+                            <h4 class="stat-label mb-lg">🎨 外観設定 (Appearance)</h4>
+                            <div class="flex gap-md flex-wrap">
+                                <button class="btn btn-glass" onclick="App.theme.toggle()" title="Toggle between dark and light theme">
+                                    🌙 Manual Mode (Current: <span id="theme-mode-display">Dark</span>)
+                                </button>
+                                <button class="btn btn-glass" onclick="App.theme.setAuto()" title="Follow system preference automatically">
+                                    🎨 Auto Mode (System Preference)
+                                </button>
+                            </div>
+                            <div class="mt-md text-sm text-muted">
+                                Manual Mode: Manually choose your theme preference
+                                <br/>Auto Mode: Automatically follow your operating system's theme setting
+                            </div>
+                        </div>
+
                         <!-- System Status -->
                         <div>
                             <h4 class="stat-label mb-lg">システム状態</h4>
