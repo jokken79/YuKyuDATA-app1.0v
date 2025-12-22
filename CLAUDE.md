@@ -202,8 +202,10 @@ Use `GET /api/db-status` to check:
 ## Important Constraints
 
 1. **Path Dependencies**:
-   - Vacation Excel: `D:\YuKyuDATA-app\有給休暇管理.xlsm` ([main.py:26](main.py#L26))
-   - Employee Registry: `D:\YuKyuDATA-app\【新】社員台帳(UNS)T　2022.04.05～.xlsm` ([main.py:27](main.py#L27))
+   - Los archivos Excel están en la carpeta principal del proyecto (rutas relativas):
+   - Vacation Excel: `./有給休暇管理.xlsm` ([main.py:266](main.py#L266))
+   - Employee Registry: `./【新】社員台帳(UNS)T　2022.04.05～.xlsm` ([main.py:267](main.py#L267))
+   - Las rutas se resuelven automáticamente usando `Path(__file__).parent`
 2. **No Authentication**: API endpoints are unprotected
 3. **Multi-Table Database**:
    - Vacation data uses year discrimination via the `year` column

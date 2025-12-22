@@ -261,10 +261,11 @@ app.add_middleware(
     allow_headers=["*"],     # Allow all headers including Authorization
 )
 
-# Constants
-DEFAULT_EXCEL_PATH = r"D:\YuKyuDATA-app\有給休暇管理.xlsm"
-EMPLOYEE_REGISTRY_PATH = r"D:\YuKyuDATA-app\【新】社員台帳(UNS)T　2022.04.05～.xlsm"
-UPLOAD_DIR = Path("uploads")
+# Constants - Relative paths from project directory
+PROJECT_DIR = Path(__file__).parent  # Directorio del proyecto
+DEFAULT_EXCEL_PATH = PROJECT_DIR / "有給休暇管理.xlsm"
+EMPLOYEE_REGISTRY_PATH = PROJECT_DIR / "【新】社員台帳(UNS)T　2022.04.05～.xlsm"
+UPLOAD_DIR = PROJECT_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 # Initialize Database
@@ -295,7 +296,7 @@ def auto_sync_on_startup():
             logger.info("📊 Database is empty - attempting auto-sync from Excel...")
 
             # Try to sync vacation data
-            if os.path.exists(DEFAULT_EXCEL_PATH):
+            if DEFAULT_EXCEL_PATH.exists():
                 logger.info(f"📁 Found vacation Excel: {DEFAULT_EXCEL_PATH}")
                 data = excel_service.parse_excel_file(DEFAULT_EXCEL_PATH)
                 database.save_employees(data)
@@ -309,7 +310,7 @@ def auto_sync_on_startup():
                 logger.warning(f"⚠️ Vacation Excel not found at: {DEFAULT_EXCEL_PATH}")
 
             # Try to sync Genzai (dispatch employees)
-            if os.path.exists(EMPLOYEE_REGISTRY_PATH):
+            if EMPLOYEE_REGISTRY_PATH.exists():
                 logger.info(f"📁 Found employee registry: {EMPLOYEE_REGISTRY_PATH}")
 
                 genzai_data = excel_service.parse_genzai_sheet(EMPLOYEE_REGISTRY_PATH)
@@ -451,7 +452,7 @@ async def get_employees(year: int = None, enhanced: bool = False, active_only: b
 @app.post("/api/sync")
 async def sync_default_file():
     """Triggers auto-read of the default Excel file + individual usage dates."""
-    if not os.path.exists(DEFAULT_EXCEL_PATH):
+    if not DEFAULT_EXCEL_PATH.exists():
         raise HTTPException(status_code=404, detail=f"Default file not found at {DEFAULT_EXCEL_PATH}")
 
     try:
@@ -513,7 +514,7 @@ async def get_genzai(status: str = None):
 @app.post("/api/sync-genzai")
 async def sync_genzai():
     """Syncs DBGenzaiX sheet from employee registry file."""
-    if not os.path.exists(EMPLOYEE_REGISTRY_PATH):
+    if not EMPLOYEE_REGISTRY_PATH.exists():
         raise HTTPException(status_code=404, detail=f"Employee registry file not found at {EMPLOYEE_REGISTRY_PATH}")
 
     try:
@@ -544,7 +545,7 @@ async def get_ukeoi(status: str = None):
 @app.post("/api/sync-ukeoi")
 async def sync_ukeoi():
     """Syncs DBUkeoiX sheet from employee registry file."""
-    if not os.path.exists(EMPLOYEE_REGISTRY_PATH):
+    if not EMPLOYEE_REGISTRY_PATH.exists():
         raise HTTPException(status_code=404, detail=f"Employee registry file not found at {EMPLOYEE_REGISTRY_PATH}")
 
     try:
@@ -584,7 +585,7 @@ async def get_staff_employees(status: str = None, year: int = None, filter_by_ye
 @app.post("/api/sync-staff")
 async def sync_staff():
     """Syncs DBStaffX sheet from employee registry file."""
-    if not os.path.exists(EMPLOYEE_REGISTRY_PATH):
+    if not EMPLOYEE_REGISTRY_PATH.exists():
         raise HTTPException(status_code=404, detail=f"Employee registry file not found at {EMPLOYEE_REGISTRY_PATH}")
 
     try:
@@ -2904,8 +2905,8 @@ async def get_db_status():
         years = database.get_available_years()
 
         # Check if Excel files exist
-        vacation_excel_exists = os.path.exists(DEFAULT_EXCEL_PATH)
-        registry_excel_exists = os.path.exists(EMPLOYEE_REGISTRY_PATH)
+        vacation_excel_exists = DEFAULT_EXCEL_PATH.exists()
+        registry_excel_exists = EMPLOYEE_REGISTRY_PATH.exists()
 
         return {
             "status": "success",
@@ -2918,11 +2919,11 @@ async def get_db_status():
             },
             "excel_files": {
                 "vacation_excel": {
-                    "path": DEFAULT_EXCEL_PATH,
+                    "path": str(DEFAULT_EXCEL_PATH),
                     "exists": vacation_excel_exists
                 },
                 "employee_registry": {
-                    "path": EMPLOYEE_REGISTRY_PATH,
+                    "path": str(EMPLOYEE_REGISTRY_PATH),
                     "exists": registry_excel_exists
                 }
             },
