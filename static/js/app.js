@@ -260,6 +260,14 @@ const App = {
             const saved = localStorage.getItem('yukyu-theme');
             this.current = saved || 'dark';
             this.apply();
+
+            // Setup keyboard shortcut (Ctrl+Shift+T)
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.shiftKey && e.key === 'T') {
+                    e.preventDefault();
+                    this.toggle();
+                }
+            });
         },
 
         toggle() {
@@ -271,10 +279,27 @@ const App = {
 
         apply() {
             document.documentElement.setAttribute('data-theme', this.current);
+
+            // Update theme toggle button
             const icon = document.getElementById('theme-icon');
             const label = document.getElementById('theme-label');
+            const btn = document.querySelector('.theme-toggle-premium');
+
             if (icon) icon.textContent = this.current === 'dark' ? '🌙' : '☀️';
             if (label) label.textContent = this.current === 'dark' ? 'Dark' : 'Light';
+
+            // Update accessibility attributes
+            if (btn) {
+                const isDark = this.current === 'dark';
+                btn.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+                btn.setAttribute('aria-label', isDark
+                    ? 'Switch to light mode. Current theme: dark (Ctrl+Shift+T)'
+                    : 'Switch to dark mode. Current theme: light (Ctrl+Shift+T)'
+                );
+                btn.title = isDark
+                    ? 'テーマ切替 - Switch to Light (Ctrl+Shift+T)'
+                    : 'テーマ切替 - Switch to Dark (Ctrl+Shift+T)';
+            }
 
             // ============================================
             // ACTUALIZAR FLATPICKR DINÁMICAMENTE

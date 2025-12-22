@@ -407,15 +407,16 @@
                 <div class="flex-center gap-md">
                     <div class="flex-center gap-sm mr-md" id="year-filter"></div>
 
-                    <!-- Theme Toggle -->
-                    <button class="theme-toggle" onclick="App.theme.toggle()" title="テーマ切替" aria-label="Toggle theme" type="button">
-                        <div class="theme-toggle-track">
-                            <div class="theme-toggle-thumb">
-                                <span id="theme-icon">🌙</span>
-                            </button>
-                        </div>
-                        <span class="theme-toggle-label" id="theme-label">Dark</span>
-                    </div>
+                    <!-- Theme Toggle - Premium -->
+                    <button class="theme-toggle-premium"
+                            onclick="App.theme.toggle()"
+                            title="テーマ切替 (Ctrl+Shift+T)"
+                            aria-label="Toggle dark/light theme. Current theme: dark"
+                            aria-pressed="false"
+                            type="button">
+                        <span class="theme-toggle-icon" id="theme-icon" aria-hidden="true">🌙</span>
+                        <span class="theme-toggle-text" id="theme-label">Dark</span>
+                    </button>
 
                     <button class="btn btn-primary" id="btn-sync-main" onclick="App.data.sync()" aria-label="Sync vacation data" type="button">
                         <span class="btn-icon" aria-hidden="true">⚡</span>

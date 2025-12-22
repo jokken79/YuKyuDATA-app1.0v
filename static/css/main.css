@@ -31,6 +31,15 @@
   /* Layout */
   --sidebar-width: 260px;
   --header-height: 70px;
+
+  /* Z-Index Hierarchy - Clear Stacking Context */
+  --z-content: 1;
+  --z-sidebar: 100;
+  --z-header: 101;
+  --z-dropdown: 200;
+  --z-overlay: 8999;
+  --z-modal: 9000;
+  --z-notification: 10000;
 }
 
 /* Light Theme */
@@ -235,6 +244,17 @@ body::after {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Chart containers: Allow content to overflow for better visibility */
+.glass-panel.chart-container {
+  overflow: visible;
+}
+
+.glass-panel.chart-container canvas,
+.glass-panel.chart-container svg {
+  max-width: 100%;
+  height: auto;
+}
+
 /* Glass panel shimmer effect on hover */
 .glass-panel::before {
   content: '';
@@ -303,7 +323,7 @@ body::after {
   border-right: var(--glass-border);
   background: rgba(5, 5, 5, 0.95);
   backdrop-filter: blur(10px);
-  z-index: 100;
+  z-index: var(--z-sidebar);
   display: flex;
   flex-direction: column;
 }
@@ -365,6 +385,15 @@ body::after {
 .col-span-2 { grid-column: span 2; }
 .col-span-3 { grid-column: span 3; }
 .col-span-4 { grid-column: span 4; }
+
+/* Chart cards in bento grid */
+.bento-grid .glass-panel.chart-card {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
 
 /* Stat Cards */
 .stat-card {
@@ -520,6 +549,89 @@ body::after {
 
 .btn-glass:active {
   transform: translateY(0);
+}
+
+/* ========================================
+   THEME TOGGLE - Premium 10/10 UX
+   ======================================== */
+.theme-toggle-premium {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-toggle-premium::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(34, 211, 238, 0.1));
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.theme-toggle-premium:hover {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: rgba(6, 182, 212, 0.5);
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.2);
+  transform: translateY(-1px);
+}
+
+.theme-toggle-premium:hover::before {
+  opacity: 1;
+}
+
+.theme-toggle-premium:active {
+  transform: translateY(0);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.15);
+}
+
+.theme-toggle-premium:focus {
+  outline: none;
+  ring: 2px solid var(--primary);
+  box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.2);
+}
+
+.theme-toggle-icon {
+  font-size: 1.2rem;
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.theme-toggle-premium:hover .theme-toggle-icon {
+  transform: rotate(15deg) scale(1.1);
+}
+
+.theme-toggle-premium:active .theme-toggle-icon {
+  transform: rotate(0deg) scale(0.95);
+}
+
+.theme-toggle-text {
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* Light theme adjustments */
+[data-theme="light"] .theme-toggle-premium {
+  background: rgba(6, 182, 212, 0.1);
+  border-color: rgba(6, 182, 212, 0.25);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .theme-toggle-premium:hover {
+  background: rgba(6, 182, 212, 0.2);
+  border-color: rgba(6, 182, 212, 0.4);
 }
 
 /* ========================================
@@ -770,13 +882,20 @@ select.input-glass {
 /* GPU Acceleration - Solo en elementos que se transforman frecuentemente */
 .glass-panel,
 .btn,
-.modern-table tbody tr,
-.toast,
-.modal,
-.loader-overlay {
+.modern-table tbody tr {
   transform: translateZ(0);
   backface-visibility: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Modales y overlays: NO transform para mantener position: fixed relativo a viewport */
+.toast,
+.modal,
+.loader-overlay {
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  /* NO transform: translateZ(0) - rompe position: fixed */
+  will-change: opacity;
 }
 
 /* will-change - Solo durante interacciones */
@@ -847,7 +966,7 @@ select.input-glass {
   background: rgba(2, 6, 23, 0.85);
   backdrop-filter: blur(10px) saturate(150%);
   -webkit-backdrop-filter: blur(10px) saturate(150%);
-  z-index: 9999;
+  z-index: var(--z-overlay);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -926,7 +1045,7 @@ select.input-glass {
 }
 
 /* Toast */
-.toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 10000; }
+.toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: var(--z-notification); }
 .toast {
   background: rgba(30, 41, 59, 0.95);
   backdrop-filter: blur(10px);
@@ -1539,7 +1658,7 @@ select.input-glass {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 10000;
+  z-index: var(--z-modal);
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
