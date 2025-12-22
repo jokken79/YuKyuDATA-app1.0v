@@ -2,9 +2,11 @@
 
 ## Resumen de Cambios / Summary of Changes
 
-Se han implementado tres mejoras avanzadas al sistema de gestión de temas del YuKyu Dashboard para mejorar la experiencia del usuario y la compatibilidad con preferencias del sistema operativo.
+Se han implementado dos mejoras avanzadas al sistema de gestión de temas del YuKyu Dashboard para mejorar la experiencia del usuario y la compatibilidad con preferencias del sistema operativo.
 
-Three advanced improvements have been implemented to the YuKyu Dashboard's theme management system to enhance user experience and support for operating system preferences.
+Two advanced improvements have been implemented to the YuKyu Dashboard's theme management system to enhance user experience and support for operating system preferences.
+
+**Mejora C (Transiciones suaves) fue revertida** por preferencia del usuario, manteniendo el cambio instantáneo de tema.
 
 ---
 
@@ -100,51 +102,16 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e)
 
 ---
 
-## 3️⃣ **Mejora C: Transiciones Suaves en Cambios de Tema**
+## 3️⃣ **Mejora C: Transiciones Suaves (REVERTIDA)**
 
-### Cambios en `static/css/main.css` (línea 128-156)
+**Estado:** ❌ Revertida por preferencia del usuario
 
-#### Transiciones globales
-```css
-body,
-body * {
-  transition: background-color 0.3s ease,
-              color 0.3s ease,
-              border-color 0.3s ease,
-              box-shadow 0.3s ease;
-}
-```
+Se decidió no implementar transiciones suaves en cambios de tema porque:
+- ✅ El usuario prefiere el cambio instantáneo "sprint" (snap)
+- ✅ Carga, spinners y animaciones mantienen su comportamiento ágil
+- ✅ Respeta la experiencia de usuario deseada
 
-#### Exclusiones inteligentes
-```css
-.confetti,
-.spinner,
-.progress-ring__circle,
-.gauge-fill {
-  transition: none !important;  /* Elements that shouldn't transition */
-}
-```
-
-#### Transiciones específicas para glassmorphism
-```css
-.glass-panel,
-.glass-card,
-.input-glass,
-.btn-glass {
-  transition: background-color 0.3s ease,
-              border-color 0.3s ease,
-              box-shadow 0.3s ease,
-              backdrop-filter 0.3s ease;
-}
-```
-
-**Duración:** 0.3s (suave pero responsivo)
-
-**Elementos excluidos:**
-- Confetti animations (celebración)
-- Spinners (indicadores de carga)
-- Progress rings (anillos de progreso)
-- Gauge fills (indicadores de brújula)
+**Resultado:** El cambio de tema es **instantáneo** sin transiciones de 0.3s
 
 ---
 
@@ -207,12 +174,12 @@ if (themeModeDisplay) {
 # 4. Debe seguir preferencia del SO ✅
 ```
 
-### Test 3: Transiciones Suaves
+### Test 3: Cambio Instantáneo de Tema
 ```bash
 # 1. Settings → Appearance → Click botón manual
-# 2. Observar que cambio es suave (0.3s)
-# 3. Verificar que confetti NO transiciona ✅
-# 4. Verificar que spinners NO transicionan ✅
+# 2. Observar que cambio es INSTANTÁNEO (sin transiciones)
+# 3. Confetti mantiene animaciones ágiles ✅
+# 4. Spinners mantienen velocidad ✅
 ```
 
 ### Test 4: Persistencia localStorage
@@ -232,7 +199,7 @@ localStorage.getItem('yukyu-theme-preference')  // 'manual' o 'auto'
 | **Modo Manual** | ✅ Solo toggle() | ✅ Explícitamente guardado |
 | **Modo Auto** | ❌ No soportado | ✅ Sigue SO automáticamente |
 | **Cambios SO en vivo** | ❌ No detecta | ✅ Listener activo |
-| **Transiciones** | ⚠️ Abruptas | ✅ Suaves 0.3s |
+| **Transiciones** | ✅ Instantáneo | ✅ Instantáneo (sin cambios) |
 | **Console logs** | ❌ Ninguno | ✅ Debug info |
 | **UI Settings** | ⚠️ Mínimo | ✅ Completa y bilingüe |
 
@@ -273,17 +240,16 @@ localStorage.getItem('yukyu-theme-preference')  // 'manual' o 'auto'
    - Nueva función `setAuto()`
    - Función `apply()` mejorada
 
-2. ✅ `static/css/main.css` (29 líneas añadidas)
-   - Sección "SMOOTH THEME TRANSITIONS"
-   - Transiciones globales
-   - Exclusiones inteligentes
+2. ⏸️ `static/css/main.css` (29 líneas añadidas y luego revertidas)
+   - Sección "SMOOTH THEME TRANSITIONS" → REVERTIDA
+   - Se mantiene cambio instantáneo de tema (sin transiciones)
 
 3. ✅ `templates/index.html` (16 líneas añadidas)
    - Nueva sección "Appearance Settings"
    - Dos botones para Manual/Auto mode
    - Elemento para display del tema actual
 
-### Total: 97 líneas de código nuevo
+### Total: 68 líneas de código final (sin transiciones CSS)
 
 ---
 
@@ -293,9 +259,12 @@ Estas mejoras **no requieren cambio de framework** y mantienen la simpleza de va
 
 - ✅ Control manual/automático del tema
 - ✅ Compatibilidad con preferencias del SO
-- ✅ Transiciones suaves y pulidas
+- ✅ Cambio instantáneo de tema (sin transiciones)
 - ✅ Mejor documentación y debugging
 - ✅ UI intuitiva en Settings
+
+**Mejoras implementadas:** 2 (Mejora A + B)
+**Mejora C (transiciones):** Revertida por preferencia del usuario
 
 **Estado:** Production-ready ✅
 
