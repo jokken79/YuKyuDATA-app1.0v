@@ -49,6 +49,9 @@ class BackupManager:
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         self.metadata_file = self.backup_dir / 'backup_metadata.json'
         self.backups = self._load_metadata()
+        # Create metadata file on initialization if it doesn't exist
+        if not self.metadata_file.exists():
+            self._save_metadata()
 
     def _load_metadata(self) -> Dict[str, Dict[str, Any]]:
         """Load backup metadata from JSON file."""
