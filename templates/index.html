@@ -33,13 +33,10 @@
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap"
         rel="stylesheet">
 
-    <!-- Design System - Vibrant Arari Style -->
-    <link rel="stylesheet" href="/static/css/main.css">
-    <link rel="stylesheet" href="/static/css/sidebar-premium.css">
-    <link rel="stylesheet" href="/static/css/arari-glow.css">
-    <link rel="stylesheet" href="/static/css/theme-override.css">
-    <link rel="stylesheet" href="/static/css/light-mode-premium.css">
-    <link rel="stylesheet" href="/static/css/modern-2025.css">
+    <!-- Design System - Consolidated (Tokens → Themes → Components → Utilities → Accessibility) -->
+    <link rel="stylesheet" href="/static/css/design-system/tokens.css">
+    <link rel="stylesheet" href="/static/css/design-system/themes.css">
+    <link rel="stylesheet" href="/static/css/design-system/components.css">
     <link rel="stylesheet" href="/static/css/design-system/utilities.css">
     <link rel="stylesheet" href="/static/css/design-system/accessibility.css">
 
@@ -281,10 +278,10 @@
                             </svg>
                         </span>
                         <span class="nav-text">Employees</span>
-                        <span class="nav-badge" aria-label="1377 employees">1377</span>
+                        <span class="nav-badge" id="emp-count-badge-sidebar" aria-label="Total employees">0</span>
                     </button>
 
-                    <button class="nav-item" data-view="factories" onclick="App.ui.switchView(\'factories\')" aria-label="Factories" type="button">
+                    <button class="nav-item" data-view="factories" onclick="App.ui.switchView('factories')" aria-label="Factories" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -303,7 +300,7 @@
                 <div class="nav-group">
                     <div class="nav-group-label">Requests</div>
 
-                    <button class="nav-item" data-view="requests" onclick="App.ui.switchView(\'requests\')" aria-label="Request Leave" type="button">
+                    <button class="nav-item" data-view="requests" onclick="App.ui.switchView('requests')" aria-label="Request Leave" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -317,7 +314,7 @@
                         <span class="nav-text">申請 Request</span>
                     </button>
 
-                    <button class="nav-item" data-view="calendar" onclick="App.ui.switchView(\'calendar\')" aria-label="Calendar" type="button">
+                    <button class="nav-item" data-view="calendar" onclick="App.ui.switchView('calendar')" aria-label="Calendar" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -340,7 +337,7 @@
                 <div class="nav-group">
                     <div class="nav-group-label">Analytics</div>
 
-                    <button class="nav-item" data-view="compliance" onclick="App.ui.switchView(\'compliance\')" aria-label="Compliance" type="button">
+                    <button class="nav-item" data-view="compliance" onclick="App.ui.switchView('compliance')" aria-label="Compliance" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -351,7 +348,7 @@
                         <span class="nav-text">Compliance</span>
                     </button>
 
-                    <button class="nav-item" data-view="analytics" onclick="App.ui.switchView(\'analytics\')" aria-label="Analytics" type="button">
+                    <button class="nav-item" data-view="analytics" onclick="App.ui.switchView('analytics')" aria-label="Analytics" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -363,7 +360,7 @@
                         <span class="nav-text">分析 Analytics</span>
                     </button>
 
-                    <button class="nav-item" data-view="reports" onclick="App.ui.switchView(\'reports\')" aria-label="Monthly Reports" type="button">
+                    <button class="nav-item" data-view="reports" onclick="App.ui.switchView('reports')" aria-label="Monthly Reports" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -380,7 +377,7 @@
 
             <!-- Settings at bottom -->
             <div class="sidebar-footer">
-                <button class="nav-item nav-item-settings" data-view="settings" onclick="App.ui.switchView(\'settings\')" aria-label="Settings" type="button">
+                <button class="nav-item nav-item-settings" data-view="settings" onclick="App.ui.switchView('settings')" aria-label="Settings" type="button">
                     <span class="nav-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                             stroke-linecap="round" stroke-linejoin="round">
@@ -412,10 +409,10 @@
                         <div class="theme-toggle-track">
                             <div class="theme-toggle-thumb">
                                 <span id="theme-icon">🌙</span>
-                            </button>
+                            </div>
                         </div>
                         <span class="theme-toggle-label" id="theme-label">Dark</span>
-                    </div>
+                    </button>
 
                     <button class="btn btn-primary" id="btn-sync-main" onclick="App.data.sync()" aria-label="Sync vacation data" type="button">
                         <span class="btn-icon" aria-hidden="true">⚡</span>
@@ -577,7 +574,7 @@
                         </div>
                     </div>
                     <div class="glass-panel col-span-2 p-md" style="height: 400px;">
-                        <h3 class="stat-label mb-lg">Monthly Trends (2025)</h3>
+                        <h3 class="stat-label mb-lg">Monthly Trends <span id="trends-year-label"></span></h3>
                         <div class="chart-container-sm">
                             <div id="chart-trends"></div>
                         </div>
@@ -1589,7 +1586,9 @@
         style="background: rgba(0,0,0,0.7);">
         <div class="glass-panel modal-content-container">
             <button
- class="btn modal-close-btn"                onclick="App.ui.closeModal()" aria-label="Close modal">✕</button>
+                class="btn modal-close-btn"
+                onclick="App.ui.closeModal()"
+                aria-label="Close modal">✕</button>
             <div class="p-xl">
                 <h2 id="modal-title" class="mb-lg">Employee Details</h2>
                 <div id="modal-content"></div>
@@ -1714,7 +1713,7 @@
         });
     </script>
 
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/app.js?v=20251222"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
