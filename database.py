@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from contextlib import contextmanager
+from crypto_utils import encrypt_field, decrypt_field, get_encryption_manager
 
 DB_NAME = "yukyu.db"
 
@@ -337,6 +338,10 @@ def save_genzai(genzai_data):
         timestamp = datetime.now().isoformat()
 
         for emp in genzai_data:
+            # Encrypt sensitive fields
+            encrypted_birth_date = encrypt_field(emp.get('birth_date'))
+            encrypted_hourly_wage = encrypt_field(str(emp.get('hourly_wage')) if emp.get('hourly_wage') else None)
+
             c.execute('''
                 INSERT OR REPLACE INTO genzai
                 (id, status, employee_num, dispatch_id, dispatch_name, department, line,
@@ -356,9 +361,9 @@ def save_genzai(genzai_data):
                 emp.get('kana'),
                 emp.get('gender'),
                 emp.get('nationality'),
-                emp.get('birth_date'),
+                encrypted_birth_date,
                 emp.get('age'),
-                emp.get('hourly_wage'),
+                encrypted_hourly_wage,
                 emp.get('wage_revision'),
                 timestamp
             ))
@@ -396,7 +401,23 @@ def get_genzai(status=None, year=None, active_in_year=False):
 
         query += " ORDER BY name"
         rows = c.execute(query, params).fetchall()
-        return [dict(row) for row in rows]
+
+        # Decrypt sensitive fields
+        result = []
+        for row in rows:
+            emp = dict(row)
+            if emp.get('birth_date'):
+                emp['birth_date'] = decrypt_field(emp['birth_date']) or emp['birth_date']
+            if emp.get('hourly_wage'):
+                try:
+                    decrypted = decrypt_field(emp['hourly_wage'])
+                    if decrypted:
+                        emp['hourly_wage'] = int(float(decrypted))
+                except (ValueError, TypeError):
+                    pass
+            result.append(emp)
+
+        return result
 
 def clear_genzai():
     """Clears genzai table."""
@@ -413,6 +434,10 @@ def save_ukeoi(ukeoi_data):
         timestamp = datetime.now().isoformat()
 
         for emp in ukeoi_data:
+            # Encrypt sensitive fields
+            encrypted_birth_date = encrypt_field(emp.get('birth_date'))
+            encrypted_hourly_wage = encrypt_field(str(emp.get('hourly_wage')) if emp.get('hourly_wage') else None)
+
             c.execute('''
                 INSERT OR REPLACE INTO ukeoi
                 (id, status, employee_num, contract_business, name, kana, gender,
@@ -427,9 +452,9 @@ def save_ukeoi(ukeoi_data):
                 emp.get('kana'),
                 emp.get('gender'),
                 emp.get('nationality'),
-                emp.get('birth_date'),
+                encrypted_birth_date,
                 emp.get('age'),
-                emp.get('hourly_wage'),
+                encrypted_hourly_wage,
                 emp.get('wage_revision'),
                 timestamp
             ))
@@ -466,7 +491,23 @@ def get_ukeoi(status=None, year=None, active_in_year=False):
 
         query += " ORDER BY name"
         rows = c.execute(query, params).fetchall()
-        return [dict(row) for row in rows]
+
+        # Decrypt sensitive fields
+        result = []
+        for row in rows:
+            emp = dict(row)
+            if emp.get('birth_date'):
+                emp['birth_date'] = decrypt_field(emp['birth_date']) or emp['birth_date']
+            if emp.get('hourly_wage'):
+                try:
+                    decrypted = decrypt_field(emp['hourly_wage'])
+                    if decrypted:
+                        emp['hourly_wage'] = int(float(decrypted))
+                except (ValueError, TypeError):
+                    pass
+            result.append(emp)
+
+        return result
 
 
 # === STAFF Functions ===
@@ -478,6 +519,12 @@ def save_staff(staff_data):
         timestamp = datetime.now().isoformat()
 
         for emp in staff_data:
+            # Encrypt sensitive fields
+            encrypted_birth_date = encrypt_field(emp.get('birth_date'))
+            encrypted_postal_code = encrypt_field(emp.get('postal_code'))
+            encrypted_address = encrypt_field(emp.get('address'))
+            encrypted_visa_type = encrypt_field(emp.get('visa_type'))
+
             c.execute('''
                 INSERT OR REPLACE INTO staff
                 (id, status, employee_num, office, name, kana, gender, nationality,
@@ -493,13 +540,13 @@ def save_staff(staff_data):
                 emp.get('kana'),
                 emp.get('gender'),
                 emp.get('nationality'),
-                emp.get('birth_date'),
+                encrypted_birth_date,
                 emp.get('age'),
                 emp.get('visa_expiry'),
-                emp.get('visa_type'),
+                encrypted_visa_type,
                 emp.get('spouse'),
-                emp.get('postal_code'),
-                emp.get('address'),
+                encrypted_postal_code,
+                encrypted_address,
                 emp.get('building'),
                 emp.get('hire_date'),
                 emp.get('leave_date'),
@@ -539,7 +586,22 @@ def get_staff(status=None, year=None, active_in_year=False):
 
         query += " ORDER BY name"
         rows = c.execute(query, params).fetchall()
-        return [dict(row) for row in rows]
+
+        # Decrypt sensitive fields
+        result = []
+        for row in rows:
+            emp = dict(row)
+            if emp.get('birth_date'):
+                emp['birth_date'] = decrypt_field(emp['birth_date']) or emp['birth_date']
+            if emp.get('postal_code'):
+                emp['postal_code'] = decrypt_field(emp['postal_code']) or emp['postal_code']
+            if emp.get('address'):
+                emp['address'] = decrypt_field(emp['address']) or emp['address']
+            if emp.get('visa_type'):
+                emp['visa_type'] = decrypt_field(emp['visa_type']) or emp['visa_type']
+            result.append(emp)
+
+        return result
 
 
 def clear_staff():

@@ -147,6 +147,70 @@ const sanitizer = (() => {
     return link;
   }
 
+  /**
+   * Create a safe data grid with escaped values
+   * @param {Object} data - Object with key-value pairs
+   * @param {Array} keys - Keys to display
+   * @returns {Element} Div containing safe grid
+   */
+  function createSafeDataGrid(data, keys = []) {
+    const grid = createElement('div', { class: 'bento-grid' });
+    const displayKeys = keys.length > 0 ? keys : Object.keys(data);
+
+    displayKeys.forEach(key => {
+      const panel = createElement('div', { class: 'glass-panel' });
+      const label = createElement('div', { class: 'text-gray-500' });
+      const value = createElement('div');
+
+      setTextContent(label, key);
+      setTextContent(value, String(data[key] || '-'));
+
+      panel.appendChild(label);
+      panel.appendChild(value);
+      grid.appendChild(panel);
+    });
+
+    return grid;
+  }
+
+  /**
+   * Create a safe table from array of objects
+   * @param {Array} rows - Array of objects
+   * @param {Array} columns - Column names to display
+   * @returns {Element} Table element
+   */
+  function createSafeTable(rows, columns = []) {
+    const table = createElement('table');
+    const thead = createElement('thead');
+    const tbody = createElement('tbody');
+
+    // Create header
+    if (columns.length > 0) {
+      const headerRow = createElement('tr');
+      columns.forEach(col => {
+        const th = createElement('th');
+        setTextContent(th, col);
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+    }
+
+    // Create body rows
+    rows.forEach(row => {
+      const tr = createElement('tr');
+      (columns.length > 0 ? columns : Object.keys(row)).forEach(col => {
+        const td = createElement('td');
+        setTextContent(td, String(row[col] || '-'));
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    return table;
+  }
+
   return {
     escapeHtml,
     escapeAttr,
@@ -155,6 +219,8 @@ const sanitizer = (() => {
     sanitizeInput,
     createSafeToast,
     createSafeTableCell,
-    createSafeLink
+    createSafeLink,
+    createSafeDataGrid,
+    createSafeTable
   };
 })();
