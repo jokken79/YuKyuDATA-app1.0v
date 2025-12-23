@@ -288,8 +288,60 @@ def auto_sync_on_startup():
         logger.error(f"❌ Auto-sync failed: {str(e)}")
         # Don't raise - allow server to start even if sync fails
 
-# Run auto-sync on startup
-auto_sync_on_startup()
+# ============================================
+# STARTUP / SHUTDOWN EVENTS FOR CONNECTION POOL
+# ============================================
+
+@app.on_event("startup")
+async def startup_event():
+    """
+    Initialization on application startup.
+    - Initializes database connection pool (for PostgreSQL)
+    - Runs auto-sync if database is empty
+    - Creates backup if database has data
+    """
+    try:
+        logger.info("🚀 Starting up YuKyuDATA application...")
+
+        # Initialize connection pool if using PostgreSQL
+        if database.USE_POSTGRESQL:
+            logger.info("🔌 Initializing PostgreSQL connection pool...")
+            from database.connection import PostgreSQLConnectionPool
+            database_url = os.getenv('DATABASE_URL')
+            pool_size = int(os.getenv('DB_POOL_SIZE', '10'))
+            pool_overflow = int(os.getenv('DB_MAX_OVERFLOW', '20'))
+            PostgreSQLConnectionPool.initialize(database_url, pool_size, pool_overflow)
+            logger.info(f"✅ PostgreSQL pool initialized: {pool_size} min, {pool_overflow} max connections")
+        else:
+            logger.info("🗄️  Using SQLite database (no connection pool)")
+
+        # Run auto-sync
+        auto_sync_on_startup()
+
+        logger.info("✅ Startup complete")
+    except Exception as e:
+        logger.error(f"❌ Startup error: {str(e)}", exc_info=True)
+        raise
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """
+    Cleanup on application shutdown.
+    - Closes all database connections in the pool
+    """
+    try:
+        logger.info("🛑 Shutting down YuKyuDATA application...")
+
+        if database.USE_POSTGRESQL:
+            logger.info("🔌 Closing PostgreSQL connection pool...")
+            from database.connection import PostgreSQLConnectionPool
+            PostgreSQLConnectionPool.close_pool()
+            logger.info("✅ Connection pool closed")
+
+        logger.info("✅ Shutdown complete")
+    except Exception as e:
+        logger.error(f"⚠️  Shutdown error: {str(e)}", exc_info=True)
 
 # Mount static files (css, js, etc.)
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -3072,6 +3124,49 @@ async def app_info():
         ],
         "fiscal_config": FISCAL_CONFIG
     }
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint with database and connection pool status"""
+    try:
+        # Check database connection
+        employees_count = len(database.get_employees())
+
+        health_status = {
+            "status": "healthy",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "database": {
+                "type": "postgresql" if database.USE_POSTGRESQL else "sqlite",
+                "connected": True,
+                "employees_count": employees_count
+            }
+        }
+
+        # Add connection pool status if using PostgreSQL
+        if database.USE_POSTGRESQL:
+            try:
+                from database.connection import PostgreSQLConnectionPool
+                pool = PostgreSQLConnectionPool._pool
+                if pool:
+                    health_status["database"]["connection_pool"] = {
+                        "status": "initialized",
+                        "min_connections": pool._minconn,
+                        "max_connections": pool._maxconn
+                    }
+            except Exception as e:
+                health_status["database"]["connection_pool"] = {
+                    "status": "error",
+                    "message": str(e)
+                }
+
+        return health_status
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "error": str(e)
+        }, 503
 
 
 if __name__ == "__main__":
