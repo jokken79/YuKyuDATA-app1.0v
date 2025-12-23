@@ -230,8 +230,50 @@ async def require_admin(credentials: HTTPAuthorizationCredentials = Depends(secu
 
 app = FastAPI(
     title="YuKyu Dashboard API",
-    description="Employee Paid Leave Management System (有給休暇管理システム)",
-    version="2.0.0"
+    description="""
+    ## Employee Paid Leave Management System (有給休暇管理システム)
+
+    Sistema completo de gestión de vacaciones pagadas conforme a la normativa japonesa.
+
+    ### Características Principales
+
+    * **Gestión de Vacaciones**: Seguimiento de días otorgados, usados y balance
+    * **Solicitudes de Ausencia**: Flujo de aprobación de solicitudes
+    * **Cumplimiento Legal**: Verificación automática de 5 días obligatorios
+    * **Reportes**: Generación de reportes mensuales y anuales
+    * **Sincronización Excel**: Carga bidireccional desde archivos Excel
+    * **Registro de Empleados**: Gestión de empleados Genzai (派遣) y Ukeoi (請負)
+
+    ### Normativa
+
+    Cumple con el Labor Standards Act Article 39 de Japón y reforma laboral de 2019.
+
+    ### Autenticación
+
+    La API utiliza JWT Bearer tokens. Usa `/api/auth/login` para obtener un token.
+    """,
+    version="2.0.0",
+    contact={
+        "name": "YuKyuDATA Support",
+        "email": "support@yukyu.example.com"
+    },
+    license_info={
+        "name": "Proprietary",
+    },
+    openapi_tags=[
+        {"name": "Authentication", "description": "Autenticación y gestión de tokens JWT"},
+        {"name": "Employees", "description": "Gestión de datos de empleados y vacaciones"},
+        {"name": "Leave Requests", "description": "Solicitudes de vacaciones y aprobaciones"},
+        {"name": "Compliance", "description": "Verificaciones de cumplimiento normativo"},
+        {"name": "Analytics", "description": "Análisis y KPIs de uso de vacaciones"},
+        {"name": "Reports", "description": "Generación de reportes Excel y PDF"},
+        {"name": "Genzai", "description": "Gestión de empleados dispatch (派遣社員)"},
+        {"name": "Ukeoi", "description": "Gestión de empleados contrato (請負社員)"},
+        {"name": "System", "description": "Información del sistema y diagnóstico"},
+    ],
+    docs_url="/docs",  # Swagger UI
+    redoc_url="/redoc",  # ReDoc
+    openapi_url="/openapi.json"
 )
 
 # Configure CORS - Restricted to specific origins
