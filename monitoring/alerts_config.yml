@@ -1,0 +1,328 @@
+# FASE 3 Phase 7: Performance Alerting Configuration
+#
+# This file defines alert thresholds and actions for database monitoring.
+# Use with automated monitoring tools (cron, monitoring dashboards, etc.)
+
+alerts:
+  # Performance Alerts
+  performance:
+    - name: "Slow Query Alert"
+      metric: "query_execution_time"
+      threshold: 500  # milliseconds
+      severity: "warning"
+      description: "Query execution time exceeds 500ms"
+      action:
+        - log: "Slow query detected, run query_optimizer.py for analysis"
+        - notify: "performance-team"
+      enabled: true
+      evaluation_window: "5m"
+
+    - name: "Cache Hit Ratio Low"
+      metric: "cache_hit_ratio"
+      threshold: 80  # percentage
+      severity: "warning"
+      comparison: "less_than"
+      description: "Database cache hit ratio below 80%"
+      action:
+        - log: "Cache hit ratio low, consider increasing shared_buffers"
+        - notify: "dba-team"
+      enabled: true
+      evaluation_window: "1h"
+
+    - name: "Cache Hit Ratio Critical"
+      metric: "cache_hit_ratio"
+      threshold: 50  # percentage
+      severity: "critical"
+      comparison: "less_than"
+      description: "Database cache hit ratio critically low"
+      action:
+        - log: "CRITICAL: Cache hit ratio below 50%"
+        - notify: "dba-team"
+        - alert: "pagerduty"
+      enabled: true
+      evaluation_window: "5m"
+
+  # Table Health Alerts
+  table_health:
+    - name: "Table Bloat Warning"
+      metric: "table_bloat_percentage"
+      threshold: 20  # percentage
+      severity: "warning"
+      description: "Table contains >20% dead rows (bloat)"
+      action:
+        - log: "Table bloat detected, run: VACUUM ANALYZE tablename;"
+        - notify: "dba-team"
+      enabled: true
+      affected_tables: ["employees", "genzai", "ukeoi"]
+
+    - name: "Table Bloat Critical"
+      metric: "table_bloat_percentage"
+      threshold: 50  # percentage
+      severity: "critical"
+      description: "Table contains >50% dead rows (critical bloat)"
+      action:
+        - log: "CRITICAL: Table bloat >50%, run VACUUM FULL"
+        - notify: "dba-team"
+        - alert: "pagerduty"
+      enabled: true
+      affected_tables: ["employees", "genzai", "ukeoi"]
+
+    - name: "High Dead Row Count"
+      metric: "dead_rows"
+      threshold: 10000  # absolute count
+      severity: "warning"
+      description: "Table has >10000 dead rows"
+      action:
+        - log: "High dead row count detected"
+        - notify: "dba-team"
+      enabled: true
+
+  # Index Alerts
+  index_health:
+    - name: "Unused Index"
+      metric: "index_scan_count"
+      threshold: 0
+      severity: "info"
+      description: "Index has never been used"
+      action:
+        - log: "Unused index detected, consider dropping: DROP INDEX index_name;"
+        - notify: "dba-team"
+      enabled: true
+      action_frequency: "weekly"  # Don't alert on every scan
+
+    - name: "Missing Index Opportunity"
+      metric: "sequential_scan_count"
+      threshold: 100
+      severity: "info"
+      description: "Table has many sequential scans, index may help"
+      action:
+        - log: "Run query_optimizer.py --suggest-indexes"
+        - notify: "dba-team"
+      enabled: true
+      action_frequency: "daily"
+
+  # Connection Alerts
+  connection_health:
+    - name: "High Connection Usage"
+      metric: "active_connections_percent"
+      threshold: 80  # percentage of max
+      severity: "warning"
+      description: "Using >80% of available connections"
+      action:
+        - log: "High connection usage, consider increasing connection limit"
+        - notify: "dba-team"
+      enabled: true
+      evaluation_window: "5m"
+
+    - name: "Connection Pool Exhausted"
+      metric: "active_connections_percent"
+      threshold: 95  # percentage of max
+      severity: "critical"
+      description: "Nearly all connections in use"
+      action:
+        - log: "CRITICAL: Connection pool nearly exhausted"
+        - notify: "dba-team"
+        - alert: "pagerduty"
+      enabled: true
+      evaluation_window: "1m"
+
+    - name: "Idle in Transaction"
+      metric: "idle_in_transaction_count"
+      threshold: 5  # absolute count
+      severity: "warning"
+      description: "Connections idle in transaction block application"
+      action:
+        - log: "Check for long-running transactions"
+        - notify: "dba-team"
+      enabled: true
+
+  # Storage Alerts
+  storage:
+    - name: "Database Size Growing"
+      metric: "database_size_growth_percent"
+      threshold: 10  # percent growth per day
+      severity: "info"
+      timeframe: "daily"
+      description: "Database size growing >10% per day"
+      action:
+        - log: "High growth rate, investigate for data accumulation"
+        - notify: "dba-team"
+      enabled: true
+
+    - name: "Low Disk Space"
+      metric: "disk_usage_percent"
+      threshold: 80  # percentage
+      severity: "critical"
+      description: "Disk usage >80%"
+      action:
+        - log: "CRITICAL: Low disk space"
+        - notify: "dba-team"
+        - alert: "pagerduty"
+      enabled: true
+      evaluation_window: "5m"
+
+  # Baseline Alerts
+  baseline:
+    - name: "Performance Degradation"
+      metric: "metric_change_from_baseline"
+      threshold: -10  # percent change
+      severity: "warning"
+      description: "Performance metrics degraded >10% from baseline"
+      action:
+        - log: "Performance degradation detected, run baseline_collector.py --compare"
+        - notify: "dba-team"
+      enabled: true
+      evaluation_window: "1h"
+
+    - name: "Baseline Out of Date"
+      metric: "baseline_age_days"
+      threshold: 30  # days
+      severity: "info"
+      description: "Current baseline older than 30 days"
+      action:
+        - log: "Create new baseline: baseline_collector.py --create"
+        - notify: "dba-team"
+      enabled: true
+      evaluation_frequency: "weekly"
+
+# Notification Channels
+notifications:
+  log:
+    type: "file"
+    location: "/var/log/yukyu_alerts.log"
+    enabled: true
+
+  console:
+    type: "stdout"
+    enabled: true
+
+  email:
+    type: "smtp"
+    smtp_server: "localhost:25"  # Configure for your environment
+    from: "alerts@yukyu.local"
+    enabled: false  # Enable and configure SMTP
+    recipients:
+      dba-team:
+        - "dba@company.com"
+      performance-team:
+        - "performance@company.com"
+
+  slack:
+    type: "webhook"
+    webhook_url: ""  # Set environment variable SLACK_WEBHOOK_URL
+    enabled: false  # Enable if Slack webhook available
+    channels:
+      default: "#alerts"
+      critical: "#critical-alerts"
+
+  pagerduty:
+    type: "api"
+    api_key: ""  # Set environment variable PAGERDUTY_API_KEY
+    enabled: false  # Enable if PagerDuty integration needed
+
+  file:
+    type: "file"
+    location: "/tmp/yukyu_alerts_detailed.log"
+    enabled: true
+    rotation: "daily"
+    retention_days: 30
+
+# Alert Aggregation
+aggregation:
+  # Don't alert on the same issue repeatedly
+  deduplication:
+    enabled: true
+    window: "1h"  # Don't repeat same alert within 1 hour
+
+  # Group related alerts
+  grouping:
+    enabled: true
+    rules:
+      - metric: "table_bloat_percentage"
+        group_by: "table_name"
+      - metric: "slow_query"
+        group_by: "query_hash"
+
+# Escalation Policies
+escalation:
+  warning:
+    initial_wait: "5m"
+    escalate_to: "email"
+    next_escalation: "10m"
+
+  critical:
+    initial_wait: "1m"
+    escalate_to: "pagerduty"
+    next_escalation: "5m"
+
+# Alert Suppression
+suppression:
+  # Don't alert during maintenance windows
+  maintenance_windows:
+    - name: "Sunday Maintenance"
+      start_time: "02:00"
+      end_time: "04:00"
+      day_of_week: "Sunday"
+      enabled: true
+
+    - name: "Monthly Backups"
+      start_time: "23:00"
+      end_time: "05:00"
+      day_of_month: "1"
+      enabled: true
+
+  # Suppress specific alerts temporarily
+  temporary_suppressions: []
+    # - metric: "cache_hit_ratio"
+    #   until: "2025-12-31"
+    #   reason: "Expected low ratio during migration"
+
+# Testing and Validation
+test:
+  enabled: true
+  dry_run: false  # Set true to test alerts without sending
+  test_alert: "Test alert from monitoring system"
+  test_frequency: "weekly"
+  test_time: "09:00"
+  test_day_of_week: "Monday"
+
+# Monitoring Configuration
+monitoring:
+  # Data retention
+  metrics_retention_days: 30
+  logs_retention_days: 90
+
+  # Evaluation settings
+  evaluation_frequency: "5m"  # Default evaluation window
+  data_points_for_alert: 2   # Require 2 data points before alerting
+
+  # Alert tags for filtering
+  tags:
+    environment: "production"
+    application: "yukyu"
+    team: "data-engineering"
+
+---
+# Alert Rules Explanation
+#
+# metric: The metric to monitor (from monitoring tools)
+# threshold: Value that triggers alert
+# severity: "info", "warning", "critical"
+# comparison: "greater_than" (default), "less_than", "equals"
+# action: What to do when alert triggers
+# enabled: Whether this alert is active
+# evaluation_window: Time window for evaluation
+# affected_tables: Which tables this alert applies to
+#
+# Common Actions:
+# - log: Write to log file
+# - notify: Send to notification channel
+# - alert: Trigger pagerduty/incident
+# - remediate: Auto-fix if possible
+#
+# Environment Variables to Set:
+# - SLACK_WEBHOOK_URL: For Slack notifications
+# - PAGERDUTY_API_KEY: For PagerDuty escalation
+# - SMTP_SERVER: For email notifications
+# - ALERT_EMAIL_FROM: Email address for alerts
+# - ALERT_EMAIL_TO: Comma-separated list of recipients
