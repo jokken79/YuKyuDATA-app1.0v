@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZIPMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
@@ -214,6 +215,10 @@ app.add_middleware(
     window_seconds=settings.rate_limit_window_seconds,
     exclude_paths=["/health", "/docs", "/redoc", "/openapi.json", "/", "/api/auth/login", "/static"]
 )
+
+# Add GZIP compression middleware for performance
+# Compresses responses > 500 bytes for faster transfer
+app.add_middleware(GZIPMiddleware, minimum_size=500)
 
 # Constants - Relative paths from project directory
 PROJECT_DIR = Path(__file__).parent  # Directorio del proyecto
