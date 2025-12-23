@@ -9,11 +9,12 @@ const App = {
         availableYears: [],
         charts: {},
         currentView: 'dashboard',
-        typeFilter: 'all'
+        typeFilter: 'all',
+        fallbackWarnedYear: null
     },
 
     config: {
-        apiBase: 'http://localhost:8000/api'
+        apiBase: '/api'
     },
 
     // ========================================
@@ -317,16 +318,26 @@ const App = {
         // Request counter to prevent race conditions when changing years rapidly
         _fetchRequestId: 0,
 
-        async fetchEmployees(year = null, activeOnly = true) {
+        async fetchEmployees(year = null, activeOnly = true, allowRetry = true) {
             // Increment request ID to track this specific request
             const requestId = ++this._fetchRequestId;
+
+            // Update state year if provided
+            if (year !== null && year !== undefined) {
+                App.state.year = parseInt(year);
+            }
 
             try {
                 // Use enhanced endpoint with employee type and active status
                 let url = `${App.config.apiBase}/employees?enhanced=true&active_only=${activeOnly}`;
-                if (year) url += `&year=${year}`;
+                if (App.state.year) url += `&year=${App.state.year}`;
 
                 const res = await fetch(url);
+
+                if (!res.ok) {
+                    const errorText = await res.text().catch(() => '');
+                    throw new Error(errorText || `Server error: ${res.status}`);
+                }
 
                 // Check if this request is still the most recent one
                 if (requestId !== this._fetchRequestId) {
@@ -336,7 +347,17 @@ const App = {
 
                 const json = await res.json();
 
-                App.state.data = json.data.map(emp => ({
+                const rawEmployees = Array.isArray(json)
+                    ? json
+                    : (Array.isArray(json?.data) ? json.data : (Array.isArray(json?.employees) ? json.employees : []));
+
+                const derivedYears = [...new Set(
+                    rawEmployees
+                        .map(e => parseInt(e?.year))
+                        .filter(Number.isFinite)
+                )].sort((a, b) => b - a);
+
+                App.state.data = rawEmployees.map(emp => ({
                     ...emp,
                     employeeNum: emp.employee_num,
                     usageRate: emp.granted > 0 ? Math.round((emp.used / emp.granted) * 100) : 0,
@@ -345,7 +366,10 @@ const App = {
                     employmentStatus: emp.employment_status || '在職中',
                     isActive: emp.is_active === 1 || emp.is_active === true
                 }));
-                App.state.availableYears = json.available_years;
+
+                App.state.availableYears = Array.isArray(json?.available_years)
+                    ? json.available_years.map(y => parseInt(y)).filter(Number.isFinite).sort((a, b) => b - a)
+                    : derivedYears;
 
                 // Smart Year Selection
                 if (App.state.availableYears.length > 0 && !App.state.year) {
@@ -367,10 +391,18 @@ const App = {
                     }
                 }
 
+                // Retry once without active filter if nothing returned
+                if (App.state.data.length === 0 && activeOnly && allowRetry) {
+                    console.warn('⚠️ Sin resultados con active_only=true, reintentando con active_only=false');
+                    return this.fetchEmployees(App.state.year, false, false);
+                }
+
                 // Final check before updating UI
                 if (requestId !== this._fetchRequestId) {
                     return;
                 }
+
+                console.log(`✅ Datos cargados: ${App.state.data.length} registros para el año ${App.state.year}`);
 
                 await App.ui.updateAll();
                 App.ui.showToast('success', 'Data refresh complete');
@@ -379,7 +411,8 @@ const App = {
                 // Only show error if this is still the current request
                 if (requestId === this._fetchRequestId) {
                     console.error(err);
-                    App.ui.showToast('error', 'Failed to load data');
+                    const msg = (err && err.message) ? err.message : String(err);
+                    App.ui.showToast('error', `Failed to load data: ${msg}`);
                 }
             }
         },
@@ -442,7 +475,21 @@ const App = {
 
         getFiltered() {
             if (!App.state.year) return App.state.data;
-            return App.state.data.filter(e => e.year === App.state.year);
+
+            // Use loose equality to handle string/number differences and check if year exists
+            const filtered = App.state.data.filter(e => !e.year || e.year == App.state.year);
+
+            // Fallback: if the selected year returns no data but we do have data, show all
+            if (filtered.length === 0 && App.state.data.length > 0) {
+                console.warn(`⚠️ Sin datos para el año ${App.state.year}, mostrando todos los registros`);
+                if (App.state.fallbackWarnedYear !== App.state.year) {
+                    App.state.fallbackWarnedYear = App.state.year;
+                    App.ui.showToast('warning', `⚠️ No hay registros para ${App.state.year}. Mostrando todos los datos disponibles.`);
+                }
+                return App.state.data;
+            }
+
+            return filtered;
         },
 
         getFactoryStats() {
@@ -461,22 +508,33 @@ const App = {
 
     ui: {
         async updateAll() {
+            const data = App.data.getFiltered();
+            console.log(`📊 Updating UI with ${data.length} employees for year ${App.state.year}`);
+            
             await this.renderKPIs();
             this.renderTable('', App.state.typeFilter);
             await this.renderCharts();
             this.updateYearFilter();
             this.updateTypeCounts();
-            document.getElementById('emp-count-badge').innerText = `${App.data.getFiltered().length} Employees`;
+            
+            const badge = document.getElementById('emp-count-badge');
+            if (badge) badge.innerText = `${data.length} Employees`;
         },
 
         switchView(viewName) {
             // Hide all views
-            document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
-            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.view-section').forEach(el => {
+                el.classList.remove('active');
+                el.classList.remove('d-block');
+                el.classList.add('d-none');
+                el.style.display = 'none';
+            });
 
             // Show target view
             const target = document.getElementById(`view-${viewName}`);
             if (target) {
+                target.classList.remove('d-none');
+                target.classList.add('d-block');
                 target.style.display = 'block';
                 setTimeout(() => {
                     target.classList.add('active');
@@ -510,7 +568,27 @@ const App = {
 
             // Re-render charts if switching to factory view to ensure size correctness
             if (viewName === 'factories') {
-                setTimeout(() => App.charts.renderFactoryChart(), 100);
+                setTimeout(() => {
+                    App.ui.ensureChartsVisible();
+                    App.charts.renderFactoryChart();
+                }, 100);
+            }
+
+            // Re-render charts for dashboard view
+            if (viewName === 'dashboard') {
+                setTimeout(() => {
+                    App.ui.ensureChartsVisible();
+                    App.charts.renderDistribution();
+                    App.charts.renderTrends();
+                }, 100);
+            }
+
+            // Re-render charts for analytics view
+            if (viewName === 'analytics') {
+                setTimeout(() => {
+                    App.ui.ensureChartsVisible();
+                    App.charts.renderTypes();
+                }, 100);
             }
 
             // Load data for specific views
@@ -548,7 +626,7 @@ const App = {
         async renderKPIs() {
             const data = App.data.getFiltered();
             const total = data.length;
-            const granted = data.reduce((s, e) => s + e.granted, 0);
+            const granted = data.reduce((s, e) => s + App.utils.safeNumber(e.granted), 0);
 
             // Fetch TRUE usage from individual dates (R-BE columns)
             // This returns the correct value (~3318) instead of column N sum (~4466)
@@ -567,17 +645,22 @@ const App = {
                     }
                 }
             } catch (e) {
+                console.warn('KPI API failed, using local calculation:', e);
                 // Fallback to old calculation if endpoint fails
-                used = data.reduce((s, e) => s + e.used, 0);
+                used = data.reduce((s, e) => s + App.utils.safeNumber(e.used), 0);
                 balance = granted - used;
                 rate = granted > 0 ? Math.round((used / granted) * 100) : 0;
             }
 
-            // Update traditional KPI displays
-            document.getElementById('kpi-used').innerText = Math.round(used).toLocaleString();
-            document.getElementById('kpi-balance').innerText = Math.round(balance).toLocaleString();
-            document.getElementById('kpi-rate').innerText = rate + '%';
-            document.getElementById('kpi-total').innerText = total;
+            // Update traditional KPI displays (guard missing DOM nodes)
+            const kpiUsedEl = document.getElementById('kpi-used');
+            const kpiBalanceEl = document.getElementById('kpi-balance');
+            const kpiRateEl = document.getElementById('kpi-rate');
+            const kpiTotalEl = document.getElementById('kpi-total');
+            if (kpiUsedEl) kpiUsedEl.innerText = Math.round(used).toLocaleString();
+            if (kpiBalanceEl) kpiBalanceEl.innerText = Math.round(balance).toLocaleString();
+            if (kpiRateEl) kpiRateEl.innerText = rate + '%';
+            if (kpiTotalEl) kpiTotalEl.innerText = total;
 
             // Calculate max values for rings
             const maxUsage = granted > 0 ? granted : 10000;
@@ -705,36 +788,74 @@ const App = {
                 staff: data.filter(e => e.employeeType === 'staff').length
             };
 
-            // Update count badges
-            const countAll = document.getElementById('count-all');
-            const countGenzai = document.getElementById('count-genzai');
-            const countUkeoi = document.getElementById('count-ukeoi');
-            const countStaff = document.getElementById('count-staff');
+            // Update count badges (Sidebar + dashboard quick stats)
+            const countSidebar = document.getElementById('emp-count-badge-sidebar');
+            const qsHaken = document.getElementById('qs-haken');
+            const qsUkeoi = document.getElementById('qs-ukeoi');
+            const qsStaff = document.getElementById('qs-staff');
+            const kpiTotal = document.getElementById('kpi-total');
 
-            if (countAll) countAll.textContent = counts.all;
-            if (countGenzai) countGenzai.textContent = counts.genzai;
-            if (countUkeoi) countUkeoi.textContent = counts.ukeoi;
-            if (countStaff) countStaff.textContent = counts.staff;
+            if (countSidebar) countSidebar.textContent = counts.all;
+            if (qsHaken) qsHaken.textContent = counts.genzai;
+            if (qsUkeoi) qsUkeoi.textContent = counts.ukeoi;
+            if (qsStaff) qsStaff.textContent = counts.staff;
+            if (kpiTotal) kpiTotal.textContent = counts.all;
         },
 
         updateYearFilter() {
             const container = document.getElementById('year-filter');
-            if (App.state.availableYears.length === 0) return;
+            if (!container) return;
+            if (!Array.isArray(App.state.availableYears) || App.state.availableYears.length === 0) return;
+
+            // Update year labels in the UI
+            const yearLabel = document.getElementById('trends-year-label');
+            if (yearLabel) yearLabel.textContent = `(${App.state.year})`;
 
             container.innerHTML = App.state.availableYears.map(y => `
-                <button class="btn btn-glass ${App.state.year === y ? 'btn-primary' : ''}" 
-                        onclick="App.data.fetchEmployees(${y}); App.state.year=${y};">
+                <button class="btn btn-glass ${Number(App.state.year) === Number(y) ? 'btn-primary' : ''}" 
+                        onclick="App.state.year=${y}; App.data.fetchEmployees(${y});">
                     ${y}
                 </button>
             `).join('');
         },
 
         async renderCharts() {
-            App.charts.renderDistribution();
-            App.charts.renderTrends();
-            App.charts.renderFactoryChart();
-            App.charts.renderTypes();
-            await App.charts.renderTop10();
+            // Ensure charts are visible before rendering
+            this.ensureChartsVisible();
+
+            try { App.charts.renderDistribution(); } catch (e) { console.error('renderDistribution failed', e); }
+            try { await App.charts.renderTrends(); } catch (e) { console.error('renderTrends failed', e); }
+            try { App.charts.renderFactoryChart(); } catch (e) { console.error('renderFactoryChart failed', e); }
+            try { await App.charts.renderTypes(); } catch (e) { console.error('renderTypes failed', e); }
+            try { await App.charts.renderTop10(); } catch (e) { console.error('renderTop10 failed', e); }
+        },
+
+        // Ensure charts are visible and properly sized
+        ensureChartsVisible() {
+            const chartContainers = document.querySelectorAll('.chart-container, .chart-container-sm, .chart-container-lg');
+            
+            chartContainers.forEach(container => {
+                // Force container to be visible and have proper layout
+                container.style.display = 'block';
+                container.style.visibility = 'visible';
+                container.style.opacity = '1';
+                container.style.overflow = 'visible';
+                
+                // Ensure a minimum height is set if not already present
+                if (!container.style.minHeight) {
+                    container.style.minHeight = '300px';
+                }
+                
+                // Force reflow to ensure proper sizing
+                container.offsetHeight;
+            });
+
+            // Trigger a global resize event to notify charting libraries (ApexCharts, Chart.js)
+            // to recalculate their dimensions based on the now-visible containers
+            // This ensures charts are "synchronized" with their container sizes
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
         },
 
         showLoading() { document.getElementById('loader').classList.add('active'); },
@@ -851,10 +972,11 @@ const App = {
                 background: ${style.bg};
                 backdrop-filter: blur(10px);
             `;
-            toast.innerHTML = msg;
+            // Use textContent to prevent XSS - safer than innerHTML
+            toast.textContent = msg;
 
             const closeBtn = document.createElement('button');
-            closeBtn.innerHTML = '×';
+            closeBtn.textContent = '×';
             closeBtn.className = 'toast-close';
             closeBtn.onclick = () => toast.remove();
             toast.appendChild(closeBtn);
@@ -1011,6 +1133,11 @@ const App = {
             const container = document.getElementById('chart-distribution');
             if (!container) return;
 
+            if (typeof ApexCharts === 'undefined') {
+                container.textContent = 'Charts unavailable (ApexCharts not loaded)';
+                return;
+            }
+
             this.destroy('distribution');
 
             const data = App.data.getFiltered();
@@ -1118,6 +1245,11 @@ const App = {
             const container = document.getElementById('chart-trends');
             if (!container) return;
             this.destroy('trends');
+
+            if (typeof ApexCharts === 'undefined') {
+                container.textContent = 'Charts unavailable (ApexCharts not loaded)';
+                return;
+            }
 
             let trendsData = Array(12).fill(0);
             try {
@@ -1257,6 +1389,11 @@ const App = {
             if (!ctx) return;
             this.destroy('types');
 
+            if (typeof Chart === 'undefined') {
+                // Canvas exists but Chart.js is missing (CDN blocked/offline)
+                return;
+            }
+
             let typeData = { labels: ['Haken', 'Ukeoi', 'Staff'], data: [0, 0, 0] };
             try {
                 if (App.state.year) {
@@ -1306,6 +1443,10 @@ const App = {
             const ctx = document.getElementById('chart-top10');
             if (!ctx) return;
             this.destroy('top10');
+
+            if (typeof Chart === 'undefined') {
+                return;
+            }
 
             // Fetch Top 10 from API - only ACTIVE employees (在職中)
             let sorted = [];
@@ -1359,6 +1500,11 @@ const App = {
         renderFactoryChart() {
             const container = document.getElementById('chart-factories');
             if (!container) return;
+
+            if (typeof ApexCharts === 'undefined') {
+                container.textContent = 'Charts unavailable (ApexCharts not loaded)';
+                return;
+            }
 
             this.destroy('factories');
             const stats = App.data.getFactoryStats().slice(0, 10); // Top 10
@@ -1554,6 +1700,20 @@ const App = {
                 item.addEventListener('click', () => {
                     App.ui.closeMobileMenu();
                 });
+            });
+
+            // Handle window resize to keep charts synchronized with layout
+            let resizeTimer;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    // Only trigger if we are in a view that has charts
+                    const viewsWithCharts = ['dashboard', 'factories', 'analytics'];
+                    if (viewsWithCharts.includes(App.state.currentView)) {
+                        console.log('🔄 Resynchronizing charts after resize...');
+                        App.ui.ensureChartsVisible();
+                    }
+                }, 250);
             });
         }
     },
@@ -1944,7 +2104,7 @@ const App = {
             if (startDate.value) {
                 if (startDate.value < today) {
                     startDate.classList.add('is-invalid');
-                    startValidation.innerHTML = '⚠️ 過去の日付は選択できません';
+                    startValidation.textContent = '⚠️ 過去の日付は選択できません';
                     startValidation.classList.add('show', 'error');
                     isValid = false;
                 } else {
@@ -1955,7 +2115,7 @@ const App = {
             if (endDate.value && startDate.value) {
                 if (endDate.value < startDate.value) {
                     endDate.classList.add('is-invalid');
-                    endValidation.innerHTML = '⚠️ 終了日は開始日以降にしてください';
+                    endValidation.textContent = '⚠️ 終了日は開始日以降にしてください';
                     endValidation.classList.add('show', 'error');
                     isValid = false;
                 } else {
@@ -1986,21 +2146,22 @@ const App = {
 
             if (days <= 0) {
                 daysInput.classList.add('is-invalid');
-                validation.innerHTML = '⚠️ 日数を入力してください';
+                validation.textContent = '⚠️ 日数を入力してください';
                 validation.classList.add('show', 'error');
                 return false;
             }
 
             if (days > available) {
                 daysInput.classList.add('is-invalid');
-                validation.innerHTML = `⚠️ 残り${available}日を超えています`;
+                // Escape numeric value to prevent XSS
+                validation.textContent = `⚠️ 残り${App.utils.escapeHtml(String(available))}日を超えています`;
                 validation.classList.add('show', 'error');
                 return false;
             }
 
             if (days > available * 0.8) {
                 daysInput.classList.add('is-valid');
-                validation.innerHTML = `ℹ️ 残り${(available - days).toFixed(1)}日になります`;
+                validation.textContent = `ℹ️ 残り${App.utils.escapeHtml((available - days).toFixed(1))}日になります`;
                 validation.classList.add('show', 'warning');
                 return true;
             }
@@ -2024,14 +2185,14 @@ const App = {
 
             if (hours <= 0 || hours > 7) {
                 hoursInput.classList.add('is-invalid');
-                validation.innerHTML = '⚠️ 1〜7時間の範囲で入力してください';
+                validation.textContent = '⚠️ 1〜7時間の範囲で入力してください';
                 validation.classList.add('show', 'error');
                 return false;
             }
 
             if (hours > totalHours) {
                 hoursInput.classList.add('is-invalid');
-                validation.innerHTML = `⚠️ 残り${totalHours.toFixed(0)}時間を超えています`;
+                validation.textContent = `⚠️ 残り${App.utils.escapeHtml(totalHours.toFixed(0))}時間を超えています`;
                 validation.classList.add('show', 'error');
                 return false;
             }

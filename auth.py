@@ -1,0 +1,319 @@
+"""
+Secure Authentication Module for YuKyuDATA
+Handles JWT generation, verification, and role-based access control
+"""
+
+import jwt
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Dict, Any
+from functools import wraps
+from fastapi import HTTPException, Depends, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel, Field
+import os
+import logging
+from config.security import settings
+
+logger = logging.getLogger(__name__)
+security = HTTPBearer(auto_error=False)
+
+
+# ============================================
+# MODELS
+# ============================================
+
+class UserLogin(BaseModel):
+    """Login request model"""
+    username: str = Field(..., min_length=1, max_length=100)
+    password: str = Field(..., min_length=8, max_length=255)
+
+
+class TokenResponse(BaseModel):
+    """Token response model"""
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user: dict
+
+
+class CurrentUser(BaseModel):
+    """Current authenticated user"""
+    username: str
+    role: str
+    name: str
+    exp: float
+
+
+# ============================================
+# USER STORE (Load from environment in production)
+# ============================================
+
+def _load_users_from_env() -> Dict[str, Dict[str, Any]]:
+    """
+    Load users from environment variables.
+    Format: USERS_JSON='{"username": {"password": "hash", "role": "admin", "name": "Full Name"}}'
+
+    In production, use a database or secrets manager!
+    """
+    import json
+
+    users_json = os.getenv("USERS_JSON")
+    if users_json:
+        try:
+            return json.loads(users_json)
+        except json.JSONDecodeError:
+            logger.error("Failed to parse USERS_JSON from environment")
+
+    # Default: Only allow if explicitly configured
+    if settings.debug:
+        # Development fallback (INSECURE - never in production!)
+        logger.warning("Using development user store. Configure USERS_JSON in production!")
+        return {
+            "demo": {
+                "password": "demo123456",  # Min 8 chars
+                "role": "user",
+                "name": "Demo User"
+            }
+        }
+
+    return {}
+
+
+USERS_DB = _load_users_from_env()
+
+
+# ============================================
+# JWT TOKEN MANAGEMENT
+# ============================================
+
+def create_access_token(
+    username: str,
+    role: str,
+    name: str,
+    expires_delta: Optional[timedelta] = None
+) -> str:
+    """
+    Create a JWT access token.
+
+    Args:
+        username: Username
+        role: User role (admin, user, etc.)
+        name: Full name
+        expires_delta: Custom expiration time
+
+    Returns:
+        JWT token string
+    """
+    if not expires_delta:
+        expires_delta = timedelta(hours=settings.jwt_expiration_hours)
+
+    now = datetime.now(timezone.utc)
+    expire = now + expires_delta
+
+    payload = {
+        "sub": username,
+        "role": role,
+        "name": name,
+        "iat": now.timestamp(),
+        "exp": expire.timestamp(),
+        "token_type": "access"
+    }
+
+    token = jwt.encode(
+        payload,
+        settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm
+    )
+
+    logger.info(f"Access token created for user: {username}, role: {role}")
+
+    return token
+
+
+def verify_token(token: str) -> Optional[CurrentUser]:
+    """
+    Verify and decode a JWT token.
+
+    Args:
+        token: JWT token string
+
+    Returns:
+        CurrentUser object if valid, None otherwise
+    """
+    try:
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret_key,
+            algorithms=[settings.jwt_algorithm]
+        )
+
+        # Check expiration
+        exp = payload.get("exp")
+        if exp and exp < datetime.now(timezone.utc).timestamp():
+            logger.warning(f"Token expired for user: {payload.get('sub')}")
+            return None
+
+        return CurrentUser(
+            username=payload.get("sub"),
+            role=payload.get("role", "user"),
+            name=payload.get("name", "Unknown"),
+            exp=exp
+        )
+
+    except jwt.InvalidTokenError as e:
+        logger.warning(f"Invalid token: {str(e)}")
+        return None
+    except Exception as e:
+        logger.error(f"Error verifying token: {str(e)}")
+        return None
+
+
+# ============================================
+# AUTHENTICATION DEPENDENCIES
+# ============================================
+
+async def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+) -> CurrentUser:
+    """
+    Dependency to get the current authenticated user.
+    Raises 401 if not authenticated.
+
+    Usage:
+        @app.get("/protected")
+        async def protected_route(user: CurrentUser = Depends(get_current_user)):
+            return {"user": user.username}
+    """
+    if not credentials:
+        logger.warning("Missing credentials")
+        raise HTTPException(
+            status_code=401,
+            detail="Missing authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = verify_token(credentials.credentials)
+    if not user:
+        logger.warning(f"Invalid token attempt")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user
+
+
+async def get_admin_user(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+    """
+    Dependency to ensure the user has admin role.
+    Raises 403 if not admin.
+
+    Usage:
+        @app.delete("/admin/users")
+        async def admin_route(user: CurrentUser = Depends(get_admin_user)):
+            return {"message": "Admin action completed"}
+    """
+    if user.role != "admin":
+        logger.warning(f"Unauthorized admin access attempt by: {user.username}")
+        raise HTTPException(
+            status_code=403,
+            detail="Admin privileges required"
+        )
+
+    return user
+
+
+# ============================================
+# LOGIN HANDLER
+# ============================================
+
+def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
+    """
+    Authenticate a user with username and password.
+
+    Args:
+        username: Username
+        password: Password (plain text - should use bcrypt in production)
+
+    Returns:
+        User object if valid, None otherwise
+    """
+    user = USERS_DB.get(username)
+
+    if not user:
+        logger.warning(f"Login attempt with non-existent username: {username}")
+        return None
+
+    # SECURITY: In production, use bcrypt.verify() instead!
+    # For now, simple comparison (acceptable for demo only)
+    if user.get("password") != password:
+        logger.warning(f"Login attempt with wrong password for user: {username}")
+        return None
+
+    logger.info(f"User authenticated: {username}")
+    return user
+
+
+# ============================================
+# RATE LIMIT DEPENDENCY
+# ============================================
+
+async def check_rate_limit(request: Request) -> None:
+    """
+    Dependency to check rate limiting.
+
+    Usage:
+        @app.post("/login", dependencies=[Depends(check_rate_limit)])
+        async def login(credentials: UserLogin):
+            ...
+    """
+    from main import rate_limiter  # Import here to avoid circular imports
+
+    client_ip = request.client.host
+
+    if not rate_limiter.is_allowed(client_ip):
+        logger.warning(f"Rate limit exceeded for IP: {client_ip}")
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests. Please try again later.",
+            headers={"Retry-After": str(settings.rate_limit_window_seconds)}
+        )
+
+
+# ============================================
+# UTILITY FUNCTIONS
+# ============================================
+
+def get_token_from_header(authorization: Optional[str]) -> Optional[str]:
+    """
+    Extract JWT token from Authorization header.
+
+    Args:
+        authorization: Authorization header value (e.g., "Bearer token_value")
+
+    Returns:
+        Token string or None
+    """
+    if not authorization:
+        return None
+
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        return None
+
+    return parts[1]
+
+
+def log_auth_event(event: str, username: str, ip: str, success: bool):
+    """
+    Log authentication events for auditing.
+
+    Args:
+        event: Event type (login, logout, access_denied, etc.)
+        username: Username (or "unknown" if not authenticated)
+        ip: Client IP address
+        success: Whether the event was successful
+    """
+    status = "SUCCESS" if success else "FAILED"
+    logger.info(f"AUTH_EVENT [{status}] event={event} user={username} ip={ip}")
