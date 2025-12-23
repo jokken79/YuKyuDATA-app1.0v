@@ -35,6 +35,8 @@ from middleware_security import (
     RequestLoggingMiddleware,
     AuthenticationLoggingMiddleware
 )
+from pagination import PaginationParams, PaginatedResponse, paginate_list
+from caching import cached, invalidate_employee_cache, get_cache_stats
 from fiscal_year import (
     process_year_end_carryover,
     get_employee_balance_breakdown,
@@ -406,6 +408,153 @@ async def get_employees(year: int = None, enhanced: bool = False, active_only: b
         return {"data": data, "available_years": years}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# PAGINATED ENDPOINTS (v1) - FASE 1 Performance
+# ============================================
+
+@app.get("/api/v1/employees")
+async def get_employees_paginated(
+    year: Optional[int] = None,
+    page: int = 1,
+    per_page: int = 20,
+    sort_by: Optional[str] = None,
+    sort_order: str = "asc"
+):
+    """
+    Returns paginated list of employees.
+
+    Query Parameters:
+        year: Filter by year (optional)
+        page: Page number (default: 1)
+        per_page: Items per page (default: 20, max: 100)
+        sort_by: Sort column (name, haken, balance, etc.)
+        sort_order: Sort direction (asc/desc)
+
+    Returns:
+        PaginatedResponse with data, pagination info
+    """
+    try:
+        # Get all employees (filtered by year if specified)
+        if year:
+            all_data = database.get_employees(year)
+        else:
+            all_data = database.get_employees()
+
+        # Apply sorting if specified
+        if sort_by and sort_by in ['name', 'haken', 'balance', 'usage_rate', 'granted', 'used']:
+            reverse = sort_order.lower() == 'desc'
+            all_data = sorted(all_data, key=lambda x: x.get(sort_by, 0), reverse=reverse)
+
+        # Paginate results
+        paginated_data, total = paginate_list(all_data, page, per_page)
+
+        # Create response
+        response = PaginatedResponse.create(
+            data=paginated_data,
+            total=total,
+            page=page,
+            per_page=per_page
+        )
+
+        years = database.get_available_years()
+        response.available_years = years
+
+        return response.model_dump()
+
+    except Exception as e:
+        logger.error(f"Error getting paginated employees: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v1/genzai")
+async def get_genzai_paginated(
+    status: Optional[str] = None,
+    page: int = 1,
+    per_page: int = 20
+):
+    """
+    Returns paginated list of dispatch employees (Genzai).
+
+    Query Parameters:
+        status: Filter by status (optional)
+        page: Page number (default: 1)
+        per_page: Items per page (default: 20, max: 100)
+    """
+    try:
+        data = database.get_genzai(status)
+        paginated_data, total = paginate_list(data, page, per_page)
+
+        response = PaginatedResponse.create(
+            data=paginated_data,
+            total=total,
+            page=page,
+            per_page=per_page
+        )
+
+        return response.model_dump()
+
+    except Exception as e:
+        logger.error(f"Error getting paginated genzai: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v1/ukeoi")
+async def get_ukeoi_paginated(
+    status: Optional[str] = None,
+    page: int = 1,
+    per_page: int = 20
+):
+    """
+    Returns paginated list of contract employees (Ukeoi).
+
+    Query Parameters:
+        status: Filter by status (optional)
+        page: Page number (default: 1)
+        per_page: Items per page (default: 20, max: 100)
+    """
+    try:
+        data = database.get_ukeoi(status)
+        paginated_data, total = paginate_list(data, page, per_page)
+
+        response = PaginatedResponse.create(
+            data=paginated_data,
+            total=total,
+            page=page,
+            per_page=per_page
+        )
+
+        return response.model_dump()
+
+    except Exception as e:
+        logger.error(f"Error getting paginated ukeoi: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/cache-stats")
+async def get_cache_statistics(user: CurrentUser = Depends(get_current_user)):
+    """
+    Returns cache statistics (requires authentication).
+    Admin can see global stats, users see limited info.
+    """
+    stats = get_cache_stats()
+    return {
+        "status": "success",
+        "cache": stats
+    }
+
+
+@app.post("/api/cache/clear")
+async def clear_all_caches(user: CurrentUser = Depends(get_admin_user)):
+    """
+    Clear all caches (admin only).
+    """
+    from caching import clear_cache
+    clear_cache()
+    logger.info(f"Caches cleared by {user.username}")
+    return {"status": "success", "message": "All caches cleared"}
+
 
 @app.post("/api/sync")
 async def sync_default_file(user: CurrentUser = Depends(get_admin_user)):
