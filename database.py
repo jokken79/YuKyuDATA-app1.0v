@@ -1,27 +1,66 @@
-import sqlite3
+import os
 import json
 from datetime import datetime
 from pathlib import Path
 from contextlib import contextmanager
+from typing import Optional, Generator, Dict, List, Any
 from crypto_utils import encrypt_field, decrypt_field, get_encryption_manager
 
+# Import database connection manager
+try:
+    from database.connection import ConnectionManager
+    USE_POSTGRESQL = os.getenv('DATABASE_TYPE', 'sqlite').lower() == 'postgresql'
+except ImportError:
+    # Fallback for SQLite if connection manager not available
+    import sqlite3
+    USE_POSTGRESQL = False
+
 DB_NAME = "yukyu.db"
+DATABASE_URL = os.getenv('DATABASE_URL', f'sqlite:///{DB_NAME}')
+
+# Initialize connection manager for PostgreSQL
+if USE_POSTGRESQL:
+    db_manager = ConnectionManager(DATABASE_URL)
+else:
+    db_manager = None
+
+def _get_param_placeholder() -> str:
+    """Get parameter placeholder for current database."""
+    return '%s' if USE_POSTGRESQL else '?'
+
+def _convert_query_placeholders(query: str) -> str:
+    """Convert SQLite ? placeholders to PostgreSQL %s if needed."""
+    if not USE_POSTGRESQL:
+        return query
+    # Simple conversion - be careful with strings containing ?
+    return query.replace('?', '%s')
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    return conn
+    """Get database connection (SQLite or PostgreSQL)."""
+    if USE_POSTGRESQL:
+        return db_manager.get_connection()
+    else:
+        conn = sqlite3.connect(DB_NAME)
+        conn.row_factory = sqlite3.Row
+        return conn
 
 
 @contextmanager
-def get_db():
+def get_db() -> Generator:
     """Context manager for database connections to prevent memory leaks."""
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    try:
-        yield conn
-    finally:
-        conn.close()
+    if USE_POSTGRESQL:
+        # PostgreSQL connection from pool
+        with db_manager.get_connection() as conn:
+            yield conn
+    else:
+        # SQLite direct connection
+        import sqlite3
+        conn = sqlite3.connect(DB_NAME)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+        finally:
+            conn.close()
 
 def init_db():
     with get_db() as conn:
@@ -218,10 +257,10 @@ def save_employees(employees_data):
     """
     Saves a list of employee dictionaries to the database.
     Replaces existing data for the same ID to ensure synchronization.
+    Works with both SQLite and PostgreSQL.
     """
     with get_db() as conn:
         c = conn.cursor()
-
         timestamp = datetime.now().isoformat()
 
         for emp in employees_data:
@@ -229,23 +268,55 @@ def save_employees(employees_data):
             if 'id' not in emp:
                 emp['id'] = f"{emp.get('employeeNum')}_{emp.get('year')}"
 
-            c.execute('''
-                INSERT OR REPLACE INTO employees
-                (id, employee_num, name, haken, granted, used, balance, expired, usage_rate, year, last_updated)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                emp.get('id'),
-                emp.get('employeeNum'),
-                emp.get('name'),
-                emp.get('haken'),
-                emp.get('granted'),
-                emp.get('used'),
-                emp.get('balance'),
-                emp.get('expired', 0.0),
-                emp.get('usageRate'),
-                emp.get('year'),
-                timestamp
-            ))
+            if USE_POSTGRESQL:
+                # PostgreSQL: Use ON CONFLICT for upsert
+                c.execute('''
+                    INSERT INTO employees
+                    (id, employee_num, name, haken, granted, used, balance, expired, usage_rate, year, last_updated)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE SET
+                        employee_num = EXCLUDED.employee_num,
+                        name = EXCLUDED.name,
+                        haken = EXCLUDED.haken,
+                        granted = EXCLUDED.granted,
+                        used = EXCLUDED.used,
+                        balance = EXCLUDED.balance,
+                        expired = EXCLUDED.expired,
+                        usage_rate = EXCLUDED.usage_rate,
+                        year = EXCLUDED.year,
+                        last_updated = EXCLUDED.last_updated
+                ''', (
+                    emp.get('id'),
+                    emp.get('employeeNum'),
+                    emp.get('name'),
+                    emp.get('haken'),
+                    emp.get('granted'),
+                    emp.get('used'),
+                    emp.get('balance'),
+                    emp.get('expired', 0.0),
+                    emp.get('usageRate'),
+                    emp.get('year'),
+                    timestamp
+                ))
+            else:
+                # SQLite: Use INSERT OR REPLACE
+                c.execute('''
+                    INSERT OR REPLACE INTO employees
+                    (id, employee_num, name, haken, granted, used, balance, expired, usage_rate, year, last_updated)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    emp.get('id'),
+                    emp.get('employeeNum'),
+                    emp.get('name'),
+                    emp.get('haken'),
+                    emp.get('granted'),
+                    emp.get('used'),
+                    emp.get('balance'),
+                    emp.get('expired', 0.0),
+                    emp.get('usageRate'),
+                    emp.get('year'),
+                    timestamp
+                ))
 
         conn.commit()
 
@@ -332,7 +403,7 @@ def clear_database():
 # === GENZAI (Dispatch Employees) Functions ===
 
 def save_genzai(genzai_data):
-    """Saves dispatch employee data from DBGenzaiX sheet."""
+    """Saves dispatch employee data from DBGenzaiX sheet. Works with SQLite and PostgreSQL."""
     with get_db() as conn:
         c = conn.cursor()
         timestamp = datetime.now().isoformat()
@@ -342,13 +413,7 @@ def save_genzai(genzai_data):
             encrypted_birth_date = encrypt_field(emp.get('birth_date'))
             encrypted_hourly_wage = encrypt_field(str(emp.get('hourly_wage')) if emp.get('hourly_wage') else None)
 
-            c.execute('''
-                INSERT OR REPLACE INTO genzai
-                (id, status, employee_num, dispatch_id, dispatch_name, department, line,
-                 job_content, name, kana, gender, nationality, birth_date, age,
-                 hourly_wage, wage_revision, last_updated)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
+            params = (
                 emp.get('id'),
                 emp.get('status'),
                 emp.get('employee_num'),
@@ -366,7 +431,41 @@ def save_genzai(genzai_data):
                 encrypted_hourly_wage,
                 emp.get('wage_revision'),
                 timestamp
-            ))
+            )
+
+            if USE_POSTGRESQL:
+                c.execute('''
+                    INSERT INTO genzai
+                    (id, status, employee_num, dispatch_id, dispatch_name, department, line,
+                     job_content, name, kana, gender, nationality, birth_date, age,
+                     hourly_wage, wage_revision, last_updated)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE SET
+                        status = EXCLUDED.status,
+                        employee_num = EXCLUDED.employee_num,
+                        dispatch_id = EXCLUDED.dispatch_id,
+                        dispatch_name = EXCLUDED.dispatch_name,
+                        department = EXCLUDED.department,
+                        line = EXCLUDED.line,
+                        job_content = EXCLUDED.job_content,
+                        name = EXCLUDED.name,
+                        kana = EXCLUDED.kana,
+                        gender = EXCLUDED.gender,
+                        nationality = EXCLUDED.nationality,
+                        birth_date = EXCLUDED.birth_date,
+                        age = EXCLUDED.age,
+                        hourly_wage = EXCLUDED.hourly_wage,
+                        wage_revision = EXCLUDED.wage_revision,
+                        last_updated = EXCLUDED.last_updated
+                ''', params)
+            else:
+                c.execute('''
+                    INSERT OR REPLACE INTO genzai
+                    (id, status, employee_num, dispatch_id, dispatch_name, department, line,
+                     job_content, name, kana, gender, nationality, birth_date, age,
+                     hourly_wage, wage_revision, last_updated)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', params)
 
         conn.commit()
 
@@ -428,7 +527,7 @@ def clear_genzai():
 # === UKEOI (Contract Employees) Functions ===
 
 def save_ukeoi(ukeoi_data):
-    """Saves contract employee data from DBUkeoiX sheet."""
+    """Saves contract employee data from DBUkeoiX sheet. Works with SQLite and PostgreSQL."""
     with get_db() as conn:
         c = conn.cursor()
         timestamp = datetime.now().isoformat()
@@ -438,12 +537,7 @@ def save_ukeoi(ukeoi_data):
             encrypted_birth_date = encrypt_field(emp.get('birth_date'))
             encrypted_hourly_wage = encrypt_field(str(emp.get('hourly_wage')) if emp.get('hourly_wage') else None)
 
-            c.execute('''
-                INSERT OR REPLACE INTO ukeoi
-                (id, status, employee_num, contract_business, name, kana, gender,
-                 nationality, birth_date, age, hourly_wage, wage_revision, last_updated)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
+            params = (
                 emp.get('id'),
                 emp.get('status'),
                 emp.get('employee_num'),
@@ -457,7 +551,35 @@ def save_ukeoi(ukeoi_data):
                 encrypted_hourly_wage,
                 emp.get('wage_revision'),
                 timestamp
-            ))
+            )
+
+            if USE_POSTGRESQL:
+                c.execute('''
+                    INSERT INTO ukeoi
+                    (id, status, employee_num, contract_business, name, kana, gender,
+                     nationality, birth_date, age, hourly_wage, wage_revision, last_updated)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE SET
+                        status = EXCLUDED.status,
+                        employee_num = EXCLUDED.employee_num,
+                        contract_business = EXCLUDED.contract_business,
+                        name = EXCLUDED.name,
+                        kana = EXCLUDED.kana,
+                        gender = EXCLUDED.gender,
+                        nationality = EXCLUDED.nationality,
+                        birth_date = EXCLUDED.birth_date,
+                        age = EXCLUDED.age,
+                        hourly_wage = EXCLUDED.hourly_wage,
+                        wage_revision = EXCLUDED.wage_revision,
+                        last_updated = EXCLUDED.last_updated
+                ''', params)
+            else:
+                c.execute('''
+                    INSERT OR REPLACE INTO ukeoi
+                    (id, status, employee_num, contract_business, name, kana, gender,
+                     nationality, birth_date, age, hourly_wage, wage_revision, last_updated)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', params)
 
         conn.commit()
 
@@ -513,7 +635,7 @@ def get_ukeoi(status=None, year=None, active_in_year=False):
 # === STAFF Functions ===
 
 def save_staff(staff_data):
-    """Saves staff employee data from DBStaffX sheet."""
+    """Saves staff employee data from DBStaffX sheet. Works with SQLite and PostgreSQL."""
     with get_db() as conn:
         c = conn.cursor()
         timestamp = datetime.now().isoformat()
@@ -525,13 +647,7 @@ def save_staff(staff_data):
             encrypted_address = encrypt_field(emp.get('address'))
             encrypted_visa_type = encrypt_field(emp.get('visa_type'))
 
-            c.execute('''
-                INSERT OR REPLACE INTO staff
-                (id, status, employee_num, office, name, kana, gender, nationality,
-                 birth_date, age, visa_expiry, visa_type, spouse, postal_code,
-                 address, building, hire_date, leave_date, last_updated)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
+            params = (
                 emp.get('id'),
                 emp.get('status'),
                 emp.get('employee_num'),
@@ -551,7 +667,43 @@ def save_staff(staff_data):
                 emp.get('hire_date'),
                 emp.get('leave_date'),
                 timestamp
-            ))
+            )
+
+            if USE_POSTGRESQL:
+                c.execute('''
+                    INSERT INTO staff
+                    (id, status, employee_num, office, name, kana, gender, nationality,
+                     birth_date, age, visa_expiry, visa_type, spouse, postal_code,
+                     address, building, hire_date, leave_date, last_updated)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE SET
+                        status = EXCLUDED.status,
+                        employee_num = EXCLUDED.employee_num,
+                        office = EXCLUDED.office,
+                        name = EXCLUDED.name,
+                        kana = EXCLUDED.kana,
+                        gender = EXCLUDED.gender,
+                        nationality = EXCLUDED.nationality,
+                        birth_date = EXCLUDED.birth_date,
+                        age = EXCLUDED.age,
+                        visa_expiry = EXCLUDED.visa_expiry,
+                        visa_type = EXCLUDED.visa_type,
+                        spouse = EXCLUDED.spouse,
+                        postal_code = EXCLUDED.postal_code,
+                        address = EXCLUDED.address,
+                        building = EXCLUDED.building,
+                        hire_date = EXCLUDED.hire_date,
+                        leave_date = EXCLUDED.leave_date,
+                        last_updated = EXCLUDED.last_updated
+                ''', params)
+            else:
+                c.execute('''
+                    INSERT OR REPLACE INTO staff
+                    (id, status, employee_num, office, name, kana, gender, nationality,
+                     birth_date, age, visa_expiry, visa_type, spouse, postal_code,
+                     address, building, hire_date, leave_date, last_updated)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', params)
 
         conn.commit()
 
@@ -679,7 +831,7 @@ def get_stats_by_factory(year=None):
 
 def create_leave_request(employee_num, employee_name, start_date, end_date, days_requested, reason, year,
                          hours_requested=0, leave_type='full', hourly_wage=0):
-    """Creates a new leave request (yukyu solicitud).
+    """Creates a new leave request (yukyu solicitud). Works with SQLite and PostgreSQL.
 
     Args:
         employee_num: 社員番号
@@ -702,15 +854,26 @@ def create_leave_request(employee_num, employee_name, start_date, end_date, days
         total_hours = (days_requested * 8) + hours_requested
         cost_estimate = total_hours * hourly_wage if hourly_wage > 0 else 0
 
-        c.execute('''
-            INSERT INTO leave_requests
-            (employee_num, employee_name, start_date, end_date, days_requested, hours_requested,
-             leave_type, reason, status, requested_at, year, hourly_wage, cost_estimate, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?)
-        ''', (employee_num, employee_name, start_date, end_date, days_requested, hours_requested,
-              leave_type, reason, timestamp, year, hourly_wage, cost_estimate, timestamp))
+        if USE_POSTGRESQL:
+            c.execute('''
+                INSERT INTO leave_requests
+                (employee_num, employee_name, start_date, end_date, days_requested, hours_requested,
+                 leave_type, reason, status, requested_at, year, hourly_wage, cost_estimate, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'PENDING', %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            ''', (employee_num, employee_name, start_date, end_date, days_requested, hours_requested,
+                  leave_type, reason, timestamp, year, hourly_wage, cost_estimate, timestamp, timestamp))
+            request_id = c.fetchone()[0]
+        else:
+            c.execute('''
+                INSERT INTO leave_requests
+                (employee_num, employee_name, start_date, end_date, days_requested, hours_requested,
+                 leave_type, reason, status, requested_at, year, hourly_wage, cost_estimate, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?)
+            ''', (employee_num, employee_name, start_date, end_date, days_requested, hours_requested,
+                  leave_type, reason, timestamp, year, hourly_wage, cost_estimate, timestamp))
+            request_id = c.lastrowid
 
-        request_id = c.lastrowid
         conn.commit()
         return request_id
 
@@ -848,6 +1011,7 @@ def save_yukyu_usage_details(usage_details_list):
     """
     Saves individual yukyu usage dates (columns R-BE from Excel).
     Each entry represents one specific date when an employee used yukyu.
+    Works with SQLite and PostgreSQL.
 
     Args:
         usage_details_list: List of dicts with keys:
@@ -863,11 +1027,7 @@ def save_yukyu_usage_details(usage_details_list):
         timestamp = datetime.now().isoformat()
 
         for detail in usage_details_list:
-            c.execute('''
-                INSERT OR REPLACE INTO yukyu_usage_details
-                (employee_num, name, use_date, year, month, days_used, last_updated)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (
+            params = (
                 detail.get('employee_num'),
                 detail.get('name'),
                 detail.get('use_date'),
@@ -875,7 +1035,26 @@ def save_yukyu_usage_details(usage_details_list):
                 detail.get('month'),
                 detail.get('days_used', 1.0),
                 timestamp
-            ))
+            )
+
+            if USE_POSTGRESQL:
+                c.execute('''
+                    INSERT INTO yukyu_usage_details
+                    (employee_num, name, use_date, year, month, days_used, last_updated, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (employee_num, use_date) DO UPDATE SET
+                        name = EXCLUDED.name,
+                        year = EXCLUDED.year,
+                        month = EXCLUDED.month,
+                        days_used = EXCLUDED.days_used,
+                        last_updated = EXCLUDED.last_updated
+                ''', params + (timestamp,))
+            else:
+                c.execute('''
+                    INSERT OR REPLACE INTO yukyu_usage_details
+                    (employee_num, name, use_date, year, month, days_used, last_updated)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', params)
 
         conn.commit()
 
