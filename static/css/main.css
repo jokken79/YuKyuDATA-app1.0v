@@ -29,7 +29,7 @@
   --neon-shadow: 0 0 10px var(--primary-glow);
 
   /* Layout */
-  --sidebar-width: 260px;
+  --sidebar-width: 280px;
   --header-height: 70px;
 }
 
@@ -309,10 +309,12 @@ body::after {
 }
 
 .main-content {
-  flex: 1;
   margin-left: var(--sidebar-width);
+  width: calc(100% - var(--sidebar-width));
   padding: 2rem;
-  max-width: 1600px; /* Prevent overly wide content on large screens */
+  min-height: 100vh;
+  max-width: 1600px;
+  position: relative;
 }
 
 /* Components */
@@ -359,6 +361,7 @@ body::after {
   grid-template-columns: repeat(4, 1fr);
   gap: 1.5rem;
   margin-bottom: 2rem;
+  width: 100%;
 }
 
 .col-span-1 { grid-column: span 1; }
@@ -2341,4 +2344,114 @@ tr:hover .mini-progress-fill {
 .trend-neutral {
   background: rgba(148, 163, 184, 0.15);
   color: var(--text-muted);
+}
+
+/* ========================================
+   CHART CONTAINERS - FIXED FOR VISIBILITY
+   ======================================== */
+
+/* Chart Containers - FIXED */
+.chart-container {
+  width: 100%;
+  height: 100%;
+  min-height: 350px;
+  position: relative;
+  overflow: visible;
+}
+
+.chart-container-sm {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  max-height: 400px;
+  position: relative;
+  overflow: visible;
+}
+
+.chart-container-lg {
+  width: 100%;
+  height: 100%;
+  min-height: 450px;
+  max-height: 600px;
+  position: relative;
+  overflow: visible;
+}
+
+/* Chart div fixes */
+#chart-distribution,
+#chart-trends,
+#chart-factories,
+#chart-department,
+#chart-emp-type {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 300px !important;
+  position: relative !important;
+  overflow: visible !important;
+}
+
+/* ApexCharts fixes */
+.apexcharts-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 300px !important;
+}
+
+.apexcharts-svg {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 300px !important;
+}
+
+/* Chart.js fixes */
+canvas {
+  max-height: none !important;
+  height: auto !important;
+  width: 100% !important;
+}
+
+/* Ensure chart panels have proper height */
+.glass-panel[style*="height: 400px"] {
+  min-height: 400px !important;
+  height: 400px !important;
+}
+
+.glass-panel[style*="height: 600px"] {
+  min-height: 600px !important;
+  height: 600px !important;
+}
+
+/* Chart initialization animation */
+@keyframes chartFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chart-container,
+.chart-container-sm,
+.chart-container-lg {
+  animation: chartFadeIn 0.6s ease-out;
+}
+
+/* Fix for chart visibility on scroll */
+.chart-container,
+.chart-container-sm,
+.chart-container-lg {
+  contain: none;
+  content-visibility: visible;
+}
+
+/* Ensure charts are visible when parent containers scroll */
+.bento-grid {
+  overflow: visible;
+}
+
+.bento-grid .glass-panel {
+  overflow: visible;
 }

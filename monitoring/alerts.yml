@@ -1,0 +1,277 @@
+# alerts.yml
+# Alerting rules para YuKyuDATA
+
+groups:
+  - name: application
+    interval: 30s
+    rules:
+      # ============================================
+      # APPLICATION AVAILABILITY
+      # ============================================
+      - alert: AppDown
+        expr: up{job="yukyu-app"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "YuKyuDATA Application is down"
+          description: "YuKyuDATA app has been unreachable for 2 minutes"
+          dashboard: "https://grafana.example.com/d/app-health"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{job="yukyu-app", status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} in last 5 minutes"
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, http_request_duration_seconds{job="yukyu-app"}) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time detected"
+          description: "P95 response time is {{ $value }}s"
+
+      # ============================================
+      # RATE LIMITING
+      # ============================================
+      - alert: RateLimitExceeded
+        expr: increase(http_requests_total{status="429"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Rate limit exceeded by clients"
+          description: "{{ $value }} rate limit responses in last 5 minutes"
+
+      - alert: BruteForceAttempt
+        expr: increase(http_requests_total{status="401", path=~"/auth/.*"}[1m]) > 10
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Possible brute force attack detected"
+          description: "More than 10 auth failures from {{ $labels.remote_addr }} in 1 minute"
+
+      # ============================================
+      # DATABASE
+      # ============================================
+  - name: database
+    interval: 30s
+    rules:
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "Cannot reach PostgreSQL database"
+
+      - alert: PostgreSQLHighConnections
+        expr: pg_stat_activity_count > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL has high number of connections"
+          description: "Current connections: {{ $value }}"
+
+      - alert: PostgreSQLSlowQueries
+        expr: pg_slow_queries > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL has slow queries"
+          description: "Slow queries count: {{ $value }}"
+
+      - alert: PostgreSQLReplicationLag
+        expr: pg_replication_lag_seconds > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL replication lag is high"
+          description: "Replication lag: {{ $value }}s"
+
+      - alert: PostgreSQLDiskSpace
+        expr: pg_database_size_bytes / 1073741824 > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL database is growing too large"
+          description: "Database size: {{ humanize $value }}GB"
+
+      # ============================================
+      # REDIS
+      # ============================================
+  - name: cache
+    interval: 30s
+    rules:
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis cache is down"
+          description: "Cannot reach Redis cache"
+
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "Memory usage: {{ humanizePercentage $value }}"
+
+      - alert: RedisEvictions
+        expr: rate(redis_evicted_keys_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis is evicting keys"
+          description: "Eviction rate: {{ $value }} keys/sec"
+
+      # ============================================
+      # INFRASTRUCTURE
+      # ============================================
+  - name: infrastructure
+    interval: 30s
+    rules:
+      - alert: HighCPUUsage
+        expr: (100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage on {{ $labels.instance }}: {{ $value }}%"
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage on {{ $labels.instance }}: {{ $value }}%"
+
+      - alert: HighDiskUsage
+        expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lowerfs|squashfs|vfat|iso9660"} / node_filesystem_size_bytes)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High disk usage"
+          description: "Disk usage on {{ $labels.device }}: {{ $value }}%"
+
+      - alert: DiskSpaceRunningOut
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lowerfs|squashfs|vfat|iso9660"} / 1073741824) < 5
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk space running out"
+          description: "Available space on {{ $labels.device }}: {{ humanize $value }}GB"
+
+      - alert: NetworkBytesOut
+        expr: rate(node_network_transmit_bytes_total[5m]) > 100000000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High network transmit rate"
+          description: "Transmit rate: {{ humanize $value }}B/s"
+
+      - alert: ContainerHighCPU
+        expr: (sum(rate(container_cpu_usage_seconds_total[5m])) by (container_name)) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.container_name }} has high CPU usage"
+          description: "CPU usage: {{ $value }}"
+
+      - alert: ContainerHighMemory
+        expr: (sum(container_memory_usage_bytes) by (container_name) / 1073741824) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.container_name }} has high memory usage"
+          description: "Memory usage: {{ humanize $value }}GB"
+
+      # ============================================
+      # SECURITY
+      # ============================================
+  - name: security
+    interval: 30s
+    rules:
+      - alert: SSLCertificateExpiringSoon
+        expr: ssl_cert_not_after_seconds - time() < 604800
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "SSL certificate expiring in less than 7 days"
+          description: "Certificate for {{ $labels.domain }} expires in {{ humanizeDuration ($value) }}"
+
+      - alert: UnauthorizedAccessAttempt
+        expr: increase(http_requests_total{status="401"}[1m]) > 20
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Multiple unauthorized access attempts"
+          description: "{{ $value }} failed auth attempts in last minute"
+
+      - alert: DataExportAnomaly
+        expr: increase(http_requests_total{path=~"/api/.*/export.*"}[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Unusual data export activity"
+          description: "{{ $value }} export requests in last 5 minutes"
+
+      # ============================================
+      # COMPLIANCE
+      # ============================================
+  - name: compliance
+    interval: 30s
+    rules:
+      - alert: AuditLogNotWriting
+        expr: increase(audit_log_entries_total[5m]) == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Audit logs are not being written"
+          description: "No new audit log entries in last 5 minutes"
+
+      - alert: BackupFailed
+        expr: increase(backup_failures_total[1h]) > 0
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database backup failed"
+          description: "{{ $value }} backup failures in last hour"
+
+      - alert: BackupNotRunning
+        expr: time() - max(backup_last_completion_timestamp) > 86400
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup hasn't run in 24 hours"
+          description: "Last backup: {{ humanizeDuration (time() - $value) }} ago"

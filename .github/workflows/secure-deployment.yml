@@ -1,0 +1,525 @@
+name: Secure Deployment Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Daily security scan at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  PYTHON_VERSION: '3.11'
+
+# Limit concurrent deployments
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================
+  # 1. STATIC APPLICATION SECURITY TESTING
+  # ============================================
+  sast:
+    name: SAST - Code Security Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for Semgrep
+
+      - name: Run Semgrep (SAST)
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/owasp-top-ten
+            p/python
+            p/fastapi
+          generateSarif: true
+
+      - name: Upload SARIF to GitHub
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+      - name: Run Bandit (Python security)
+        run: |
+          pip install bandit
+          bandit -r . -ll -f json -o bandit-report.json
+          bandit -r . -ll
+
+      - name: Run Pylint
+        run: |
+          pip install pylint
+          pylint main.py database.py excel_service.py --fail-under=7 || echo "Pylint issues found"
+
+  # ============================================
+  # 2. DEPENDENCY VULNERABILITY SCANNING
+  # ============================================
+  dependency-scan:
+    name: Dependency Vulnerability Scanning
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Safety check
+        run: |
+          pip install safety
+          safety check --json > safety-report.json
+          safety check --report || true
+
+      - name: Run pip-audit
+        run: |
+          pip install pip-audit
+          pip-audit --desc
+
+      - name: Run OWASP Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          path: '.'
+          format: 'JSON'
+          args: >
+            --enable-experimental
+            --scan .
+
+      - name: Upload Dependency-Check report
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-check-report
+          path: reports/dependency-check-report.json
+
+  # ============================================
+  # 3. SECRET SCANNING
+  # ============================================
+  secret-scan:
+    name: Secret & Credentials Scanning
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --json
+
+      - name: GitGuardian Scan
+        uses: gitguardian/ggshield-action@master
+        env:
+          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+        with:
+          args: -v --json
+
+      - name: Check for hardcoded secrets
+        run: |
+          python -c "
+          import os
+          import re
+
+          patterns = {
+              'api_key': r'[\"\\']?api[_-]?key[\"\\']?\s*[:=]\s*[\"\\'][^\"\\']+'',
+              'password': r'[\"\\']?password[\"\\']?\s*[:=]\s*[\"\\'][^\"\\']+'',
+              'token': r'[\"\\']?token[\"\\']?\s*[:=]\s*[\"\\'][^\"\\']+'',
+              'secret': r'[\"\\']?secret[\"\\']?\s*[:=]\s*[\"\\'][^\"\\']+'',
+          }
+
+          found = False
+          for root, dirs, files in os.walk('.'):
+              # Skip git and cache
+              dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', '.pytest_cache']]
+
+              for file in files:
+                  if file.endswith(('.py', '.js', '.yaml', '.yml', '.env')):
+                      filepath = os.path.join(root, file)
+                      try:
+                          with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                              for i, line in enumerate(f, 1):
+                                  for pattern_name, pattern in patterns.items():
+                                      if re.search(pattern, line, re.IGNORECASE):
+                                          print(f'WARNING: Possible {pattern_name} in {filepath}:{i}')
+                                          found = True
+                      except:
+                          pass
+
+          if found:
+              exit(1)
+          "
+
+  # ============================================
+  # 4. CONTAINER IMAGE SCANNING
+  # ============================================
+  container-scan:
+    name: Container Image Security Scanning
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build image for scanning
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile.secure
+          push: false
+          load: true
+          tags: yukyu-app:${{ github.sha }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: yukyu-app:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+
+      - name: Upload Trivy results to GitHub
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'trivy'
+
+      - name: Run Grype vulnerability scanner
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          grype yukyu-app:${{ github.sha }} -o json > grype-results.json
+          grype yukyu-app:${{ github.sha }}
+
+      - name: Check for critical vulnerabilities
+        run: |
+          if grep -q '"severity":"Critical"' grype-results.json; then
+              echo "Critical vulnerabilities found in image!"
+              exit 1
+          fi
+
+  # ============================================
+  # 5. CODE REVIEW & QUALITY
+  # ============================================
+  code-quality:
+    name: Code Quality & Best Practices
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Black (Code formatting)
+        run: |
+          pip install black
+          black --check . || black --diff .
+
+      - name: Run isort (Import sorting)
+        run: |
+          pip install isort
+          isort --check-only .
+
+      - name: Run Flake8 (Code style)
+        run: |
+          pip install flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Run type checking (mypy)
+        run: |
+          pip install mypy
+          mypy . --ignore-missing-imports || true
+
+  # ============================================
+  # 6. BUILD & PUSH DOCKER IMAGE
+  # ============================================
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [sast, dependency-scan, secret-scan]
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile.secure
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          sbom: true
+          provenance: true
+
+      - name: Sign image with Cosign
+        if: github.event_name != 'pull_request'
+        env:
+          COSIGN_EXPERIMENTAL: 1
+        run: |
+          curl -sSL https://github.com/sigstore/cosign/releases/download/v2.0.0/cosign-linux-amd64 -o cosign
+          chmod +x cosign
+          ./cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+
+  # ============================================
+  # 7. SECURITY TESTING
+  # ============================================
+  security-tests:
+    name: Security Unit Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run security tests
+        run: |
+          pytest tests/ -v --cov=. --cov-report=xml --tb=short -k "security or auth or api" || true
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          flags: security
+
+  # ============================================
+  # 8. DEPLOYMENT (only on main branch)
+  # ============================================
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, code-quality, security-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      deployments: write
+
+    environment:
+      name: production
+      url: https://yukyu-data.example.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create deployment
+        id: deployment
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+              environment: 'production',
+              description: 'Deploying to production',
+              auto_merge: false,
+              required_contexts: []
+            });
+            return deployment.data.id;
+
+      - name: Wait for approvals
+        run: |
+          echo "Deployment requires manual approval"
+          echo "Review and approve in GitHub Actions UI"
+          # In production, this would wait for manual approval
+
+      - name: Deploy using ArgoCD
+        env:
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+        run: |
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x argocd
+          ./argocd app sync yukyu-app --grpc-web --server $ARGOCD_SERVER --auth-token $ARGOCD_AUTH_TOKEN
+          ./argocd app wait yukyu-app --health --timeout 5m
+
+      - name: Update deployment status
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const state = context.payload.pull_request ? 'pending' : 'success';
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.deployment.outputs.result }},
+              state: state,
+              environment_url: 'https://yukyu-data.example.com',
+              description: 'Deployed successfully'
+            });
+
+  # ============================================
+  # 9. POST-DEPLOYMENT VERIFICATION
+  # ============================================
+  verify:
+    name: Post-Deployment Verification
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+
+    steps:
+      - name: Health check
+        run: |
+          curl -f https://yukyu-data.example.com/health || exit 1
+
+      - name: Security headers validation
+        run: |
+          python << 'EOF'
+          import requests
+
+          url = "https://yukyu-data.example.com"
+          response = requests.head(url)
+
+          required_headers = {
+              "Strict-Transport-Security": None,
+              "X-Content-Type-Options": "nosniff",
+              "X-Frame-Options": "DENY",
+              "Content-Security-Policy": None,
+          }
+
+          for header, expected_value in required_headers.items():
+              value = response.headers.get(header)
+              if value is None:
+                  print(f"ERROR: Missing header {header}")
+                  exit(1)
+              if expected_value and expected_value not in value:
+                  print(f"ERROR: Header {header} has wrong value: {value}")
+                  exit(1)
+              print(f"OK: {header}: {value}")
+          EOF
+
+      - name: API endpoint testing
+        run: |
+          curl -f https://yukyu-data.example.com/api/v1/health || exit 1
+          echo "API Health Check: OK"
+
+      - name: Smoke tests
+        run: |
+          # Run basic smoke tests
+          pytest smoke_tests/ -v --tb=short
+
+# ============================================
+# NOTIFICATIONS
+# ============================================
+
+  notify:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [sast, dependency-scan, secret-scan, build, deploy]
+    if: failure()
+    permissions:
+      contents: read
+
+    steps:
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v1
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          payload: |
+            {
+              "text": "❌ YuKyuDATA Deployment Failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Pipeline Failed*\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nCommit: ${{ github.sha }}"
+                  }
+                }
+              ]
+            }

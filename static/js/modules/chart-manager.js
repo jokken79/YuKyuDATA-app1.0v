@@ -216,7 +216,7 @@ export class ChartManager {
      * @param {Object} state - Objeto de estado con charts
      * @param {string} apiBase - URL base del API
      */
-    constructor(state = null, apiBase = 'http://localhost:8000/api') {
+    constructor(state = null, apiBase = '/api') {
         /** @type {Object} Objeto de estado para almacenar instancias de charts */
         this.state = state || { charts: {} };
 

@@ -4,7 +4,7 @@
  * Versión optimizada con estrategias de caché mejoradas
  */
 
-const CACHE_VERSION = '1.1';
+const CACHE_VERSION = '1.2';
 const CACHE_NAME = `yukyu-premium-v${CACHE_VERSION}`;
 const CACHE_STATIC = `${CACHE_NAME}-static`;
 const CACHE_DYNAMIC = `${CACHE_NAME}-dynamic`;
@@ -218,11 +218,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Estrategia para CSS/JS críticos: Cache First
+  // Estrategia para CSS/JS: Stale-While-Revalidate para recibir updates sin romper offline
   if (url.pathname.endsWith('.css') ||
       url.pathname.endsWith('.js') ||
       url.pathname.includes('/static/js/modules/')) {
-    event.respondWith(cacheFirst(request, CACHE_STATIC));
+    event.respondWith(staleWhileRevalidate(request, CACHE_STATIC));
     return;
   }
 

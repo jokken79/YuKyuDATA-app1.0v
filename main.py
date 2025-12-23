@@ -19,6 +19,7 @@ from datetime import datetime, timedelta, date, timezone
 import database
 import excel_service
 from logger import logger, log_api_request, log_db_operation, log_sync_event, log_leave_request
+from services.search_service import SearchService
 from auth import (
     create_access_token,
     verify_token,
@@ -868,6 +869,251 @@ async def search_employees(q: str = "", status: str = None, factory: str = None)
         return {"status": "success", "data": results, "count": len(results)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
+# FULL-TEXT SEARCH ENDPOINTS (Phase 9)
+# ============================================
+
+@app.get("/api/search/full-text")
+async def search_all_employees(q: str = "", limit: int = 20):
+    """
+    Full-text search across all employee tables using PostgreSQL tsvector.
+
+    Query parameters:
+    - q: Search query (employee name, dispatch location, etc.)
+    - limit: Maximum results per table (default: 20)
+
+    Returns results from employees, genzai, ukeoi, and staff tables.
+    """
+    try:
+        if not q or len(q.strip()) < 2:
+            raise HTTPException(status_code=400, detail="Search query must be at least 2 characters")
+
+        search = SearchService()
+
+        # Check if PostgreSQL is available for FTS
+        if not search.use_postgresql:
+            logger.warning("Full-text search requires PostgreSQL. Falling back to basic search.")
+            raise HTTPException(
+                status_code=503,
+                detail="Full-text search not available. Database must be PostgreSQL."
+            )
+
+        results = search.search_all_employees(q, limit=limit)
+
+        total_results = sum(len(v) for v in results.values())
+        log_api_request(
+            "GET",
+            "/api/search/full-text",
+            200,
+            f"FTS: '{q}' -> {total_results} results",
+            "search"
+        )
+
+        return {
+            "status": "success",
+            "query": q,
+            "results": results,
+            "total": total_results,
+            "limit": limit
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"❌ Full-text search failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+
+@app.get("/api/search/employees")
+async def search_employees_fts(q: str = "", limit: int = 10, offset: int = 0):
+    """
+    Full-text search on vacation management employees (employees table).
+    Uses PostgreSQL tsvector for efficient searching by name and dispatch location.
+
+    Query parameters:
+    - q: Search query (required, minimum 2 characters)
+    - limit: Maximum results to return (default: 10)
+    - offset: Pagination offset (default: 0)
+
+    Returns: List of matching employees with relevance ranking
+    """
+    try:
+        if not q or len(q.strip()) < 2:
+            raise HTTPException(status_code=400, detail="Search query must be at least 2 characters")
+
+        search = SearchService()
+
+        if not search.use_postgresql:
+            raise HTTPException(status_code=503, detail="Search requires PostgreSQL")
+
+        results = search.search_employees(q, limit=limit, offset=offset)
+
+        log_api_request(
+            "GET",
+            "/api/search/employees",
+            200,
+            f"FTS employees: '{q}' -> {len(results)} results",
+            "search"
+        )
+
+        return {
+            "status": "success",
+            "query": q,
+            "table": "employees",
+            "results": results,
+            "count": len(results),
+            "limit": limit,
+            "offset": offset
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"❌ Employee search failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+
+@app.get("/api/search/genzai")
+async def search_genzai_fts(q: str = "", limit: int = 10, offset: int = 0):
+    """
+    Full-text search on dispatch employees (genzai table).
+    Searches by name, dispatch location, and department.
+
+    Query parameters:
+    - q: Search query (required, minimum 2 characters)
+    - limit: Maximum results to return (default: 10)
+    - offset: Pagination offset (default: 0)
+
+    Returns: List of matching genzai records with relevance ranking
+    """
+    try:
+        if not q or len(q.strip()) < 2:
+            raise HTTPException(status_code=400, detail="Search query must be at least 2 characters")
+
+        search = SearchService()
+
+        if not search.use_postgresql:
+            raise HTTPException(status_code=503, detail="Search requires PostgreSQL")
+
+        results = search.search_genzai(q, limit=limit, offset=offset)
+
+        log_api_request(
+            "GET",
+            "/api/search/genzai",
+            200,
+            f"FTS genzai: '{q}' -> {len(results)} results",
+            "search"
+        )
+
+        return {
+            "status": "success",
+            "query": q,
+            "table": "genzai",
+            "results": results,
+            "count": len(results),
+            "limit": limit,
+            "offset": offset
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"❌ Genzai search failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+
+@app.get("/api/search/ukeoi")
+async def search_ukeoi_fts(q: str = "", limit: int = 10, offset: int = 0):
+    """
+    Full-text search on contract employees (ukeoi table).
+    Searches by name and contract business.
+
+    Query parameters:
+    - q: Search query (required, minimum 2 characters)
+    - limit: Maximum results to return (default: 10)
+    - offset: Pagination offset (default: 0)
+
+    Returns: List of matching ukeoi records with relevance ranking
+    """
+    try:
+        if not q or len(q.strip()) < 2:
+            raise HTTPException(status_code=400, detail="Search query must be at least 2 characters")
+
+        search = SearchService()
+
+        if not search.use_postgresql:
+            raise HTTPException(status_code=503, detail="Search requires PostgreSQL")
+
+        results = search.search_ukeoi(q, limit=limit, offset=offset)
+
+        log_api_request(
+            "GET",
+            "/api/search/ukeoi",
+            200,
+            f"FTS ukeoi: '{q}' -> {len(results)} results",
+            "search"
+        )
+
+        return {
+            "status": "success",
+            "query": q,
+            "table": "ukeoi",
+            "results": results,
+            "count": len(results),
+            "limit": limit,
+            "offset": offset
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"❌ Ukeoi search failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+
+@app.get("/api/search/staff")
+async def search_staff_fts(q: str = "", limit: int = 10, offset: int = 0):
+    """
+    Full-text search on staff members (staff table).
+    Searches by name and office location.
+
+    Query parameters:
+    - q: Search query (required, minimum 2 characters)
+    - limit: Maximum results to return (default: 10)
+    - offset: Pagination offset (default: 0)
+
+    Returns: List of matching staff records with relevance ranking
+    """
+    try:
+        if not q or len(q.strip()) < 2:
+            raise HTTPException(status_code=400, detail="Search query must be at least 2 characters")
+
+        search = SearchService()
+
+        if not search.use_postgresql:
+            raise HTTPException(status_code=503, detail="Search requires PostgreSQL")
+
+        results = search.search_staff(q, limit=limit, offset=offset)
+
+        log_api_request(
+            "GET",
+            "/api/search/staff",
+            200,
+            f"FTS staff: '{q}' -> {len(results)} results",
+            "search"
+        )
+
+        return {
+            "status": "success",
+            "query": q,
+            "table": "staff",
+            "results": results,
+            "count": len(results),
+            "limit": limit,
+            "offset": offset
+        }
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"❌ Staff search failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 @app.get("/api/employees/{employee_num}/leave-info")
 async def get_employee_leave_info(employee_num: str):

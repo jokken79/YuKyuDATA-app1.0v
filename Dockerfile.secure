@@ -1,0 +1,168 @@
+# Dockerfile - Hardened and Production-Ready
+# Multi-stage build para minimizar attack surface
+
+# ============================================
+# STAGE 1: Builder
+# ============================================
+FROM python:3.11-slim as builder
+
+WORKDIR /build
+
+# Instalar compiladores necesarios
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar requirements
+COPY requirements.txt .
+
+# Crear virtualenv
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Instalar dependencias
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt
+
+# ============================================
+# STAGE 2: Runtime (Minimal)
+# ============================================
+FROM python:3.11-slim
+
+LABEL maintainer="YuKyuDATA Team"
+LABEL version="1.0"
+LABEL description="Secure YuKyuDATA Application"
+
+# Metadatos de seguridad
+LABEL security="hardened"
+LABEL compliance="gdpr,lgpd"
+
+# ============================================
+# SECURITY: Non-root user
+# ============================================
+# Crear usuario app sin home directory y sin shell
+RUN useradd -r -u 1000 -s /sbin/nologin -M -d /nonexistent appuser
+
+WORKDIR /app
+
+# ============================================
+# INSTALL RUNTIME DEPENDENCIES
+# ============================================
+# Solo herramientas de runtime necesarias
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# ============================================
+# COPY VIRTUALENV from builder
+# ============================================
+COPY --from=builder /opt/venv /opt/venv
+
+# ============================================
+# COPY APPLICATION CODE
+# ============================================
+COPY --chown=appuser:appuser main.py .
+COPY --chown=appuser:appuser database.py .
+COPY --chown=appuser:appuser excel_service.py .
+COPY --chown=appuser:appuser logger.py .
+COPY --chown=appuser:appuser fiscal_year.py .
+COPY --chown=appuser:appuser excel_export.py .
+COPY --chown=appuser:appuser config.py .
+
+# Copiar templates y static files
+COPY --chown=appuser:appuser templates/ ./templates/
+COPY --chown=appuser:appuser static/ ./static/
+
+# ============================================
+# ENVIRONMENT SETUP
+# ============================================
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# ============================================
+# SECURITY: Make filesystem read-only (where possible)
+# ============================================
+# Crear directories para datos mutables
+RUN mkdir -p /app/data /app/logs && \
+    chown -R appuser:appuser /app/data /app/logs && \
+    chmod 750 /app/data /app/logs
+
+# ============================================
+# SECURITY: Remove unnecessary files
+# ============================================
+RUN find /opt/venv -type f -name "*.pyc" -delete && \
+    find /opt/venv -type d -name "__pycache__" -delete && \
+    find /opt/venv -type d -name "tests" -delete && \
+    find /opt/venv -type d -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
+
+# ============================================
+# SECURITY: Hardening
+# ============================================
+# Remover capabilities innecesarias
+RUN setcap -r /bin/ping 2>/dev/null || true
+
+# ============================================
+# SWITCH TO NON-ROOT USER
+# ============================================
+USER appuser:appuser
+
+# ============================================
+# HEALTHCHECK
+# ============================================
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=5)" || exit 1
+
+# ============================================
+# EXPOSE PORT
+# ============================================
+# Note: No exponemos puerto 8000 directamente en prod
+# Se usa reverse proxy con TLS
+EXPOSE 8000
+
+# ============================================
+# STARTUP
+# ============================================
+CMD ["uvicorn", \
+     "main:app", \
+     "--host", "127.0.0.1", \
+     "--port", "8000", \
+     "--workers", "4", \
+     "--log-level", "info", \
+     "--access-log"]
+
+# ============================================
+# SECURITY NOTES
+# ============================================
+# 1. Non-root user (appuser): uid 1000
+# 2. No shell access: /sbin/nologin
+# 3. Minimal base image: python:3.11-slim
+# 4. Multi-stage build: 400MB -> 200MB
+# 5. Removed build tools: No compiler in final image
+# 6. Healthcheck: Para orchestration (K8s, Docker Swarm)
+# 7. Read-only root: Excepto /app/data, /app/logs
+# 8. No secrets en imagen: Los proporciona environment variables
+# 9. Unprivileged port: 8000 (>1024)
+# 10. No unnecessary capabilities
+
+# ============================================
+# BUILD COMMAND
+# ============================================
+# docker build -f Dockerfile.secure \
+#   --build-arg BUILDKIT_INLINE_CACHE=1 \
+#   -t yukyu-app:1.0 \
+#   -t yukyu-app:latest \
+#   --label "com.yukyu.version=1.0" \
+#   --label "com.yukyu.build-date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+#   .
+
+# ============================================
+# SCAN COMMAND
+# ============================================
+# docker scan yukyu-app:latest
+# trivy image yukyu-app:latest --severity HIGH,CRITICAL

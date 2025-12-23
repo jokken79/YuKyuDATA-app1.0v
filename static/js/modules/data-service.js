@@ -12,7 +12,7 @@ export class DataService {
      * Crea una nueva instancia de DataService
      * @param {string} apiBase - URL base del API
      */
-    constructor(apiBase = 'http://localhost:8000/api') {
+    constructor(apiBase = '/api') {
         /** @type {string} URL base del API */
         this.apiBase = apiBase;
 

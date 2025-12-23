@@ -1,34 +1,53 @@
+"""take_screenshot.py
+
+Captura de pantalla de una URL usando Playwright.
+
+Uso:
+    python take_screenshot.py --url "http://localhost:5000/?_t=1" --out "exports/ui_dashboard_5000.png"
 """
-Captura de pantalla de la página web
-"""
+
 from playwright.sync_api import sync_playwright
+import argparse
 import sys
 
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
 
-print("Tomando captura de pantalla...")
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--url', default='http://localhost:8000', help='URL a capturar')
+    parser.add_argument('--out', default='screenshot_full.png', help='Ruta de salida para la captura full page')
+    parser.add_argument('--width', type=int, default=1920)
+    parser.add_argument('--height', type=int, default=1080)
+    parser.add_argument('--timeout', type=int, default=20000, help='Timeout (ms)')
+    return parser.parse_args()
+
+args = parse_args()
+
+print(f"Tomando captura de pantalla... {args.url}")
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
-    page = browser.new_page(viewport={'width': 1920, 'height': 1080})
+    page = browser.new_page(viewport={'width': args.width, 'height': args.height})
 
     try:
-        page.goto('http://localhost:8000', timeout=10000)
-        page.wait_for_load_state('networkidle', timeout=10000)
+        page.goto(args.url, timeout=args.timeout)
+        page.wait_for_load_state('networkidle', timeout=args.timeout)
 
         # Captura completa
-        page.screenshot(path='screenshot_full.png', full_page=True)
-        print("✓ Captura completa guardada: screenshot_full.png")
+        page.screenshot(path=args.out, full_page=True)
+        print(f"✓ Captura completa guardada: {args.out}")
 
-        # Captura solo de la sección de sincronización
+        # Captura opcional de una sección si existe
         sync_section = page.locator('text=社員台帳同期').locator('..')
         if sync_section.count() > 0:
-            sync_section.screenshot(path='screenshot_sync_section.png')
-            print("✓ Sección de sincronización guardada: screenshot_sync_section.png")
+            section_out = args.out.replace('.png', '_sync_section.png')
+            sync_section.screenshot(path=section_out)
+            print(f"✓ Sección de sincronización guardada: {section_out}")
 
         browser.close()
-        print("\n🎉 Capturas guardadas exitosamente")
+        print("\nCapturas guardadas exitosamente")
 
     except Exception as e:
         print(f"❌ Error: {e}")
