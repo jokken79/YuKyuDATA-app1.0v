@@ -1,0 +1,181 @@
+version: '3.9'
+
+# YuKyuDATA PostgreSQL Cluster with Read Replica
+# Includes:
+# - Primary PostgreSQL database (localhost:5432)
+# - Read-only replica for analytics (localhost:5433)
+# - Automated backup container
+# - Shared network for inter-service communication
+
+services:
+  # ============================================
+  # Primary PostgreSQL Database
+  # ============================================
+  postgres-primary:
+    image: postgres:15-alpine
+    container_name: yukyu_postgres_primary
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-yukyu}
+      POSTGRES_USER: ${POSTGRES_USER:-yukyu_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_INITDB_ARGS: >
+        -c wal_level=replica
+        -c max_wal_senders=3
+        -c max_replication_slots=3
+        -c hot_standby_feedback=on
+        -c log_replication_commands=on
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ./init-sql/01-initial-schema.sql:/docker-entrypoint-initdb.d/01-initial-schema.sql
+      - ./init-sql/02-create-replication-user.sql:/docker-entrypoint-initdb.d/02-create-replication-user.sql
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf
+    networks:
+      - yukyu_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-yukyu_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
+    restart: unless-stopped
+    labels:
+      - "com.yukyu.service=primary"
+
+  # ============================================
+  # PostgreSQL Read Replica (Standby)
+  # ============================================
+  postgres-replica:
+    image: postgres:15-alpine
+    container_name: yukyu_postgres_replica
+    environment:
+      PGUSER: ${REPLICATION_USER:-replication_user}
+      PGPASSWORD: ${REPLICATION_PASSWORD:-change_me}
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+      - ./postgresql-replica.conf:/etc/postgresql/postgresql.conf
+    networks:
+      - yukyu_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${REPLICATION_USER:-replication_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    entrypoint: |
+      bash -c "
+      rm -rf /var/lib/postgresql/data/*
+      pg_basebackup -h postgres-primary -D /var/lib/postgresql/data -U ${REPLICATION_USER:-replication_user} -v -P -W -R
+      exec postgres -c config_file=/etc/postgresql/postgresql.conf
+      "
+    restart: unless-stopped
+    labels:
+      - "com.yukyu.service=replica"
+
+  # ============================================
+  # pgAdmin (PostgreSQL Management UI)
+  # ============================================
+  pgadmin:
+    image: dpage/pgadmin4:7.8
+    container_name: yukyu_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-change_me}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: 'False'
+      PGADMIN_CONFIG_COOKIE_DEFAULT_SECURE: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres-primary
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - yukyu_network
+    restart: unless-stopped
+    labels:
+      - "com.yukyu.service=admin"
+
+  # ============================================
+  # Backup Service (Future Enhancement)
+  # ============================================
+  # Uncomment when backup container is ready
+  # postgres-backup:
+  #   image: yukyu:postgres-backup-latest
+  #   container_name: yukyu_postgres_backup
+  #   environment:
+  #     PGPASSWORD: ${POSTGRES_PASSWORD:-change_me}
+  #     POSTGRES_HOST: postgres-primary
+  #     BACKUP_INTERVAL: ${BACKUP_INTERVAL:-3600}
+  #     WAL_ARCHIVING: ${WAL_ARCHIVING_ENABLED:-false}
+  #     BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+  #   depends_on:
+  #     - postgres-primary
+  #   volumes:
+  #     - ./backups:/backups
+  #     - ./wal_archive:/wal_archive
+  #   networks:
+  #     - yukyu_network
+  #   restart: unless-stopped
+  #   labels:
+  #     - "com.yukyu.service=backup"
+
+volumes:
+  postgres_primary_data:
+    driver: local
+  postgres_replica_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  yukyu_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+# ============================================
+# Usage Instructions
+# ============================================
+# 1. Create .env file with credentials:
+#    cp .env.example .env
+#    Edit .env with your PostgreSQL password
+#
+# 2. Create SQL initialization scripts:
+#    mkdir -p init-sql
+#    (Add 01-initial-schema.sql and 02-create-replication-user.sql)
+#
+# 3. Start services:
+#    docker-compose up -d
+#
+# 4. Access services:
+#    Primary DB:  localhost:5432 (write operations)
+#    Replica DB:  localhost:5433 (read-only)
+#    pgAdmin:     http://localhost:5050 (admin@example.com)
+#
+# 5. Verify services:
+#    docker-compose ps
+#    docker-compose logs -f postgres-primary
+#
+# 6. Stop services:
+#    docker-compose down
+#    docker-compose down -v  # Also remove volumes
+#
+# ============================================
+# Monitoring Replication
+# ============================================
+# Connect to primary and check replication status:
+#   psql -U yukyu_user -h localhost -d yukyu -c "SELECT * FROM pg_stat_replication;"
+#
+# Check replica is in standby mode:
+#   psql -U replication_user -h localhost -p 5433 -d yukyu -c "SELECT pg_is_in_recovery();"

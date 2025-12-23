@@ -1,0 +1,29 @@
+# PostgreSQL Database Dependencies
+# Installation: pip install -r requirements-db.txt
+
+# PostgreSQL Driver
+psycopg2-binary==2.9.9          # PostgreSQL adapter for Python
+
+# Database Migrations
+alembic==1.13.1                 # SQLAlchemy database migration tool
+SQLAlchemy==2.0.23              # SQL toolkit and ORM
+
+# Environment Management
+python-dotenv==1.0.0            # Load environment variables from .env file
+
+# Connection Pooling & Performance
+psycopg[binary,pool]==3.1.14    # psycopg3 with binary and pool support (alternative)
+
+# Backup Management
+pg-backup-api==1.4.0            # PostgreSQL backup management
+
+# Monitoring & Optimization
+pg-stat-kcache==2.2.1           # PostgreSQL kernel cache statistics extension
+pgAdmin==7.8                     # PostgreSQL administration tool (optional)
+
+# Development & Testing
+pytest-postgresql==5.0.0         # pytest fixture for PostgreSQL testing
+factory-boy==3.3.0              # Test fixtures factory
+
+# Optional: Advanced Features
+psycopg-json==0.1.0             # JSON support for psycopg
