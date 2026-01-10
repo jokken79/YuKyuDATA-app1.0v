@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-# from starlette.middleware.gzip import GZIPMiddleware  # TODO: Fix import error
+from starlette.middleware.gzip import GZipMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
@@ -61,6 +61,161 @@ from excel_export import (
     cleanup_old_exports,
     EXPORT_DIR
 )
+from functools import wraps
+import asyncio
+
+
+# ============================================
+# AUDIT LOG HELPER FUNCTIONS
+# ============================================
+
+def get_client_info(request: Request) -> dict:
+    """Extrae informacion del cliente desde el Request de FastAPI."""
+    client_ip = request.client.host if request.client else None
+
+    # Intentar obtener IP real si esta detras de proxy
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        client_ip = forwarded_for.split(",")[0].strip()
+
+    user_agent = request.headers.get("User-Agent", "")
+
+    return {
+        "ip_address": client_ip,
+        "user_agent": user_agent[:500] if user_agent else None  # Limitar longitud
+    }
+
+
+def audit_action(action: str, entity_type: str, get_entity_id=None, get_old_value=None):
+    """
+    Decorador para registrar automaticamente acciones en el audit log.
+
+    Args:
+        action: Tipo de accion (CREATE, UPDATE, DELETE, APPROVE, REJECT, etc.)
+        entity_type: Tipo de entidad (employee, leave_request, yukyu_usage, etc.)
+        get_entity_id: Funcion para extraer entity_id de los argumentos
+        get_old_value: Funcion async para obtener el valor anterior (para UPDATE/DELETE)
+
+    Ejemplo de uso:
+        @audit_action("UPDATE", "yukyu_usage", get_entity_id=lambda args, kwargs: kwargs.get('detail_id'))
+        async def update_usage_detail(detail_id: int, update_data: UsageDetailUpdate):
+            ...
+    """
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Intentar extraer request del contexto
+            request = kwargs.get('request')
+            user = kwargs.get('user')
+
+            # Obtener info del cliente
+            client_info = {}
+            if request:
+                client_info = get_client_info(request)
+
+            # Obtener user_id
+            user_id = None
+            if user:
+                if hasattr(user, 'username'):
+                    user_id = user.username
+                elif isinstance(user, dict):
+                    user_id = user.get('username')
+
+            # Obtener entity_id
+            entity_id = None
+            if get_entity_id:
+                try:
+                    entity_id = get_entity_id(args, kwargs)
+                    if entity_id is not None:
+                        entity_id = str(entity_id)
+                except Exception:
+                    pass
+
+            # Obtener old_value para UPDATE/DELETE
+            old_value = None
+            if get_old_value and action in ["UPDATE", "DELETE"]:
+                try:
+                    if asyncio.iscoroutinefunction(get_old_value):
+                        old_value = await get_old_value(args, kwargs)
+                    else:
+                        old_value = get_old_value(args, kwargs)
+                except Exception:
+                    pass
+
+            # Ejecutar la funcion original
+            result = await func(*args, **kwargs)
+
+            # Determinar new_value del resultado
+            new_value = None
+            if isinstance(result, dict):
+                # Buscar datos relevantes en el resultado
+                for key in ['updated_record', 'created_record', 'deleted_record', 'updated_employee', 'data']:
+                    if key in result:
+                        new_value = result[key]
+                        break
+                if new_value is None and action == "CREATE":
+                    new_value = result
+
+            # Registrar en audit log
+            try:
+                database.log_audit(
+                    action=action,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    old_value=old_value,
+                    new_value=new_value,
+                    user_id=user_id,
+                    ip_address=client_info.get('ip_address'),
+                    user_agent=client_info.get('user_agent')
+                )
+            except Exception as e:
+                logger.warning(f"Failed to log audit: {str(e)}")
+
+            return result
+        return wrapper
+    return decorator
+
+
+async def log_audit_action(
+    request: Request,
+    action: str,
+    entity_type: str,
+    entity_id: str = None,
+    old_value = None,
+    new_value = None,
+    user = None,
+    additional_info: dict = None
+):
+    """
+    Funcion auxiliar para registrar manualmente una accion en el audit log.
+    Util cuando el decorador no es practico.
+    """
+    client_info = get_client_info(request)
+
+    user_id = None
+    if user:
+        if hasattr(user, 'username'):
+            user_id = user.username
+        elif isinstance(user, dict):
+            user_id = user.get('username')
+
+    try:
+        audit_id = database.log_audit(
+            action=action,
+            entity_type=entity_type,
+            entity_id=str(entity_id) if entity_id else None,
+            old_value=old_value,
+            new_value=new_value,
+            user_id=user_id,
+            ip_address=client_info.get('ip_address'),
+            user_agent=client_info.get('user_agent'),
+            additional_info=additional_info
+        )
+        return audit_id
+    except Exception as e:
+        logger.warning(f"Failed to log audit: {str(e)}")
+        return None
+
 
 # ============================================
 # PYDANTIC MODELS FOR VALIDATION
@@ -302,7 +457,7 @@ app.add_middleware(
 
 # Add GZIP compression middleware for performance
 # Compresses responses > 500 bytes for faster transfer
-# app.add_middleware(GZIPMiddleware, minimum_size=500)  # TODO: Fix import error
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # Constants - Relative paths from project directory
 PROJECT_DIR = Path(__file__).parent  # Directorio del proyecto
@@ -1564,6 +1719,200 @@ async def restore_backup(restore_data: dict, user: CurrentUser = Depends(get_adm
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         logger.error(f"Restore error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# AUDIT LOG ENDPOINTS (v2.3 - Complete Audit Trail)
+# ============================================
+
+@app.get("/api/audit-log", tags=["System"])
+async def get_audit_log_list(
+    request: Request,
+    entity_type: str = None,
+    entity_id: str = None,
+    action: str = None,
+    user_id: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    limit: int = 100,
+    offset: int = 0,
+    user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Obtiene registros del audit log con filtros opcionales.
+
+    Query Parameters:
+        entity_type: Tipo de entidad (employee, leave_request, yukyu_usage, etc.)
+        entity_id: ID especifico de la entidad
+        action: Tipo de accion (CREATE, UPDATE, DELETE, APPROVE, etc.)
+        user_id: Filtrar por usuario
+        start_date: Fecha inicio (YYYY-MM-DD)
+        end_date: Fecha fin (YYYY-MM-DD)
+        limit: Maximo registros (default 100)
+        offset: Offset para paginacion
+
+    Returns:
+        Lista de registros de audit
+    """
+    try:
+        logs = database.get_audit_log(
+            entity_type=entity_type,
+            entity_id=entity_id,
+            action=action,
+            user_id=user_id,
+            start_date=start_date,
+            end_date=end_date,
+            limit=min(limit, 500),  # Max 500 records
+            offset=offset
+        )
+
+        return {
+            "status": "success",
+            "data": logs,
+            "count": len(logs),
+            "filters": {
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+                "action": action,
+                "user_id": user_id,
+                "start_date": start_date,
+                "end_date": end_date
+            }
+        }
+    except Exception as e:
+        logger.error(f"Audit log error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/audit-log/{entity_type}/{entity_id}", tags=["System"])
+async def get_entity_audit_history(
+    entity_type: str,
+    entity_id: str,
+    limit: int = 50,
+    user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Obtiene el historial de cambios de una entidad especifica.
+
+    Path Parameters:
+        entity_type: Tipo de entidad (employee, leave_request, yukyu_usage)
+        entity_id: ID de la entidad
+
+    Returns:
+        Historial de cambios ordenado por fecha (mas reciente primero)
+    """
+    try:
+        history = database.get_entity_history(
+            entity_type=entity_type,
+            entity_id=entity_id,
+            limit=limit
+        )
+
+        return {
+            "status": "success",
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "history": history,
+            "count": len(history)
+        }
+    except Exception as e:
+        logger.error(f"Entity history error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/audit-log/user/{user_id}", tags=["System"])
+async def get_user_audit_log(
+    user_id: str,
+    limit: int = 100,
+    user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Obtiene todos los registros de audit de un usuario especifico.
+
+    Path Parameters:
+        user_id: ID del usuario
+
+    Returns:
+        Lista de acciones realizadas por el usuario
+    """
+    try:
+        logs = database.get_audit_log_by_user(user_id=user_id, limit=limit)
+
+        return {
+            "status": "success",
+            "user_id": user_id,
+            "data": logs,
+            "count": len(logs)
+        }
+    except Exception as e:
+        logger.error(f"User audit log error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/audit-log/stats", tags=["System"])
+async def get_audit_statistics(
+    days: int = 30,
+    user: CurrentUser = Depends(get_admin_user)
+):
+    """
+    Obtiene estadisticas del audit log.
+    Solo accesible por administradores.
+
+    Query Parameters:
+        days: Dias hacia atras para estadisticas (default 30)
+
+    Returns:
+        Estadisticas de auditoría (por accion, entidad, usuario)
+    """
+    try:
+        stats = database.get_audit_stats(days=days)
+
+        return {
+            "status": "success",
+            "stats": stats
+        }
+    except Exception as e:
+        logger.error(f"Audit stats error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/audit-log/cleanup", tags=["System"])
+async def cleanup_audit_logs(
+    days_to_keep: int = 365,
+    user: CurrentUser = Depends(get_admin_user)
+):
+    """
+    Elimina registros de audit log antiguos.
+    Solo accesible por administradores.
+
+    Query Parameters:
+        days_to_keep: Dias a mantener (default 365)
+
+    Returns:
+        Numero de registros eliminados
+    """
+    try:
+        # Log this action before cleanup
+        await log_audit_action(
+            request=None,
+            action="CLEANUP",
+            entity_type="audit_log",
+            user=user,
+            additional_info={"days_to_keep": days_to_keep}
+        )
+
+        deleted_count = database.cleanup_old_audit_logs(days_to_keep=days_to_keep)
+        logger.info(f"Audit log cleanup by {user.username}: {deleted_count} records deleted")
+
+        return {
+            "status": "success",
+            "message": f"Eliminados {deleted_count} registros antiguos",
+            "deleted_count": deleted_count,
+            "days_kept": days_to_keep
+        }
+    except Exception as e:
+        logger.error(f"Audit cleanup error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
