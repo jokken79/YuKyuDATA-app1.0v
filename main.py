@@ -699,26 +699,62 @@ async def clear_all_caches(user: CurrentUser = Depends(get_admin_user)):
 
 @app.post("/api/sync")
 async def sync_default_file(user: CurrentUser = Depends(get_admin_user)):
-    """Triggers auto-read of the default Excel file + individual usage dates."""
+    """
+    Triggers auto-read of the default Excel file + individual usage dates.
+    Uses enhanced parsing with half-day/hourly detection and validation.
+    """
     if not DEFAULT_EXCEL_PATH.exists():
         raise HTTPException(status_code=404, detail=f"Default file not found at {DEFAULT_EXCEL_PATH}")
 
     try:
         # Parse summary data (totals)
+        logger.info(f"Sync initiated by {user.username}")
         data = excel_service.parse_excel_file(DEFAULT_EXCEL_PATH)
         database.save_employees(data)
+        logger.info(f"Saved {len(data)} employee records")
 
-        # Parse individual usage dates (columns R-BE - v2.0 feature)
-        usage_details = excel_service.parse_yukyu_usage_details(DEFAULT_EXCEL_PATH)
+        # Parse individual usage dates with ENHANCED parser (v2.1 feature)
+        # Detects: half-day (半, 0.5, 午前, 午後), hourly (2h, 2時間), comments
+        enhanced_result = excel_service.parse_yukyu_usage_details_enhanced(str(DEFAULT_EXCEL_PATH))
+
+        # Extract data and metadata
+        usage_details = enhanced_result.get('data', [])
+        warnings = enhanced_result.get('warnings', [])
+        errors = enhanced_result.get('errors', [])
+        summary = enhanced_result.get('summary', {})
+
+        # Save to database
         database.save_yukyu_usage_details(usage_details)
+        logger.info(f"Saved {len(usage_details)} usage detail records")
 
+        # Log warnings if any
+        if warnings:
+            logger.warning(f"Sync completed with {len(warnings)} warnings")
+            for w in warnings[:5]:  # Log first 5 warnings
+                logger.warning(f"  - {w.get('type', 'unknown')}: {w.get('message', '')}")
+
+        # Prepare response with import summary
         return {
             "status": "success",
             "count": len(data),
             "usage_details_count": len(usage_details),
-            "message": f"Synced {len(data)} employees + {len(usage_details)} individual usage dates"
+            "message": f"Synced {len(data)} employees + {len(usage_details)} individual usage dates",
+            "import_summary": {
+                "total_rows_processed": summary.get('total_rows_processed', 0),
+                "total_dates_parsed": summary.get('total_dates_parsed', 0),
+                "full_day_count": summary.get('full_day_count', 0),
+                "half_day_count": summary.get('half_day_count', 0),
+                "hourly_count": summary.get('hourly_count', 0),
+                "dates_ignored": summary.get('dates_ignored', 0),
+                "invalid_dates": summary.get('invalid_dates', 0),
+                "cells_with_comments": summary.get('cells_with_comments', 0)
+            },
+            "warnings_count": len(warnings),
+            "warnings": warnings[:20] if warnings else [],  # Return first 20 warnings
+            "errors": errors
         }
     except Exception as e:
+        logger.error(f"Sync failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
 
 @app.post("/api/upload")
@@ -3669,6 +3705,610 @@ async def health_check():
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "error": str(e)
         }, 503
+
+
+# ============================================
+# PROJECT STATUS DASHBOARD
+# ============================================
+
+import subprocess
+import psutil
+
+# Track server start time for uptime calculation
+SERVER_START_TIME = datetime.now(timezone.utc)
+
+# Project version
+PROJECT_VERSION = "2.1.0"
+
+
+def get_git_commits(limit: int = 5) -> list:
+    """Get recent git commits"""
+    try:
+        result = subprocess.run(
+            ["git", "log", f"--oneline", f"-{limit}", "--format=%H|%s|%an|%ad", "--date=iso"],
+            cwd=str(Path(__file__).parent),
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode == 0:
+            commits = []
+            for line in result.stdout.strip().split('\n'):
+                if line:
+                    parts = line.split('|')
+                    if len(parts) >= 4:
+                        commits.append({
+                            "hash": parts[0][:7],
+                            "message": parts[1],
+                            "author": parts[2],
+                            "date": parts[3]
+                        })
+            return commits
+    except Exception as e:
+        logger.warning(f"Failed to get git commits: {e}")
+    return []
+
+
+def get_commits_per_day(days: int = 7) -> dict:
+    """Get commit count per day for the last N days"""
+    try:
+        result = subprocess.run(
+            ["git", "log", f"--since={days} days ago", "--format=%ad", "--date=short"],
+            cwd=str(Path(__file__).parent),
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode == 0:
+            from collections import Counter
+            dates = [line.strip() for line in result.stdout.strip().split('\n') if line.strip()]
+            counts = Counter(dates)
+            # Fill in missing days with 0
+            today = datetime.now().date()
+            result_dict = {}
+            for i in range(days - 1, -1, -1):
+                day = (today - timedelta(days=i)).isoformat()
+                result_dict[day] = counts.get(day, 0)
+            return result_dict
+    except Exception as e:
+        logger.warning(f"Failed to get commits per day: {e}")
+    return {}
+
+
+def load_memory_store() -> dict:
+    """Load memory_store.json if it exists"""
+    memory_path = Path(__file__).parent / "agents" / "memory_store.json"
+    if memory_path.exists():
+        try:
+            import json
+            with open(memory_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning(f"Failed to load memory_store.json: {e}")
+    return {}
+
+
+def get_system_info() -> dict:
+    """Get system resource information"""
+    try:
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+
+        return {
+            "cpu_percent": cpu_percent,
+            "memory": {
+                "total_gb": round(memory.total / (1024**3), 2),
+                "used_gb": round(memory.used / (1024**3), 2),
+                "percent": memory.percent
+            },
+            "disk": {
+                "total_gb": round(disk.total / (1024**3), 2),
+                "used_gb": round(disk.used / (1024**3), 2),
+                "percent": round(disk.percent, 1)
+            }
+        }
+    except Exception as e:
+        logger.warning(f"Failed to get system info: {e}")
+        return {}
+
+
+def get_uptime() -> dict:
+    """Get server uptime"""
+    now = datetime.now(timezone.utc)
+    uptime_delta = now - SERVER_START_TIME
+    total_seconds = int(uptime_delta.total_seconds())
+    days = total_seconds // 86400
+    hours = (total_seconds % 86400) // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+
+    return {
+        "started_at": SERVER_START_TIME.isoformat(),
+        "uptime_seconds": total_seconds,
+        "uptime_human": f"{days}d {hours}h {minutes}m {seconds}s"
+    }
+
+
+@app.get("/api/project-status")
+async def get_project_status():
+    """
+    Retorna el estado completo del proyecto para el dashboard.
+    Incluye: version, commits, TODOs, features, estado DB, sistema, errores.
+    """
+    try:
+        # Load memory store data
+        memory = load_memory_store()
+
+        # Get database counts
+        employees = database.get_employees()
+        genzai = database.get_genzai()
+        ukeoi = database.get_ukeoi()
+
+        # Try to get staff count
+        try:
+            staff = database.get_staff()
+            staff_count = len(staff)
+        except:
+            staff_count = 0
+
+        # Try to get leave requests count
+        try:
+            leave_requests = database.get_leave_requests()
+            leave_count = len(leave_requests) if leave_requests else 0
+        except:
+            leave_count = 0
+
+        # Try to get usage details count
+        try:
+            with database.get_db() as conn:
+                c = conn.cursor()
+                c.execute("SELECT COUNT(*) FROM yukyu_usage_details")
+                usage_count = c.fetchone()[0]
+        except:
+            usage_count = 0
+
+        # Extract TODOs from memory store
+        todos = []
+        if memory.get("todos"):
+            for todo_id, todo in memory["todos"].items():
+                todos.append({
+                    "id": todo_id,
+                    "title": todo.get("title", ""),
+                    "description": todo.get("description", ""),
+                    "priority": todo.get("priority", "medium"),
+                    "category": todo.get("category", "general"),
+                    "completed": todo.get("completed", False),
+                    "created_at": todo.get("created_at")
+                })
+
+        # Extract features from memory store
+        features = memory.get("features", [])
+
+        # Extract known errors from memory store
+        errors = []
+        if memory.get("errors"):
+            for err_id, err in memory["errors"].items():
+                errors.append({
+                    "id": err_id,
+                    "pattern": err.get("error_pattern", ""),
+                    "solution": err.get("solution", ""),
+                    "files": err.get("related_files", []),
+                    "verified": err.get("verified", False)
+                })
+
+        # Get learnings summary
+        learnings_count = sum(len(cat) for cat in memory.get("learnings", {}).values())
+
+        return {
+            "status": "success",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "project": {
+                "name": "YuKyuDATA-app",
+                "version": PROJECT_VERSION,
+                "description": "Employee Paid Leave Management System"
+            },
+            "git": {
+                "recent_commits": get_git_commits(5),
+                "commits_per_day": get_commits_per_day(7)
+            },
+            "database": {
+                "type": "postgresql" if database.USE_POSTGRESQL else "sqlite",
+                "tables": {
+                    "employees": len(employees),
+                    "genzai": len(genzai),
+                    "ukeoi": len(ukeoi),
+                    "staff": staff_count,
+                    "leave_requests": leave_count,
+                    "usage_details": usage_count
+                },
+                "total_records": len(employees) + len(genzai) + len(ukeoi) + staff_count + leave_count + usage_count
+            },
+            "todos": {
+                "items": todos,
+                "pending_count": sum(1 for t in todos if not t.get("completed")),
+                "completed_count": sum(1 for t in todos if t.get("completed"))
+            },
+            "features": {
+                "items": features,
+                "total_count": len(features),
+                "completed_count": sum(1 for f in features if f.get("status") == "completed")
+            },
+            "errors": {
+                "items": errors,
+                "unresolved_count": sum(1 for e in errors if not e.get("verified"))
+            },
+            "learnings_count": learnings_count,
+            "system": {
+                **get_system_info(),
+                **get_uptime()
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error getting project status: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+
+@app.get("/status", response_class=HTMLResponse)
+async def status_page():
+    """Sirve la pagina del dashboard de estado del proyecto"""
+    status_template = Path(__file__).parent / "templates" / "status.html"
+    if status_template.exists():
+        return status_template.read_text(encoding='utf-8')
+    else:
+        return HTMLResponse(
+            content="<h1>Status page not found</h1><p>Template file missing: templates/status.html</p>",
+            status_code=404
+        )
+
+
+# ============================================
+# GITHUB ISSUES INTEGRATION
+# ============================================
+
+class GitHubIssueCreate(BaseModel):
+    """Model for creating a GitHub issue"""
+    title: str = Field(..., min_length=1, max_length=256, description="Issue title")
+    body: str = Field("", max_length=65536, description="Issue body (Markdown supported)")
+    labels: List[str] = Field(default_factory=list, description="Issue labels")
+
+
+class GitHubCommentCreate(BaseModel):
+    """Model for adding a comment to a GitHub issue"""
+    comment: str = Field(..., min_length=1, max_length=65536, description="Comment text")
+
+
+@app.get("/api/github/issues")
+async def list_github_issues(
+    state: str = "open",
+    labels: Optional[str] = None,
+    per_page: int = 30,
+    page: int = 1
+):
+    """
+    Lista issues del repositorio de GitHub.
+
+    Args:
+        state: Estado de issues ('open', 'closed', 'all')
+        labels: Filtrar por etiquetas separadas por coma
+        per_page: Resultados por pagina (max 100)
+        page: Numero de pagina
+
+    Returns:
+        Lista de issues con sus datos principales
+    """
+    try:
+        from scripts.github_issues import GitHubIssues, GitHubAuthError, GitHubAPIError
+
+        gh = GitHubIssues()
+        issues = gh.list_issues(
+            state=state,
+            labels=labels,
+            per_page=per_page,
+            page=page
+        )
+
+        return {
+            "status": "success",
+            "count": len(issues),
+            "state": state,
+            "issues": issues
+        }
+
+    except GitHubAuthError as e:
+        logger.error(f"GitHub auth error: {e}")
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "github_auth_error",
+                "message": str(e),
+                "hint": "Configure GITHUB_TOKEN en el archivo .env"
+            }
+        )
+    except GitHubAPIError as e:
+        logger.error(f"GitHub API error: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "github_api_error",
+                "message": str(e)
+            }
+        )
+    except ImportError:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "module_not_found",
+                "message": "Modulo github_issues no encontrado"
+            }
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error listing GitHub issues: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "internal_error", "message": str(e)}
+        )
+
+
+@app.post("/api/github/issues")
+async def create_github_issue(issue_data: GitHubIssueCreate):
+    """
+    Crea un nuevo issue en GitHub.
+
+    Args:
+        issue_data: Datos del issue (title, body, labels)
+
+    Returns:
+        Datos del issue creado incluyendo numero y URL
+    """
+    try:
+        from scripts.github_issues import GitHubIssues, GitHubAuthError, GitHubAPIError
+
+        gh = GitHubIssues()
+        result = gh.create_issue(
+            title=issue_data.title,
+            body=issue_data.body,
+            labels=issue_data.labels if issue_data.labels else None
+        )
+
+        logger.info(f"GitHub issue created: #{result['number']} - {issue_data.title}")
+
+        return {
+            "status": "success",
+            "message": f"Issue #{result['number']} creado exitosamente",
+            "issue": result
+        }
+
+    except GitHubAuthError as e:
+        logger.error(f"GitHub auth error: {e}")
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "github_auth_error",
+                "message": str(e),
+                "hint": "Configure GITHUB_TOKEN en el archivo .env"
+            }
+        )
+    except GitHubAPIError as e:
+        logger.error(f"GitHub API error: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "github_api_error",
+                "message": str(e)
+            }
+        )
+    except ImportError:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "module_not_found",
+                "message": "Modulo github_issues no encontrado"
+            }
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error creating GitHub issue: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "internal_error", "message": str(e)}
+        )
+
+
+@app.get("/api/github/issues/{issue_number}")
+async def get_github_issue(issue_number: int):
+    """
+    Obtiene los detalles de un issue especifico.
+
+    Args:
+        issue_number: Numero del issue
+
+    Returns:
+        Datos completos del issue
+    """
+    try:
+        from scripts.github_issues import GitHubIssues, GitHubAuthError, GitHubAPIError
+
+        gh = GitHubIssues()
+        issue = gh.get_issue(issue_number)
+
+        return {
+            "status": "success",
+            "issue": issue
+        }
+
+    except GitHubAuthError as e:
+        raise HTTPException(status_code=401, detail={"error": "github_auth_error", "message": str(e)})
+    except GitHubAPIError as e:
+        raise HTTPException(status_code=502, detail={"error": "github_api_error", "message": str(e)})
+    except Exception as e:
+        logger.error(f"Error getting GitHub issue: {e}")
+        raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(e)})
+
+
+@app.post("/api/github/issues/{issue_number}/close")
+async def close_github_issue(issue_number: int, reason: Optional[str] = None):
+    """
+    Cierra un issue de GitHub.
+
+    Args:
+        issue_number: Numero del issue
+        reason: Razon del cierre ('completed' o 'not_planned')
+
+    Returns:
+        Datos del issue cerrado
+    """
+    try:
+        from scripts.github_issues import GitHubIssues, GitHubAuthError, GitHubAPIError
+
+        gh = GitHubIssues()
+        result = gh.close_issue(issue_number, reason=reason)
+
+        logger.info(f"GitHub issue closed: #{issue_number}")
+
+        return {
+            "status": "success",
+            "message": f"Issue #{issue_number} cerrado exitosamente",
+            "issue": result
+        }
+
+    except GitHubAuthError as e:
+        raise HTTPException(status_code=401, detail={"error": "github_auth_error", "message": str(e)})
+    except GitHubAPIError as e:
+        raise HTTPException(status_code=502, detail={"error": "github_api_error", "message": str(e)})
+    except Exception as e:
+        logger.error(f"Error closing GitHub issue: {e}")
+        raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(e)})
+
+
+@app.post("/api/github/issues/{issue_number}/comments")
+async def add_github_comment(issue_number: int, comment_data: GitHubCommentCreate):
+    """
+    Agrega un comentario a un issue de GitHub.
+
+    Args:
+        issue_number: Numero del issue
+        comment_data: Datos del comentario
+
+    Returns:
+        Datos del comentario creado
+    """
+    try:
+        from scripts.github_issues import GitHubIssues, GitHubAuthError, GitHubAPIError
+
+        gh = GitHubIssues()
+        result = gh.add_comment(issue_number, comment_data.comment)
+
+        logger.info(f"GitHub comment added to issue #{issue_number}")
+
+        return {
+            "status": "success",
+            "message": "Comentario agregado exitosamente",
+            "comment": result
+        }
+
+    except GitHubAuthError as e:
+        raise HTTPException(status_code=401, detail={"error": "github_auth_error", "message": str(e)})
+    except GitHubAPIError as e:
+        raise HTTPException(status_code=502, detail={"error": "github_api_error", "message": str(e)})
+    except Exception as e:
+        logger.error(f"Error adding GitHub comment: {e}")
+        raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(e)})
+
+
+@app.post("/api/github/sync-todos")
+async def sync_todos_to_github():
+    """
+    Sincroniza TODOs de memory_store.json a GitHub Issues.
+
+    Crea issues para:
+    - TODOs pendientes (no completados)
+    - Errores conocidos (no verificados)
+
+    Evita duplicados verificando si ya existe un issue con el mismo titulo.
+
+    Returns:
+        Resumen de la sincronizacion con issues creados y omitidos
+    """
+    try:
+        from scripts.github_issues import GitHubIssues, GitHubAuthError, GitHubAPIError
+
+        gh = GitHubIssues()
+        result = gh.sync_todos_to_issues()
+
+        logger.info(
+            f"GitHub sync completed: {result['summary']['created_count']} created, "
+            f"{result['summary']['skipped_count']} skipped"
+        )
+
+        return result
+
+    except GitHubAuthError as e:
+        logger.error(f"GitHub auth error during sync: {e}")
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "github_auth_error",
+                "message": str(e),
+                "hint": "Configure GITHUB_TOKEN en el archivo .env"
+            }
+        )
+    except GitHubAPIError as e:
+        logger.error(f"GitHub API error during sync: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "github_api_error",
+                "message": str(e)
+            }
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error during GitHub sync: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "internal_error", "message": str(e)}
+        )
+
+
+@app.get("/api/github/status")
+async def github_integration_status():
+    """
+    Verifica el estado de la integracion con GitHub.
+
+    Returns:
+        Estado de la configuracion y conectividad
+    """
+    import os
+
+    token_configured = bool(os.getenv("GITHUB_TOKEN"))
+    repo_configured = os.getenv("GITHUB_REPO", "jokken79/YuKyuDATA-app1.0v")
+
+    result = {
+        "status": "configured" if token_configured else "not_configured",
+        "token_configured": token_configured,
+        "repository": repo_configured,
+        "connection_test": None
+    }
+
+    if token_configured:
+        try:
+            from scripts.github_issues import GitHubIssues, GitHubAuthError, GitHubAPIError
+
+            gh = GitHubIssues()
+            # Test connection by listing 1 issue
+            gh.list_issues(per_page=1)
+            result["connection_test"] = "success"
+        except GitHubAuthError:
+            result["connection_test"] = "auth_failed"
+        except GitHubAPIError as e:
+            result["connection_test"] = f"api_error: {str(e)}"
+        except Exception as e:
+            result["connection_test"] = f"error: {str(e)}"
+
+    return result
 
 
 if __name__ == "__main__":

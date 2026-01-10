@@ -1875,6 +1875,397 @@
         </div>
     </div>
 
+    <!-- Import Result Modal (v2.2 - NEW) -->
+    <div id="import-result-modal" class="confirm-modal" onclick="if(event.target === this) App.importReport.closeModal()">
+        <div class="confirm-modal-content import-result-content" style="max-width: 700px; max-height: 85vh; overflow-y: auto;">
+            <div class="confirm-modal-title" id="import-result-title">
+                <span id="import-result-icon">📊</span> インポート結果
+            </div>
+
+            <!-- Status Summary Banner -->
+            <div id="import-status-banner" class="import-status-banner import-status-success">
+                <div class="import-status-icon">✅</div>
+                <div class="import-status-text">
+                    <div class="import-status-title" id="import-status-title">インポート完了</div>
+                    <div class="import-status-subtitle" id="import-status-subtitle">全てのデータが正常に処理されました</div>
+                </div>
+            </div>
+
+            <!-- Statistics Grid -->
+            <div class="import-stats-grid">
+                <div class="import-stat-card import-stat-total">
+                    <div class="import-stat-value" id="import-stat-total">0</div>
+                    <div class="import-stat-label">総レコード</div>
+                </div>
+                <div class="import-stat-card import-stat-success">
+                    <div class="import-stat-value" id="import-stat-success">0</div>
+                    <div class="import-stat-label">成功</div>
+                </div>
+                <div class="import-stat-card import-stat-warning">
+                    <div class="import-stat-value" id="import-stat-warnings">0</div>
+                    <div class="import-stat-label">警告</div>
+                </div>
+                <div class="import-stat-card import-stat-error">
+                    <div class="import-stat-value" id="import-stat-errors">0</div>
+                    <div class="import-stat-label">エラー</div>
+                </div>
+            </div>
+
+            <!-- Breakdown Section -->
+            <div class="import-breakdown-section" id="import-breakdown-section">
+                <div class="form-section-title">📋 詳細内訳</div>
+                <div class="import-breakdown-grid" id="import-breakdown-grid">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+
+            <!-- Warnings List (Expandable) -->
+            <div class="import-warnings-section" id="import-warnings-section" style="display: none;">
+                <div class="import-warnings-header" onclick="App.importReport.toggleWarnings()">
+                    <span class="form-section-title">⚠️ 警告一覧</span>
+                    <span class="import-warnings-toggle" id="import-warnings-toggle">▼</span>
+                </div>
+                <div class="import-warnings-list" id="import-warnings-list" style="display: none;">
+                    <!-- Warning items will be added dynamically -->
+                </div>
+            </div>
+
+            <!-- Errors List (Expandable) -->
+            <div class="import-errors-section" id="import-errors-section" style="display: none;">
+                <div class="import-errors-header" onclick="App.importReport.toggleErrors()">
+                    <span class="form-section-title">❌ エラー一覧</span>
+                    <span class="import-errors-toggle" id="import-errors-toggle">▼</span>
+                </div>
+                <div class="import-errors-list" id="import-errors-list" style="display: none;">
+                    <!-- Error items will be added dynamically -->
+                </div>
+            </div>
+
+            <!-- Problematic Employees (Optional) -->
+            <div class="import-problems-section" id="import-problems-section" style="display: none;">
+                <div class="form-section-title">👤 要確認従業員</div>
+                <div class="import-problems-list" id="import-problems-list">
+                    <!-- Problem employee items -->
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="confirm-actions mt-lg">
+                <button class="btn btn-glass" onclick="App.importReport.downloadReport()">
+                    📥 レポートをダウンロード
+                </button>
+                <button class="btn btn-primary" onclick="App.importReport.closeModal()">
+                    ✓ 閉じる
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Import Result Modal Styles (v2.2) */
+        .import-result-content {
+            padding: 1.5rem;
+        }
+
+        .import-status-banner {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+        }
+
+        .import-status-success {
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .import-status-warning {
+            background: rgba(251, 191, 36, 0.15);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .import-status-error {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .import-status-icon {
+            font-size: 2rem;
+        }
+
+        .import-status-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+        }
+
+        .import-status-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .import-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .import-stat-card {
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .import-stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .import-stat-total {
+            border-color: rgba(6, 182, 212, 0.3);
+        }
+
+        .import-stat-success {
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .import-stat-warning {
+            border-color: rgba(251, 191, 36, 0.3);
+        }
+
+        .import-stat-error {
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .import-stat-value {
+            font-size: 1.75rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .import-stat-total .import-stat-value { color: var(--primary); }
+        .import-stat-success .import-stat-value { color: var(--success); }
+        .import-stat-warning .import-stat-value { color: var(--warning); }
+        .import-stat-error .import-stat-value { color: var(--danger); }
+
+        .import-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .import-breakdown-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .import-breakdown-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .import-breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0.75rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+
+        .import-breakdown-label {
+            color: var(--text-secondary);
+        }
+
+        .import-breakdown-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .import-warnings-section,
+        .import-errors-section {
+            margin-bottom: 1rem;
+        }
+
+        .import-warnings-header,
+        .import-errors-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .import-warnings-header:hover,
+        .import-errors-header:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .import-warnings-header .form-section-title,
+        .import-errors-header .form-section-title {
+            margin: 0;
+        }
+
+        .import-warnings-toggle,
+        .import-errors-toggle {
+            transition: transform 0.3s;
+        }
+
+        .import-warnings-toggle.expanded,
+        .import-errors-toggle.expanded {
+            transform: rotate(180deg);
+        }
+
+        .import-warnings-list,
+        .import-errors-list {
+            margin-top: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .import-warning-item,
+        .import-error-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .import-warning-item:last-child,
+        .import-error-item:last-child {
+            border-bottom: none;
+        }
+
+        .import-warning-item {
+            color: var(--warning);
+        }
+
+        .import-error-item {
+            color: var(--danger);
+        }
+
+        .import-warning-item .item-icon,
+        .import-error-item .item-icon {
+            flex-shrink: 0;
+        }
+
+        .import-warning-item .item-text,
+        .import-error-item .item-text {
+            flex: 1;
+        }
+
+        .import-warning-item .item-row,
+        .import-error-item .item-row {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-left: auto;
+        }
+
+        .import-problems-section {
+            margin-bottom: 1rem;
+        }
+
+        .import-problems-list {
+            display: grid;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .import-problem-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: rgba(248, 113, 113, 0.1);
+            border: 1px solid rgba(248, 113, 113, 0.2);
+            border-radius: 8px;
+            font-size: 0.875rem;
+        }
+
+        .import-problem-employee {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .import-problem-name {
+            font-weight: 600;
+        }
+
+        .import-problem-num {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .import-problem-issue {
+            color: var(--danger);
+            font-weight: 500;
+        }
+
+        .import-problem-action {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            background: var(--danger);
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+
+        .import-problem-action:hover {
+            filter: brightness(1.1);
+        }
+
+        /* Light theme adjustments */
+        [data-theme="light"] .import-stat-card {
+            background: rgba(0, 0, 0, 0.03);
+            border-color: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="light"] .import-warnings-list,
+        [data-theme="light"] .import-errors-list {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        [data-theme="light"] .import-warning-item,
+        [data-theme="light"] .import-error-item {
+            border-color: rgba(0, 0, 0, 0.05);
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .import-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .import-breakdown-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .import-result-content {
+                padding: 1rem;
+            }
+        }
+
+    </style>
+
     <style>
         /* Edit Yukyu Modal Styles */
         .usage-list-container {

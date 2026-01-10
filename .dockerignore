@@ -1,0 +1,204 @@
+# .dockerignore - YuKyuDATA Docker Build Exclusions
+# These files are not copied during docker build
+
+# ============================================
+# GIT
+# ============================================
+.git
+.gitignore
+.gitattributes
+
+# ============================================
+# PYTHON
+# ============================================
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.python-version
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# mypy
+.mypy_cache/
+
+# ============================================
+# NODE.JS / FRONTEND TESTING
+# ============================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# ============================================
+# IDE / EDITORS
+# ============================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# ============================================
+# OS FILES
+# ============================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.bak
+*.tmp
+*.temp
+
+# ============================================
+# DOCKER
+# ============================================
+Dockerfile*
+docker-compose*.yml
+.docker/
+.dockerignore
+
+# ============================================
+# DOCUMENTATION
+# ============================================
+*.md
+!README.md
+docs/
+documentation/
+CLAUDE.md
+CLAUDE_MEMORY.md
+AGENTS.md
+*.txt
+!requirements.txt
+
+# ============================================
+# BACKUPS & DATA
+# ============================================
+backups/
+*.bak
+*.backup
+*.old
+*.orig
+
+# ============================================
+# LOGS
+# ============================================
+logs/
+*.log
+*.log.*
+
+# ============================================
+# DATABASE (Development)
+# ============================================
+# Note: Database files are mounted as volumes, not copied
+yukyu.db
+*.db
+*.sqlite
+*.sqlite3
+
+# ============================================
+# SECRETS & CONFIG
+# ============================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets/
+config.local.*
+
+# ============================================
+# TESTING
+# ============================================
+tests/
+test_*.py
+*_test.py
+conftest.py
+coverage/
+.coverage
+htmlcov/
+jest.config.js
+setup.js
+
+# ============================================
+# SCRIPTS (Development only)
+# ============================================
+scripts/
+script/
+*.sh
+*.bat
+!scripts/entrypoint.sh
+
+# ============================================
+# AGENTS (Optional module)
+# ============================================
+agents/
+
+# ============================================
+# INIT SQL (Mounted as volume in production)
+# ============================================
+init-sql/
+
+# ============================================
+# NGINX CONFIG (Only for docker-compose.secure.yml)
+# ============================================
+nginx/
+
+# ============================================
+# MONITORING CONFIG
+# ============================================
+prometheus/
+grafana/
+filebeat/
+
+# ============================================
+# MISCELLANEOUS
+# ============================================
+*.xlsm
+*.xlsx
+!static/**
+Makefile
+.claude/
+.github/

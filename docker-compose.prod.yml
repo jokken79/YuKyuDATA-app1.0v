@@ -1,0 +1,178 @@
+# docker-compose.prod.yml - Production Environment
+# YuKyuDATA FastAPI Application
+#
+# Usage:
+#   docker-compose -f docker-compose.prod.yml up -d --build
+#   docker-compose -f docker-compose.prod.yml down
+#
+# Features:
+#   - Multi-worker uvicorn
+#   - No volume mounts (code baked into image)
+#   - Production security settings
+#   - Automatic restart always
+#   - Resource limits
+#
+# Note: For full production with PostgreSQL, nginx, monitoring,
+#       use docker-compose.secure.yml instead
+
+version: '3.9'
+
+services:
+  # ============================================
+  # FASTAPI APPLICATION (Production)
+  # ============================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.secure
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    image: yukyu-app:${VERSION:-latest}
+    container_name: yukyu-prod
+    restart: always
+
+    # ============================================
+    # PORT MAPPING
+    # ============================================
+    ports:
+      - "8000:8000"
+
+    # ============================================
+    # VOLUMES (Production - minimal)
+    # ============================================
+    volumes:
+      # Persistent data only
+      - yukyu-data:/app/data:rw
+      - yukyu-logs:/app/logs:rw
+      - yukyu-backups:/app/backups:rw
+
+      # Excel files (if using SQLite mode)
+      - ./有給休暇管理.xlsm:/app/有給休暇管理.xlsm:ro
+      - ./【新】社員台帳(UNS)T　2022.04.05～.xlsm:/app/【新】社員台帳(UNS)T　2022.04.05～.xlsm:ro
+
+    # ============================================
+    # ENVIRONMENT VARIABLES
+    # ============================================
+    environment:
+      - APP_ENV=production
+      - DEBUG=false
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+
+      # Database
+      - DATABASE_TYPE=${DATABASE_TYPE:-sqlite}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./data/yukyu.db}
+
+      # Security (from .env)
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=HS256
+      - JWT_EXPIRATION_HOURS=24
+      - API_KEY=${API_KEY}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+
+      # CORS
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://yukyu.example.com}
+
+      # Rate limiting (enabled)
+      - RATE_LIMIT_ENABLED=true
+      - RATE_LIMIT_REQUESTS=100
+      - RATE_LIMIT_WINDOW_SECONDS=60
+
+      # Logging
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+
+    # ============================================
+    # ENV FILE
+    # ============================================
+    env_file:
+      - .env
+
+    # ============================================
+    # SECURITY OPTIONS
+    # ============================================
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+    # ============================================
+    # RESOURCE LIMITS
+    # ============================================
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 512M
+        reservations:
+          cpus: '1'
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+    # ============================================
+    # HEALTHCHECK
+    # ============================================
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-s", "http://localhost:8000/api/db-status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+    # ============================================
+    # LABELS
+    # ============================================
+    labels:
+      - "com.yukyu.environment=production"
+      - "com.yukyu.service=app"
+      - "com.yukyu.version=${VERSION:-latest}"
+
+# ============================================
+# VOLUMES
+# ============================================
+volumes:
+  yukyu-data:
+    driver: local
+  yukyu-logs:
+    driver: local
+  yukyu-backups:
+    driver: local
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  default:
+    driver: bridge
+
+# ============================================
+# USAGE INSTRUCTIONS
+# ============================================
+# 1. Create production .env file with strong secrets:
+#    - JWT_SECRET_KEY (min 32 chars)
+#    - API_KEY (for external integrations)
+#    - ENCRYPTION_KEY (64 hex chars)
+#    - CORS_ORIGINS (your domain)
+#
+# 2. Build and start:
+#    docker-compose -f docker-compose.prod.yml up -d --build
+#
+# 3. Check status:
+#    docker-compose -f docker-compose.prod.yml ps
+#    docker-compose -f docker-compose.prod.yml logs -f
+#
+# 4. Scale workers (if needed):
+#    Edit Dockerfile.secure CMD to increase --workers
+#
+# 5. Stop services:
+#    docker-compose -f docker-compose.prod.yml down
+#
+# 6. For full production setup with PostgreSQL, nginx,
+#    monitoring (Prometheus, Grafana), use:
+#    docker-compose -f docker-compose.secure.yml up -d

@@ -452,8 +452,27 @@ const App = {
                     throw new Error(errorText || `Server error: ${res.status}`);
                 }
                 const json = await res.json();
-                App.ui.showToast('success', `✅ ${json.count}件の有給データを同期しました`, 5000);
+
+                // Mostrar toast rápido
+                App.ui.showToast('success', `✅ ${json.count}件の有給データを同期しました`, 3000);
+
+                // Obtener datos actualizados para el reporte de importación
                 await this.fetchEmployees(App.state.year);
+
+                // Preparar datos para el modal de resultado de importación
+                const importData = {
+                    count: json.count || 0,
+                    skipped: json.skipped || 0,
+                    duplicates: json.duplicates || 0,
+                    validation: json.validation || null,
+                    employees: App.state.data || []
+                };
+
+                // Mostrar modal de resultado de importación
+                if (App.importReport && typeof App.importReport.showImportResult === 'function') {
+                    App.importReport.showImportResult(importData);
+                }
+
             } catch (err) {
                 console.error('Sync error:', err);
                 if (err.message.includes('fetch') || err.name === 'TypeError') {
@@ -4335,6 +4354,535 @@ App.editYukyu = {
         this.currentEmployee = null;
         this.originalDetails = [];
         this.pendingChanges = { updates: [], deletes: [], adds: [] };
+    }
+};
+
+// ============================================
+// IMPORT REPORT MODULE (v2.2 - NEW)
+// Sistema de validación visual para importación de Excel
+// ============================================
+App.importReport = {
+    // Estado del último reporte de importación
+    lastReport: null,
+    warningsExpanded: false,
+    errorsExpanded: false,
+
+    /**
+     * Muestra el modal con el resultado de importación
+     * @param {Object} data - Datos de la respuesta de sync
+     */
+    showImportResult(data) {
+        this.lastReport = this.processImportData(data);
+
+        const modal = document.getElementById('import-result-modal');
+        if (!modal) {
+            console.error('Import result modal not found');
+            return;
+        }
+
+        // Actualizar estadísticas
+        this.updateStatistics();
+
+        // Actualizar banner de estado
+        this.updateStatusBanner();
+
+        // Actualizar breakdown
+        this.updateBreakdown();
+
+        // Actualizar warnings
+        this.updateWarnings();
+
+        // Actualizar errores
+        this.updateErrors();
+
+        // Actualizar empleados problemáticos
+        this.updateProblematicEmployees();
+
+        // Mostrar modal
+        modal.classList.add('active');
+
+        // Reset expansion states
+        this.warningsExpanded = false;
+        this.errorsExpanded = false;
+    },
+
+    /**
+     * Procesa los datos de importación para generar el reporte
+     */
+    processImportData(data) {
+        const report = {
+            timestamp: new Date().toISOString(),
+            total: data.count || 0,
+            success: 0,
+            warnings: [],
+            errors: [],
+            problematicEmployees: [],
+            breakdown: {
+                fullDays: 0,
+                halfDays: 0,
+                hourlyLeave: 0,
+                noUsage: 0,
+                highUsage: 0,
+                lowBalance: 0,
+                expiringSoon: 0
+            }
+        };
+
+        // Si hay datos de validación en la respuesta
+        if (data.validation) {
+            report.warnings = data.validation.warnings || [];
+            report.errors = data.validation.errors || [];
+        }
+
+        // Analizar datos de empleados para generar breakdown
+        if (data.employees && Array.isArray(data.employees)) {
+            data.employees.forEach(emp => {
+                // Clasificar por tipo de uso
+                if (emp.used >= 1) {
+                    report.breakdown.fullDays++;
+                } else if (emp.used >= 0.5) {
+                    report.breakdown.halfDays++;
+                } else if (emp.used > 0 && emp.used < 0.5) {
+                    report.breakdown.hourlyLeave++;
+                } else if (emp.used === 0) {
+                    report.breakdown.noUsage++;
+                }
+
+                // Detectar problemas
+                const usageRate = emp.granted > 0 ? (emp.used / emp.granted) * 100 : 0;
+
+                if (usageRate >= 80) {
+                    report.breakdown.highUsage++;
+                    report.warnings.push({
+                        type: 'high_usage',
+                        employee: emp.name,
+                        employeeNum: emp.employee_num,
+                        message: `使用率が高い (${usageRate.toFixed(1)}%)`,
+                        value: usageRate
+                    });
+                }
+
+                if (emp.balance <= 5 && emp.balance > 0) {
+                    report.breakdown.lowBalance++;
+                    report.warnings.push({
+                        type: 'low_balance',
+                        employee: emp.name,
+                        employeeNum: emp.employee_num,
+                        message: `残日数が少ない (${emp.balance}日)`,
+                        value: emp.balance
+                    });
+                }
+
+                // Validar datos inválidos
+                if (!emp.name || emp.name.trim() === '') {
+                    report.errors.push({
+                        type: 'invalid_name',
+                        employee: emp.employee_num,
+                        message: '氏名が空です',
+                        row: emp.row || '不明'
+                    });
+                }
+
+                if (emp.granted < 0 || emp.used < 0) {
+                    report.errors.push({
+                        type: 'negative_value',
+                        employee: emp.name || emp.employee_num,
+                        message: '負の値が検出されました',
+                        row: emp.row || '不明'
+                    });
+                }
+
+                if (emp.used > emp.granted) {
+                    report.warnings.push({
+                        type: 'over_usage',
+                        employee: emp.name,
+                        employeeNum: emp.employee_num,
+                        message: `使用日数が付与日数を超えています (${emp.used}/${emp.granted})`,
+                        value: emp.used - emp.granted
+                    });
+                    report.problematicEmployees.push({
+                        name: emp.name,
+                        employeeNum: emp.employee_num,
+                        issue: '使用超過',
+                        detail: `${emp.used}日/${emp.granted}日`
+                    });
+                }
+            });
+        }
+
+        // Calcular éxitos (total - errores)
+        report.success = report.total - report.errors.length;
+
+        // Agregar warnings basados en datos de respuesta directa
+        if (data.skipped && data.skipped > 0) {
+            report.warnings.push({
+                type: 'skipped_rows',
+                message: `${data.skipped}行がスキップされました`,
+                value: data.skipped
+            });
+        }
+
+        if (data.duplicates && data.duplicates > 0) {
+            report.warnings.push({
+                type: 'duplicates',
+                message: `${data.duplicates}件の重複データが検出されました`,
+                value: data.duplicates
+            });
+        }
+
+        return report;
+    },
+
+    /**
+     * Actualiza las estadísticas en el modal
+     */
+    updateStatistics() {
+        const report = this.lastReport;
+        if (!report) return;
+
+        document.getElementById('import-stat-total').textContent = report.total;
+        document.getElementById('import-stat-success').textContent = report.success;
+        document.getElementById('import-stat-warnings').textContent = report.warnings.length;
+        document.getElementById('import-stat-errors').textContent = report.errors.length;
+    },
+
+    /**
+     * Actualiza el banner de estado según el resultado
+     */
+    updateStatusBanner() {
+        const report = this.lastReport;
+        if (!report) return;
+
+        const banner = document.getElementById('import-status-banner');
+        const icon = banner.querySelector('.import-status-icon');
+        const title = document.getElementById('import-status-title');
+        const subtitle = document.getElementById('import-status-subtitle');
+        const modalIcon = document.getElementById('import-result-icon');
+
+        // Remover clases anteriores
+        banner.classList.remove('import-status-success', 'import-status-warning', 'import-status-error');
+
+        if (report.errors.length > 0) {
+            // Estado: Error
+            banner.classList.add('import-status-error');
+            icon.textContent = '❌';
+            title.textContent = 'インポートに問題があります';
+            subtitle.textContent = `${report.errors.length}件のエラーと${report.warnings.length}件の警告があります`;
+            modalIcon.textContent = '⚠️';
+        } else if (report.warnings.length > 0) {
+            // Estado: Warning
+            banner.classList.add('import-status-warning');
+            icon.textContent = '⚠️';
+            title.textContent = 'インポート完了（警告あり）';
+            subtitle.textContent = `${report.success}件を処理しました。${report.warnings.length}件の警告があります`;
+            modalIcon.textContent = '📊';
+        } else {
+            // Estado: Success
+            banner.classList.add('import-status-success');
+            icon.textContent = '✅';
+            title.textContent = 'インポート完了';
+            subtitle.textContent = `${report.success}件のデータが正常に処理されました`;
+            modalIcon.textContent = '✅';
+        }
+    },
+
+    /**
+     * Actualiza la sección de breakdown
+     */
+    updateBreakdown() {
+        const report = this.lastReport;
+        if (!report) return;
+
+        const grid = document.getElementById('import-breakdown-grid');
+        const breakdown = report.breakdown;
+
+        grid.innerHTML = `
+            <div class="import-breakdown-item">
+                <span class="import-breakdown-label">全日使用</span>
+                <span class="import-breakdown-value">${breakdown.fullDays}件</span>
+            </div>
+            <div class="import-breakdown-item">
+                <span class="import-breakdown-label">半日使用</span>
+                <span class="import-breakdown-value">${breakdown.halfDays}件</span>
+            </div>
+            <div class="import-breakdown-item">
+                <span class="import-breakdown-label">時間単位使用</span>
+                <span class="import-breakdown-value">${breakdown.hourlyLeave}件</span>
+            </div>
+            <div class="import-breakdown-item">
+                <span class="import-breakdown-label">未使用</span>
+                <span class="import-breakdown-value">${breakdown.noUsage}件</span>
+            </div>
+            <div class="import-breakdown-item">
+                <span class="import-breakdown-label">高使用率 (80%+)</span>
+                <span class="import-breakdown-value" style="color: var(--warning);">${breakdown.highUsage}件</span>
+            </div>
+            <div class="import-breakdown-item">
+                <span class="import-breakdown-label">残日数少 (5日以下)</span>
+                <span class="import-breakdown-value" style="color: var(--danger);">${breakdown.lowBalance}件</span>
+            </div>
+        `;
+    },
+
+    /**
+     * Actualiza la lista de warnings
+     */
+    updateWarnings() {
+        const report = this.lastReport;
+        if (!report) return;
+
+        const section = document.getElementById('import-warnings-section');
+        const list = document.getElementById('import-warnings-list');
+
+        if (report.warnings.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = 'block';
+
+        // Agrupar warnings por tipo
+        const groupedWarnings = {};
+        report.warnings.forEach(warning => {
+            const type = warning.type || 'other';
+            if (!groupedWarnings[type]) {
+                groupedWarnings[type] = [];
+            }
+            groupedWarnings[type].push(warning);
+        });
+
+        let html = '';
+        for (const [type, warnings] of Object.entries(groupedWarnings)) {
+            warnings.slice(0, 10).forEach(warning => {
+                html += `
+                    <div class="import-warning-item">
+                        <span class="item-icon">⚠️</span>
+                        <span class="item-text">
+                            ${warning.employee ? `<strong>${warning.employee}</strong>: ` : ''}
+                            ${this.escapeHtml(warning.message)}
+                        </span>
+                        ${warning.employeeNum ? `<span class="item-row">${warning.employeeNum}</span>` : ''}
+                    </div>
+                `;
+            });
+            if (warnings.length > 10) {
+                html += `
+                    <div class="import-warning-item" style="font-style: italic; opacity: 0.7;">
+                        <span class="item-icon">...</span>
+                        <span class="item-text">他 ${warnings.length - 10}件</span>
+                    </div>
+                `;
+            }
+        }
+
+        list.innerHTML = html;
+    },
+
+    /**
+     * Actualiza la lista de errores
+     */
+    updateErrors() {
+        const report = this.lastReport;
+        if (!report) return;
+
+        const section = document.getElementById('import-errors-section');
+        const list = document.getElementById('import-errors-list');
+
+        if (report.errors.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = 'block';
+
+        let html = '';
+        report.errors.slice(0, 20).forEach(error => {
+            html += `
+                <div class="import-error-item">
+                    <span class="item-icon">❌</span>
+                    <span class="item-text">
+                        ${error.employee ? `<strong>${error.employee}</strong>: ` : ''}
+                        ${this.escapeHtml(error.message)}
+                    </span>
+                    ${error.row ? `<span class="item-row">行 ${error.row}</span>` : ''}
+                </div>
+            `;
+        });
+
+        if (report.errors.length > 20) {
+            html += `
+                <div class="import-error-item" style="font-style: italic; opacity: 0.7;">
+                    <span class="item-icon">...</span>
+                    <span class="item-text">他 ${report.errors.length - 20}件のエラー</span>
+                </div>
+            `;
+        }
+
+        list.innerHTML = html;
+    },
+
+    /**
+     * Actualiza la sección de empleados problemáticos
+     */
+    updateProblematicEmployees() {
+        const report = this.lastReport;
+        if (!report) return;
+
+        const section = document.getElementById('import-problems-section');
+        const list = document.getElementById('import-problems-list');
+
+        if (report.problematicEmployees.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = 'block';
+
+        let html = '';
+        report.problematicEmployees.slice(0, 10).forEach(emp => {
+            html += `
+                <div class="import-problem-item">
+                    <div class="import-problem-employee">
+                        <span class="import-problem-name">${this.escapeHtml(emp.name)}</span>
+                        <span class="import-problem-num">(${emp.employeeNum})</span>
+                    </div>
+                    <span class="import-problem-issue">${this.escapeHtml(emp.issue)}: ${emp.detail}</span>
+                    <button class="import-problem-action" onclick="App.importReport.viewEmployee('${emp.employeeNum}')">
+                        詳細
+                    </button>
+                </div>
+            `;
+        });
+
+        list.innerHTML = html;
+    },
+
+    /**
+     * Alterna la expansión de warnings
+     */
+    toggleWarnings() {
+        this.warningsExpanded = !this.warningsExpanded;
+        const list = document.getElementById('import-warnings-list');
+        const toggle = document.getElementById('import-warnings-toggle');
+
+        list.style.display = this.warningsExpanded ? 'block' : 'none';
+        toggle.classList.toggle('expanded', this.warningsExpanded);
+    },
+
+    /**
+     * Alterna la expansión de errores
+     */
+    toggleErrors() {
+        this.errorsExpanded = !this.errorsExpanded;
+        const list = document.getElementById('import-errors-list');
+        const toggle = document.getElementById('import-errors-toggle');
+
+        list.style.display = this.errorsExpanded ? 'block' : 'none';
+        toggle.classList.toggle('expanded', this.errorsExpanded);
+    },
+
+    /**
+     * Ver detalles de un empleado problemático
+     */
+    viewEmployee(employeeNum) {
+        this.closeModal();
+        // Buscar en la tabla y resaltar, o abrir modal de detalles
+        if (App.ui && App.ui.openModal) {
+            App.ui.openModal(employeeNum);
+        }
+    },
+
+    /**
+     * Resalta empleados problemáticos en la tabla principal
+     */
+    highlightProblematicEmployees() {
+        if (!this.lastReport || !this.lastReport.problematicEmployees) return;
+
+        const problemEmployeeNums = this.lastReport.problematicEmployees.map(e => e.employeeNum);
+        const tableRows = document.querySelectorAll('#employee-table tbody tr');
+
+        tableRows.forEach(row => {
+            const empNumCell = row.querySelector('td:first-child');
+            if (empNumCell) {
+                const empNum = empNumCell.textContent.trim();
+                if (problemEmployeeNums.includes(empNum)) {
+                    row.classList.add('row-problematic');
+                    row.style.animation = 'pulse-highlight 2s ease-in-out 3';
+                } else {
+                    row.classList.remove('row-problematic');
+                    row.style.animation = '';
+                }
+            }
+        });
+    },
+
+    /**
+     * Descarga el reporte en formato JSON o CSV
+     */
+    downloadReport(format = 'json') {
+        if (!this.lastReport) {
+            App.ui.showToast('error', 'レポートデータがありません');
+            return;
+        }
+
+        const report = this.lastReport;
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+
+        if (format === 'json') {
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `import_report_${timestamp}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } else {
+            // CSV format
+            const lines = [
+                'Type,Employee,EmployeeNum,Message,Value',
+                ...report.warnings.map(w =>
+                    `Warning,"${w.employee || ''}","${w.employeeNum || ''}","${w.message}","${w.value || ''}"`
+                ),
+                ...report.errors.map(e =>
+                    `Error,"${e.employee || ''}","${e.row || ''}","${e.message}",""`
+                )
+            ];
+            const csv = lines.join('\n');
+            const bom = '\uFEFF'; // BOM for Excel UTF-8
+            const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `import_report_${timestamp}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        App.ui.showToast('success', 'レポートをダウンロードしました');
+    },
+
+    /**
+     * Cierra el modal
+     */
+    closeModal() {
+        const modal = document.getElementById('import-result-modal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    },
+
+    /**
+     * Utilidad para escapar HTML
+     */
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 };
 

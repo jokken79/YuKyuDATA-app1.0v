@@ -1,0 +1,282 @@
+# =============================================================================
+# Memory Sync - Verificacion de CLAUDE_MEMORY.md
+# =============================================================================
+# Verifica que el archivo de memoria persistente este actualizado
+# Crea issue automatico si el archivo no ha sido modificado recientemente
+# =============================================================================
+
+name: Memory Sync Check
+
+on:
+  push:
+    branches: [main, master]
+  schedule:
+    # Ejecutar cada lunes a las 9:00 AM UTC
+    - cron: '0 9 * * 1'
+
+jobs:
+  # ===========================================================================
+  # Job 1: Check CLAUDE_MEMORY.md status
+  # ===========================================================================
+  check-memory:
+    name: Check Memory File Status
+    runs-on: ubuntu-latest
+    outputs:
+      needs_update: ${{ steps.check.outputs.needs_update }}
+      last_modified: ${{ steps.check.outputs.last_modified }}
+      days_since_update: ${{ steps.check.outputs.days_since_update }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check CLAUDE_MEMORY.md exists
+        id: exists
+        run: |
+          if [ -f "CLAUDE_MEMORY.md" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "CLAUDE_MEMORY.md found"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "::warning::CLAUDE_MEMORY.md not found!"
+          fi
+
+      - name: Check last modification date
+        id: check
+        if: steps.exists.outputs.exists == 'true'
+        run: |
+          # Obtener fecha de ultima modificacion del archivo
+          LAST_COMMIT=$(git log -1 --format="%ci" -- CLAUDE_MEMORY.md 2>/dev/null || echo "never")
+
+          if [ "$LAST_COMMIT" == "never" ]; then
+            echo "::warning::CLAUDE_MEMORY.md has never been committed"
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+            echo "last_modified=never" >> $GITHUB_OUTPUT
+            echo "days_since_update=999" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Calcular dias desde la ultima modificacion
+          LAST_COMMIT_EPOCH=$(date -d "$LAST_COMMIT" +%s)
+          NOW_EPOCH=$(date +%s)
+          DAYS_DIFF=$(( (NOW_EPOCH - LAST_COMMIT_EPOCH) / 86400 ))
+
+          echo "Last modified: $LAST_COMMIT ($DAYS_DIFF days ago)"
+          echo "last_modified=$LAST_COMMIT" >> $GITHUB_OUTPUT
+          echo "days_since_update=$DAYS_DIFF" >> $GITHUB_OUTPUT
+
+          # Considerar desactualizado si han pasado mas de 30 dias
+          if [ $DAYS_DIFF -gt 30 ]; then
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+            echo "::warning::CLAUDE_MEMORY.md has not been updated in $DAYS_DIFF days"
+          else
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "CLAUDE_MEMORY.md is up to date"
+          fi
+
+      - name: Check for significant changes
+        if: steps.exists.outputs.exists == 'true' && github.event_name == 'push'
+        run: |
+          # Verificar si hubo cambios significativos en el codigo
+          # que deberian reflejarse en CLAUDE_MEMORY.md
+
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+
+          SIGNIFICANT_CHANGES=0
+          SIGNIFICANT_FILES=""
+
+          for file in $CHANGED_FILES; do
+            case "$file" in
+              main.py|database.py|excel_service.py|fiscal_year.py)
+                SIGNIFICANT_CHANGES=1
+                SIGNIFICANT_FILES="$SIGNIFICANT_FILES $file"
+                ;;
+              static/js/app.js|static/js/modules/*.js)
+                SIGNIFICANT_CHANGES=1
+                SIGNIFICANT_FILES="$SIGNIFICANT_FILES $file"
+                ;;
+              *.sql|migrations/*)
+                SIGNIFICANT_CHANGES=1
+                SIGNIFICANT_FILES="$SIGNIFICANT_FILES $file"
+                ;;
+            esac
+          done
+
+          if [ $SIGNIFICANT_CHANGES -eq 1 ]; then
+            # Verificar si CLAUDE_MEMORY.md tambien fue modificado
+            if echo "$CHANGED_FILES" | grep -q "CLAUDE_MEMORY.md"; then
+              echo "CLAUDE_MEMORY.md was updated along with significant changes"
+            else
+              echo "::notice::Significant files were changed but CLAUDE_MEMORY.md was not updated"
+              echo "Changed files:$SIGNIFICANT_FILES"
+            fi
+          fi
+
+      - name: Generate check summary
+        run: |
+          echo "## Memory Sync Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| File exists | ${{ steps.exists.outputs.exists }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Last modified | ${{ steps.check.outputs.last_modified }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Days since update | ${{ steps.check.outputs.days_since_update }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Needs update | ${{ steps.check.outputs.needs_update }} |" >> $GITHUB_STEP_SUMMARY
+
+  # ===========================================================================
+  # Job 2: Create issue if memory needs update
+  # ===========================================================================
+  create-issue:
+    name: Create Update Issue
+    runs-on: ubuntu-latest
+    needs: check-memory
+    if: needs.check-memory.outputs.needs_update == 'true'
+    permissions:
+      issues: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for existing issue
+        id: existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Buscar issues abiertos con el label memory-sync
+          EXISTING=$(gh issue list --label "memory-sync" --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -n "$EXISTING" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "issue_number=$EXISTING" >> $GITHUB_OUTPUT
+            echo "Existing issue found: #$EXISTING"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "No existing issue found"
+          fi
+
+      - name: Create new issue
+        if: steps.existing.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "CLAUDE_MEMORY.md necesita actualizacion" \
+            --label "memory-sync,documentation" \
+            --body "$(cat <<'EOF'
+          ## Recordatorio de Actualizacion de Memoria
+
+          El archivo `CLAUDE_MEMORY.md` no ha sido actualizado en **${{ needs.check-memory.outputs.days_since_update }} dias**.
+
+          ### Por que es importante?
+
+          `CLAUDE_MEMORY.md` sirve como memoria persistente para Claude Code, almacenando:
+          - Decisiones de arquitectura importantes
+          - Errores conocidos y sus soluciones
+          - Features implementadas recientemente
+          - Contexto del proyecto entre sesiones
+
+          ### Acciones recomendadas
+
+          1. Revisar los commits recientes para identificar cambios significativos
+          2. Actualizar CLAUDE_MEMORY.md con:
+             - Nuevas features implementadas
+             - Bugs corregidos
+             - Decisiones de arquitectura
+             - Deuda tecnica identificada
+          3. Cerrar este issue cuando el archivo este actualizado
+
+          ### Archivos a revisar
+
+          Cambios en estos archivos generalmente requieren actualizar la memoria:
+          - `main.py` - Nuevos endpoints o cambios en la API
+          - `database.py` - Cambios en el esquema de base de datos
+          - `excel_service.py` - Cambios en el parsing de Excel
+          - `fiscal_year.py` - Cambios en la logica de negocio
+          - `static/js/app.js` - Cambios importantes en el frontend
+
+          ---
+          *Este issue fue creado automaticamente por el workflow de Memory Sync.*
+          EOF
+          )"
+
+          echo "Issue created successfully"
+
+      - name: Update existing issue
+        if: steps.existing.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment ${{ steps.existing.outputs.issue_number }} \
+            --body "**Recordatorio automatico**: Han pasado ${{ needs.check-memory.outputs.days_since_update }} dias desde la ultima actualizacion de CLAUDE_MEMORY.md. Por favor, revisa y actualiza el archivo."
+
+          echo "Comment added to existing issue #${{ steps.existing.outputs.issue_number }}"
+
+  # ===========================================================================
+  # Job 3: Validate memory file content
+  # ===========================================================================
+  validate-content:
+    name: Validate Memory Content
+    runs-on: ubuntu-latest
+    needs: check-memory
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate CLAUDE_MEMORY.md structure
+        run: |
+          if [ ! -f "CLAUDE_MEMORY.md" ]; then
+            echo "::warning::CLAUDE_MEMORY.md not found, skipping validation"
+            exit 0
+          fi
+
+          echo "Validating CLAUDE_MEMORY.md structure..."
+
+          # Verificar secciones recomendadas
+          REQUIRED_SECTIONS=(
+            "Sesion Anterior"
+            "Decisiones"
+            "Errores Conocidos"
+            "TODO"
+          )
+
+          MISSING_SECTIONS=""
+          for section in "${REQUIRED_SECTIONS[@]}"; do
+            if ! grep -qi "$section" CLAUDE_MEMORY.md; then
+              MISSING_SECTIONS="$MISSING_SECTIONS $section"
+            fi
+          done
+
+          if [ -n "$MISSING_SECTIONS" ]; then
+            echo "::notice::Consider adding these sections to CLAUDE_MEMORY.md:$MISSING_SECTIONS"
+          else
+            echo "All recommended sections found"
+          fi
+
+          # Verificar que el archivo no este vacio
+          LINES=$(wc -l < CLAUDE_MEMORY.md)
+          if [ "$LINES" -lt 10 ]; then
+            echo "::warning::CLAUDE_MEMORY.md seems too short ($LINES lines)"
+          else
+            echo "File has $LINES lines"
+          fi
+
+      - name: Check for outdated information
+        run: |
+          if [ ! -f "CLAUDE_MEMORY.md" ]; then
+            exit 0
+          fi
+
+          # Verificar si hay referencias a fechas muy antiguas
+          CURRENT_YEAR=$(date +%Y)
+          LAST_YEAR=$((CURRENT_YEAR - 1))
+
+          if grep -qE "202[0-3]" CLAUDE_MEMORY.md 2>/dev/null; then
+            echo "::notice::CLAUDE_MEMORY.md contains references to years before $LAST_YEAR - consider reviewing"
+          fi
+
+          echo "Content validation complete"

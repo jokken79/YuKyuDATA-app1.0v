@@ -1,0 +1,408 @@
+# =============================================================================
+# Deploy Pipeline - Despliegue Manual para YuKyuDATA-app
+# =============================================================================
+# Trigger: workflow_dispatch (manual)
+# Environments: staging, production
+# =============================================================================
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Entorno de despliegue'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      skip_tests:
+        description: 'Omitir tests (solo para emergencias)'
+        required: false
+        default: false
+        type: boolean
+      version_tag:
+        description: 'Tag de version (ej: v1.2.3)'
+        required: false
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  PYTHON_VERSION: '3.11'
+
+# Evitar deploys concurrentes al mismo entorno
+concurrency:
+  group: deploy-${{ github.event.inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  # ===========================================================================
+  # Job 1: Pre-flight checks
+  # ===========================================================================
+  preflight:
+    name: Pre-flight Checks
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      sha_short: ${{ steps.version.outputs.sha_short }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version_tag }}" ]; then
+            VERSION="${{ github.event.inputs.version_tag }}"
+          else
+            VERSION="build-${{ github.run_number }}"
+          fi
+          SHA_SHORT=$(git rev-parse --short HEAD)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "sha_short=$SHA_SHORT" >> $GITHUB_OUTPUT
+          echo "Deploying version: $VERSION (commit: $SHA_SHORT)"
+
+      - name: Validate environment selection
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          echo "Target environment: $ENV"
+
+          if [ "$ENV" == "production" ]; then
+            echo "::warning::Production deployment requested!"
+            echo "Make sure you have approval from the team."
+          fi
+
+      - name: Check branch protection
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          ENV="${{ github.event.inputs.environment }}"
+
+          if [ "$ENV" == "production" ] && [ "$BRANCH" != "main" ] && [ "$BRANCH" != "master" ]; then
+            echo "::error::Production deploys must be from main/master branch. Current: $BRANCH"
+            exit 1
+          fi
+
+          echo "Branch check passed: $BRANCH -> $ENV"
+
+  # ===========================================================================
+  # Job 2: Run Tests (unless skipped)
+  # ===========================================================================
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: preflight
+    if: ${{ github.event.inputs.skip_tests != 'true' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio httpx
+
+      - name: Run critical tests
+        run: |
+          mkdir -p backups
+          pytest tests/ -v --tb=short -x \
+            --ignore=node_modules \
+            --ignore=backups \
+            --ignore=agents \
+            -k "not slow" \
+            || { echo "::error::Tests failed! Deploy aborted."; exit 1; }
+
+  # ===========================================================================
+  # Job 3: Build Docker Image
+  # ===========================================================================
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [preflight, test]
+    if: ${{ always() && needs.preflight.result == 'success' && (needs.test.result == 'success' || needs.test.result == 'skipped') }}
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+      image_digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ needs.preflight.outputs.version }}
+            type=raw,value=${{ github.event.inputs.environment }}-latest
+            type=sha,prefix=${{ github.event.inputs.environment }}-
+
+      - name: Create Dockerfile if not exists
+        run: |
+          if [ ! -f "Dockerfile" ]; then
+            cat > Dockerfile << 'EOF'
+          # YuKyuDATA-app Dockerfile
+          FROM python:3.11-slim
+
+          WORKDIR /app
+
+          # Install system dependencies
+          RUN apt-get update && apt-get install -y --no-install-recommends \
+              curl \
+              && rm -rf /var/lib/apt/lists/*
+
+          # Copy requirements first for better caching
+          COPY requirements.txt .
+          RUN pip install --no-cache-dir -r requirements.txt
+
+          # Copy application code
+          COPY main.py database.py excel_service.py fiscal_year.py ./
+          COPY templates/ templates/
+          COPY static/ static/
+
+          # Create non-root user
+          RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+          USER appuser
+
+          # Health check
+          HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+              CMD curl -f http://localhost:8000/api/db-status || exit 1
+
+          EXPOSE 8000
+
+          CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+          EOF
+            echo "Created default Dockerfile"
+          fi
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      - name: Generate build summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ needs.preflight.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ needs.preflight.outputs.sha_short }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Digest:** ${{ steps.build.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
+
+  # ===========================================================================
+  # Job 4: Deploy (Placeholder - customize for your infrastructure)
+  # ===========================================================================
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    needs: [preflight, build]
+    environment:
+      name: ${{ github.event.inputs.environment }}
+      url: ${{ github.event.inputs.environment == 'production' && 'https://yukyu-data.example.com' || 'https://staging.yukyu-data.example.com' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy notification - Start
+        run: |
+          echo "## Deployment Started" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ needs.preflight.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Initiated by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+
+      # =========================================================================
+      # PLACEHOLDER: Uncomment and customize the deployment method you need
+      # =========================================================================
+
+      # Option 1: Deploy to Docker host via SSH
+      # - name: Deploy to Docker host
+      #   uses: appleboy/ssh-action@v1
+      #   with:
+      #     host: ${{ secrets.DEPLOY_HOST }}
+      #     username: ${{ secrets.DEPLOY_USER }}
+      #     key: ${{ secrets.DEPLOY_SSH_KEY }}
+      #     script: |
+      #       docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.preflight.outputs.version }}
+      #       docker stop yukyu-app || true
+      #       docker rm yukyu-app || true
+      #       docker run -d --name yukyu-app \
+      #         -p 8000:8000 \
+      #         -v yukyu-data:/app/data \
+      #         --restart unless-stopped \
+      #         ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.preflight.outputs.version }}
+
+      # Option 2: Deploy to Kubernetes
+      # - name: Deploy to Kubernetes
+      #   uses: azure/k8s-deploy@v4
+      #   with:
+      #     manifests: |
+      #       k8s/deployment.yaml
+      #       k8s/service.yaml
+      #     images: |
+      #       ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.preflight.outputs.version }}
+
+      # Option 3: Deploy with ArgoCD
+      # - name: Deploy with ArgoCD
+      #   env:
+      #     ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+      #     ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+      #   run: |
+      #     curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+      #     chmod +x argocd
+      #     ./argocd app set yukyu-app-${{ github.event.inputs.environment }} \
+      #       --parameter image.tag=${{ needs.preflight.outputs.version }}
+      #     ./argocd app sync yukyu-app-${{ github.event.inputs.environment }} --grpc-web
+
+      # Option 4: Deploy to Heroku
+      # - name: Deploy to Heroku
+      #   uses: akhileshns/heroku-deploy@v3
+      #   with:
+      #     heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+      #     heroku_app_name: yukyu-data-${{ github.event.inputs.environment }}
+      #     heroku_email: ${{ secrets.HEROKU_EMAIL }}
+
+      # Simulation step (remove in production)
+      - name: Simulate deployment
+        run: |
+          echo "Simulating deployment to ${{ github.event.inputs.environment }}..."
+          echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.preflight.outputs.version }}"
+          sleep 5
+          echo "Deployment simulation complete!"
+          echo ""
+          echo "To enable real deployments:"
+          echo "1. Configure your deployment secrets in GitHub"
+          echo "2. Uncomment the appropriate deployment step above"
+          echo "3. Remove this simulation step"
+
+  # ===========================================================================
+  # Job 5: Post-deployment verification
+  # ===========================================================================
+  verify:
+    name: Verify Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: success()
+
+    steps:
+      - name: Wait for deployment to stabilize
+        run: sleep 30
+
+      - name: Health check (placeholder)
+        run: |
+          # Uncomment when you have a real deployment URL
+          # URL="${{ github.event.inputs.environment == 'production' && 'https://yukyu-data.example.com' || 'https://staging.yukyu-data.example.com' }}"
+          # curl -f "$URL/api/db-status" || exit 1
+
+          echo "Health check would run against the deployed application"
+          echo "Skipping for now (no real deployment configured)"
+
+      - name: Deployment verification summary
+        run: |
+          echo "## Verification Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Deployment to **${{ github.event.inputs.environment }}** completed successfully!" >> $GITHUB_STEP_SUMMARY
+
+  # ===========================================================================
+  # Job 6: Notifications
+  # ===========================================================================
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [preflight, build, deploy, verify]
+    if: always()
+
+    steps:
+      - name: Determine status
+        id: status
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ] && [ "${{ needs.verify.result }}" == "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "emoji=:white_check_mark:" >> $GITHUB_OUTPUT
+            echo "message=Deployment successful!" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.deploy.result }}" == "failure" ]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "emoji=:x:" >> $GITHUB_OUTPUT
+            echo "message=Deployment failed!" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.verify.result }}" == "failure" ]; then
+            echo "status=warning" >> $GITHUB_OUTPUT
+            echo "emoji=:warning:" >> $GITHUB_OUTPUT
+            echo "message=Deployment completed but verification failed!" >> $GITHUB_OUTPUT
+          else
+            echo "status=unknown" >> $GITHUB_OUTPUT
+            echo "emoji=:question:" >> $GITHUB_OUTPUT
+            echo "message=Deployment status unknown" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | ${{ steps.status.outputs.message }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ github.event.inputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | ${{ needs.preflight.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ needs.preflight.outputs.sha_short }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Initiated by | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Workflow run | [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |" >> $GITHUB_STEP_SUMMARY
+
+      # Uncomment to enable Slack notifications
+      # - name: Send Slack notification
+      #   if: always()
+      #   uses: slackapi/slack-github-action@v1
+      #   with:
+      #     webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+      #     payload: |
+      #       {
+      #         "text": "${{ steps.status.outputs.emoji }} YuKyuDATA Deploy: ${{ steps.status.outputs.message }}",
+      #         "blocks": [
+      #           {
+      #             "type": "section",
+      #             "text": {
+      #               "type": "mrkdwn",
+      #               "text": "*YuKyuDATA Deployment*\n*Status:* ${{ steps.status.outputs.message }}\n*Environment:* ${{ github.event.inputs.environment }}\n*Version:* ${{ needs.preflight.outputs.version }}\n*By:* ${{ github.actor }}"
+      #             }
+      #           }
+      #         ]
+      #       }
+
+      - name: Log notification
+        run: |
+          echo "Notification: ${{ steps.status.outputs.message }}"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Version: ${{ needs.preflight.outputs.version }}"
+          echo "Initiated by: ${{ github.actor }}"

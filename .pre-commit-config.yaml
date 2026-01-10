@@ -1,0 +1,85 @@
+# Pre-commit configuration for YuKyuDATA-app
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Standard hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        name: Fix trailing whitespace
+        exclude: '\.md$'
+      - id: end-of-file-fixer
+        name: Fix end of file
+        exclude: '\.md$'
+      - id: check-yaml
+        name: Check YAML syntax
+      - id: check-json
+        name: Check JSON syntax
+      - id: check-added-large-files
+        name: Check for large files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+      - id: detect-private-key
+        name: Detect private keys
+
+  # Python syntax check
+  - repo: local
+    hooks:
+      - id: python-syntax
+        name: Check Python syntax
+        entry: python -m py_compile
+        language: system
+        types: [python]
+        exclude: '^(tests/|__pycache__|\.venv)'
+
+      # JavaScript syntax check
+      - id: js-syntax
+        name: Check JavaScript syntax
+        entry: node --check
+        language: system
+        types: [javascript]
+        exclude: '^(node_modules/|static/js/vendor/)'
+
+      # Detect secrets and credentials
+      - id: detect-secrets
+        name: Detect secrets/credentials
+        entry: scripts/check-secrets.sh
+        language: script
+        types: [text]
+        exclude: '(\.env\.example|package-lock\.json|\.md$)'
+
+      # Check for console.log in production code
+      - id: no-console-log
+        name: No console.log in production
+        entry: bash -c 'grep -rn "console\.log" --include="*.js" static/js/ | grep -v "// DEBUG" && exit 1 || exit 0'
+        language: system
+        pass_filenames: false
+
+      # Check for unresolved TODOs
+      - id: check-todos
+        name: Check unresolved TODOs
+        entry: bash -c 'git diff --cached --name-only | xargs grep -n "TODO:" 2>/dev/null | head -5 && echo "WARNING: Found TODO comments" || true'
+        language: system
+        pass_filenames: false
+        verbose: true
+
+      # Verify CLAUDE_MEMORY.md freshness (warning only)
+      - id: claude-memory-check
+        name: Check CLAUDE_MEMORY.md freshness
+        entry: scripts/check-memory.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+        verbose: true
+
+# Default stages
+default_stages: [commit]
+
+# Fail fast on first error
+fail_fast: false
+
+# Minimum pre-commit version
+minimum_pre_commit_version: '3.0.0'

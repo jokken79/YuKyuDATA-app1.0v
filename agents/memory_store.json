@@ -1,0 +1,343 @@
+{
+  "sessions": {},
+  "learnings": {
+    "architecture": {
+      "db_composite_id": {
+        "key": "db_composite_id",
+        "value": "Patron ID compuesto: {employee_num}_{year} para tabla employees",
+        "category": "architecture",
+        "created_at": "2026-01-10T02:26:57.114804",
+        "updated_at": "2026-01-10T02:26:57.114807",
+        "source_session": null,
+        "confidence": 1.0,
+        "tags": [
+          "database",
+          "sqlite",
+          "primary_key"
+        ]
+      },
+      "lifo_deduction": {
+        "key": "lifo_deduction",
+        "value": "Dias mas nuevos se consumen primero (LIFO)",
+        "category": "architecture",
+        "created_at": "2026-01-10T02:26:57.115330",
+        "updated_at": "2026-01-10T02:26:57.115335",
+        "source_session": null,
+        "confidence": 1.0,
+        "tags": [
+          "business_logic",
+          "vacation"
+        ]
+      },
+      "fiscal_period": {
+        "key": "fiscal_period",
+        "value": "Periodo fiscal: 21日〜20日 (dia 21 al 20 del siguiente mes)",
+        "category": "architecture",
+        "created_at": "2026-01-10T02:26:57.115786",
+        "updated_at": "2026-01-10T02:26:57.115789",
+        "source_session": null,
+        "confidence": 1.0,
+        "tags": [
+          "business_logic",
+          "japanese_law"
+        ]
+      }
+    },
+    "patterns": {
+      "insert_or_replace": {
+        "key": "insert_or_replace",
+        "value": "Usar INSERT OR REPLACE para sincronizacion idempotente",
+        "category": "patterns",
+        "created_at": "2026-01-10T02:26:57.116271",
+        "updated_at": "2026-01-10T02:26:57.116276",
+        "source_session": null,
+        "confidence": 1.0,
+        "tags": [
+          "database",
+          "sqlite",
+          "crud"
+        ]
+      },
+      "context_manager_db": {
+        "key": "context_manager_db",
+        "value": "Usar with get_db() as conn: para conexiones seguras",
+        "category": "patterns",
+        "created_at": "2026-01-10T02:26:57.116866",
+        "updated_at": "2026-01-10T02:26:57.116870",
+        "source_session": null,
+        "confidence": 1.0,
+        "tags": [
+          "database",
+          "sqlite"
+        ]
+      },
+      "singleton_app": {
+        "key": "singleton_app",
+        "value": "Frontend usa patron singleton App.{module}",
+        "category": "patterns",
+        "created_at": "2026-01-10T02:26:57.117374",
+        "updated_at": "2026-01-10T02:26:57.117377",
+        "source_session": null,
+        "confidence": 1.0,
+        "tags": [
+          "javascript",
+          "frontend"
+        ]
+      }
+    },
+    "conventions": {
+      "code_language": {
+        "key": "code_language",
+        "value": "Codigo en ingles (variables, funciones)",
+        "category": "conventions",
+        "created_at": "2026-01-10T02:26:57.117862",
+        "updated_at": "2026-01-10T02:26:57.117864",
+        "source_session": null,
+        "confidence": 1.0,
+        "tags": [
+          "naming"
+        ]
+      },
+      "ui_language": {
+        "key": "ui_language",
+        "value": "UI en japones (labels, mensajes)",
+        "category": "conventions",
+        "created_at": "2026-01-10T02:26:57.118412",
+        "updated_at": "2026-01-10T02:26:57.118415",
+        "source_session": null,
+        "confidence": 1.0,
+        "tags": [
+          "i18n"
+        ]
+      },
+      "docs_language": {
+        "key": "docs_language",
+        "value": "Documentacion en castellano/espanol para el usuario",
+        "category": "conventions",
+        "created_at": "2026-01-10T02:26:57.119020",
+        "updated_at": "2026-01-10T02:26:57.119023",
+        "source_session": null,
+        "confidence": 1.0,
+        "tags": [
+          "i18n"
+        ]
+      },
+      "branch_naming": {
+        "key": "branch_naming",
+        "value": "Features: claude/feature-name-{sessionId}, Fixes: claude/fix-description-{sessionId}",
+        "category": "conventions",
+        "created_at": "2026-01-10T02:26:57.119508",
+        "updated_at": "2026-01-10T02:26:57.119510",
+        "source_session": null,
+        "confidence": 1.0,
+        "tags": [
+          "git"
+        ]
+      }
+    }
+  },
+  "errors": {
+    "err_4033aa9a": {
+      "error_id": "err_4033aa9a",
+      "error_pattern": "Medio dia no se detecta en Excel",
+      "error_keywords": [
+        "detecta",
+        "dia",
+        "excel",
+        "medio"
+      ],
+      "solution": "Editar manualmente con sistema v2.1",
+      "solution_details": "days_used = 1.0 hardcodeado en parser",
+      "related_files": [
+        "excel_service.py"
+      ],
+      "created_at": "2026-01-10T02:26:57.120126",
+      "times_used": 0,
+      "last_used": null,
+      "verified": false
+    },
+    "err_85f5f7b9": {
+      "error_id": "err_85f5f7b9",
+      "error_pattern": "Comentarios en celdas ignoran fechas",
+      "error_keywords": [
+        "fechas",
+        "celdas",
+        "comentarios",
+        "ignoran"
+      ],
+      "solution": "Usar sistema de edicion manual v2.1",
+      "solution_details": "data_only=True en openpyxl ignora comentarios",
+      "related_files": [
+        "excel_service.py"
+      ],
+      "created_at": "2026-01-10T02:26:57.120689",
+      "times_used": 0,
+      "last_used": null,
+      "verified": false
+    }
+  },
+  "features": [
+    {
+      "feature_name": "edit_excel",
+      "version": "2.1",
+      "status": "completed",
+      "description": "CRUD completo para yukyu_usage_details",
+      "implementation_date": "2026-01-10",
+      "endpoints": [
+        "/api/yukyu/usage-details",
+        "/api/yukyu/recalculate/{emp}/{year}",
+        "/api/employees/{emp}/{year}"
+      ],
+      "files_affected": [
+        "main.py",
+        "database.py",
+        "static/js/app.js"
+      ],
+      "breaking_changes": false,
+      "notes": null,
+      "related_features": []
+    },
+    {
+      "feature_name": "usage_details",
+      "version": "2.0",
+      "status": "completed",
+      "description": "Tabla yukyu_usage_details para fechas individuales",
+      "implementation_date": "2026-01-10",
+      "endpoints": [
+        "/api/yukyu/usage-details"
+      ],
+      "files_affected": [
+        "main.py",
+        "database.py"
+      ],
+      "breaking_changes": false,
+      "notes": null,
+      "related_features": []
+    },
+    {
+      "feature_name": "leave_requests",
+      "version": "1.5",
+      "status": "completed",
+      "description": "Leave requests workflow (PENDING → APPROVED/REJECTED)",
+      "implementation_date": "2026-01-10",
+      "endpoints": [
+        "/api/leave-requests"
+      ],
+      "files_affected": [],
+      "breaking_changes": false,
+      "notes": null,
+      "related_features": []
+    },
+    {
+      "feature_name": "backup_system",
+      "version": "1.3",
+      "status": "completed",
+      "description": "Sistema de backup/restore",
+      "implementation_date": "2026-01-10",
+      "endpoints": [
+        "/api/backups"
+      ],
+      "files_affected": [],
+      "breaking_changes": false,
+      "notes": null,
+      "related_features": []
+    },
+    {
+      "feature_name": "jwt_auth",
+      "version": "1.2",
+      "status": "completed",
+      "description": "JWT Authentication",
+      "implementation_date": "2026-01-10",
+      "endpoints": [
+        "/auth/login",
+        "/auth/me"
+      ],
+      "files_affected": [],
+      "breaking_changes": false,
+      "notes": null,
+      "related_features": []
+    }
+  ],
+  "preferences": {
+    "language": {
+      "key": "language",
+      "value": "castellano",
+      "category": "communication",
+      "updated_at": "2026-01-10T02:26:57.124101"
+    },
+    "prefer_visual_explanations": {
+      "key": "prefer_visual_explanations",
+      "value": true,
+      "category": "communication",
+      "updated_at": "2026-01-10T02:26:57.124667"
+    },
+    "prefer_complete_solutions": {
+      "key": "prefer_complete_solutions",
+      "value": true,
+      "category": "workflow",
+      "updated_at": "2026-01-10T02:26:57.125256"
+    },
+    "platform": {
+      "key": "platform",
+      "value": "Windows (scripts .bat)",
+      "category": "environment",
+      "updated_at": "2026-01-10T02:26:57.125832"
+    }
+  },
+  "todos": {
+    "todo_ed01f2f6": {
+      "todo_id": "todo_ed01f2f6",
+      "title": "Parser mejorado",
+      "description": "Detectar medio dia automaticamente en Excel",
+      "priority": "high",
+      "category": "parser",
+      "created_at": "2026-01-10T02:26:57.126431",
+      "due_date": null,
+      "completed": false,
+      "completed_at": null,
+      "source_session": null
+    },
+    "todo_51f0b5b7": {
+      "todo_id": "todo_51f0b5b7",
+      "title": "Validacion en importacion",
+      "description": "Alertar sobre celdas problematicas durante import",
+      "priority": "medium",
+      "category": "parser",
+      "created_at": "2026-01-10T02:26:57.127076",
+      "due_date": null,
+      "completed": false,
+      "completed_at": null,
+      "source_session": null
+    },
+    "todo_ca88cb8e": {
+      "todo_id": "todo_ca88cb8e",
+      "title": "Historial de ediciones",
+      "description": "Audit log para cambios manuales",
+      "priority": "medium",
+      "category": "audit",
+      "created_at": "2026-01-10T02:26:57.127714",
+      "due_date": null,
+      "completed": false,
+      "completed_at": null,
+      "source_session": null
+    },
+    "todo_d3c9210e": {
+      "todo_id": "todo_d3c9210e",
+      "title": "Bulk edit",
+      "description": "Editar multiples empleados a la vez",
+      "priority": "low",
+      "category": "ui",
+      "created_at": "2026-01-10T02:26:57.128353",
+      "due_date": null,
+      "completed": false,
+      "completed_at": null,
+      "source_session": null
+    }
+  },
+  "metadata": {
+    "created_at": "2026-01-10T02:26:57.113093",
+    "last_updated": "2026-01-10T02:26:57.128355",
+    "version": "1.0.0",
+    "total_sessions": 0
+  }
+}

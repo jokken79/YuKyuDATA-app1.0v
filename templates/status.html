@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Status Dashboard - YuKyuDATA</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: rgba(10, 10, 10, 0.95);
+            --bg-card: rgba(20, 28, 38, 0.75);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-primary: #06b6d4;
+            --accent-secondary: #22d3ee;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            --accent-purple: #a855f7;
+            --border-color: rgba(6, 182, 212, 0.2);
+            --border-glow: rgba(6, 182, 212, 0.4);
+            --shadow-glow: 0 0 30px rgba(6, 182, 212, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(6, 182, 212, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(16, 185, 129, 0.03) 0%, transparent 70%);
+            animation: bgPulse 15s ease-in-out infinite;
+        }
+
+        @keyframes bgPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .version-badge {
+            background: rgba(6, 182, 212, 0.15);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--accent-primary);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(6, 182, 212, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-primary);
+            background: rgba(6, 182, 212, 0.1);
+        }
+
+        .btn.loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .btn.loading::after {
+            content: '';
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-left: 0.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Grid layout */
+        .grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .grid-cols-4 {
+            grid-template-columns: repeat(4, 1fr);
+        }
+
+        .grid-cols-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .grid-cols-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        @media (max-width: 1024px) {
+            .grid-cols-4 { grid-template-columns: repeat(2, 1fr); }
+            .grid-cols-3 { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 640px) {
+            .grid-cols-4, .grid-cols-3, .grid-cols-2 { grid-template-columns: 1fr; }
+            .container { padding: 1rem; }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--border-glow);
+            box-shadow: var(--shadow-glow);
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: 1.25rem;
+        }
+
+        .card-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        /* KPI Cards */
+        .kpi-card .card-icon.cyan { background: rgba(6, 182, 212, 0.15); color: var(--accent-primary); }
+        .kpi-card .card-icon.green { background: rgba(16, 185, 129, 0.15); color: var(--accent-success); }
+        .kpi-card .card-icon.purple { background: rgba(168, 85, 247, 0.15); color: var(--accent-purple); }
+        .kpi-card .card-icon.orange { background: rgba(245, 158, 11, 0.15); color: var(--accent-warning); }
+
+        .kpi-card.cyan .card-value { color: var(--accent-primary); }
+        .kpi-card.green .card-value { color: var(--accent-success); }
+        .kpi-card.purple .card-value { color: var(--accent-purple); }
+        .kpi-card.orange .card-value { color: var(--accent-warning); }
+
+        /* Status indicators */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-badge.healthy {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-success);
+        }
+
+        .status-badge.warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-warning);
+        }
+
+        .status-badge.danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-danger);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Chart container */
+        .chart-container {
+            position: relative;
+            height: 200px;
+            margin-top: 1rem;
+        }
+
+        /* List styles */
+        .list {
+            list-style: none;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        .list::-webkit-scrollbar-thumb {
+            background: var(--accent-primary);
+            border-radius: 3px;
+        }
+
+        .list-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.2s ease;
+        }
+
+        .list-item:last-child {
+            border-bottom: none;
+        }
+
+        .list-item:hover {
+            background: rgba(6, 182, 212, 0.05);
+        }
+
+        .list-item-icon {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 0.875rem;
+        }
+
+        .list-item-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .list-item-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .list-item-meta {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Commit item */
+        .commit-hash {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-primary);
+            background: rgba(6, 182, 212, 0.1);
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        /* Priority badges */
+        .priority-high { color: var(--accent-danger); }
+        .priority-medium { color: var(--accent-warning); }
+        .priority-low { color: var(--accent-success); }
+
+        /* Progress bar */
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .progress-fill.cyan { background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary)); }
+        .progress-fill.green { background: var(--accent-success); }
+        .progress-fill.orange { background: var(--accent-warning); }
+        .progress-fill.red { background: var(--accent-danger); }
+
+        /* System stats */
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        /* Feature list */
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-status {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+        }
+
+        .feature-status.completed {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-success);
+        }
+
+        .feature-status.pending {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-warning);
+        }
+
+        .feature-name {
+            font-weight: 500;
+        }
+
+        .feature-version {
+            margin-left: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Error cards */
+        .error-item {
+            background: rgba(239, 68, 68, 0.05);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .error-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .error-pattern {
+            font-weight: 600;
+            color: var(--accent-danger);
+            margin-bottom: 0.5rem;
+        }
+
+        .error-solution {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        /* Loading state */
+        .loading-skeleton {
+            background: linear-gradient(90deg,
+                rgba(255,255,255,0.05) 0%,
+                rgba(255,255,255,0.1) 50%,
+                rgba(255,255,255,0.05) 100%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        /* Section title */
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(180deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 2px;
+        }
+
+        /* Last updated */
+        .last-updated {
+            text-align: center;
+            padding: 1rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div>
+                <h1>Project Status Dashboard</h1>
+                <p style="color: var(--text-secondary); margin-top: 0.5rem;">YuKyuDATA-app - Real-time monitoring</p>
+            </div>
+            <div class="header-actions">
+                <span class="version-badge" id="version">v2.1.0</span>
+                <button class="btn btn-secondary" onclick="window.location.href='/'">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    Dashboard
+                </button>
+                <button class="btn btn-primary" id="refreshBtn" onclick="refreshData()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <polyline points="1 20 1 14 7 14"></polyline>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+        </header>
+
+        <!-- KPI Cards -->
+        <section class="grid grid-cols-4" style="margin-bottom: 2rem;">
+            <div class="card kpi-card cyan">
+                <div class="card-header">
+                    <span class="card-title">Total Records</span>
+                    <div class="card-icon cyan">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="card-value" id="totalRecords">--</div>
+                <div class="card-subtitle">in database</div>
+            </div>
+
+            <div class="card kpi-card green">
+                <div class="card-header">
+                    <span class="card-title">Features</span>
+                    <div class="card-icon green">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 11 12 14 22 4"></polyline>
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="card-value" id="featuresCount">--</div>
+                <div class="card-subtitle">implemented</div>
+            </div>
+
+            <div class="card kpi-card orange">
+                <div class="card-header">
+                    <span class="card-title">TODOs</span>
+                    <div class="card-icon orange">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                    </div>
+                </div>
+                <div class="card-value" id="todosCount">--</div>
+                <div class="card-subtitle">pending</div>
+            </div>
+
+            <div class="card kpi-card purple">
+                <div class="card-header">
+                    <span class="card-title">Uptime</span>
+                    <div class="card-icon purple">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="card-value" id="uptime" style="font-size: 1.5rem;">--</div>
+                <div class="card-subtitle">server running</div>
+            </div>
+        </section>
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-3" style="margin-bottom: 2rem;">
+            <!-- Commits Chart -->
+            <div class="card" style="grid-column: span 2;">
+                <h3 class="section-title">Commits Activity (Last 7 Days)</h3>
+                <div class="chart-container">
+                    <canvas id="commitsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- System Health -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="section-title" style="margin-bottom: 0;">System Health</h3>
+                    <span class="status-badge healthy" id="healthStatus">
+                        <span class="status-dot"></span>
+                        Healthy
+                    </span>
+                </div>
+
+                <div class="stat-row">
+                    <span class="stat-label">CPU Usage</span>
+                    <span class="stat-value" id="cpuUsage">--</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill cyan" id="cpuBar" style="width: 0%"></div>
+                </div>
+
+                <div class="stat-row" style="margin-top: 1rem;">
+                    <span class="stat-label">Memory</span>
+                    <span class="stat-value" id="memoryUsage">--</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill green" id="memoryBar" style="width: 0%"></div>
+                </div>
+
+                <div class="stat-row" style="margin-top: 1rem;">
+                    <span class="stat-label">Disk</span>
+                    <span class="stat-value" id="diskUsage">--</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill orange" id="diskBar" style="width: 0%"></div>
+                </div>
+
+                <div class="stat-row" style="margin-top: 1rem;">
+                    <span class="stat-label">Database Type</span>
+                    <span class="stat-value" id="dbType">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Second Row -->
+        <div class="grid grid-cols-2" style="margin-bottom: 2rem;">
+            <!-- Recent Commits -->
+            <div class="card">
+                <h3 class="section-title">Recent Commits</h3>
+                <ul class="list" id="commitsList">
+                    <li class="empty-state">
+                        <div class="empty-state-icon">&#128221;</div>
+                        Loading commits...
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Database Tables -->
+            <div class="card">
+                <h3 class="section-title">Database Tables</h3>
+                <div id="tablesList">
+                    <div class="stat-row">
+                        <span class="stat-label">employees</span>
+                        <span class="stat-value" id="tableEmployees">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">genzai</span>
+                        <span class="stat-value" id="tableGenzai">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">ukeoi</span>
+                        <span class="stat-value" id="tableUkeoi">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">staff</span>
+                        <span class="stat-value" id="tableStaff">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">leave_requests</span>
+                        <span class="stat-value" id="tableLeave">--</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">usage_details</span>
+                        <span class="stat-value" id="tableUsage">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Third Row -->
+        <div class="grid grid-cols-3" style="margin-bottom: 2rem;">
+            <!-- TODOs -->
+            <div class="card">
+                <h3 class="section-title">Pending TODOs</h3>
+                <ul class="list" id="todosList">
+                    <li class="empty-state">
+                        <div class="empty-state-icon">&#9989;</div>
+                        Loading TODOs...
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Features -->
+            <div class="card">
+                <h3 class="section-title">Implemented Features</h3>
+                <div id="featuresList" style="max-height: 300px; overflow-y: auto;">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#128640;</div>
+                        Loading features...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Known Errors -->
+            <div class="card">
+                <h3 class="section-title">Known Issues</h3>
+                <div id="errorsList" style="max-height: 300px; overflow-y: auto;">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#128030;</div>
+                        Loading issues...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Last Updated -->
+        <div class="last-updated">
+            Last updated: <span id="lastUpdated">--</span>
+        </div>
+    </div>
+
+    <script>
+        let commitsChart = null;
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function fetchProjectStatus() {
+            try {
+                const response = await fetch('/api/project-status');
+                if (!response.ok) throw new Error('Failed to fetch status');
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching project status:', error);
+                return null;
+            }
+        }
+
+        function updateKPIs(data) {
+            // Version
+            document.getElementById('version').textContent = `v${data.project?.version || '2.1.0'}`;
+
+            // Total records
+            document.getElementById('totalRecords').textContent =
+                (data.database?.total_records || 0).toLocaleString();
+
+            // Features count
+            document.getElementById('featuresCount').textContent =
+                data.features?.completed_count || 0;
+
+            // TODOs count
+            document.getElementById('todosCount').textContent =
+                data.todos?.pending_count || 0;
+
+            // Uptime
+            document.getElementById('uptime').textContent =
+                data.system?.uptime_human || '--';
+        }
+
+        function updateSystemHealth(data) {
+            const system = data.system || {};
+
+            // CPU
+            const cpu = system.cpu_percent || 0;
+            document.getElementById('cpuUsage').textContent = `${cpu}%`;
+            document.getElementById('cpuBar').style.width = `${cpu}%`;
+
+            // Memory
+            const mem = system.memory || {};
+            document.getElementById('memoryUsage').textContent =
+                `${mem.used_gb || 0} / ${mem.total_gb || 0} GB`;
+            document.getElementById('memoryBar').style.width = `${mem.percent || 0}%`;
+
+            // Disk
+            const disk = system.disk || {};
+            document.getElementById('diskUsage').textContent =
+                `${disk.used_gb || 0} / ${disk.total_gb || 0} GB`;
+            document.getElementById('diskBar').style.width = `${disk.percent || 0}%`;
+
+            // DB Type
+            document.getElementById('dbType').textContent = data.database?.type || 'sqlite';
+
+            // Health status
+            const healthBadge = document.getElementById('healthStatus');
+            if (cpu > 90 || (mem.percent || 0) > 90) {
+                healthBadge.className = 'status-badge danger';
+                healthBadge.innerHTML = '<span class="status-dot"></span>Critical';
+            } else if (cpu > 70 || (mem.percent || 0) > 70) {
+                healthBadge.className = 'status-badge warning';
+                healthBadge.innerHTML = '<span class="status-dot"></span>Warning';
+            } else {
+                healthBadge.className = 'status-badge healthy';
+                healthBadge.innerHTML = '<span class="status-dot"></span>Healthy';
+            }
+        }
+
+        function updateCommitsChart(data) {
+            const commitsPerDay = data.git?.commits_per_day || {};
+            const labels = Object.keys(commitsPerDay).map(d => {
+                const date = new Date(d);
+                return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            });
+            const values = Object.values(commitsPerDay);
+
+            const ctx = document.getElementById('commitsChart').getContext('2d');
+
+            if (commitsChart) {
+                commitsChart.destroy();
+            }
+
+            commitsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Commits',
+                        data: values,
+                        backgroundColor: 'rgba(6, 182, 212, 0.6)',
+                        borderColor: 'rgba(6, 182, 212, 1)',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                color: '#94a3b8'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            }
+                        },
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateCommitsList(data) {
+            const commits = data.git?.recent_commits || [];
+            const container = document.getElementById('commitsList');
+
+            if (commits.length === 0) {
+                container.innerHTML = `
+                    <li class="empty-state">
+                        <div class="empty-state-icon">&#128221;</div>
+                        No commits found
+                    </li>
+                `;
+                return;
+            }
+
+            container.innerHTML = commits.map(commit => `
+                <li class="list-item">
+                    <div class="list-item-icon" style="background: rgba(6, 182, 212, 0.15); color: var(--accent-primary);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="4"></circle>
+                            <line x1="1.05" y1="12" x2="7" y2="12"></line>
+                            <line x1="17.01" y1="12" x2="22.96" y2="12"></line>
+                        </svg>
+                    </div>
+                    <div class="list-item-content">
+                        <div class="list-item-title">${escapeHtml(commit.message)}</div>
+                        <div class="list-item-meta">
+                            <span class="commit-hash">${escapeHtml(commit.hash)}</span>
+                            &bull; ${escapeHtml(commit.author)} &bull; ${new Date(commit.date).toLocaleDateString()}
+                        </div>
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        function updateDatabaseTables(data) {
+            const tables = data.database?.tables || {};
+            document.getElementById('tableEmployees').textContent = (tables.employees || 0).toLocaleString();
+            document.getElementById('tableGenzai').textContent = (tables.genzai || 0).toLocaleString();
+            document.getElementById('tableUkeoi').textContent = (tables.ukeoi || 0).toLocaleString();
+            document.getElementById('tableStaff').textContent = (tables.staff || 0).toLocaleString();
+            document.getElementById('tableLeave').textContent = (tables.leave_requests || 0).toLocaleString();
+            document.getElementById('tableUsage').textContent = (tables.usage_details || 0).toLocaleString();
+        }
+
+        function updateTodosList(data) {
+            const todos = (data.todos?.items || []).filter(t => !t.completed);
+            const container = document.getElementById('todosList');
+
+            if (todos.length === 0) {
+                container.innerHTML = `
+                    <li class="empty-state">
+                        <div class="empty-state-icon">&#9989;</div>
+                        All tasks completed!
+                    </li>
+                `;
+                return;
+            }
+
+            // Sort by priority
+            const priorityOrder = { high: 0, medium: 1, low: 2 };
+            todos.sort((a, b) => (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1));
+
+            container.innerHTML = todos.map(todo => `
+                <li class="list-item">
+                    <div class="list-item-icon priority-${todo.priority}" style="background: rgba(245, 158, 11, 0.15);">
+                        ${todo.priority === 'high' ? '!!!' : todo.priority === 'medium' ? '!!' : '!'}
+                    </div>
+                    <div class="list-item-content">
+                        <div class="list-item-title">${escapeHtml(todo.title)}</div>
+                        <div class="list-item-meta">
+                            ${escapeHtml(todo.description || '')}
+                            <br>
+                            <span class="priority-${todo.priority}">${todo.priority}</span> &bull; ${escapeHtml(todo.category || 'general')}
+                        </div>
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        function updateFeaturesList(data) {
+            const features = data.features?.items || [];
+            const container = document.getElementById('featuresList');
+
+            if (features.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#128640;</div>
+                        No features tracked
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = features.map(feature => `
+                <div class="feature-item">
+                    <div class="feature-status ${feature.status}">
+                        ${feature.status === 'completed' ? '&#10003;' : '&#9711;'}
+                    </div>
+                    <span class="feature-name">${escapeHtml(feature.feature_name)}</span>
+                    <span class="feature-version">v${escapeHtml(feature.version)}</span>
+                </div>
+            `).join('');
+        }
+
+        function updateErrorsList(data) {
+            const errors = (data.errors?.items || []).filter(e => !e.verified);
+            const container = document.getElementById('errorsList');
+
+            if (errors.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">&#127881;</div>
+                        No unresolved issues!
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = errors.map(error => `
+                <div class="error-item">
+                    <div class="error-pattern">${escapeHtml(error.pattern)}</div>
+                    <div class="error-solution">${escapeHtml(error.solution)}</div>
+                    ${error.files && error.files.length > 0 ? `
+                        <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">
+                            Files: ${error.files.map(f => escapeHtml(f)).join(', ')}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        async function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            btn.classList.add('loading');
+
+            const data = await fetchProjectStatus();
+
+            if (data && data.status === 'success') {
+                updateKPIs(data);
+                updateSystemHealth(data);
+                updateCommitsChart(data);
+                updateCommitsList(data);
+                updateDatabaseTables(data);
+                updateTodosList(data);
+                updateFeaturesList(data);
+                updateErrorsList(data);
+
+                document.getElementById('lastUpdated').textContent =
+                    new Date(data.timestamp).toLocaleString();
+            }
+
+            btn.classList.remove('loading');
+        }
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', refreshData);
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshData, 30000);
+    </script>
+</body>
+</html>

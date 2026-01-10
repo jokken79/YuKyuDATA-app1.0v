@@ -1,0 +1,148 @@
+# =============================================================================
+# Dependabot - Actualizacion Automatica de Dependencias
+# =============================================================================
+# Mantiene las dependencias actualizadas automaticamente
+# Frecuencia: Semanal
+# Limite: 5 PRs abiertos por ecosistema
+# =============================================================================
+
+version: 2
+
+registries:
+  # Configuracion opcional para registros privados
+  # pypi-private:
+  #   type: python-index
+  #   url: https://private.pypi.example.com/simple
+  #   username: ${{ secrets.PYPI_USERNAME }}
+  #   password: ${{ secrets.PYPI_PASSWORD }}
+
+updates:
+  # ===========================================================================
+  # Python (pip) Dependencies
+  # ===========================================================================
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "jokken79"
+    assignees:
+      - "jokken79"
+    labels:
+      - "dependencies"
+      - "python"
+      - "automated"
+    commit-message:
+      prefix: "deps(pip)"
+      include: "scope"
+    # Agrupar actualizaciones menores y parches
+    groups:
+      python-minor-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Ignorar ciertas versiones si es necesario
+    # ignore:
+    #   - dependency-name: "pydantic"
+    #     versions: ["2.x"]  # Mantener en v1 por compatibilidad
+
+  # ===========================================================================
+  # NPM Dependencies (Frontend/Testing)
+  # ===========================================================================
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "jokken79"
+    assignees:
+      - "jokken79"
+    labels:
+      - "dependencies"
+      - "javascript"
+      - "automated"
+    commit-message:
+      prefix: "deps(npm)"
+      include: "scope"
+    # Agrupar actualizaciones de desarrollo
+    groups:
+      npm-dev-dependencies:
+        dependency-type: "development"
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      babel-updates:
+        patterns:
+          - "@babel/*"
+      jest-updates:
+        patterns:
+          - "jest"
+          - "jest-*"
+          - "@jest/*"
+    # Ignorar actualizaciones mayores de Jest por estabilidad
+    # ignore:
+    #   - dependency-name: "jest"
+    #     update-types: ["version-update:semver-major"]
+
+  # ===========================================================================
+  # GitHub Actions
+  # ===========================================================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "jokken79"
+    assignees:
+      - "jokken79"
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "automated"
+    commit-message:
+      prefix: "deps(actions)"
+      include: "scope"
+    groups:
+      github-actions-all:
+        patterns:
+          - "*"
+
+  # ===========================================================================
+  # Docker Dependencies (si usas Dockerfile)
+  # ===========================================================================
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "jokken79"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "automated"
+    commit-message:
+      prefix: "deps(docker)"
+    # Ignorar actualizaciones de imagen base a nuevas versiones mayores
+    # ignore:
+    #   - dependency-name: "python"
+    #     update-types: ["version-update:semver-major"]
