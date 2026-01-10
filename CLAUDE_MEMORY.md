@@ -223,3 +223,8 @@ python scripts/sync-issues.py     # Sincronizar TODOs a Issues
 - Prefiere soluciones completas end-to-end
 - Usa Windows (scripts .bat disponibles)
 - Valora la proactividad ("Haz todo lo necesario")
+
+## Recent Commits
+
+| Date | Hash | Message |
+|------|------|---------|
