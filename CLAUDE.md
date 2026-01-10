@@ -4,6 +4,9 @@ Hablame en castellano por favor
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **IMPORTANTE**: Lee también `CLAUDE_MEMORY.md` para contexto de sesiones anteriores,
+> decisiones de arquitectura, errores conocidos y features ya implementadas.
+
 ---
 
 ## 1. Project Overview
