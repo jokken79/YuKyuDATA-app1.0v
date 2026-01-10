@@ -98,6 +98,47 @@ class DateRangeQuery(BaseModel):
     end_date: str
 
 
+# === EDIT YUKYU DATA MODELS (v2.1) ===
+
+class UsageDetailUpdate(BaseModel):
+    """Modelo para actualizar un registro de uso de yukyu."""
+    days_used: Optional[float] = Field(None, ge=0.25, le=1.0, description="Días usados (0.25, 0.5, 1.0)")
+    use_date: Optional[str] = Field(None, description="Nueva fecha YYYY-MM-DD")
+
+    @field_validator('days_used')
+    @classmethod
+    def validate_days(cls, v):
+        if v is not None:
+            valid_values = [0.25, 0.5, 0.75, 1.0]
+            if v not in valid_values:
+                raise ValueError(f'days_used debe ser: {valid_values} (0.5 = medio día)')
+        return v
+
+
+class UsageDetailCreate(BaseModel):
+    """Modelo para crear un nuevo registro de uso de yukyu."""
+    employee_num: str = Field(..., min_length=1, description="Número de empleado")
+    name: str = Field(..., min_length=1, description="Nombre del empleado")
+    use_date: str = Field(..., description="Fecha de uso YYYY-MM-DD")
+    days_used: float = Field(1.0, ge=0.25, le=1.0, description="Días usados")
+
+    @field_validator('days_used')
+    @classmethod
+    def validate_days(cls, v):
+        valid_values = [0.25, 0.5, 0.75, 1.0]
+        if v not in valid_values:
+            raise ValueError(f'days_used debe ser: {valid_values} (0.5 = medio día)')
+        return v
+
+
+class EmployeeUpdate(BaseModel):
+    """Modelo para actualizar datos de empleado."""
+    name: Optional[str] = None
+    haken: Optional[str] = None
+    granted: Optional[float] = Field(None, ge=0, le=40)
+    used: Optional[float] = Field(None, ge=0, le=40)
+
+
 # ============================================
 # RATE LIMITER
 # ============================================
@@ -1632,6 +1673,179 @@ async def get_usage_by_employee_type(year: int):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# EDIT YUKYU DATA ENDPOINTS (v2.1 - NEW)
+# Permite editar datos importados desde Excel
+# ============================================
+
+@app.get("/api/yukyu/employee-summary/{employee_num}/{year}")
+async def get_employee_usage_summary(employee_num: str, year: int):
+    """
+    Obtiene resumen completo de uso de yukyu de un empleado.
+    Incluye todos los detalles individuales y detecta discrepancias.
+
+    Uso: Ver todos los días de uso de un empleado antes de editar.
+    """
+    try:
+        summary = database.get_employee_usage_summary(employee_num, year)
+
+        if not summary['employee']:
+            raise HTTPException(status_code=404, detail=f"Empleado {employee_num} no encontrado para año {year}")
+
+        return {
+            "status": "success",
+            "employee": summary['employee'],
+            "usage_details": summary['usage_details'],
+            "summary": summary['summary'],
+            "message": f"Encontrados {summary['summary']['total_records']} registros de uso"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/yukyu/usage-details/{detail_id}")
+async def update_usage_detail(detail_id: int, update_data: UsageDetailUpdate):
+    """
+    Actualiza un registro específico de uso de yukyu.
+
+    Ejemplo: Cambiar 1/5 de día completo (1.0) a medio día (0.5).
+    Para el caso de Kenji que faltó medio día pero se importó mal.
+    """
+    try:
+        if update_data.days_used is None and update_data.use_date is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Debes proporcionar al menos days_used o use_date para actualizar"
+            )
+
+        updated = database.update_yukyu_usage_detail(
+            detail_id=detail_id,
+            days_used=update_data.days_used,
+            use_date=update_data.use_date
+        )
+
+        return {
+            "status": "success",
+            "message": f"Registro {detail_id} actualizado correctamente",
+            "updated_record": updated,
+            "note": "Recuerda llamar a /api/yukyu/recalculate para actualizar el balance del empleado"
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/yukyu/usage-details/{detail_id}")
+async def delete_usage_detail(detail_id: int):
+    """
+    Elimina un registro específico de uso de yukyu.
+
+    Uso: Eliminar fechas que se importaron incorrectamente
+    (ej: celdas con comentarios que no debían ser fechas).
+    """
+    try:
+        deleted = database.delete_yukyu_usage_detail(detail_id)
+
+        return {
+            "status": "success",
+            "message": f"Registro {detail_id} eliminado",
+            "deleted_record": deleted,
+            "note": "Recuerda llamar a /api/yukyu/recalculate para actualizar el balance del empleado"
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/yukyu/usage-details")
+async def create_usage_detail(create_data: UsageDetailCreate):
+    """
+    Crea un nuevo registro de uso de yukyu.
+
+    Uso: Agregar fechas que no se importaron correctamente del Excel
+    (ej: celdas con comentarios que fueron ignoradas).
+    """
+    try:
+        created = database.add_single_yukyu_usage(
+            employee_num=create_data.employee_num,
+            name=create_data.name,
+            use_date=create_data.use_date,
+            days_used=create_data.days_used
+        )
+
+        return {
+            "status": "success",
+            "message": f"Nuevo registro creado para {create_data.employee_num}",
+            "created_record": created,
+            "note": "Recuerda llamar a /api/yukyu/recalculate para actualizar el balance del empleado"
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/yukyu/recalculate/{employee_num}/{year}")
+async def recalculate_employee_days(employee_num: str, year: int):
+    """
+    Recalcula los días usados de un empleado basándose en yukyu_usage_details.
+    Actualiza automáticamente: used, balance, usage_rate en tabla employees.
+
+    IMPORTANTE: Llamar después de agregar/editar/eliminar registros de uso.
+    """
+    try:
+        result = database.recalculate_employee_used_days(employee_num, year)
+
+        if 'error' in result:
+            raise HTTPException(status_code=404, detail=result['error'])
+
+        return {
+            "status": "success",
+            "message": f"Balance recalculado para empleado {employee_num}",
+            "recalculation": result
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/employees/{employee_num}/{year}")
+async def update_employee(employee_num: str, year: int, update_data: EmployeeUpdate):
+    """
+    Actualiza datos de un empleado directamente.
+
+    Campos editables: name, haken, granted, used
+    Balance y usage_rate se recalculan automáticamente.
+    """
+    try:
+        # Filtrar campos no-nulos
+        update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
+
+        if not update_dict:
+            raise HTTPException(
+                status_code=400,
+                detail="Debes proporcionar al menos un campo para actualizar"
+            )
+
+        updated = database.update_employee(employee_num, year, **update_dict)
+
+        return {
+            "status": "success",
+            "message": f"Empleado {employee_num} actualizado",
+            "updated_employee": updated
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # === COMPLIANCE & AGENT ENDPOINTS ===
 

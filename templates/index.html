@@ -1796,6 +1796,154 @@
             </div>
         </div>
     </div>
+
+    <!-- Edit Yukyu Usage Modal (v2.1 - NEW) -->
+    <div id="edit-yukyu-modal" class="confirm-modal" onclick="if(event.target === this) App.editYukyu.closeModal()">
+        <div class="confirm-modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+            <div class="confirm-modal-title">
+                ✏️ 有給使用データを編集
+            </div>
+
+            <!-- Employee Info Header -->
+            <div class="bg-primary-subtle p-md rounded mb-lg">
+                <div class="flex-between">
+                    <div>
+                        <div id="edit-emp-name" class="font-semibold text-lg">-</div>
+                        <div id="edit-emp-num" class="text-muted text-sm">社員番号: -</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="stat-label">現在の残日数</div>
+                        <div id="edit-emp-balance" class="text-2xl font-bold text-success">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Usage Details List -->
+            <div class="form-section mb-lg">
+                <div class="form-section-title">📅 使用日一覧</div>
+                <div id="edit-usage-list" class="usage-list-container" style="max-height: 300px; overflow-y: auto;">
+                    <div class="text-center text-muted p-lg">
+                        従業員を選択してください...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add New Usage -->
+            <div class="form-section mb-lg">
+                <div class="form-section-title">➕ 新しい使用日を追加</div>
+                <div class="grid grid-cols-3 gap-md">
+                    <div class="form-group">
+                        <label for="add-use-date">日付</label>
+                        <input type="date" id="add-use-date" class="input-glass w-full">
+                    </div>
+                    <div class="form-group">
+                        <label for="add-days-used">日数</label>
+                        <select id="add-days-used" class="input-glass w-full">
+                            <option value="1.0">1日 (全日)</option>
+                            <option value="0.5">0.5日 (半日)</option>
+                            <option value="0.25">0.25日 (2時間)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: flex-end;">
+                        <button class="btn btn-primary w-full" onclick="App.editYukyu.addUsage()">
+                            追加
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="bg-info-subtle p-md rounded mb-lg">
+                <div class="flex-between">
+                    <span>変更後の使用日数:</span>
+                    <span id="edit-total-used" class="font-bold">0日</span>
+                </div>
+                <div class="flex-between mt-sm">
+                    <span>変更後の残日数:</span>
+                    <span id="edit-new-balance" class="font-bold text-success">0日</span>
+                </div>
+            </div>
+
+            <div class="confirm-actions">
+                <button class="btn btn-glass" onclick="App.editYukyu.closeModal()">
+                    キャンセル
+                </button>
+                <button class="btn btn-primary" id="edit-save-btn" onclick="App.editYukyu.saveChanges()">
+                    💾 変更を保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Edit Yukyu Modal Styles */
+        .usage-list-container {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+        }
+
+        .usage-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.2s;
+        }
+
+        .usage-item:last-child {
+            border-bottom: none;
+        }
+
+        .usage-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .usage-item-date {
+            font-weight: 500;
+        }
+
+        .usage-item-days {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .usage-item-days select {
+            width: 120px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .usage-item-delete {
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.25rem 0.5rem;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .usage-item-delete:hover {
+            background: var(--danger-dark);
+        }
+
+        .usage-item.pending-delete {
+            background: rgba(239, 68, 68, 0.1);
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
+        .usage-item.pending-add {
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .usage-item.pending-update {
+            background: rgba(59, 130, 246, 0.1);
+        }
+    </style>
 </body>
 
 </html>

@@ -1123,6 +1123,16 @@ const App = {
 
                     <!-- Fechas de uso recientes -->
                     ${usageDatesHtml}
+
+                    <!-- Botón de edición (v2.1 NEW) -->
+                    <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <button class="btn btn-primary" style="width: 100%;" onclick="App.ui.closeModal(); App.editYukyu.openModal('${emp.employeeNum}');">
+                            ✏️ 有給使用データを編集
+                        </button>
+                        <p style="text-align: center; color: #94a3b8; font-size: 0.75rem; margin-top: 0.5rem;">
+                            日付の追加・修正・削除ができます
+                        </p>
+                    </div>
                 `;
 
             } catch (error) {
@@ -3963,6 +3973,368 @@ const App = {
                 </tr>
             `}).join('');
         }
+    }
+};
+
+// ============================================
+// EDIT YUKYU DATA MODULE (v2.1 - NEW)
+// Permite editar datos importados desde Excel
+// ============================================
+App.editYukyu = {
+    currentEmployee: null,
+    currentYear: null,
+    originalDetails: [],
+    pendingChanges: {
+        updates: [],   // {id, days_used}
+        deletes: [],   // [id, id, ...]
+        adds: []       // {use_date, days_used}
+    },
+
+    /**
+     * Abre el modal de edición para un empleado
+     */
+    async openModal(employeeNum, year = null) {
+        this.currentEmployee = null;
+        this.currentYear = year || App.state.year;
+        this.pendingChanges = { updates: [], deletes: [], adds: [] };
+
+        // Mostrar modal con loading
+        document.getElementById('edit-emp-name').textContent = 'Cargando...';
+        document.getElementById('edit-emp-num').textContent = `社員番号: ${employeeNum}`;
+        document.getElementById('edit-emp-balance').textContent = '-';
+        document.getElementById('edit-usage-list').innerHTML = `
+            <div class="text-center text-muted p-lg">
+                <div class="spinner" style="margin: 0 auto;"></div>
+                <p style="margin-top: 1rem;">データを読み込み中...</p>
+            </div>
+        `;
+        document.getElementById('edit-yukyu-modal').classList.add('active');
+
+        try {
+            // Cargar datos del empleado
+            const res = await fetch(`${App.config.apiBase}/yukyu/employee-summary/${employeeNum}/${this.currentYear}`);
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || 'Failed to load data');
+            }
+
+            const data = await res.json();
+            this.currentEmployee = data.employee;
+            this.originalDetails = data.usage_details || [];
+
+            // Actualizar UI
+            this.renderEmployeeInfo();
+            this.renderUsageList();
+            this.updateSummary();
+
+        } catch (error) {
+            console.error('Error loading employee data:', error);
+            App.ui.showToast('error', `データ読み込みエラー: ${error.message}`);
+            this.closeModal();
+        }
+    },
+
+    /**
+     * Renderiza la información del empleado
+     */
+    renderEmployeeInfo() {
+        if (!this.currentEmployee) return;
+
+        document.getElementById('edit-emp-name').textContent = this.currentEmployee.name;
+        document.getElementById('edit-emp-num').textContent = `社員番号: ${this.currentEmployee.employee_num}`;
+        document.getElementById('edit-emp-balance').textContent = `${this.currentEmployee.balance.toFixed(1)}日`;
+    },
+
+    /**
+     * Renderiza la lista de días de uso
+     */
+    renderUsageList() {
+        const container = document.getElementById('edit-usage-list');
+
+        if (this.originalDetails.length === 0 && this.pendingChanges.adds.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted p-lg">
+                    使用記録がありません。下のフォームから追加できます。
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+
+        // Renderizar detalles existentes
+        this.originalDetails.forEach(detail => {
+            const isDeleted = this.pendingChanges.deletes.includes(detail.id);
+            const update = this.pendingChanges.updates.find(u => u.id === detail.id);
+            const currentDays = update ? update.days_used : detail.days_used;
+
+            let itemClass = 'usage-item';
+            if (isDeleted) itemClass += ' pending-delete';
+            else if (update) itemClass += ' pending-update';
+
+            html += `
+                <div class="${itemClass}" data-id="${detail.id}">
+                    <div class="usage-item-date">
+                        📅 ${detail.use_date}
+                    </div>
+                    <div class="usage-item-days">
+                        <select class="input-glass" onchange="App.editYukyu.updateDays(${detail.id}, this.value)" ${isDeleted ? 'disabled' : ''}>
+                            <option value="1.0" ${currentDays == 1.0 ? 'selected' : ''}>1日 (全日)</option>
+                            <option value="0.5" ${currentDays == 0.5 ? 'selected' : ''}>0.5日 (半日)</option>
+                            <option value="0.25" ${currentDays == 0.25 ? 'selected' : ''}>0.25日 (2時間)</option>
+                        </select>
+                        ${isDeleted ?
+                            `<button class="btn btn-glass btn-sm" onclick="App.editYukyu.undoDelete(${detail.id})">↩ 戻す</button>` :
+                            `<button class="usage-item-delete" onclick="App.editYukyu.markDelete(${detail.id})">🗑 削除</button>`
+                        }
+                    </div>
+                </div>
+            `;
+        });
+
+        // Renderizar nuevos items pendientes
+        this.pendingChanges.adds.forEach((add, index) => {
+            html += `
+                <div class="usage-item pending-add" data-add-index="${index}">
+                    <div class="usage-item-date">
+                        📅 ${add.use_date} <span class="badge badge-success">新規</span>
+                    </div>
+                    <div class="usage-item-days">
+                        <select class="input-glass" onchange="App.editYukyu.updatePendingAdd(${index}, this.value)">
+                            <option value="1.0" ${add.days_used == 1.0 ? 'selected' : ''}>1日 (全日)</option>
+                            <option value="0.5" ${add.days_used == 0.5 ? 'selected' : ''}>0.5日 (半日)</option>
+                            <option value="0.25" ${add.days_used == 0.25 ? 'selected' : ''}>0.25日 (2時間)</option>
+                        </select>
+                        <button class="usage-item-delete" onclick="App.editYukyu.removePendingAdd(${index})">🗑 削除</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    },
+
+    /**
+     * Actualiza días de un registro existente
+     */
+    updateDays(id, newDays) {
+        const days = parseFloat(newDays);
+        const original = this.originalDetails.find(d => d.id === id);
+
+        if (!original) return;
+
+        // Si volvió al valor original, quitar de updates
+        if (original.days_used === days) {
+            this.pendingChanges.updates = this.pendingChanges.updates.filter(u => u.id !== id);
+        } else {
+            // Actualizar o agregar
+            const existing = this.pendingChanges.updates.find(u => u.id === id);
+            if (existing) {
+                existing.days_used = days;
+            } else {
+                this.pendingChanges.updates.push({ id, days_used: days });
+            }
+        }
+
+        this.renderUsageList();
+        this.updateSummary();
+    },
+
+    /**
+     * Marca un registro para eliminar
+     */
+    markDelete(id) {
+        if (!this.pendingChanges.deletes.includes(id)) {
+            this.pendingChanges.deletes.push(id);
+        }
+        this.renderUsageList();
+        this.updateSummary();
+    },
+
+    /**
+     * Deshace la eliminación de un registro
+     */
+    undoDelete(id) {
+        this.pendingChanges.deletes = this.pendingChanges.deletes.filter(d => d !== id);
+        this.renderUsageList();
+        this.updateSummary();
+    },
+
+    /**
+     * Agrega un nuevo registro de uso
+     */
+    addUsage() {
+        const dateInput = document.getElementById('add-use-date');
+        const daysSelect = document.getElementById('add-days-used');
+
+        const useDate = dateInput.value;
+        const daysUsed = parseFloat(daysSelect.value);
+
+        if (!useDate) {
+            App.ui.showToast('error', '日付を選択してください');
+            return;
+        }
+
+        // Verificar que la fecha no exista ya
+        const existsInOriginal = this.originalDetails.some(d => d.use_date === useDate);
+        const existsInPending = this.pendingChanges.adds.some(a => a.use_date === useDate);
+
+        if (existsInOriginal || existsInPending) {
+            App.ui.showToast('error', 'この日付は既に登録されています');
+            return;
+        }
+
+        this.pendingChanges.adds.push({
+            use_date: useDate,
+            days_used: daysUsed
+        });
+
+        // Limpiar input
+        dateInput.value = '';
+
+        this.renderUsageList();
+        this.updateSummary();
+        App.ui.showToast('success', '使用日を追加しました（未保存）');
+    },
+
+    /**
+     * Actualiza un registro pendiente de agregar
+     */
+    updatePendingAdd(index, newDays) {
+        if (this.pendingChanges.adds[index]) {
+            this.pendingChanges.adds[index].days_used = parseFloat(newDays);
+            this.updateSummary();
+        }
+    },
+
+    /**
+     * Elimina un registro pendiente de agregar
+     */
+    removePendingAdd(index) {
+        this.pendingChanges.adds.splice(index, 1);
+        this.renderUsageList();
+        this.updateSummary();
+    },
+
+    /**
+     * Actualiza el resumen de cambios
+     */
+    updateSummary() {
+        if (!this.currentEmployee) return;
+
+        // Calcular total de días usados después de cambios
+        let totalUsed = 0;
+
+        // Sumar días originales (excepto los eliminados, con updates aplicados)
+        this.originalDetails.forEach(detail => {
+            if (this.pendingChanges.deletes.includes(detail.id)) return;
+
+            const update = this.pendingChanges.updates.find(u => u.id === detail.id);
+            totalUsed += update ? update.days_used : detail.days_used;
+        });
+
+        // Sumar días nuevos
+        this.pendingChanges.adds.forEach(add => {
+            totalUsed += add.days_used;
+        });
+
+        const granted = this.currentEmployee.granted || 0;
+        const newBalance = granted - totalUsed;
+
+        document.getElementById('edit-total-used').textContent = `${totalUsed.toFixed(1)}日`;
+        document.getElementById('edit-new-balance').textContent = `${newBalance.toFixed(1)}日`;
+
+        // Cambiar color si el balance es negativo
+        const balanceEl = document.getElementById('edit-new-balance');
+        balanceEl.className = newBalance < 0 ? 'font-bold text-danger' :
+                              newBalance < 5 ? 'font-bold text-warning' :
+                              'font-bold text-success';
+    },
+
+    /**
+     * Guarda todos los cambios
+     */
+    async saveChanges() {
+        const hasChanges = this.pendingChanges.updates.length > 0 ||
+                          this.pendingChanges.deletes.length > 0 ||
+                          this.pendingChanges.adds.length > 0;
+
+        if (!hasChanges) {
+            App.ui.showToast('warning', '変更がありません');
+            return;
+        }
+
+        const saveBtn = document.getElementById('edit-save-btn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = '保存中...';
+
+        try {
+            // 1. Procesar eliminaciones
+            for (const id of this.pendingChanges.deletes) {
+                const res = await fetch(`${App.config.apiBase}/yukyu/usage-details/${id}`, {
+                    method: 'DELETE'
+                });
+                if (!res.ok) throw new Error(`Failed to delete record ${id}`);
+            }
+
+            // 2. Procesar actualizaciones
+            for (const update of this.pendingChanges.updates) {
+                const res = await fetch(`${App.config.apiBase}/yukyu/usage-details/${update.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ days_used: update.days_used })
+                });
+                if (!res.ok) throw new Error(`Failed to update record ${update.id}`);
+            }
+
+            // 3. Procesar nuevos registros
+            for (const add of this.pendingChanges.adds) {
+                const res = await fetch(`${App.config.apiBase}/yukyu/usage-details`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        employee_num: this.currentEmployee.employee_num,
+                        name: this.currentEmployee.name,
+                        use_date: add.use_date,
+                        days_used: add.days_used
+                    })
+                });
+                if (!res.ok) throw new Error(`Failed to add record for ${add.use_date}`);
+            }
+
+            // 4. Recalcular balance del empleado
+            const recalcRes = await fetch(
+                `${App.config.apiBase}/yukyu/recalculate/${this.currentEmployee.employee_num}/${this.currentYear}`,
+                { method: 'POST' }
+            );
+
+            if (!recalcRes.ok) throw new Error('Failed to recalculate balance');
+
+            App.ui.showToast('success', '✅ 変更が保存されました');
+            this.closeModal();
+
+            // Refrescar datos de la app
+            await App.data.fetchData();
+            App.ui.updateAll();
+
+        } catch (error) {
+            console.error('Error saving changes:', error);
+            App.ui.showToast('error', `保存エラー: ${error.message}`);
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = '💾 変更を保存';
+        }
+    },
+
+    /**
+     * Cierra el modal
+     */
+    closeModal() {
+        document.getElementById('edit-yukyu-modal').classList.remove('active');
+        this.currentEmployee = null;
+        this.originalDetails = [];
+        this.pendingChanges = { updates: [], deletes: [], adds: [] };
     }
 };
 
