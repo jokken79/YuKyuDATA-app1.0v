@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>有給休暇申請について</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Hiragino Sans', 'Yu Gothic', Arial, sans-serif;
+            line-height: 1.6;
+            color: #1e293b;
+            background-color: #f1f5f9;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+        }
+        .header {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            padding: 32px 24px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .header .subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            margin-top: 12px;
+        }
+        .alert-icon {
+            width: 64px;
+            height: 64px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 32px;
+        }
+        .content {
+            padding: 32px 24px;
+        }
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 24px;
+            color: #475569;
+        }
+        .info-card {
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #fed7aa;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            color: #9a3412;
+            font-size: 14px;
+        }
+        .info-value {
+            color: #7c2d12;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .reason-card {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 2px solid #f97316;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 24px 0;
+        }
+        .reason-label {
+            color: #9a3412;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .reason-text {
+            color: #7c2d12;
+            font-size: 16px;
+        }
+        .note {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 24px 0;
+        }
+        .note p {
+            color: #475569;
+            font-size: 14px;
+        }
+        .action-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            text-decoration: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            margin: 16px 0;
+        }
+        .footer {
+            background: #f8fafc;
+            padding: 24px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        .footer p {
+            color: #64748b;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        .footer .logo {
+            font-weight: 700;
+            color: #f97316;
+            font-size: 14px;
+        }
+        @media only screen and (max-width: 480px) {
+            .content {
+                padding: 24px 16px;
+            }
+            .info-row {
+                flex-direction: column;
+                gap: 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="alert-icon">!</div>
+            <h1>申請について</h1>
+            <p class="subtitle">YuKyuDATA 有給管理システム</p>
+            <span class="badge">却下</span>
+        </div>
+
+        <div class="content">
+            <p class="greeting">
+                {{employee_name}} 様<br><br>
+                申し訳ございませんが、有給休暇申請を承認することができませんでした。
+            </p>
+
+            <div class="info-card">
+                <div class="info-row">
+                    <span class="info-label">社員番号</span>
+                    <span class="info-value">{{employee_num}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">申請期間</span>
+                    <span class="info-value">{{start_date}} ～ {{end_date}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">申請日数</span>
+                    <span class="info-value">{{days_requested}}日</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">却下者</span>
+                    <span class="info-value">{{rejected_by}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">却下日時</span>
+                    <span class="info-value">{{rejected_at}}</span>
+                </div>
+            </div>
+
+            <div class="reason-card">
+                <p class="reason-label">却下理由</p>
+                <p class="reason-text">{{rejection_reason}}</p>
+            </div>
+
+            <div class="note">
+                <p>
+                    別の日程で再申請することができます。<br>
+                    ご不明な点がございましたら、承認者または管理者までお問い合わせください。
+                </p>
+            </div>
+
+            <center>
+                <a href="#" class="action-button">再申請する</a>
+            </center>
+        </div>
+
+        <div class="footer">
+            <p class="logo">YuKyuDATA</p>
+            <p>有給休暇管理システム</p>
+            <p>このメールは自動送信されています。返信しないでください。</p>
+        </div>
+    </div>
+</body>
+</html>

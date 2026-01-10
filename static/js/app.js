@@ -18,6 +18,318 @@ const App = {
     },
 
     // ========================================
+    // INTERNATIONALIZATION (i18n) MODULE
+    // ========================================
+    i18n: {
+        currentLocale: 'ja',
+        translations: {},
+        supportedLocales: ['ja', 'es', 'en'],
+        storageKey: 'yukyu-locale',
+        localesPath: '/static/locales',
+        isInitialized: false,
+        changeListeners: [],
+
+        localeInfo: {
+            ja: { name: 'Japanese', nativeName: 'Japanese', flag: 'JP', code: 'JA' },
+            es: { name: 'Spanish', nativeName: 'Castellano', flag: 'ES', code: 'ES' },
+            en: { name: 'English', nativeName: 'English', flag: 'EN', code: 'EN' }
+        },
+
+        async init() {
+            if (this.isInitialized) return;
+
+            // Load saved locale or detect from browser
+            const savedLocale = localStorage.getItem(this.storageKey);
+            const browserLocale = this.detectBrowserLocale();
+            this.currentLocale = savedLocale || browserLocale || 'ja';
+
+            // Load translations
+            await this.loadTranslations(this.currentLocale);
+
+            // Update document lang attribute
+            document.documentElement.lang = this.currentLocale;
+
+            // Update UI selector
+            this.updateLanguageSelector();
+
+            // Setup event listeners
+            this.setupLanguageSelector();
+
+            this.isInitialized = true;
+            console.log(`i18n initialized with locale: ${this.currentLocale}`);
+        },
+
+        detectBrowserLocale() {
+            const browserLang = navigator.language || navigator.userLanguage || '';
+            const langCode = browserLang.split('-')[0].toLowerCase();
+
+            if (langCode === 'ja') return 'ja';
+            if (langCode === 'es') return 'es';
+            if (langCode === 'en') return 'en';
+
+            return 'ja';
+        },
+
+        async loadTranslations(locale) {
+            if (!this.supportedLocales.includes(locale)) {
+                console.warn(`Locale "${locale}" not supported. Using "ja".`);
+                locale = 'ja';
+            }
+
+            if (this.translations[locale]) {
+                return this.translations[locale];
+            }
+
+            try {
+                const response = await fetch(`${this.localesPath}/${locale}.json`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const translations = await response.json();
+                this.translations[locale] = translations;
+
+                console.log(`Loaded translations for: ${locale}`);
+                return translations;
+
+            } catch (error) {
+                console.error(`Failed to load translations for ${locale}:`, error);
+
+                if (locale !== 'ja') {
+                    return this.loadTranslations('ja');
+                }
+
+                this.translations[locale] = {};
+                return {};
+            }
+        },
+
+        async setLocale(locale) {
+            if (!this.supportedLocales.includes(locale)) {
+                console.warn(`Locale "${locale}" not supported.`);
+                return;
+            }
+
+            if (locale === this.currentLocale) {
+                return;
+            }
+
+            // Load translations if not cached
+            await this.loadTranslations(locale);
+
+            this.currentLocale = locale;
+            localStorage.setItem(this.storageKey, locale);
+
+            // Update document lang attribute
+            document.documentElement.lang = locale;
+
+            // Update UI selector
+            this.updateLanguageSelector();
+
+            // Update all translated elements
+            this.updateDOM();
+
+            // Notify listeners
+            this.notifyListeners();
+
+            console.log(`Locale changed to: ${locale}`);
+
+            // Show toast notification
+            const info = this.localeInfo[locale];
+            App.ui.showToast('info', `Language: ${info.nativeName}`);
+        },
+
+        getLocale() {
+            return this.currentLocale;
+        },
+
+        t(key, params = {}) {
+            const translations = this.translations[this.currentLocale] || {};
+            let value = this.getNestedValue(translations, key);
+
+            // Fallback to Japanese
+            if (value === undefined && this.currentLocale !== 'ja') {
+                const jaTranslations = this.translations['ja'] || {};
+                value = this.getNestedValue(jaTranslations, key);
+            }
+
+            // Return key if not found
+            if (value === undefined) {
+                return key;
+            }
+
+            // Interpolate parameters
+            return this.interpolate(value, params);
+        },
+
+        getNestedValue(obj, key) {
+            const keys = key.split('.');
+            let current = obj;
+
+            for (const k of keys) {
+                if (current === null || current === undefined) {
+                    return undefined;
+                }
+                current = current[k];
+            }
+
+            return current;
+        },
+
+        interpolate(template, params) {
+            if (!params || typeof template !== 'string') {
+                return template;
+            }
+
+            return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+                return params.hasOwnProperty(key) ? params[key] : match;
+            });
+        },
+
+        onLocaleChange(callback) {
+            if (typeof callback === 'function') {
+                this.changeListeners.push(callback);
+            }
+
+            return () => {
+                const index = this.changeListeners.indexOf(callback);
+                if (index > -1) {
+                    this.changeListeners.splice(index, 1);
+                }
+            };
+        },
+
+        notifyListeners() {
+            const locale = this.currentLocale;
+            this.changeListeners.forEach(callback => {
+                try {
+                    callback(locale);
+                } catch (error) {
+                    console.error('Error in locale change listener:', error);
+                }
+            });
+        },
+
+        updateDOM() {
+            // Update elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                const translation = this.t(key);
+                if (translation !== key) {
+                    element.textContent = translation;
+                }
+            });
+
+            // Update placeholders with data-i18n-placeholder
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+                const key = element.getAttribute('data-i18n-placeholder');
+                const translation = this.t(key);
+                if (translation !== key) {
+                    element.placeholder = translation;
+                }
+            });
+
+            // Update titles with data-i18n-title
+            document.querySelectorAll('[data-i18n-title]').forEach(element => {
+                const key = element.getAttribute('data-i18n-title');
+                const translation = this.t(key);
+                if (translation !== key) {
+                    element.title = translation;
+                }
+            });
+
+            // Update aria-labels with data-i18n-aria
+            document.querySelectorAll('[data-i18n-aria]').forEach(element => {
+                const key = element.getAttribute('data-i18n-aria');
+                const translation = this.t(key);
+                if (translation !== key) {
+                    element.setAttribute('aria-label', translation);
+                }
+            });
+        },
+
+        setupLanguageSelector() {
+            const selectorBtn = document.getElementById('language-selector-btn');
+            const selector = document.getElementById('language-selector');
+            const dropdown = document.getElementById('language-dropdown');
+
+            if (!selectorBtn || !selector) return;
+
+            // Toggle dropdown on button click
+            selectorBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selector.classList.toggle('open');
+                selectorBtn.setAttribute('aria-expanded',
+                    selector.classList.contains('open') ? 'true' : 'false'
+                );
+            });
+
+            // Handle language option clicks
+            if (dropdown) {
+                dropdown.querySelectorAll('.language-option').forEach(option => {
+                    option.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        const locale = option.dataset.locale;
+                        if (locale) {
+                            await this.setLocale(locale);
+                            selector.classList.remove('open');
+                            selectorBtn.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                });
+            }
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!selector.contains(e.target)) {
+                    selector.classList.remove('open');
+                    selectorBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            // Keyboard navigation
+            selectorBtn.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    selector.classList.remove('open');
+                    selectorBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+        },
+
+        updateLanguageSelector() {
+            const flagEl = document.getElementById('current-lang-flag');
+            const codeEl = document.getElementById('current-lang-code');
+            const dropdown = document.getElementById('language-dropdown');
+
+            const info = this.localeInfo[this.currentLocale];
+
+            if (flagEl) flagEl.textContent = info.flag;
+            if (codeEl) codeEl.textContent = info.code;
+
+            // Update active state in dropdown
+            if (dropdown) {
+                dropdown.querySelectorAll('.language-option').forEach(option => {
+                    const isActive = option.dataset.locale === this.currentLocale;
+                    option.classList.toggle('active', isActive);
+                    option.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                });
+            }
+        },
+
+        getLocaleInfo() {
+            return this.localeInfo[this.currentLocale];
+        },
+
+        getAllLocalesInfo() {
+            return this.supportedLocales.map(code => ({
+                code,
+                ...this.localeInfo[code]
+            }));
+        }
+    },
+
+    // ========================================
     // SECURITY UTILITIES (XSS Prevention)
     // ========================================
     utils: {
@@ -242,6 +554,9 @@ const App = {
 
         // Initialize theme
         this.theme.init();
+
+        // Initialize internationalization (i18n)
+        await this.i18n.init();
 
         // Initial Fetch
         await this.data.fetchEmployees();
@@ -747,7 +1062,7 @@ const App = {
                 tbody.textContent = '';
                 const tr = document.createElement('tr');
                 const td = document.createElement('td');
-                td.colSpan = 7;
+                td.colSpan = 9;  // Updated for bulk edit checkbox column
                 td.style.textAlign = 'center';
                 td.style.padding = '2rem';
                 td.textContent = 'No matching records found';
@@ -778,8 +1093,19 @@ const App = {
                 const rateColor = usageRate >= 80 ? 'var(--success)' : usageRate >= 50 ? 'var(--warning)' : 'var(--danger)';
                 const rateGlow = usageRate >= 80 ? '0 0 8px var(--success)' : usageRate >= 50 ? '0 0 8px var(--warning)' : '0 0 8px var(--danger)';
 
+                // Check if employee is selected
+                const isSelected = App.bulkEdit && App.bulkEdit.selectedEmployees.has(e.employeeNum);
+
                 return `
                 <tr class="employee-row" data-employee-num="${empNum}" style="cursor: pointer;">
+                    <td class="table-checkbox" onclick="event.stopPropagation();">
+                        <input type="checkbox"
+                            class="employee-select-checkbox"
+                            data-employee-num="${empNum}"
+                            ${isSelected ? 'checked' : ''}
+                            onchange="App.bulkEdit.toggleEmployee('${empNum}', this.checked)"
+                            title="選択">
+                    </td>
                     <td><div class="font-bold">${empNum}</div></td>
                     <td>
                         <div class="employee-name-cell">
@@ -1151,6 +1477,13 @@ const App = {
                         <p style="text-align: center; color: #94a3b8; font-size: 0.75rem; margin-top: 0.5rem;">
                             日付の追加・修正・削除ができます
                         </p>
+                    </div>
+
+                    <!-- Botón de PDF (v2.4 NEW) -->
+                    <div style="margin-top: 1rem;">
+                        <button class="btn btn-secondary" style="width: 100%;" onclick="App.reports.downloadEmployeePDF('${emp.employeeNum}', ${App.state.year || 'null'});">
+                            📄 PDFレポートをダウンロード
+                        </button>
                     </div>
                 `;
 
@@ -4883,6 +5216,964 @@ App.importReport = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+};
+
+// ============================================
+// AUDIT HISTORY MODULE (v2.3 - NEW)
+// Sistema de visualizacion de historial de cambios
+// ============================================
+App.auditHistory = {
+    // Estado del modulo
+    currentEntityType: null,
+    currentEntityId: null,
+    allHistory: [],
+    filteredHistory: [],
+
+    /**
+     * Muestra el historial de una entidad especifica
+     * @param {string} entityType - Tipo de entidad (employee, leave_request, yukyu_usage)
+     * @param {string} entityId - ID de la entidad
+     */
+    async showEntityHistory(entityType, entityId) {
+        if (!entityId) {
+            App.ui.showToast('warning', 'エンティティIDが必要です');
+            return;
+        }
+
+        this.currentEntityType = entityType;
+        this.currentEntityId = entityId;
+        this.allHistory = [];
+        this.filteredHistory = [];
+
+        // Mostrar modal con loading
+        document.getElementById('audit-entity-info').textContent = `${this.getEntityTypeLabel(entityType)}: ${entityId}`;
+        document.getElementById('audit-history-list').innerHTML = `
+            <div class="text-center text-muted p-lg">
+                <div class="spinner" style="margin: 0 auto;"></div>
+                <p style="margin-top: 1rem;">履歴を読み込み中...</p>
+            </div>
+        `;
+        document.getElementById('audit-action-filter').value = '';
+        document.getElementById('audit-history-modal').classList.add('active');
+
+        try {
+            const res = await fetch(`${App.config.apiBase}/audit-log/${entityType}/${entityId}`);
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || 'Failed to load history');
+            }
+
+            const data = await res.json();
+            this.allHistory = data.history || [];
+            this.filteredHistory = [...this.allHistory];
+
+            this.renderHistory();
+
+        } catch (error) {
+            console.error('Error loading audit history:', error);
+            document.getElementById('audit-history-list').innerHTML = `
+                <div class="text-center text-danger p-lg">
+                    <p>履歴の読み込みに失敗しました: ${this.escapeHtml(error.message)}</p>
+                </div>
+            `;
+        }
+    },
+
+    /**
+     * Aplica el filtro de accion
+     */
+    applyFilter() {
+        const filterValue = document.getElementById('audit-action-filter').value;
+
+        if (filterValue) {
+            this.filteredHistory = this.allHistory.filter(h => h.action === filterValue);
+        } else {
+            this.filteredHistory = [...this.allHistory];
+        }
+
+        this.renderHistory();
+    },
+
+    /**
+     * Renderiza la lista de historial
+     */
+    renderHistory() {
+        const container = document.getElementById('audit-history-list');
+
+        if (this.filteredHistory.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted p-lg">
+                    履歴がありません
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+
+        this.filteredHistory.forEach(record => {
+            const timestamp = new Date(record.timestamp).toLocaleString('ja-JP');
+            const actionBadge = this.getActionBadge(record.action);
+            const changes = this.formatChanges(record.old_value, record.new_value);
+
+            html += `
+                <div class="audit-history-item" style="border-bottom: 1px solid var(--border-color); padding: 1rem 0;">
+                    <div class="flex-between mb-sm">
+                        <div>
+                            ${actionBadge}
+                            <span class="text-muted text-sm ml-sm">by ${this.escapeHtml(record.user_id || 'system')}</span>
+                        </div>
+                        <div class="text-muted text-sm">
+                            ${timestamp}
+                        </div>
+                    </div>
+                    ${changes ? `<div class="audit-changes mt-sm">${changes}</div>` : ''}
+                    ${record.ip_address ? `<div class="text-muted text-xs mt-sm">IP: ${this.escapeHtml(record.ip_address)}</div>` : ''}
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    },
+
+    /**
+     * Obtiene el badge de accion
+     */
+    getActionBadge(action) {
+        const badges = {
+            'CREATE': '<span class="badge badge-success">CREATE</span>',
+            'UPDATE': '<span class="badge badge-warning">UPDATE</span>',
+            'DELETE': '<span class="badge badge-danger">DELETE</span>',
+            'APPROVE': '<span class="badge badge-info">APPROVE</span>',
+            'REJECT': '<span class="badge badge-secondary">REJECT</span>',
+            'REVERT': '<span class="badge badge-warning">REVERT</span>',
+            'CLEANUP': '<span class="badge badge-secondary">CLEANUP</span>'
+        };
+        return badges[action] || `<span class="badge">${this.escapeHtml(action)}</span>`;
+    },
+
+    /**
+     * Formatea los cambios para mostrar
+     */
+    formatChanges(oldValue, newValue) {
+        if (!oldValue && !newValue) return '';
+
+        let html = '<div class="text-sm" style="background: var(--bg-secondary); padding: 0.5rem; border-radius: 4px;">';
+
+        if (oldValue && typeof oldValue === 'object') {
+            const fields = Object.keys(newValue || oldValue);
+            fields.forEach(field => {
+                if (field === 'last_updated' || field === 'id') return; // Skip metadata fields
+
+                const oldVal = oldValue?.[field];
+                const newVal = newValue?.[field];
+
+                if (oldVal !== newVal) {
+                    html += `
+                        <div class="flex-between py-xs">
+                            <span class="font-medium">${this.escapeHtml(field)}:</span>
+                            <span>
+                                ${oldVal !== undefined ? `<span class="text-danger line-through">${this.formatValue(oldVal)}</span>` : ''}
+                                ${oldVal !== undefined && newVal !== undefined ? ' → ' : ''}
+                                ${newVal !== undefined ? `<span class="text-success">${this.formatValue(newVal)}</span>` : ''}
+                            </span>
+                        </div>
+                    `;
+                }
+            });
+        } else {
+            if (oldValue) {
+                html += `<div class="text-danger">旧: ${this.formatValue(oldValue)}</div>`;
+            }
+            if (newValue) {
+                html += `<div class="text-success">新: ${this.formatValue(newValue)}</div>`;
+            }
+        }
+
+        html += '</div>';
+        return html;
+    },
+
+    /**
+     * Formatea un valor para mostrar
+     */
+    formatValue(value) {
+        if (value === null || value === undefined) return '-';
+        if (typeof value === 'object') return JSON.stringify(value);
+        return this.escapeHtml(String(value));
+    },
+
+    /**
+     * Obtiene la etiqueta del tipo de entidad
+     */
+    getEntityTypeLabel(entityType) {
+        const labels = {
+            'employee': '従業員',
+            'leave_request': '有給申請',
+            'yukyu_usage': '有給使用',
+            'genzai': '派遣社員',
+            'ukeoi': '請負社員',
+            'staff': 'スタッフ'
+        };
+        return labels[entityType] || entityType;
+    },
+
+    /**
+     * Cierra el modal
+     */
+    closeModal() {
+        document.getElementById('audit-history-modal').classList.remove('active');
+        this.currentEntityType = null;
+        this.currentEntityId = null;
+        this.allHistory = [];
+        this.filteredHistory = [];
+    },
+
+    /**
+     * Utilidad para escapar HTML
+     */
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+};
+
+// ========================================
+// BULK EDIT MODULE (v2.3 - NEW)
+// ========================================
+App.bulkEdit = {
+    // State
+    selectedEmployees: new Map(), // Map<employeeNum, employeeData>
+    previewData: null,
+    warnings: [],
+
+    /**
+     * Toggle selection for a single employee
+     */
+    toggleEmployee(employeeNum, checked) {
+        if (checked) {
+            const emp = App.state.data.find(e => e.employeeNum === employeeNum);
+            if (emp) {
+                this.selectedEmployees.set(employeeNum, emp);
+            }
+        } else {
+            this.selectedEmployees.delete(employeeNum);
+        }
+        this.updateToolbar();
+    },
+
+    /**
+     * Toggle select all visible employees
+     */
+    toggleSelectAll(checked) {
+        const checkboxes = document.querySelectorAll('.employee-select-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = checked;
+            const empNum = cb.dataset.employeeNum;
+            if (checked) {
+                const emp = App.state.data.find(e => e.employeeNum === empNum);
+                if (emp) this.selectedEmployees.set(empNum, emp);
+            } else {
+                this.selectedEmployees.delete(empNum);
+            }
+        });
+        this.updateToolbar();
+    },
+
+    /**
+     * Clear all selections
+     */
+    clearSelection() {
+        this.selectedEmployees.clear();
+        document.querySelectorAll('.employee-select-checkbox').forEach(cb => cb.checked = false);
+        document.getElementById('select-all-checkbox').checked = false;
+        this.updateToolbar();
+        this.closeModal();
+    },
+
+    /**
+     * Update toolbar visibility and count
+     */
+    updateToolbar() {
+        const toolbar = document.getElementById('bulk-edit-toolbar');
+        const countEl = document.getElementById('bulk-selected-count');
+        const count = this.selectedEmployees.size;
+
+        if (countEl) countEl.textContent = count;
+        if (toolbar) {
+            if (count > 0) {
+                toolbar.classList.add('active');
+            } else {
+                toolbar.classList.remove('active');
+            }
+        }
+    },
+
+    /**
+     * Open the bulk edit modal
+     */
+    openModal() {
+        if (this.selectedEmployees.size === 0) {
+            App.ui.showToast('warning', 'No hay empleados seleccionados');
+            return;
+        }
+        if (this.selectedEmployees.size > 50) {
+            App.ui.showToast('error', 'Maximo 50 empleados por operacion');
+            return;
+        }
+
+        // Update modal content
+        document.getElementById('bulk-edit-count').textContent = this.selectedEmployees.size;
+
+        // Populate employee list
+        const listEl = document.getElementById('bulk-edit-employees-list');
+        listEl.innerHTML = Array.from(this.selectedEmployees.values()).map(emp => `
+            <div class="bulk-edit-employee-chip">
+                <span>${App.utils.escapeHtml(emp.name)}</span>
+                <span class="remove" onclick="App.bulkEdit.removeFromSelection('${emp.employeeNum}')">&times;</span>
+            </div>
+        `).join('');
+
+        // Populate haken dropdown
+        const hakenSelect = document.getElementById('bulk-edit-set-haken');
+        const factories = [...new Set(App.state.data.map(e => e.haken).filter(Boolean))];
+        hakenSelect.innerHTML = '<option value="">派遣先を選択...</option>' +
+            factories.map(f => `<option value="${App.utils.escapeAttr(f)}">${App.utils.escapeHtml(f)}</option>`).join('');
+
+        // Reset fields
+        this.resetFields();
+
+        // Show modal
+        document.getElementById('bulk-edit-modal').classList.add('active');
+    },
+
+    /**
+     * Close the modal
+     */
+    closeModal() {
+        document.getElementById('bulk-edit-modal').classList.remove('active');
+        this.previewData = null;
+        this.warnings = [];
+    },
+
+    /**
+     * Remove employee from selection
+     */
+    removeFromSelection(employeeNum) {
+        this.selectedEmployees.delete(employeeNum);
+        const cb = document.querySelector(`.employee-select-checkbox[data-employee-num="${employeeNum}"]`);
+        if (cb) cb.checked = false;
+        this.updateToolbar();
+
+        if (this.selectedEmployees.size === 0) {
+            this.closeModal();
+        } else {
+            document.getElementById('bulk-edit-count').textContent = this.selectedEmployees.size;
+            const chip = document.querySelector(`.bulk-edit-employee-chip:has([onclick*="${employeeNum}"])`);
+            if (chip) chip.remove();
+        }
+    },
+
+    /**
+     * Toggle employee list visibility
+     */
+    toggleEmployeeList() {
+        const list = document.getElementById('bulk-edit-employees-list');
+        const toggle = document.getElementById('bulk-edit-employees-toggle');
+        if (list.style.display === 'none') {
+            list.style.display = 'flex';
+            toggle.textContent = '▲';
+        } else {
+            list.style.display = 'none';
+            toggle.textContent = '▼';
+        }
+    },
+
+    /**
+     * Toggle a field's input visibility
+     */
+    toggleField(fieldName) {
+        const group = document.getElementById(`bulk-edit-${fieldName.replace('_', '-')}-group`);
+        const checkbox = document.getElementById(`bulk-edit-${fieldName.replace('_', '-')}-check`);
+        if (group && checkbox) {
+            group.style.display = checkbox.checked ? 'flex' : 'none';
+        }
+        // Reset preview when field changes
+        document.getElementById('bulk-edit-preview-section').style.display = 'none';
+        document.getElementById('bulk-edit-apply-btn').disabled = true;
+    },
+
+    /**
+     * Reset all fields
+     */
+    resetFields() {
+        ['add-granted', 'add-used', 'set-haken'].forEach(field => {
+            const check = document.getElementById(`bulk-edit-${field}-check`);
+            const group = document.getElementById(`bulk-edit-${field}-group`);
+            const input = document.getElementById(`bulk-edit-${field}`);
+            if (check) check.checked = false;
+            if (group) group.style.display = 'none';
+            if (input) input.value = '';
+        });
+        document.getElementById('bulk-edit-preview-section').style.display = 'none';
+        document.getElementById('bulk-edit-warnings-section').style.display = 'none';
+        document.getElementById('bulk-edit-apply-btn').disabled = true;
+    },
+
+    /**
+     * Get current updates from form
+     */
+    getUpdates() {
+        const updates = {};
+
+        if (document.getElementById('bulk-edit-add-granted-check').checked) {
+            const val = parseFloat(document.getElementById('bulk-edit-add-granted').value);
+            if (!isNaN(val) && val > 0) updates.add_granted = val;
+        }
+        if (document.getElementById('bulk-edit-add-used-check').checked) {
+            const val = parseFloat(document.getElementById('bulk-edit-add-used').value);
+            if (!isNaN(val) && val > 0) updates.add_used = val;
+        }
+        if (document.getElementById('bulk-edit-set-haken-check').checked) {
+            const val = document.getElementById('bulk-edit-set-haken').value;
+            if (val) updates.set_haken = val;
+        }
+
+        return updates;
+    },
+
+    /**
+     * Preview changes before applying
+     */
+    async preview() {
+        const updates = this.getUpdates();
+        if (Object.keys(updates).length === 0) {
+            App.ui.showToast('warning', '変更する項目を選択してください');
+            return;
+        }
+
+        const employeeNums = Array.from(this.selectedEmployees.keys());
+        const year = App.state.year;
+
+        try {
+            App.ui.showLoading();
+            const response = await fetch(`${App.config.apiBase}/employees/bulk-update/preview`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ employee_nums: employeeNums, year, updates })
+            });
+
+            const result = await response.json();
+            App.ui.hideLoading();
+
+            if (!response.ok) {
+                throw new Error(result.detail || 'Preview failed');
+            }
+
+            this.previewData = result;
+            this.warnings = result.warnings || [];
+
+            // Render preview
+            this.renderPreview(result.preview);
+
+            // Show warnings if any
+            if (this.warnings.length > 0) {
+                this.renderWarnings(this.warnings);
+                document.getElementById('bulk-edit-warnings-section').style.display = 'block';
+            } else {
+                document.getElementById('bulk-edit-warnings-section').style.display = 'none';
+            }
+
+            // Enable apply button
+            document.getElementById('bulk-edit-apply-btn').disabled = false;
+            document.getElementById('bulk-edit-preview-section').style.display = 'block';
+
+        } catch (error) {
+            App.ui.hideLoading();
+            App.ui.showToast('error', `プレビューエラー: ${error.message}`);
+        }
+    },
+
+    /**
+     * Render preview table
+     */
+    renderPreview(previewItems) {
+        const listEl = document.getElementById('bulk-edit-preview-list');
+
+        let html = `
+            <div class="bulk-edit-preview-item bulk-edit-preview-header">
+                <div>従業員</div>
+                <div>付与</div>
+                <div>使用</div>
+                <div>残日数</div>
+            </div>
+        `;
+
+        previewItems.forEach(item => {
+            const changes = item.changes || {};
+            const grantedChange = changes.granted ? `${item.current.granted} → ${item.proposed.granted}` : item.current.granted;
+            const usedChange = changes.used ? `${item.current.used} → ${item.proposed.used}` : item.current.used;
+            const balanceChange = changes.balance ? `${item.current.balance} → ${item.proposed.balance}` : item.current.balance;
+
+            const balanceClass = item.proposed.balance < 0 ? 'text-danger' : item.proposed.balance < 5 ? 'text-warning' : '';
+
+            html += `
+                <div class="bulk-edit-preview-item">
+                    <div>${App.utils.escapeHtml(item.name)}</div>
+                    <div>${changes.granted ? `<span class="text-muted">${item.current.granted}</span> <span class="bulk-edit-change-arrow">→</span> <strong>${item.proposed.granted}</strong>` : item.current.granted}</div>
+                    <div>${changes.used ? `<span class="text-muted">${item.current.used}</span> <span class="bulk-edit-change-arrow">→</span> <strong>${item.proposed.used}</strong>` : item.current.used}</div>
+                    <div class="${balanceClass}">${changes.balance ? `<span class="text-muted">${item.current.balance}</span> <span class="bulk-edit-change-arrow">→</span> <strong>${item.proposed.balance}</strong>` : item.current.balance}</div>
+                </div>
+            `;
+        });
+
+        listEl.innerHTML = html;
+    },
+
+    /**
+     * Render warnings
+     */
+    renderWarnings(warnings) {
+        const listEl = document.getElementById('bulk-edit-warnings-list');
+        listEl.innerHTML = warnings.map(w => `
+            <div class="bulk-edit-warning-item">
+                <span>⚠️</span>
+                <span>${App.utils.escapeHtml(w.name || w.employee_num)}: ${App.utils.escapeHtml(w.message)}</span>
+            </div>
+        `).join('');
+    },
+
+    /**
+     * Apply the bulk update
+     */
+    async apply() {
+        const updates = this.getUpdates();
+        if (Object.keys(updates).length === 0) {
+            App.ui.showToast('warning', '変更する項目を選択してください');
+            return;
+        }
+
+        // Confirm if there are warnings
+        if (this.warnings.length > 0) {
+            if (!confirm(`${this.warnings.length}件の警告があります。続行しますか？`)) {
+                return;
+            }
+        }
+
+        const employeeNums = Array.from(this.selectedEmployees.keys());
+        const year = App.state.year;
+
+        try {
+            App.ui.showLoading();
+            const response = await fetch(`${App.config.apiBase}/employees/bulk-update`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ employee_nums: employeeNums, year, updates })
+            });
+
+            const result = await response.json();
+            App.ui.hideLoading();
+
+            if (!response.ok) {
+                throw new Error(result.detail || 'Update failed');
+            }
+
+            // Show success message
+            App.ui.showToast('success', `${result.updated_count}名のデータを更新しました (ID: ${result.operation_id})`);
+
+            // Close modal and clear selection
+            this.closeModal();
+            this.clearSelection();
+
+            // Refresh data
+            await App.data.fetchEmployees(App.state.year);
+
+        } catch (error) {
+            App.ui.hideLoading();
+            App.ui.showToast('error', `更新エラー: ${error.message}`);
+        }
+    }
+};
+
+// ========================================
+// PDF REPORTS MODULE (v2.4 - NEW)
+// Sistema de generacion de reportes PDF
+// ========================================
+App.reports = {
+    /**
+     * Descarga reporte PDF de un empleado
+     * @param {string} employeeNum - Numero de empleado
+     * @param {number|null} year - Ano fiscal (opcional)
+     */
+    async downloadEmployeePDF(employeeNum, year = null) {
+        try {
+            App.ui.showLoading('PDFを生成中...');
+
+            let url = `${App.config.apiBase}/reports/employee/${employeeNum}/pdf`;
+            if (year) {
+                url += `?year=${year}`;
+            }
+
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'PDF生成に失敗しました');
+            }
+
+            const blob = await response.blob();
+            const filename = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '')
+                || `reporte_empleado_${employeeNum}.pdf`;
+
+            this.downloadBlob(blob, filename);
+            App.ui.hideLoading();
+            App.ui.showToast('success', 'PDFレポートをダウンロードしました');
+
+        } catch (error) {
+            App.ui.hideLoading();
+            App.ui.showToast('error', `PDF生成エラー: ${error.message}`);
+            console.error('PDF download error:', error);
+        }
+    },
+
+    /**
+     * Descarga reporte anual (年次有給休暇管理簿)
+     * @param {number} year - Ano fiscal
+     */
+    async downloadAnnualLedger(year) {
+        try {
+            App.ui.showLoading('年次管理簿を生成中...');
+
+            const response = await fetch(`${App.config.apiBase}/reports/annual/${year}/pdf`);
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'PDF生成に失敗しました');
+            }
+
+            const blob = await response.blob();
+            const filename = `年次有給休暇管理簿_${year}.pdf`;
+
+            this.downloadBlob(blob, filename);
+            App.ui.hideLoading();
+            App.ui.showToast('success', '年次管理簿をダウンロードしました');
+
+        } catch (error) {
+            App.ui.hideLoading();
+            App.ui.showToast('error', `PDF生成エラー: ${error.message}`);
+            console.error('Annual ledger download error:', error);
+        }
+    },
+
+    /**
+     * Descarga reporte mensual
+     * @param {number} year - Ano
+     * @param {number} month - Mes (1-12)
+     */
+    async downloadMonthlySummary(year, month) {
+        try {
+            App.ui.showLoading('月次レポートを生成中...');
+
+            const response = await fetch(`${App.config.apiBase}/reports/monthly/${year}/${month}/pdf`);
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'PDF生成に失敗しました');
+            }
+
+            const blob = await response.blob();
+            const filename = `reporte_mensual_${year}_${String(month).padStart(2, '0')}.pdf`;
+
+            this.downloadBlob(blob, filename);
+            App.ui.hideLoading();
+            App.ui.showToast('success', '月次レポートをダウンロードしました');
+
+        } catch (error) {
+            App.ui.hideLoading();
+            App.ui.showToast('error', `PDF生成エラー: ${error.message}`);
+            console.error('Monthly summary download error:', error);
+        }
+    },
+
+    /**
+     * Descarga reporte de cumplimiento (5日取得義務)
+     * @param {number} year - Ano fiscal
+     */
+    async downloadComplianceReport(year) {
+        try {
+            App.ui.showLoading('コンプライアンスレポートを生成中...');
+
+            const response = await fetch(`${App.config.apiBase}/reports/compliance/${year}/pdf`);
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'PDF生成に失敗しました');
+            }
+
+            const blob = await response.blob();
+            const filename = `reporte_cumplimiento_5dias_${year}.pdf`;
+
+            this.downloadBlob(blob, filename);
+            App.ui.hideLoading();
+            App.ui.showToast('success', 'コンプライアンスレポートをダウンロードしました');
+
+        } catch (error) {
+            App.ui.hideLoading();
+            App.ui.showToast('error', `PDF生成エラー: ${error.message}`);
+            console.error('Compliance report download error:', error);
+        }
+    },
+
+    /**
+     * Genera y descarga un reporte personalizado
+     * @param {Object} config - Configuracion del reporte
+     */
+    async downloadCustomReport(config) {
+        try {
+            App.ui.showLoading('カスタムレポートを生成中...');
+
+            const response = await fetch(`${App.config.apiBase}/reports/custom/pdf`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'PDF生成に失敗しました');
+            }
+
+            const blob = await response.blob();
+            const filename = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '')
+                || `reporte_custom.pdf`;
+
+            this.downloadBlob(blob, filename);
+            App.ui.hideLoading();
+            App.ui.showToast('success', 'カスタムレポートをダウンロードしました');
+
+        } catch (error) {
+            App.ui.hideLoading();
+            App.ui.showToast('error', `PDF生成エラー: ${error.message}`);
+            console.error('Custom report download error:', error);
+        }
+    },
+
+    /**
+     * Muestra modal de opciones de exportacion PDF
+     */
+    showExportModal() {
+        const year = App.state.year || new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
+
+        const modalHtml = `
+            <div id="pdf-export-modal" class="modal active">
+                <div class="modal-content" style="max-width: 500px;">
+                    <div class="modal-header">
+                        <h3>PDFレポートをエクスポート</h3>
+                        <button class="modal-close" onclick="App.reports.closeModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="export-options">
+                            <!-- Reporte Anual -->
+                            <div class="export-option glass-panel" style="padding: 1rem; margin-bottom: 1rem; cursor: pointer;"
+                                 onclick="App.reports.downloadAnnualLedger(${year}); App.reports.closeModal();">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <span style="font-size: 2rem;">📊</span>
+                                    <div>
+                                        <h4 style="margin: 0; color: var(--text-primary);">年次有給休暇管理簿</h4>
+                                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.85rem;">
+                                            ${year}年度 - 法定必須書類
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Reporte de Cumplimiento -->
+                            <div class="export-option glass-panel" style="padding: 1rem; margin-bottom: 1rem; cursor: pointer;"
+                                 onclick="App.reports.downloadComplianceReport(${year}); App.reports.closeModal();">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <span style="font-size: 2rem;">✅</span>
+                                    <div>
+                                        <h4 style="margin: 0; color: var(--text-primary);">5日取得義務レポート</h4>
+                                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.85rem;">
+                                            ${year}年度 - コンプライアンス状況
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Reporte Mensual -->
+                            <div class="export-option glass-panel" style="padding: 1rem; margin-bottom: 1rem;">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <span style="font-size: 2rem;">📅</span>
+                                    <div style="flex: 1;">
+                                        <h4 style="margin: 0; color: var(--text-primary);">月次レポート</h4>
+                                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                                            <select id="pdf-month-select" style="flex: 1; padding: 0.5rem; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                                                ${Array.from({length: 12}, (_, i) => i + 1).map(m =>
+                                                    `<option value="${m}" ${m === currentMonth ? 'selected' : ''}>${m}月</option>`
+                                                ).join('')}
+                                            </select>
+                                            <button class="btn btn-primary btn-sm" onclick="App.reports.downloadMonthlySummary(${year}, document.getElementById('pdf-month-select').value); App.reports.closeModal();">
+                                                ダウンロード
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Reporte Personalizado -->
+                            <div class="export-option glass-panel" style="padding: 1rem; cursor: pointer;"
+                                 onclick="App.reports.showCustomReportForm();">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <span style="font-size: 2rem;">⚙️</span>
+                                    <div>
+                                        <h4 style="margin: 0; color: var(--text-primary);">カスタムレポート</h4>
+                                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.85rem;">
+                                            フィルターと列を選択
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Insertar modal en el DOM
+        const existingModal = document.getElementById('pdf-export-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Agregar estilos hover
+        document.querySelectorAll('.export-option').forEach(opt => {
+            opt.addEventListener('mouseenter', () => {
+                opt.style.transform = 'translateX(5px)';
+                opt.style.borderColor = 'var(--primary)';
+            });
+            opt.addEventListener('mouseleave', () => {
+                opt.style.transform = '';
+                opt.style.borderColor = '';
+            });
+        });
+    },
+
+    /**
+     * Muestra formulario de reporte personalizado
+     */
+    showCustomReportForm() {
+        const year = App.state.year || new Date().getFullYear();
+        const factories = [...new Set(App.state.data.map(e => e.haken).filter(Boolean))];
+
+        const formHtml = `
+            <div id="custom-report-form">
+                <h4 style="margin-bottom: 1rem;">カスタムレポート設定</h4>
+
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.3rem; color: var(--text-secondary);">タイトル</label>
+                    <input type="text" id="custom-report-title" value="カスタム有給レポート"
+                           style="width: 100%; padding: 0.5rem; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.3rem; color: var(--text-secondary);">派遣先フィルター</label>
+                    <select id="custom-report-dept" style="width: 100%; padding: 0.5rem; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                        <option value="">全て</option>
+                        ${factories.map(f => `<option value="${App.utils.escapeAttr(f)}">${App.utils.escapeHtml(f)}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.3rem; color: var(--text-secondary);">残日数フィルター</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="number" id="custom-report-min-balance" placeholder="最小" min="0" max="40"
+                               style="flex: 1; padding: 0.5rem; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                        <input type="number" id="custom-report-max-balance" placeholder="最大" min="0" max="40"
+                               style="flex: 1; padding: 0.5rem; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.3rem; color: var(--text-secondary);">並び替え</label>
+                    <select id="custom-report-sort" style="width: 100%; padding: 0.5rem; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                        <option value="employee_num">社員番号</option>
+                        <option value="name">名前</option>
+                        <option value="balance">残日数</option>
+                        <option value="used">使用日数</option>
+                        <option value="usage_rate">使用率</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.5rem;">
+                    <button class="btn btn-secondary" onclick="App.reports.showExportModal();">戻る</button>
+                    <button class="btn btn-primary" onclick="App.reports.generateCustomReport();">PDF生成</button>
+                </div>
+            </div>
+        `;
+
+        document.querySelector('#pdf-export-modal .modal-body').innerHTML = formHtml;
+    },
+
+    /**
+     * Genera reporte personalizado desde el formulario
+     */
+    async generateCustomReport() {
+        const year = App.state.year || new Date().getFullYear();
+        const config = {
+            title: document.getElementById('custom-report-title').value || 'Custom Report',
+            filters: {
+                year: year,
+                department: document.getElementById('custom-report-dept').value || null,
+                min_balance: parseFloat(document.getElementById('custom-report-min-balance').value) || null,
+                max_balance: parseFloat(document.getElementById('custom-report-max-balance').value) || null
+            },
+            columns: ['employee_num', 'name', 'haken', 'granted', 'used', 'balance', 'usage_rate'],
+            sort_by: document.getElementById('custom-report-sort').value,
+            include_stats: true
+        };
+
+        // Limpiar filtros nulos
+        Object.keys(config.filters).forEach(key => {
+            if (config.filters[key] === null || config.filters[key] === '') {
+                delete config.filters[key];
+            }
+        });
+
+        this.closeModal();
+        await this.downloadCustomReport(config);
+    },
+
+    /**
+     * Cierra el modal de exportacion
+     */
+    closeModal() {
+        const modal = document.getElementById('pdf-export-modal');
+        if (modal) {
+            modal.remove();
+        }
+    },
+
+    /**
+     * Utilidad para descargar un blob como archivo
+     * @param {Blob} blob - Blob del archivo
+     * @param {string} filename - Nombre del archivo
+     */
+    downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 };
 

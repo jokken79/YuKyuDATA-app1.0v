@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#020617"/>
+    </linearGradient>
+    <linearGradient id="accent-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#38bdf8"/>
+      <stop offset="100%" style="stop-color:#0ea5e9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="192" height="192" rx="28.799999999999997" fill="url(#bg-grad)"/>
+
+  <!-- Calendar icon simplified -->
+  <g transform="translate(38.400000000000006, 42.24)">
+    <!-- Calendar body -->
+    <rect x="0" y="18.432"
+          width="92.16" height="76.8"
+          rx="7.68"
+          fill="rgba(30,41,59,0.9)"
+          stroke="rgba(255,255,255,0.1)"
+          stroke-width="1"/>
+
+    <!-- Calendar top bar -->
+    <rect x="0" y="18.432"
+          width="92.16" height="18.432"
+          rx="7.68"
+          fill="url(#accent-grad)"/>
+
+    <!-- Calendar hooks -->
+    <rect x="18.432" y="7.68"
+          width="6.144" height="18.432"
+          rx="3.072" fill="#94a3b8"/>
+    <rect x="67.584" y="7.68"
+          width="6.144" height="18.432"
+          rx="3.072" fill="#94a3b8"/>
+
+    <!-- Check mark -->
+    <path d="M18.432 58.367999999999995
+             L33.792 73.728
+             L64.512 43.008"
+          stroke="#34d399"
+          stroke-width="4.800000000000001"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          fill="none"/>
+
+    <!-- YK text -->
+    <text x="46.08" y="30.72"
+          text-anchor="middle"
+          font-family="Arial, sans-serif"
+          font-size="12.288"
+          font-weight="bold"
+          fill="white">YK</text>
+  </g>
+</svg>
