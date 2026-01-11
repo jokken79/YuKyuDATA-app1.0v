@@ -37,6 +37,7 @@ from middleware_security import (
     RequestLoggingMiddleware,
     AuthenticationLoggingMiddleware
 )
+from csrf_middleware import CSRFProtectionMiddleware, generate_csrf_token
 from pagination import PaginationParams, PaginatedResponse, paginate_list
 from caching import cached, invalidate_employee_cache, get_cache_stats
 from fiscal_year import (
@@ -70,6 +71,14 @@ from reports import (
 )
 from functools import wraps
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
+# ============================================
+# ASYNC EXECUTOR FOR EXCEL PARSING
+# ============================================
+# Global thread pool executor for CPU-bound Excel operations
+# This prevents blocking the event loop during heavy parsing
+_excel_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="excel_parser")
 
 
 # ============================================
@@ -299,6 +308,7 @@ class EmployeeUpdate(BaseModel):
     haken: Optional[str] = None
     granted: Optional[float] = Field(None, ge=0, le=40)
     used: Optional[float] = Field(None, ge=0, le=40)
+    validate_limit: bool = True  # Validar límite de 40 días acumulados
 
 
 # === BULK UPDATE MODEL (v2.3) ===
@@ -309,6 +319,7 @@ class BulkUpdateRequest(BaseModel):
                                       description="Lista de numeros de empleado (max 50)")
     year: int = Field(..., ge=2000, le=2100, description="Año fiscal")
     updates: dict = Field(..., description="Campos a actualizar")
+    validate_limit: bool = True  # Validar límite de 40 días acumulados
 
     @field_validator('employee_nums')
     @classmethod
@@ -499,6 +510,22 @@ app.add_middleware(
     exclude_paths=["/health", "/docs", "/redoc", "/openapi.json", "/", "/api/auth/login", "/static"]
 )
 
+# Add CSRF protection middleware
+# Note: Requests with JWT Authorization header don't require CSRF token
+app.add_middleware(
+    CSRFProtectionMiddleware,
+    exclude_paths=[
+        "/api/auth/login",
+        "/api/csrf-token",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+        "/health",
+        "/"
+    ],
+    require_for_authenticated=False  # JWT-authenticated requests don't need CSRF
+)
+
 # Add GZIP compression middleware for performance
 # Compresses responses > 500 bytes for faster transfer
 app.add_middleware(GZipMiddleware, minimum_size=500)
@@ -640,6 +667,28 @@ async def read_root():
 # ============================================
 # AUTHENTICATION ENDPOINTS
 # ============================================
+
+@app.get("/api/csrf-token", tags=["Authentication"])
+async def get_csrf_token():
+    """
+    Generate a CSRF token for non-authenticated requests.
+
+    Frontend should:
+    1. Call this endpoint to get a token
+    2. Include token in X-CSRF-Token header for POST/PUT/DELETE requests
+    3. Token is not required if Authorization header (JWT) is present
+
+    Returns:
+        dict: CSRF token and usage instructions
+    """
+    token = generate_csrf_token()
+    return {
+        "csrf_token": token,
+        "header_name": "X-CSRF-Token",
+        "expires_in": 3600,  # Recommended to refresh every hour
+        "note": "Include this token in X-CSRF-Token header for POST/PUT/DELETE requests. Not required if using JWT authentication."
+    }
+
 
 @app.post("/api/auth/login", dependencies=[Depends(check_rate_limit)])
 async def login(login_data: AuthUserLogin):
@@ -901,36 +950,52 @@ async def sync_default_file(user: CurrentUser = Depends(get_admin_user)):
     """
     Triggers auto-read of the default Excel file + individual usage dates.
     Uses enhanced parsing with half-day/hourly detection and validation.
+
+    ASYNC: Uses asyncio.to_thread() to prevent blocking the event loop during
+    CPU-intensive Excel parsing operations.
     """
     if not DEFAULT_EXCEL_PATH.exists():
         raise HTTPException(status_code=404, detail=f"Default file not found at {DEFAULT_EXCEL_PATH}")
 
     try:
-        # Parse summary data (totals)
-        logger.info(f"Sync initiated by {user.username}")
-        data = excel_service.parse_excel_file(DEFAULT_EXCEL_PATH)
-        database.save_employees(data)
-        logger.info(f"Saved {len(data)} employee records")
+        logger.info(f"Sync initiated by {user.username} (async mode)")
+        start_time = asyncio.get_event_loop().time()
 
-        # Parse individual usage dates with ENHANCED parser (v2.1 feature)
-        # Detects: half-day (半, 0.5, 午前, 午後), hourly (2h, 2時間), comments
-        enhanced_result = excel_service.parse_yukyu_usage_details_enhanced(str(DEFAULT_EXCEL_PATH))
+        # Parse summary data and usage details in parallel (non-blocking)
+        logger.debug("Starting async Excel parsing...")
+        data, enhanced_result = await asyncio.gather(
+            asyncio.to_thread(excel_service.parse_excel_file, DEFAULT_EXCEL_PATH),
+            asyncio.to_thread(excel_service.parse_yukyu_usage_details_enhanced, str(DEFAULT_EXCEL_PATH))
+        )
+        parse_time = asyncio.get_event_loop().time() - start_time
+        logger.debug(f"Excel parsing completed in {parse_time:.2f}s")
 
-        # Extract data and metadata
+        # Extract data and metadata from enhanced result
         usage_details = enhanced_result.get('data', [])
         warnings = enhanced_result.get('warnings', [])
         errors = enhanced_result.get('errors', [])
         summary = enhanced_result.get('summary', {})
 
-        # Save to database
-        database.save_yukyu_usage_details(usage_details)
-        logger.info(f"Saved {len(usage_details)} usage detail records")
+        # Save to database in parallel (non-blocking)
+        logger.debug("Starting async database save...")
+        save_start = asyncio.get_event_loop().time()
+        await asyncio.gather(
+            asyncio.to_thread(database.save_employees, data),
+            asyncio.to_thread(database.save_yukyu_usage_details, usage_details)
+        )
+        save_time = asyncio.get_event_loop().time() - save_start
+        logger.debug(f"Database save completed in {save_time:.2f}s")
+
+        logger.info(f"Saved {len(data)} employee records + {len(usage_details)} usage details")
 
         # Log warnings if any
         if warnings:
             logger.warning(f"Sync completed with {len(warnings)} warnings")
             for w in warnings[:5]:  # Log first 5 warnings
                 logger.warning(f"  - {w.get('type', 'unknown')}: {w.get('message', '')}")
+
+        total_time = asyncio.get_event_loop().time() - start_time
+        logger.info(f"Total sync time: {total_time:.2f}s (parse: {parse_time:.2f}s, save: {save_time:.2f}s)")
 
         # Prepare response with import summary
         return {
@@ -950,7 +1015,12 @@ async def sync_default_file(user: CurrentUser = Depends(get_admin_user)):
             },
             "warnings_count": len(warnings),
             "warnings": warnings[:20] if warnings else [],  # Return first 20 warnings
-            "errors": errors
+            "errors": errors,
+            "performance": {
+                "total_time_seconds": round(total_time, 2),
+                "parse_time_seconds": round(parse_time, 2),
+                "save_time_seconds": round(save_time, 2)
+            }
         }
     except Exception as e:
         logger.error(f"Sync failed: {str(e)}")
@@ -958,22 +1028,55 @@ async def sync_default_file(user: CurrentUser = Depends(get_admin_user)):
 
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...), user: CurrentUser = Depends(get_admin_user)):
-    """Handles manual Excel file upload and processing. Requires admin authentication."""
+    """
+    Handles manual Excel file upload and processing. Requires admin authentication.
+
+    ASYNC: Uses asyncio.to_thread() to prevent blocking the event loop during
+    CPU-intensive Excel parsing operations.
+    """
+    temp_path = None
     try:
-        # Save temp file
+        logger.info(f"Upload initiated by {user.username}: {file.filename}")
+        start_time = asyncio.get_event_loop().time()
+
+        # Save temp file (I/O bound - use to_thread for large files)
         temp_path = UPLOAD_DIR / file.filename
-        with open(temp_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-            
-        # Process
-        data = excel_service.parse_excel_file(str(temp_path))
-        database.save_employees(data)
-        
+        content = await file.read()
+        await asyncio.to_thread(lambda: open(temp_path, "wb").write(content))
+        logger.debug(f"Saved temp file: {temp_path}")
+
+        # Parse Excel file (CPU bound - non-blocking)
+        logger.debug("Starting async Excel parsing...")
+        data = await asyncio.to_thread(excel_service.parse_excel_file, str(temp_path))
+        parse_time = asyncio.get_event_loop().time() - start_time
+        logger.debug(f"Excel parsing completed in {parse_time:.2f}s, found {len(data)} records")
+
+        # Save to database (non-blocking)
+        await asyncio.to_thread(database.save_employees, data)
+        total_time = asyncio.get_event_loop().time() - start_time
+
         # Cleanup
-        os.remove(temp_path)
-        
-        return {"status": "success", "count": len(data), "message": f"Successfully imported {len(data)} records"}
+        await asyncio.to_thread(os.remove, temp_path)
+        temp_path = None  # Mark as cleaned up
+
+        logger.info(f"Upload completed: {len(data)} records in {total_time:.2f}s")
+        return {
+            "status": "success",
+            "count": len(data),
+            "message": f"Successfully imported {len(data)} records",
+            "performance": {
+                "total_time_seconds": round(total_time, 2),
+                "parse_time_seconds": round(parse_time, 2)
+            }
+        }
     except Exception as e:
+        logger.error(f"Upload failed: {str(e)}")
+        # Cleanup on error
+        if temp_path and temp_path.exists():
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 @app.delete("/api/reset")
@@ -996,16 +1099,41 @@ async def get_genzai(status: str = None):
 
 @app.post("/api/sync-genzai")
 async def sync_genzai(user: CurrentUser = Depends(get_admin_user)):
-    """Syncs DBGenzaiX sheet from employee registry file. Requires admin authentication."""
+    """
+    Syncs DBGenzaiX sheet from employee registry file. Requires admin authentication.
+
+    ASYNC: Uses asyncio.to_thread() to prevent blocking the event loop during
+    CPU-intensive Excel parsing operations.
+    """
     if not EMPLOYEE_REGISTRY_PATH.exists():
         raise HTTPException(status_code=404, detail=f"Employee registry file not found at {EMPLOYEE_REGISTRY_PATH}")
 
     try:
-        data = excel_service.parse_genzai_sheet(EMPLOYEE_REGISTRY_PATH)
-        database.save_genzai(data)
-        logger.info(f"Genzai synced by {user.username}: {len(data)} dispatch employees")
-        return {"status": "success", "count": len(data), "message": f"Genzai synced: {len(data)} dispatch employees"}
+        logger.info(f"Genzai sync initiated by {user.username} (async mode)")
+        start_time = asyncio.get_event_loop().time()
+
+        # Parse Excel sheet (CPU bound - non-blocking)
+        logger.debug("Starting async Genzai Excel parsing...")
+        data = await asyncio.to_thread(excel_service.parse_genzai_sheet, EMPLOYEE_REGISTRY_PATH)
+        parse_time = asyncio.get_event_loop().time() - start_time
+        logger.debug(f"Genzai parsing completed in {parse_time:.2f}s, found {len(data)} records")
+
+        # Save to database (non-blocking)
+        await asyncio.to_thread(database.save_genzai, data)
+        total_time = asyncio.get_event_loop().time() - start_time
+
+        logger.info(f"Genzai synced by {user.username}: {len(data)} dispatch employees in {total_time:.2f}s")
+        return {
+            "status": "success",
+            "count": len(data),
+            "message": f"Genzai synced: {len(data)} dispatch employees",
+            "performance": {
+                "total_time_seconds": round(total_time, 2),
+                "parse_time_seconds": round(parse_time, 2)
+            }
+        }
     except Exception as e:
+        logger.error(f"Genzai sync failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Genzai sync failed: {str(e)}")
 
 @app.delete("/api/reset-genzai")
@@ -1028,15 +1156,41 @@ async def get_ukeoi(status: str = None):
 
 @app.post("/api/sync-ukeoi")
 async def sync_ukeoi(user: CurrentUser = Depends(get_admin_user)):
-    """Syncs DBUkeoiX sheet from employee registry file."""
+    """
+    Syncs DBUkeoiX sheet from employee registry file. Requires admin authentication.
+
+    ASYNC: Uses asyncio.to_thread() to prevent blocking the event loop during
+    CPU-intensive Excel parsing operations.
+    """
     if not EMPLOYEE_REGISTRY_PATH.exists():
         raise HTTPException(status_code=404, detail=f"Employee registry file not found at {EMPLOYEE_REGISTRY_PATH}")
 
     try:
-        data = excel_service.parse_ukeoi_sheet(EMPLOYEE_REGISTRY_PATH)
-        database.save_ukeoi(data)
-        return {"status": "success", "count": len(data), "message": f"Ukeoi synced: {len(data)} contract employees"}
+        logger.info(f"Ukeoi sync initiated by {user.username} (async mode)")
+        start_time = asyncio.get_event_loop().time()
+
+        # Parse Excel sheet (CPU bound - non-blocking)
+        logger.debug("Starting async Ukeoi Excel parsing...")
+        data = await asyncio.to_thread(excel_service.parse_ukeoi_sheet, EMPLOYEE_REGISTRY_PATH)
+        parse_time = asyncio.get_event_loop().time() - start_time
+        logger.debug(f"Ukeoi parsing completed in {parse_time:.2f}s, found {len(data)} records")
+
+        # Save to database (non-blocking)
+        await asyncio.to_thread(database.save_ukeoi, data)
+        total_time = asyncio.get_event_loop().time() - start_time
+
+        logger.info(f"Ukeoi synced by {user.username}: {len(data)} contract employees in {total_time:.2f}s")
+        return {
+            "status": "success",
+            "count": len(data),
+            "message": f"Ukeoi synced: {len(data)} contract employees",
+            "performance": {
+                "total_time_seconds": round(total_time, 2),
+                "parse_time_seconds": round(parse_time, 2)
+            }
+        }
     except Exception as e:
+        logger.error(f"Ukeoi sync failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Ukeoi sync failed: {str(e)}")
 
 @app.delete("/api/reset-ukeoi")
@@ -1068,16 +1222,41 @@ async def get_staff_employees(status: str = None, year: int = None, filter_by_ye
 
 @app.post("/api/sync-staff")
 async def sync_staff(user: CurrentUser = Depends(get_admin_user)):
-    """Syncs DBStaffX sheet from employee registry file. Requires admin authentication."""
+    """
+    Syncs DBStaffX sheet from employee registry file. Requires admin authentication.
+
+    ASYNC: Uses asyncio.to_thread() to prevent blocking the event loop during
+    CPU-intensive Excel parsing operations.
+    """
     if not EMPLOYEE_REGISTRY_PATH.exists():
         raise HTTPException(status_code=404, detail=f"Employee registry file not found at {EMPLOYEE_REGISTRY_PATH}")
 
     try:
-        data = excel_service.parse_staff_sheet(EMPLOYEE_REGISTRY_PATH)
-        database.save_staff(data)
-        logger.info(f"Staff synced by {user.username}: {len(data)} staff employees")
-        return {"status": "success", "count": len(data), "message": f"Staff synced: {len(data)} staff employees"}
+        logger.info(f"Staff sync initiated by {user.username} (async mode)")
+        start_time = asyncio.get_event_loop().time()
+
+        # Parse Excel sheet (CPU bound - non-blocking)
+        logger.debug("Starting async Staff Excel parsing...")
+        data = await asyncio.to_thread(excel_service.parse_staff_sheet, EMPLOYEE_REGISTRY_PATH)
+        parse_time = asyncio.get_event_loop().time() - start_time
+        logger.debug(f"Staff parsing completed in {parse_time:.2f}s, found {len(data)} records")
+
+        # Save to database (non-blocking)
+        await asyncio.to_thread(database.save_staff, data)
+        total_time = asyncio.get_event_loop().time() - start_time
+
+        logger.info(f"Staff synced by {user.username}: {len(data)} staff employees in {total_time:.2f}s")
+        return {
+            "status": "success",
+            "count": len(data),
+            "message": f"Staff synced: {len(data)} staff employees",
+            "performance": {
+                "total_time_seconds": round(total_time, 2),
+                "parse_time_seconds": round(parse_time, 2)
+            }
+        }
     except Exception as e:
+        logger.error(f"Staff sync failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Staff sync failed: {str(e)}")
 
 
@@ -1643,10 +1822,19 @@ async def approve_leave_request(request: Request, request_id: int, approval_data
     """Approve a leave request and automatically update yukyu balance."""
     try:
         approved_by = approval_data.get('approved_by', user.username if user else 'Manager')
+        validate_limit = approval_data.get('validate_limit', True)
 
         # Get old value before approval
         old_requests = database.get_leave_requests()
         old_value = next((r for r in old_requests if r.get('id') == request_id), None)
+
+        # Validate balance limit before approval (optional)
+        if validate_limit and old_value:
+            employee_num = old_value.get('employee_num')
+            year = old_value.get('year')
+            if employee_num and year:
+                # Validar que el balance actual está dentro del límite de 40 días
+                database.validate_balance_limit(employee_num, year)
 
         # Approve request (this also updates the yukyu balance automatically)
         database.approve_leave_request(request_id, approved_by)
@@ -2419,10 +2607,15 @@ async def update_employee(request: Request, employee_num: str, year: int, update
 
     Campos editables: name, haken, granted, used
     Balance y usage_rate se recalculan automáticamente.
+    Valida límite de 40 días si validate_limit=True (por defecto).
     """
     try:
-        # Filtrar campos no-nulos
-        update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
+        # Extraer validate_limit antes de filtrar
+        validate_limit = update_data.validate_limit
+
+        # Filtrar campos no-nulos (excluyendo validate_limit que no va a la DB)
+        update_dict = {k: v for k, v in update_data.model_dump().items()
+                       if v is not None and k != 'validate_limit'}
 
         if not update_dict:
             raise HTTPException(
@@ -2434,6 +2627,25 @@ async def update_employee(request: Request, employee_num: str, year: int, update
         employee_id = f"{employee_num}_{year}"
         old_employees = database.get_employees(year)
         old_value = next((e for e in old_employees if e.get('id') == employee_id), None)
+
+        # Validate balance limit before update (optional)
+        if validate_limit:
+            # Calcular días adicionales si se incrementa granted
+            additional_days = 0.0
+            if 'granted' in update_dict and old_value:
+                old_granted = old_value.get('granted', 0) or 0
+                old_used = old_value.get('used', 0) or 0
+                new_granted = update_dict['granted']
+                new_used = update_dict.get('used', old_used)
+                # El balance nuevo sería: new_granted - new_used
+                # Comparar con el balance actual para ver el incremento
+                old_balance = old_granted - old_used
+                new_balance = new_granted - new_used
+                additional_days = new_balance - old_balance
+
+            # Solo validar si hay incremento en el balance
+            if additional_days > 0:
+                database.validate_balance_limit(employee_num, year, additional_days)
 
         updated = database.update_employee(employee_num, year, **update_dict)
 
@@ -2466,6 +2678,7 @@ async def bulk_update_employees_endpoint(request: Request, bulk_request: BulkUpd
     """
     Actualiza multiples empleados en una sola operacion.
     Maximo 50 empleados. Incluye validaciones y audit trail.
+    Valida límite de 40 días si validate_limit=True (por defecto).
     """
     try:
         updated_by = "system"
@@ -2474,6 +2687,47 @@ async def bulk_update_employees_endpoint(request: Request, bulk_request: BulkUpd
             updated_by = f"user@{client_ip}"
         except Exception:
             pass
+
+        # Validate balance limit before bulk update (optional)
+        if bulk_request.validate_limit:
+            updates = bulk_request.updates
+            # Verificar si hay incrementos en granted que puedan exceder el límite
+            if 'add_granted' in updates or 'set_granted' in updates:
+                validation_errors = []
+                for emp_num in bulk_request.employee_nums:
+                    try:
+                        # Obtener datos actuales del empleado
+                        employees = database.get_employees(bulk_request.year)
+                        emp = next((e for e in employees if e.get('employee_num') == emp_num), None)
+                        if emp:
+                            old_granted = emp.get('granted', 0) or 0
+                            old_used = emp.get('used', 0) or 0
+                            old_balance = old_granted - old_used
+
+                            # Calcular nuevo balance según el tipo de actualización
+                            if 'set_granted' in updates:
+                                new_granted = updates['set_granted']
+                                new_balance = new_granted - old_used
+                            elif 'add_granted' in updates:
+                                new_granted = old_granted + updates['add_granted']
+                                new_balance = new_granted - old_used
+                            else:
+                                new_balance = old_balance
+
+                            additional_days = new_balance - old_balance
+                            if additional_days > 0:
+                                database.validate_balance_limit(emp_num, bulk_request.year, additional_days)
+                    except ValueError as ve:
+                        validation_errors.append({
+                            "employee_num": emp_num,
+                            "error": str(ve)
+                        })
+
+                if validation_errors:
+                    raise ValueError(
+                        f"Validación de límite de 40 días fallida para {len(validation_errors)} empleado(s): "
+                        + ", ".join([e['employee_num'] for e in validation_errors])
+                    )
 
         results = database.bulk_update_employees(
             employee_nums=bulk_request.employee_nums,

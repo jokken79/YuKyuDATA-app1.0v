@@ -183,12 +183,19 @@ def init_db():
         c.execute('CREATE INDEX IF NOT EXISTS idx_lr_status ON leave_requests(status)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_lr_year ON leave_requests(year)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_lr_dates ON leave_requests(start_date, end_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_lr_employee_date ON leave_requests(employee_num, start_date)')
 
         # Indexes for genzai/ukeoi tables
         c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_emp ON genzai(employee_num)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_status ON genzai(status)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_hire_date ON genzai(hire_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_leave_date ON genzai(leave_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_hire_leave ON genzai(hire_date, leave_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_status_hire ON genzai(status, hire_date)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_emp ON ukeoi(employee_num)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_status ON ukeoi(status)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_hire_date ON ukeoi(hire_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_leave_date ON ukeoi(leave_date)')
 
         # ============================================
         # SCHEMA MIGRATIONS (add columns if not exist)
@@ -244,6 +251,8 @@ def init_db():
         ''')
         c.execute('CREATE INDEX IF NOT EXISTS idx_staff_emp ON staff(employee_num)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_staff_status ON staff(status)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_staff_visa_expiry ON staff(visa_expiry)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_staff_visa_type ON staff(visa_type)')
 
         # Add grant_year to employees for FIFO tracking
         try:
@@ -277,6 +286,74 @@ def init_db():
         c.execute('CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action)')
 
         conn.commit()
+
+
+# ============================================
+# BALANCE LIMIT VALIDATION (Japanese Labor Law)
+# Maximum accumulated days: 40 (2 years carry-over max)
+# ============================================
+
+MAX_ACCUMULATED_DAYS = 40
+
+
+def validate_balance_limit(employee_num: str, year: int, additional_days: float = 0) -> bool:
+    """
+    Verifica que el balance total no exceda 40 días.
+    Lanza ValueError si se excede el límite.
+
+    Args:
+        employee_num: Número de empleado
+        year: Año fiscal actual
+        additional_days: Días adicionales a agregar (para validar antes de operaciones)
+
+    Returns:
+        True si el balance está dentro del límite
+
+    Raises:
+        ValueError: Si el balance excede el límite de 40 días
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+        # Sumar balance de año actual y año anterior (máximo 2 años carry-over)
+        c.execute('''
+            SELECT COALESCE(SUM(balance), 0) as total_balance
+            FROM employees
+            WHERE employee_num = ? AND year >= ?
+        ''', (employee_num, year - 1))
+        result = c.fetchone()
+        current_balance = result['total_balance'] if result else 0
+        total = current_balance + additional_days
+
+        if total > MAX_ACCUMULATED_DAYS:
+            raise ValueError(
+                f"Balance excede límite de {MAX_ACCUMULATED_DAYS} días: {total:.1f} días. "
+                f"Balance actual: {current_balance:.1f}, adicional: {additional_days:.1f}"
+            )
+        return True
+
+
+def get_employee_total_balance(employee_num: str, year: int) -> float:
+    """
+    Obtiene el balance total de un empleado (año actual + anterior).
+    Útil para validaciones antes de operaciones.
+
+    Args:
+        employee_num: Número de empleado
+        year: Año fiscal actual
+
+    Returns:
+        Balance total acumulado
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute('''
+            SELECT COALESCE(SUM(balance), 0) as total_balance
+            FROM employees
+            WHERE employee_num = ? AND year >= ?
+        ''', (employee_num, year - 1))
+        result = c.fetchone()
+        return result['total_balance'] if result else 0.0
+
 
 def save_employees(employees_data):
     """

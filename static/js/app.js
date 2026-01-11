@@ -1181,12 +1181,26 @@ const App = {
             const yearLabel = document.getElementById('trends-year-label');
             if (yearLabel) yearLabel.textContent = `(${App.state.year})`;
 
-            container.innerHTML = App.state.availableYears.map(y => `
-                <button class="btn btn-glass ${Number(App.state.year) === Number(y) ? 'btn-primary' : ''}" 
-                        onclick="App.state.year=${y}; App.data.fetchEmployees(${y});">
-                    ${y}
+            // XSS prevention: use data attributes and sanitize year values
+            container.innerHTML = App.state.availableYears.map(y => {
+                const safeYear = parseInt(y) || 0;
+                return `
+                <button class="btn btn-glass year-btn ${Number(App.state.year) === Number(safeYear) ? 'btn-primary' : ''}"
+                        data-year="${safeYear}">
+                    ${safeYear}
                 </button>
-            `).join('');
+            `}).join('');
+
+            // Add event listeners safely
+            container.querySelectorAll('.year-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const year = parseInt(btn.dataset.year);
+                    if (year) {
+                        App.state.year = year;
+                        App.data.fetchEmployees(year);
+                    }
+                });
+            });
         },
 
         async renderCharts() {
@@ -1434,32 +1448,41 @@ const App = {
                     `;
                 }
 
+                // XSS prevention: escape all user data
+                const safeEmpNum = App.utils.escapeHtml(emp.employeeNum);
+                const safeEmpNumAttr = App.utils.escapeAttr(emp.employeeNum);
+                const safeHaken = App.utils.escapeHtml(emp.haken || employee.factory || '-');
+                const safeType = App.utils.escapeHtml(employee.type || (emp.type === 'haken' ? '派遣' : emp.type === 'ukeoi' ? '請負' : 'スタッフ'));
+                const safeStatus = App.utils.escapeHtml(employee.status || '在職中');
+                const safeTotalAvailable = App.utils.safeNumber(totalAvailable);
+                const safeRenewalDate = App.utils.escapeHtml(renewalDate);
+
                 document.getElementById('modal-content').innerHTML = `
                     <!-- Información básica -->
                     <div class="bento-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1.5rem; gap: 0.8rem;">
                         <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
                             <div style="color: #94a3b8; font-size: 0.8rem;">社員番号</div>
-                            <div style="font-size: 1.2rem; font-weight: bold;">${emp.employeeNum}</div>
+                            <div style="font-size: 1.2rem; font-weight: bold;">${safeEmpNum}</div>
                         </div>
                         <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
                             <div style="color: #94a3b8; font-size: 0.8rem;">派遣先</div>
-                            <div style="font-size: 0.9rem; font-weight: bold;">${emp.haken || employee.factory || '-'}</div>
+                            <div style="font-size: 0.9rem; font-weight: bold;">${safeHaken}</div>
                         </div>
                         <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
                             <div style="color: #94a3b8; font-size: 0.8rem;">タイプ</div>
-                            <div style="font-size: 1rem;">${employee.type || (emp.type === 'haken' ? '派遣' : emp.type === 'ukeoi' ? '請負' : 'スタッフ')}</div>
+                            <div style="font-size: 1rem;">${safeType}</div>
                         </div>
                         <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
                             <div style="color: #94a3b8; font-size: 0.8rem;">ステータス</div>
-                            <div style="font-size: 1rem; color: ${employee.status === '在職中' ? '#22c55e' : '#ef4444'};">${employee.status || '在職中'}</div>
+                            <div style="font-size: 1rem; color: ${employee.status === '在職中' ? '#22c55e' : '#ef4444'};">${safeStatus}</div>
                         </div>
                     </div>
 
                     <!-- Balance total actual -->
                     <div class="glass-panel" style="padding: 1rem; margin-bottom: 1rem; background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(56, 189, 248, 0.2)); text-align: center;">
                         <div style="color: #94a3b8; font-size: 0.9rem;">💰 有給残日数 (合計)</div>
-                        <div style="font-size: 2rem; font-weight: bold; color: #22c55e;">${totalAvailable}日</div>
-                        <div style="color: #94a3b8; font-size: 0.8rem;">次回付与: ${renewalDate}</div>
+                        <div style="font-size: 2rem; font-weight: bold; color: #22c55e;">${safeTotalAvailable}日</div>
+                        <div style="color: #94a3b8; font-size: 0.8rem;">次回付与: ${safeRenewalDate}</div>
                     </div>
 
                     <!-- Historial de 2 años -->
@@ -1471,7 +1494,7 @@ const App = {
 
                     <!-- Botón de edición (v2.1 NEW) -->
                     <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                        <button class="btn btn-primary" style="width: 100%;" onclick="App.ui.closeModal(); App.editYukyu.openModal('${emp.employeeNum}');">
+                        <button class="btn btn-primary" style="width: 100%;" data-action="edit-yukyu" data-employee-num="${safeEmpNumAttr}">
                             ✏️ 有給使用データを編集
                         </button>
                         <p style="text-align: center; color: #94a3b8; font-size: 0.75rem; margin-top: 0.5rem;">
@@ -1481,23 +1504,39 @@ const App = {
 
                     <!-- Botón de PDF (v2.4 NEW) -->
                     <div style="margin-top: 1rem;">
-                        <button class="btn btn-secondary" style="width: 100%;" onclick="App.reports.downloadEmployeePDF('${emp.employeeNum}', ${App.state.year || 'null'});">
+                        <button class="btn btn-secondary" style="width: 100%;" data-action="download-pdf" data-employee-num="${safeEmpNumAttr}">
                             📄 PDFレポートをダウンロード
                         </button>
                     </div>
                 `;
 
+                // Add event listeners safely (prevent XSS via onclick)
+                document.querySelector('[data-action="edit-yukyu"]')?.addEventListener('click', () => {
+                    App.ui.closeModal();
+                    App.editYukyu.openModal(emp.employeeNum);
+                });
+                document.querySelector('[data-action="download-pdf"]')?.addEventListener('click', () => {
+                    App.reports.downloadEmployeePDF(emp.employeeNum, App.state.year || null);
+                });
+
             } catch (error) {
                 console.error('Error loading employee details:', error);
-                // Fallback a datos básicos si el API falla
+                // Fallback a datos básicos si el API falla - XSS prevention: escape all user data
+                const safeEmpNum = App.utils.escapeHtml(emp.employeeNum);
+                const safeHaken = App.utils.escapeHtml(emp.haken);
+                const safeGranted = App.utils.safeNumber(emp.granted);
+                const safeUsed = App.utils.safeNumber(emp.used);
+                const safeBalance = App.utils.safeNumber(emp.balance);
+                const safeUsageRate = App.utils.safeNumber(emp.usageRate);
+
                 document.getElementById('modal-content').innerHTML = `
                     <div class="bento-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 2rem;">
-                        <div><span class="text-gray-400">ID:</span> ${emp.employeeNum}</div>
-                        <div><span class="text-gray-400">Factory:</span> ${emp.haken}</div>
-                        <div><span class="text-gray-400">Granted:</span> ${emp.granted}</div>
-                        <div><span class="text-gray-400">Used:</span> ${emp.used}</div>
-                        <div><span class="text-gray-400">Balance:</span> ${emp.balance}</div>
-                        <div><span class="text-gray-400">Rate:</span> ${emp.usageRate}%</div>
+                        <div><span class="text-gray-400">ID:</span> ${safeEmpNum}</div>
+                        <div><span class="text-gray-400">Factory:</span> ${safeHaken}</div>
+                        <div><span class="text-gray-400">Granted:</span> ${safeGranted}</div>
+                        <div><span class="text-gray-400">Used:</span> ${safeUsed}</div>
+                        <div><span class="text-gray-400">Balance:</span> ${safeBalance}</div>
+                        <div><span class="text-gray-400">Rate:</span> ${safeUsageRate}%</div>
                     </div>
                     <p style="color: #f59e0b; font-size: 0.9rem;">⚠️ 詳細データの取得に失敗しました</p>
                 `;
@@ -2908,8 +2947,8 @@ const App = {
                         // Display hours or days based on leave type
                         const isHourly = req.leave_type === 'hourly';
                         const duration = isHourly
-                            ? `${req.hours_requested || 0}時間`
-                            : `${req.days_requested}日`;
+                            ? `${App.utils.safeNumber(req.hours_requested)}時間`
+                            : `${App.utils.safeNumber(req.days_requested)}日`;
                         const typeLabel = {
                             'full': '全日',
                             'half_am': '午前半休',
@@ -2917,25 +2956,33 @@ const App = {
                             'hourly': '時間休'
                         }[req.leave_type] || '全日';
 
+                        // XSS prevention: escape all user data
+                        const safeId = parseInt(req.id) || 0;
+                        const safeName = App.utils.escapeHtml(req.employee_name);
+                        const safeStartDate = App.utils.escapeHtml(req.start_date);
+                        const safeEndDate = App.utils.escapeHtml(req.end_date);
+                        const safeReason = App.utils.escapeHtml(req.reason || '-');
+                        const safeRequestedAt = App.utils.escapeHtml(req.requested_at?.slice(0, 10) || '-');
+
                         // Show revert button only for approved requests
                         const actionBtn = req.status === 'APPROVED'
-                            ? `<button class="btn btn-glass btn-revert" data-request-id="${req.id}"
+                            ? `<button class="btn btn-glass btn-revert" data-request-id="${safeId}"
                                 style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: rgba(251, 191, 36, 0.2);"
                                 title="承認を取り消す">↩ 取消</button>`
                             : '-';
 
                         return `
                             <tr>
-                                <td>${req.id}</td>
-                                <td>${req.employee_name}</td>
-                                <td>${req.start_date} 〜 ${req.end_date}</td>
+                                <td>${safeId}</td>
+                                <td>${safeName}</td>
+                                <td>${safeStartDate} 〜 ${safeEndDate}</td>
                                 <td>
                                     <span class="badge badge-info" style="margin-right: 0.25rem; padding: 0.1rem 0.4rem; font-size: 0.65rem;">${typeLabel}</span>
                                     ${duration}
                                 </td>
-                                <td>${req.reason || '-'}</td>
+                                <td>${safeReason}</td>
                                 <td><span class="badge ${statusBadge}">${statusText}</span></td>
-                                <td>${req.requested_at?.slice(0, 10) || '-'}</td>
+                                <td>${safeRequestedAt}</td>
                                 <td>${actionBtn}</td>
                             </tr>
                         `;
@@ -3235,16 +3282,21 @@ const App = {
                 if (json.non_compliant_employees && json.non_compliant_employees.length > 0) {
                     container.innerHTML = json.non_compliant_employees.map(emp => {
                         const statusColor = emp.status === 'non_compliant' ? 'var(--danger)' : 'var(--warning)';
+                        // XSS prevention: escape all user data
+                        const safeName = App.utils.escapeHtml(emp.name);
+                        const safeEmpNum = App.utils.escapeHtml(emp.employee_num);
+                        const safeDaysUsed = App.utils.safeNumber(emp.days_used).toFixed(1);
+                        const safeDaysRemaining = App.utils.safeNumber(emp.days_remaining).toFixed(1);
                         return `
                             <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem; border-left: 3px solid ${statusColor};">
                                 <div class="flex-between">
                                     <div>
-                                        <div style="font-weight: 600;">${emp.name}</div>
-                                        <div style="font-size: 0.85rem; color: var(--muted);">${emp.employee_num}</div>
+                                        <div style="font-weight: 600;">${safeName}</div>
+                                        <div style="font-size: 0.85rem; color: var(--muted);">${safeEmpNum}</div>
                                     </div>
                                     <div style="text-align: right;">
-                                        <div style="font-size: 1.1rem; font-weight: 700; color: ${statusColor};">${emp.days_used.toFixed(1)}日</div>
-                                        <div style="font-size: 0.8rem; color: var(--muted);">残り ${emp.days_remaining.toFixed(1)}日必要</div>
+                                        <div style="font-size: 1.1rem; font-weight: 700; color: ${statusColor};">${safeDaysUsed}日</div>
+                                        <div style="font-size: 0.8rem; color: var(--muted);">残り ${safeDaysRemaining}日必要</div>
                                     </div>
                                 </div>
                             </div>
@@ -3272,12 +3324,16 @@ const App = {
                 if (json.alerts && json.alerts.length > 0) {
                     container.innerHTML = json.alerts.map(alert => {
                         const levelIcon = alert.level === 'critical' ? '🔴' : alert.level === 'warning' ? '🟡' : '🔵';
+                        // XSS prevention: escape all user data
+                        const safeName = App.utils.escapeHtml(alert.employee_name);
+                        const safeMessage = App.utils.escapeHtml(alert.message_ja);
+                        const safeAction = App.utils.escapeHtml(alert.action_required || '-');
                         return `
                             <div style="padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem;">
-                                <div style="font-weight: 600;">${levelIcon} ${alert.employee_name}</div>
-                                <div style="font-size: 0.9rem; margin-top: 0.25rem;">${alert.message_ja}</div>
+                                <div style="font-weight: 600;">${levelIcon} ${safeName}</div>
+                                <div style="font-size: 0.9rem; margin-top: 0.25rem;">${safeMessage}</div>
                                 <div style="font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem;">
-                                    対応: ${alert.action_required || '-'}
+                                    対応: ${safeAction}
                                 </div>
                             </div>
                         `;
@@ -3314,16 +3370,24 @@ const App = {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${json.entries.map(e => `
+                                ${json.entries.map(e => {
+                                    // XSS prevention: escape all user data
+                                    const safeEmpNum = App.utils.escapeHtml(e.employee_num);
+                                    const safeName = App.utils.escapeHtml(e.employee_name);
+                                    const safeGrantDate = App.utils.escapeHtml(e.grant_date);
+                                    const safeGranted = App.utils.safeNumber(e.granted_days);
+                                    const safeUsed = App.utils.safeNumber(e.used_days);
+                                    const safeRemaining = App.utils.safeNumber(e.remaining_days);
+                                    return `
                                     <tr>
-                                        <td>${e.employee_num}</td>
-                                        <td>${e.employee_name}</td>
-                                        <td>${e.grant_date}</td>
-                                        <td>${e.granted_days}</td>
-                                        <td>${e.used_days}</td>
-                                        <td>${e.remaining_days}</td>
+                                        <td>${safeEmpNum}</td>
+                                        <td>${safeName}</td>
+                                        <td>${safeGrantDate}</td>
+                                        <td>${safeGranted}</td>
+                                        <td>${safeUsed}</td>
+                                        <td>${safeRemaining}</td>
                                     </tr>
-                                `).join('')}
+                                `}).join('')}
                             </tbody>
                         </table>
                     `;
@@ -3393,13 +3457,19 @@ const App = {
 
                 let content = '<div style="max-height: 400px; overflow-y: auto;">';
                 if (json.entries && json.entries.length > 0) {
-                    content += json.entries.map(e => `
+                    content += json.entries.map(e => {
+                        // XSS prevention: escape all user data
+                        const safeAction = App.utils.escapeHtml(e.action);
+                        const safeEntityType = App.utils.escapeHtml(e.entity_type);
+                        const safeEntityId = App.utils.escapeHtml(e.entity_id || '-');
+                        const safeTimestamp = App.utils.escapeHtml(e.timestamp?.slice(0, 19) || '');
+                        return `
                         <div style="padding: 0.5rem; background: rgba(255,255,255,0.03); margin-bottom: 0.25rem; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
-                            <span style="color: var(--primary);">[${e.action}]</span>
-                            <span style="color: var(--muted);">${e.entity_type}/${e.entity_id || '-'}</span>
-                            <span style="color: #64748b; float: right;">${e.timestamp?.slice(0, 19)}</span>
+                            <span style="color: var(--primary);">[${safeAction}]</span>
+                            <span style="color: var(--muted);">${safeEntityType}/${safeEntityId}</span>
+                            <span style="color: #64748b; float: right;">${safeTimestamp}</span>
                         </div>
-                    `).join('');
+                    `}).join('');
                 } else {
                     content += '<div style="text-align: center; padding: 2rem; color: var(--muted);">No audit log entries</div>';
                 }
@@ -3507,7 +3577,9 @@ const App = {
             if (!isOtherMonth && events.length > 0) {
                 const displayEvents = events.slice(0, 2);
                 displayEvents.forEach(e => {
-                    html += `<div class="calendar-event" style="background: ${e.color};">${e.title.split('(')[0].trim()}</div>`;
+                    // XSS prevention: escape title before display
+                    const safeTitle = App.utils.escapeHtml(e.title?.split('(')[0]?.trim() || '');
+                    html += `<div class="calendar-event" style="background: ${e.color};">${safeTitle}</div>`;
                 });
                 if (events.length > 2) {
                     html += `<div class="calendar-event-count">+${events.length - 2}</div>`;
@@ -3529,11 +3601,15 @@ const App = {
                 container.innerHTML = events.map(e => {
                     const typeLabels = { 'full': '全日', 'half_am': '午前半休', 'half_pm': '午後半休', 'hourly': '時間休', 'usage': '使用日' };
                     const typeLabel = typeLabels[e.leave_type] || typeLabels[e.type] || '休暇';
+                    // XSS prevention: escape all user data
+                    const safeName = App.utils.escapeHtml(e.employee_name);
+                    const safeDays = App.utils.safeNumber(e.days);
+                    const safeHours = App.utils.safeNumber(e.hours);
                     return `
                         <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem; border-left: 3px solid ${e.color};">
-                            <div style="font-weight: 600;">${e.employee_name}</div>
+                            <div style="font-weight: 600;">${safeName}</div>
                             <div style="font-size: 0.85rem; color: var(--muted);">
-                                ${typeLabel} ${e.days ? `(${e.days}日)` : ''} ${e.hours ? `(${e.hours}時間)` : ''}
+                                ${typeLabel} ${safeDays ? `(${safeDays}日)` : ''} ${safeHours ? `(${safeHours}時間)` : ''}
                             </div>
                         </div>
                     `;
@@ -3681,31 +3757,41 @@ const App = {
 
         renderTopUsers(topUsers) {
             const container = document.getElementById('top-users-list');
-            container.innerHTML = topUsers.map((u, i) => `
+            container.innerHTML = topUsers.map((u, i) => {
+                // XSS prevention: escape all user data
+                const safeName = App.utils.escapeHtml(u.name);
+                const safeEmpNum = App.utils.escapeHtml(u.employee_num);
+                const safeUsed = App.utils.safeNumber(u.used);
+                return `
                 <div style="display: flex; align-items: center; padding: 0.5rem; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 0.5rem;">
                     <div style="width: 30px; height: 30px; background: ${i < 3 ? 'var(--warning)' : 'rgba(255,255,255,0.1)'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 0.75rem; font-weight: 700; font-size: 0.8rem;">
                         ${i + 1}
                     </div>
                     <div style="flex: 1;">
-                        <div style="font-weight: 600;">${u.name}</div>
-                        <div style="font-size: 0.8rem; color: var(--muted);">${u.employee_num}</div>
+                        <div style="font-weight: 600;">${safeName}</div>
+                        <div style="font-size: 0.8rem; color: var(--muted);">${safeEmpNum}</div>
                     </div>
-                    <div style="font-weight: 700; color: var(--success);">${u.used}日</div>
+                    <div style="font-weight: 700; color: var(--success);">${safeUsed}日</div>
                 </div>
-            `).join('');
+            `}).join('');
         },
 
         renderHighBalance(highBalance) {
             const container = document.getElementById('high-balance-list');
-            container.innerHTML = highBalance.map(u => `
+            container.innerHTML = highBalance.map(u => {
+                // XSS prevention: escape all user data
+                const safeName = App.utils.escapeHtml(u.name);
+                const safeEmpNum = App.utils.escapeHtml(u.employee_num);
+                const safeBalance = App.utils.safeNumber(u.balance);
+                return `
                 <div style="display: flex; align-items: center; padding: 0.5rem; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 0.5rem;">
                     <div style="flex: 1;">
-                        <div style="font-weight: 600;">${u.name}</div>
-                        <div style="font-size: 0.8rem; color: var(--muted);">${u.employee_num}</div>
+                        <div style="font-weight: 600;">${safeName}</div>
+                        <div style="font-size: 0.8rem; color: var(--muted);">${safeEmpNum}</div>
                     </div>
-                    <div style="font-weight: 700; color: var(--warning);">${u.balance}日</div>
+                    <div style="font-weight: 700; color: var(--warning);">${safeBalance}日</div>
                 </div>
-            `).join('');
+            `}).join('');
         },
 
         async loadPredictions() {
@@ -3722,18 +3808,24 @@ const App = {
 
                 const container = document.getElementById('at-risk-employees');
                 if (json.at_risk_employees && json.at_risk_employees.length > 0) {
-                    container.innerHTML = json.at_risk_employees.map(e => `
+                    container.innerHTML = json.at_risk_employees.map(e => {
+                        // XSS prevention: escape all user data
+                        const safeName = App.utils.escapeHtml(e.name);
+                        const safeEmpNum = App.utils.escapeHtml(e.employee_num);
+                        const safeCurrentUsed = App.utils.safeNumber(e.current_used);
+                        const safeDaysNeeded = App.utils.safeNumber(e.days_needed);
+                        return `
                         <div style="display: flex; align-items: center; padding: 0.5rem; background: rgba(248, 113, 113, 0.1); border-radius: 8px; margin-bottom: 0.5rem; border-left: 3px solid var(--danger);">
                             <div style="flex: 1;">
-                                <div style="font-weight: 600;">${e.name}</div>
-                                <div style="font-size: 0.8rem; color: var(--muted);">${e.employee_num}</div>
+                                <div style="font-weight: 600;">${safeName}</div>
+                                <div style="font-size: 0.8rem; color: var(--muted);">${safeEmpNum}</div>
                             </div>
                             <div style="text-align: right;">
-                                <div style="font-size: 0.8rem; color: var(--muted);">現在 ${e.current_used}日</div>
-                                <div style="font-weight: 700; color: var(--danger);">あと ${e.days_needed}日必要</div>
+                                <div style="font-size: 0.8rem; color: var(--muted);">現在 ${safeCurrentUsed}日</div>
+                                <div style="font-weight: 700; color: var(--danger);">あと ${safeDaysNeeded}日必要</div>
                             </div>
                         </div>
-                    `).join('');
+                    `}).join('');
                 } else {
                     container.innerHTML = '<div style="text-align: center; color: var(--success); padding: 1rem;">✅ 5日義務達成リスク者はいません</div>';
                 }
@@ -3907,15 +3999,29 @@ const App = {
 
                 const tbody = document.getElementById('report-year-summary');
                 if (json.reports && json.reports.length > 0) {
-                    tbody.innerHTML = json.reports.map(r => `
-                        <tr style="cursor: pointer;" onclick="App.reports.selectMonth(${r.month})">
-                            <td style="font-weight: 600;">${r.label}</td>
-                            <td style="font-size: 0.85rem; color: var(--muted);">${r.period}</td>
-                            <td>${r.employee_count}人</td>
-                            <td style="color: var(--primary); font-weight: 600;">${r.total_days}日</td>
+                    tbody.innerHTML = json.reports.map(r => {
+                        // XSS prevention: escape all user data
+                        const safeMonth = parseInt(r.month) || 0;
+                        const safeLabel = App.utils.escapeHtml(r.label);
+                        const safePeriod = App.utils.escapeHtml(r.period);
+                        const safeEmpCount = App.utils.safeNumber(r.employee_count);
+                        const safeTotalDays = App.utils.safeNumber(r.total_days);
+                        return `
+                        <tr style="cursor: pointer;" data-month="${safeMonth}">
+                            <td style="font-weight: 600;">${safeLabel}</td>
+                            <td style="font-size: 0.85rem; color: var(--muted);">${safePeriod}</td>
+                            <td>${safeEmpCount}人</td>
+                            <td style="color: var(--primary); font-weight: 600;">${safeTotalDays}日</td>
                             <td><button class="btn btn-glass" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;">詳細</button></td>
                         </tr>
-                    `).join('');
+                    `}).join('');
+
+                    // Add event listeners safely (prevent XSS via onclick)
+                    tbody.querySelectorAll('tr[data-month]').forEach(row => {
+                        row.addEventListener('click', () => {
+                            App.reports.selectMonth(parseInt(row.dataset.month));
+                        });
+                    });
                 } else {
                     tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">データがありません</td></tr>';
                 }
@@ -3976,21 +4082,29 @@ const App = {
             const container = document.getElementById('report-employee-list');
             if (employees && employees.length > 0) {
                 container.innerHTML = employees.map(emp => {
+                    // XSS prevention: escape all user data
+                    const safeName = App.utils.escapeHtml(emp.name);
+                    const safeEmpNum = App.utils.escapeHtml(emp.employee_num);
+                    const safeFactory = App.utils.escapeHtml(emp.factory || '-');
+                    const safeTotalDays = App.utils.safeNumber(emp.total_days);
+                    const safeTotalHours = App.utils.safeNumber(emp.total_hours);
+
                     const datesHtml = emp.dates.map(d => {
                         const typeLabel = { 'full': '全', 'half_am': '午前', 'half_pm': '午後', 'hourly': '時' }[d.type] || '';
-                        return `<span class="badge badge-info" style="margin: 0.1rem; padding: 0.15rem 0.4rem; font-size: 0.65rem;">${d.date.slice(5)} ${typeLabel}</span>`;
+                        const safeDate = App.utils.escapeHtml(d.date?.slice(5) || '');
+                        return `<span class="badge badge-info" style="margin: 0.1rem; padding: 0.15rem 0.4rem; font-size: 0.65rem;">${safeDate} ${typeLabel}</span>`;
                     }).join('');
 
                     return `
                         <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem;">
                             <div class="flex-between" style="margin-bottom: 0.5rem;">
                                 <div>
-                                    <div style="font-weight: 600;">${emp.name}</div>
-                                    <div style="font-size: 0.8rem; color: var(--muted);">${emp.employee_num} | ${emp.factory || '-'}</div>
+                                    <div style="font-weight: 600;">${safeName}</div>
+                                    <div style="font-size: 0.8rem; color: var(--muted);">${safeEmpNum} | ${safeFactory}</div>
                                 </div>
                                 <div style="text-align: right;">
-                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${emp.total_days}日</div>
-                                    ${emp.total_hours > 0 ? `<div style="font-size: 0.8rem; color: var(--warning);">+${emp.total_hours}時間</div>` : ''}
+                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${safeTotalDays}日</div>
+                                    ${safeTotalHours > 0 ? `<div style="font-size: 0.8rem; color: var(--warning);">+${safeTotalHours}時間</div>` : ''}
                                 </div>
                             </div>
                             <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
@@ -4007,20 +4121,26 @@ const App = {
         renderFactoryList(factories) {
             const container = document.getElementById('report-factory-list');
             if (factories && factories.length > 0) {
-                container.innerHTML = factories.map(f => `
+                container.innerHTML = factories.map(f => {
+                    // XSS prevention: escape all user data
+                    const safeFactory = App.utils.escapeHtml(f.factory);
+                    const safeEmpCount = App.utils.safeNumber(f.employee_count);
+                    const safeTotalDays = App.utils.safeNumber(f.total_days);
+                    const safeNames = f.employees.map(e => App.utils.escapeHtml(e.name)).join(', ');
+                    return `
                     <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem;">
                         <div class="flex-between" style="margin-bottom: 0.5rem;">
-                            <div style="font-weight: 600;">${f.factory}</div>
+                            <div style="font-weight: 600;">${safeFactory}</div>
                             <div>
-                                <span style="font-size: 0.9rem; color: var(--muted);">${f.employee_count}人</span>
-                                <span style="font-size: 1.1rem; font-weight: 700; color: var(--primary); margin-left: 0.5rem;">${f.total_days}日</span>
+                                <span style="font-size: 0.9rem; color: var(--muted);">${safeEmpCount}人</span>
+                                <span style="font-size: 1.1rem; font-weight: 700; color: var(--primary); margin-left: 0.5rem;">${safeTotalDays}日</span>
                             </div>
                         </div>
                         <div style="font-size: 0.8rem; color: var(--muted);">
-                            ${f.employees.map(e => e.name).join(', ')}
+                            ${safeNames}
                         </div>
                     </div>
-                `).join('');
+                `}).join('');
             } else {
                 container.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 2rem;">データがありません</div>';
             }
@@ -4033,10 +4153,14 @@ const App = {
                     const bgColor = d.count >= 5 ? 'rgba(248, 113, 113, 0.3)' :
                         d.count >= 3 ? 'rgba(251, 191, 36, 0.3)' :
                             'rgba(56, 189, 248, 0.15)';
+                    // XSS prevention: escape all user data
+                    const safeDate = App.utils.escapeHtml(d.date?.slice(5) || '');
+                    const safeCount = App.utils.safeNumber(d.count);
+                    const safeEmployees = d.employees.map(e => App.utils.escapeHtml(e)).join(', ');
                     return `
-                        <div style="padding: 0.5rem; background: ${bgColor}; border-radius: 8px; text-align: center;" title="${d.employees.join(', ')}">
-                            <div style="font-weight: 600; font-size: 0.9rem;">${d.date.slice(5)}</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">${d.count}</div>
+                        <div style="padding: 0.5rem; background: ${bgColor}; border-radius: 8px; text-align: center;" title="${safeEmployees}">
+                            <div style="font-weight: 600; font-size: 0.9rem;">${safeDate}</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">${safeCount}</div>
                             <div style="font-size: 0.7rem; color: var(--muted);">人</div>
                         </div>
                     `;
@@ -5072,15 +5196,18 @@ App.importReport = {
         section.style.display = 'block';
 
         let html = '';
-        report.problematicEmployees.slice(0, 10).forEach(emp => {
+        report.problematicEmployees.slice(0, 10).forEach((emp, idx) => {
+            // XSS prevention: escape all user data
+            const safeEmpNum = this.escapeHtml(emp.employeeNum);
+            const safeDetail = this.escapeHtml(emp.detail);
             html += `
                 <div class="import-problem-item">
                     <div class="import-problem-employee">
                         <span class="import-problem-name">${this.escapeHtml(emp.name)}</span>
-                        <span class="import-problem-num">(${emp.employeeNum})</span>
+                        <span class="import-problem-num">(${safeEmpNum})</span>
                     </div>
-                    <span class="import-problem-issue">${this.escapeHtml(emp.issue)}: ${emp.detail}</span>
-                    <button class="import-problem-action" onclick="App.importReport.viewEmployee('${emp.employeeNum}')">
+                    <span class="import-problem-issue">${this.escapeHtml(emp.issue)}: ${safeDetail}</span>
+                    <button class="import-problem-action" data-emp-index="${idx}">
                         詳細
                     </button>
                 </div>
@@ -5088,6 +5215,15 @@ App.importReport = {
         });
 
         list.innerHTML = html;
+
+        // Add event listeners safely (prevent XSS via onclick)
+        list.querySelectorAll('.import-problem-action').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.empIndex);
+                const emp = report.problematicEmployees[idx];
+                if (emp) App.importReport.viewEmployee(emp.employeeNum);
+            });
+        });
     },
 
     /**
@@ -5529,14 +5665,24 @@ App.bulkEdit = {
         // Update modal content
         document.getElementById('bulk-edit-count').textContent = this.selectedEmployees.size;
 
-        // Populate employee list
+        // Populate employee list - XSS prevention: use data attributes instead of inline onclick
         const listEl = document.getElementById('bulk-edit-employees-list');
-        listEl.innerHTML = Array.from(this.selectedEmployees.values()).map(emp => `
+        const employeesArray = Array.from(this.selectedEmployees.values());
+        listEl.innerHTML = employeesArray.map((emp, idx) => `
             <div class="bulk-edit-employee-chip">
                 <span>${App.utils.escapeHtml(emp.name)}</span>
-                <span class="remove" onclick="App.bulkEdit.removeFromSelection('${emp.employeeNum}')">&times;</span>
+                <span class="remove" data-emp-index="${idx}">&times;</span>
             </div>
         `).join('');
+
+        // Add event listeners safely (prevent XSS via onclick)
+        listEl.querySelectorAll('.remove').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.empIndex);
+                const emp = employeesArray[idx];
+                if (emp) App.bulkEdit.removeFromSelection(emp.employeeNum);
+            });
+        });
 
         // Populate haken dropdown
         const hakenSelect = document.getElementById('bulk-edit-set-haken');
