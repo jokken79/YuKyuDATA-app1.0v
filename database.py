@@ -15,7 +15,22 @@ except ImportError:
     import sqlite3
     USE_POSTGRESQL = False
 
-DB_NAME = "yukyu.db"
+# Vercel compatibility: Use /tmp for serverless or custom path via env var
+def get_db_path():
+    """Get database path, handling Vercel serverless environment."""
+    custom_path = os.getenv('DATABASE_PATH')
+    if custom_path:
+        return custom_path
+
+    # Check if running on Vercel (serverless)
+    if os.getenv('VERCEL') or os.getenv('AWS_LAMBDA_FUNCTION_NAME'):
+        # Use /tmp for serverless (ephemeral storage)
+        return '/tmp/yukyu.db'
+
+    # Default: local directory
+    return 'yukyu.db'
+
+DB_NAME = get_db_path()
 DATABASE_URL = os.getenv('DATABASE_URL', f'sqlite:///{DB_NAME}')
 
 # Initialize connection manager for PostgreSQL

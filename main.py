@@ -653,14 +653,18 @@ async def shutdown_event():
     except Exception as e:
         logger.error(f"⚠️  Shutdown error: {str(e)}", exc_info=True)
 
+# Get base directory for Vercel compatibility
+BASE_DIR = Path(__file__).resolve().parent
+
 # Mount static files (css, js, etc.)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
     """Serves the main dashboard page."""
-    with open("templates/index.html", "r", encoding="utf-8") as f:
+    template_path = BASE_DIR / "templates" / "index.html"
+    with open(template_path, "r", encoding="utf-8") as f:
         return f.read()
 
 
