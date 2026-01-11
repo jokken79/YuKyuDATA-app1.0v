@@ -440,7 +440,7 @@ app = FastAPI(
 
     La API utiliza JWT Bearer tokens. Usa `/api/auth/login` para obtener un token.
     """,
-    version="2.0.0",
+    version="2.4.0",
     contact={
         "name": "YuKyuDATA Support",
         "email": "support@yukyu.example.com"
@@ -3869,6 +3869,40 @@ async def get_dashboard_analytics(year: int):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/analytics/monthly-trend/{year}")
+async def get_monthly_trend(year: int):
+    """
+    月次使用トレンドデータを取得。
+    年度の月別使用日数と累積使用日数を返す。
+    """
+    try:
+        # Get monthly usage summary
+        monthly = database.get_monthly_usage_summary(year)
+
+        # Japanese fiscal year: April (4) to March (3)
+        fiscal_months = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+
+        monthly_usage = []
+        cumulative = 0
+        cumulative_usage = []
+
+        for month in fiscal_months:
+            total = monthly.get(month, {}).get('total_days', 0)
+            monthly_usage.append(round(total, 1))
+            cumulative += total
+            cumulative_usage.append(round(cumulative, 1))
+
+        return {
+            "year": year,
+            "monthly_usage": monthly_usage,
+            "cumulative_usage": cumulative_usage,
+            "total": round(cumulative, 1)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # === MONTHLY REPORTS ENDPOINTS ===
 

@@ -3853,6 +3853,229 @@ const App = {
             } finally {
                 App.ui.hideLoading();
             }
+        },
+
+        // ========================================
+        // ADVANCED ANALYTICS - Year Comparison
+        // ========================================
+        async loadYearComparison() {
+            const currentYear = App.state.year || new Date().getFullYear();
+            const previousYear = currentYear - 1;
+
+            try {
+                const [currentRes, previousRes] = await Promise.all([
+                    fetch(`${App.config.apiBase}/analytics/dashboard/${currentYear}`),
+                    fetch(`${App.config.apiBase}/analytics/dashboard/${previousYear}`)
+                ]);
+
+                const currentData = await currentRes.json();
+                const previousData = await previousRes.json();
+
+                this.renderYearComparison(currentData, previousData, currentYear, previousYear);
+            } catch (e) {
+                console.error('Year comparison error:', e);
+            }
+        },
+
+        renderYearComparison(current, previous, currentYear, previousYear) {
+            const ctx = document.getElementById('chart-year-comparison');
+            if (!ctx) return;
+
+            if (App.state.charts['yearComparison']) {
+                App.state.charts['yearComparison'].destroy();
+            }
+
+            const labels = ['付与日数', '使用日数', '平均使用率'];
+            const currentValues = [
+                current.summary?.total_granted || 0,
+                current.summary?.total_used || 0,
+                current.summary?.average_rate || 0
+            ];
+            const previousValues = [
+                previous.summary?.total_granted || 0,
+                previous.summary?.total_used || 0,
+                previous.summary?.average_rate || 0
+            ];
+
+            App.state.charts['yearComparison'] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: `${previousYear}年`,
+                            data: previousValues,
+                            backgroundColor: 'rgba(156, 163, 175, 0.5)',
+                            borderColor: '#9ca3af',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        },
+                        {
+                            label: `${currentYear}年`,
+                            data: currentValues,
+                            backgroundColor: 'rgba(6, 182, 212, 0.5)',
+                            borderColor: '#06b6d4',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#6b6b6b' } },
+                        y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#6b6b6b' } }
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { color: '#6b6b6b' } },
+                        title: { display: true, text: '年度比較', color: '#6b6b6b' }
+                    }
+                }
+            });
+
+            // Update comparison stats
+            const usedDiff = currentValues[1] - previousValues[1];
+            const rateDiff = currentValues[2] - previousValues[2];
+            const statsContainer = document.getElementById('year-comparison-stats');
+            if (statsContainer) {
+                statsContainer.innerHTML = `
+                    <div class="stat-card">
+                        <span class="stat-label">使用日数変化</span>
+                        <span class="stat-value ${usedDiff >= 0 ? 'text-success' : 'text-danger'}">
+                            ${usedDiff >= 0 ? '+' : ''}${usedDiff.toFixed(1)}日
+                        </span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">使用率変化</span>
+                        <span class="stat-value ${rateDiff >= 0 ? 'text-success' : 'text-danger'}">
+                            ${rateDiff >= 0 ? '+' : ''}${rateDiff.toFixed(1)}%
+                        </span>
+                    </div>
+                `;
+            }
+        },
+
+        // ========================================
+        // ADVANCED ANALYTICS - Monthly Trend
+        // ========================================
+        async loadMonthlyTrend() {
+            const year = App.state.year || new Date().getFullYear();
+
+            try {
+                const res = await fetch(`${App.config.apiBase}/analytics/monthly-trend/${year}`);
+                const data = await res.json();
+                this.renderMonthlyTrend(data);
+            } catch (e) {
+                console.error('Monthly trend error:', e);
+            }
+        },
+
+        renderMonthlyTrend(data) {
+            const ctx = document.getElementById('chart-monthly-trend');
+            if (!ctx) return;
+
+            if (App.state.charts['monthlyTrend']) {
+                App.state.charts['monthlyTrend'].destroy();
+            }
+
+            const months = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
+            const usageData = data.monthly_usage || Array(12).fill(0);
+            const cumulativeData = data.cumulative_usage || [];
+
+            App.state.charts['monthlyTrend'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [
+                        {
+                            label: '月次使用',
+                            data: usageData,
+                            borderColor: '#06b6d4',
+                            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: '累積使用',
+                            data: cumulativeData,
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'transparent',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#6b6b6b' } },
+                        y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#6b6b6b' } }
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { color: '#6b6b6b' } },
+                        title: { display: true, text: '月次使用トレンド', color: '#6b6b6b' }
+                    }
+                }
+            });
+        },
+
+        // ========================================
+        // ADVANCED ANALYTICS - Compliance Gauge
+        // ========================================
+        renderComplianceGauge(complianceRate) {
+            const ctx = document.getElementById('chart-compliance-gauge');
+            if (!ctx) return;
+
+            if (App.state.charts['complianceGauge']) {
+                App.state.charts['complianceGauge'].destroy();
+            }
+
+            const rate = complianceRate || 0;
+            const color = rate >= 90 ? '#34d399' : rate >= 70 ? '#fbbf24' : '#f87171';
+
+            App.state.charts['complianceGauge'] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [rate, 100 - rate],
+                        backgroundColor: [color, 'rgba(255,255,255,0.1)'],
+                        borderWidth: 0,
+                        circumference: 180,
+                        rotation: 270
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    }
+                }
+            });
+
+            // Update gauge value display
+            const gaugeValue = document.getElementById('gauge-value');
+            if (gaugeValue) {
+                gaugeValue.textContent = `${rate.toFixed(1)}%`;
+                gaugeValue.style.color = color;
+            }
+        },
+
+        // ========================================
+        // ADVANCED ANALYTICS - Load All
+        // ========================================
+        async loadAdvancedAnalytics() {
+            await Promise.all([
+                this.loadYearComparison(),
+                this.loadMonthlyTrend()
+            ]);
         }
     },
 
@@ -5942,6 +6165,263 @@ App.bulkEdit = {
             App.ui.hideLoading();
             App.ui.showToast('error', `更新エラー: ${error.message}`);
         }
+    }
+};
+
+// ========================================
+// BATCH IMPORT MODULE (v2.5 - NEW)
+// Importar múltiples archivos Excel
+// ========================================
+App.batchImport = {
+    files: [],
+    results: [],
+    isProcessing: false,
+
+    /**
+     * Abrir modal de batch import
+     */
+    openModal() {
+        this.files = [];
+        this.results = [];
+        this.isProcessing = false;
+
+        const modal = document.getElementById('batch-import-modal');
+        if (!modal) {
+            this.createModal();
+        }
+        document.getElementById('batch-import-modal').style.display = 'flex';
+        this.updateUI();
+    },
+
+    /**
+     * Crear modal dinámicamente
+     */
+    createModal() {
+        const modal = document.createElement('div');
+        modal.id = 'batch-import-modal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 700px;">
+                <div class="modal-header">
+                    <h3>📁 バッチインポート - 複数ファイル</h3>
+                    <button class="modal-close" onclick="App.batchImport.closeModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Drop Zone -->
+                    <div id="batch-drop-zone" class="drop-zone" ondragover="App.batchImport.handleDragOver(event)"
+                         ondrop="App.batchImport.handleDrop(event)" ondragleave="App.batchImport.handleDragLeave(event)">
+                        <input type="file" id="batch-file-input" multiple accept=".xlsx,.xlsm,.xls"
+                               onchange="App.batchImport.handleFileSelect(event)" style="display: none;">
+                        <div class="drop-zone-content">
+                            <span class="drop-zone-icon">📂</span>
+                            <p>ファイルをドラッグ&ドロップ</p>
+                            <p class="text-muted">または</p>
+                            <button class="btn btn-primary" onclick="document.getElementById('batch-file-input').click()">
+                                ファイルを選択
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- File List -->
+                    <div id="batch-file-list" class="batch-file-list" style="margin-top: 1rem;"></div>
+
+                    <!-- Progress -->
+                    <div id="batch-progress" style="display: none; margin-top: 1rem;">
+                        <div class="progress-bar-container">
+                            <div id="batch-progress-bar" class="progress-bar" style="width: 0%;"></div>
+                        </div>
+                        <p id="batch-progress-text" class="text-center text-muted" style="margin-top: 0.5rem;"></p>
+                    </div>
+
+                    <!-- Results -->
+                    <div id="batch-results" style="display: none; margin-top: 1rem;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="App.batchImport.closeModal()">閉じる</button>
+                    <button id="batch-import-btn" class="btn btn-primary" onclick="App.batchImport.startImport()" disabled>
+                        インポート開始
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    },
+
+    /**
+     * Cerrar modal
+     */
+    closeModal() {
+        const modal = document.getElementById('batch-import-modal');
+        if (modal) modal.style.display = 'none';
+    },
+
+    /**
+     * Handle drag over
+     */
+    handleDragOver(event) {
+        event.preventDefault();
+        event.currentTarget.classList.add('drag-over');
+    },
+
+    /**
+     * Handle drag leave
+     */
+    handleDragLeave(event) {
+        event.currentTarget.classList.remove('drag-over');
+    },
+
+    /**
+     * Handle file drop
+     */
+    handleDrop(event) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('drag-over');
+        const files = Array.from(event.dataTransfer.files).filter(f =>
+            f.name.endsWith('.xlsx') || f.name.endsWith('.xlsm') || f.name.endsWith('.xls')
+        );
+        this.addFiles(files);
+    },
+
+    /**
+     * Handle file select
+     */
+    handleFileSelect(event) {
+        const files = Array.from(event.target.files);
+        this.addFiles(files);
+    },
+
+    /**
+     * Add files to list
+     */
+    addFiles(newFiles) {
+        newFiles.forEach(file => {
+            if (!this.files.find(f => f.name === file.name)) {
+                this.files.push(file);
+            }
+        });
+        this.updateUI();
+    },
+
+    /**
+     * Remove file from list
+     */
+    removeFile(index) {
+        this.files.splice(index, 1);
+        this.updateUI();
+    },
+
+    /**
+     * Update UI
+     */
+    updateUI() {
+        const listEl = document.getElementById('batch-file-list');
+        const importBtn = document.getElementById('batch-import-btn');
+
+        if (this.files.length === 0) {
+            listEl.innerHTML = '<p class="text-muted text-center">ファイルが選択されていません</p>';
+            importBtn.disabled = true;
+        } else {
+            listEl.innerHTML = this.files.map((file, i) => `
+                <div class="batch-file-item">
+                    <span class="batch-file-icon">📄</span>
+                    <span class="batch-file-name">${App.utils.escapeHtml(file.name)}</span>
+                    <span class="batch-file-size">${(file.size / 1024).toFixed(1)} KB</span>
+                    <button class="btn btn-sm btn-danger" onclick="App.batchImport.removeFile(${i})">✕</button>
+                </div>
+            `).join('');
+            importBtn.disabled = this.isProcessing;
+        }
+    },
+
+    /**
+     * Start batch import
+     */
+    async startImport() {
+        if (this.files.length === 0 || this.isProcessing) return;
+
+        this.isProcessing = true;
+        this.results = [];
+
+        const progressEl = document.getElementById('batch-progress');
+        const progressBar = document.getElementById('batch-progress-bar');
+        const progressText = document.getElementById('batch-progress-text');
+        const resultsEl = document.getElementById('batch-results');
+        const importBtn = document.getElementById('batch-import-btn');
+
+        progressEl.style.display = 'block';
+        resultsEl.style.display = 'none';
+        importBtn.disabled = true;
+
+        for (let i = 0; i < this.files.length; i++) {
+            const file = this.files[i];
+            const progress = ((i + 1) / this.files.length) * 100;
+
+            progressBar.style.width = `${progress}%`;
+            progressText.textContent = `処理中: ${file.name} (${i + 1}/${this.files.length})`;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch(`${App.config.apiBase}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                this.results.push({
+                    filename: file.name,
+                    success: response.ok,
+                    count: result.count || 0,
+                    message: result.message || result.detail || 'Unknown error'
+                });
+            } catch (error) {
+                this.results.push({
+                    filename: file.name,
+                    success: false,
+                    count: 0,
+                    message: error.message
+                });
+            }
+        }
+
+        this.isProcessing = false;
+        progressEl.style.display = 'none';
+        this.showResults();
+    },
+
+    /**
+     * Show import results
+     */
+    showResults() {
+        const resultsEl = document.getElementById('batch-results');
+        const successCount = this.results.filter(r => r.success).length;
+        const totalImported = this.results.reduce((sum, r) => sum + r.count, 0);
+
+        resultsEl.style.display = 'block';
+        resultsEl.innerHTML = `
+            <div class="batch-results-summary ${successCount === this.results.length ? 'success' : 'warning'}">
+                <h4>${successCount}/${this.results.length} ファイル成功</h4>
+                <p>合計 ${totalImported} 件のレコードをインポートしました</p>
+            </div>
+            <div class="batch-results-list">
+                ${this.results.map(r => `
+                    <div class="batch-result-item ${r.success ? 'success' : 'error'}">
+                        <span class="batch-result-icon">${r.success ? '✅' : '❌'}</span>
+                        <span class="batch-result-name">${App.utils.escapeHtml(r.filename)}</span>
+                        <span class="batch-result-count">${r.count}件</span>
+                        ${!r.success ? `<span class="batch-result-error">${App.utils.escapeHtml(r.message)}</span>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        // Clear files
+        this.files = [];
+        this.updateUI();
+
+        // Refresh main data
+        App.data.fetchEmployees(App.state.year);
     }
 };
 
