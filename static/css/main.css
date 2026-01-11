@@ -1216,6 +1216,162 @@ select.input-glass {
   color: var(--text-secondary);
 }
 
+/* ========================================
+   LANGUAGE SELECTOR - i18n
+   ======================================== */
+.language-selector {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.language-selector-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 70px;
+}
+
+.language-selector-btn:hover {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: rgba(6, 182, 212, 0.4);
+  transform: translateY(-1px);
+}
+
+.language-selector-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.3);
+}
+
+.language-selector-flag {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.language-selector-code {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.language-selector-arrow {
+  font-size: 0.65rem;
+  transition: transform 0.2s ease;
+  opacity: 0.7;
+}
+
+.language-selector.open .language-selector-arrow {
+  transform: rotate(180deg);
+}
+
+.language-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 160px;
+  background: rgba(15, 23, 42, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5),
+              0 0 0 1px rgba(6, 182, 212, 0.1);
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.2s ease;
+  z-index: 1000;
+}
+
+.language-selector.open .language-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.language-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+.language-option:hover {
+  background: rgba(6, 182, 212, 0.15);
+}
+
+.language-option.active {
+  background: rgba(6, 182, 212, 0.2);
+  color: var(--primary);
+}
+
+.language-option.active::after {
+  content: '';
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--primary);
+}
+
+.language-option-flag {
+  font-size: 1.2rem;
+}
+
+.language-option-name {
+  font-weight: 500;
+}
+
+.language-option-native {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+/* Light theme adjustments for language selector */
+[data-theme="light"] .language-selector-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .language-selector-btn:hover {
+  background: rgba(6, 182, 212, 0.1);
+  border-color: rgba(6, 182, 212, 0.3);
+}
+
+[data-theme="light"] .language-dropdown {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .language-option:hover {
+  background: rgba(6, 182, 212, 0.1);
+}
+
+[data-theme="light"] .language-option.active {
+  background: rgba(6, 182, 212, 0.15);
+}
+
 /* Export Button Prominent */
 .btn-export {
   background: linear-gradient(135deg, var(--success), #059669);
@@ -2573,4 +2729,971 @@ canvas {
 
 .bento-grid .glass-panel {
   overflow: visible;
+}
+
+/* ========================================
+   IMPORT VALIDATION - Row Highlighting
+   ======================================== */
+
+/* Problematic row animation */
+@keyframes pulse-highlight {
+  0%, 100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+  50% {
+    background-color: rgba(248, 113, 113, 0.15);
+    box-shadow: inset 0 0 0 2px rgba(248, 113, 113, 0.5);
+  }
+}
+
+/* Problematic row styling */
+.row-problematic {
+  position: relative;
+}
+
+.row-problematic td {
+  background-color: rgba(248, 113, 113, 0.08) !important;
+}
+
+.row-problematic td:first-child::before {
+  content: '⚠️';
+  position: absolute;
+  left: -1.5rem;
+  opacity: 0.8;
+}
+
+/* Warning indicator badge on row */
+.row-warning-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  color: var(--warning);
+  margin-left: 0.5rem;
+}
+
+.row-error-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  color: var(--danger);
+  margin-left: 0.5rem;
+}
+
+/* Import result modal animations */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.import-stats-grid .import-stat-card {
+  animation: slideInUp 0.4s ease-out backwards;
+}
+
+.import-stats-grid .import-stat-card:nth-child(1) { animation-delay: 0.1s; }
+.import-stats-grid .import-stat-card:nth-child(2) { animation-delay: 0.15s; }
+.import-stats-grid .import-stat-card:nth-child(3) { animation-delay: 0.2s; }
+.import-stats-grid .import-stat-card:nth-child(4) { animation-delay: 0.25s; }
+
+/* Success checkmark animation */
+@keyframes checkmark-appear {
+  0% {
+    transform: scale(0) rotate(-45deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.import-status-success .import-status-icon {
+  animation: checkmark-appear 0.5s ease-out;
+}
+
+/* Warning shake animation */
+@keyframes warning-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+  20%, 40%, 60%, 80% { transform: translateX(2px); }
+}
+
+.import-status-warning .import-status-icon,
+.import-status-error .import-status-icon {
+  animation: warning-shake 0.5s ease-in-out;
+}
+
+/* ========================================
+   RESPONSIVE TABLES - Mobile First
+   ======================================== */
+
+/* Table wrapper for horizontal scroll on medium screens */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) rgba(255, 255, 255, 0.1);
+}
+
+.table-responsive::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+[data-theme="light"] .table-responsive::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .table-responsive::-webkit-scrollbar-thumb {
+  background: var(--secondary);
+}
+
+/* Card-style table class for mobile */
+.table-card-mobile {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Medium screens (768px - 1024px): Horizontal scroll + compact styles */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .table-responsive {
+    margin: 0 -0.5rem;
+    padding: 0 0.5rem;
+  }
+
+  .table-responsive .modern-table,
+  .table-responsive .data-table {
+    min-width: 800px;
+  }
+
+  .modern-table th,
+  .modern-table td,
+  .data-table th,
+  .data-table td {
+    padding: 0.625rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .modern-table th,
+  .data-table th {
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
+  /* Reduce badge size on medium screens */
+  .modern-table .badge,
+  .data-table .badge {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.7rem;
+  }
+}
+
+/* Small screens (< 768px): Card layout */
+@media (max-width: 767px) {
+  /* Hide less important columns on mobile */
+  .table-responsive .hide-mobile,
+  .modern-table .hide-mobile,
+  .data-table .hide-mobile {
+    display: none !important;
+  }
+
+  /* Table card transformation */
+  .table-card-mobile thead {
+    display: none;
+  }
+
+  .table-card-mobile tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .table-card-mobile tbody tr {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transform: none;
+    animation: none;
+  }
+
+  [data-theme="light"] .table-card-mobile tbody tr {
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  }
+
+  .table-card-mobile tbody tr:hover {
+    transform: none;
+  }
+
+  .table-card-mobile tbody tr:hover td {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .table-card-mobile tbody tr td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.625rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: transparent;
+  }
+
+  [data-theme="light"] .table-card-mobile tbody tr td {
+    border-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .table-card-mobile tbody tr td:last-child {
+    border-bottom: none;
+  }
+
+  /* Show data-label as header */
+  .table-card-mobile tbody tr td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+    margin-right: 1rem;
+    min-width: 100px;
+  }
+
+  .table-card-mobile tbody tr td:first-child::before {
+    color: var(--primary);
+  }
+
+  /* Value styling in card layout */
+  .table-card-mobile tbody tr td span,
+  .table-card-mobile tbody tr td .badge {
+    text-align: right;
+  }
+
+  /* Highlight first cell (usually name/ID) */
+  .table-card-mobile tbody tr td:first-child {
+    padding-top: 0;
+    border-bottom: 2px solid rgba(6, 182, 212, 0.2);
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .table-card-mobile tbody tr td:first-child::before {
+    display: none;
+  }
+
+  .table-card-mobile tbody tr td:first-child span {
+    width: 100%;
+    text-align: left;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  /* Action buttons in card */
+  .table-card-mobile tbody tr td.actions-cell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    padding-top: 0.75rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: none;
+  }
+
+  [data-theme="light"] .table-card-mobile tbody tr td.actions-cell {
+    border-color: rgba(0, 0, 0, 0.08);
+  }
+
+  .table-card-mobile tbody tr td.actions-cell::before {
+    display: none;
+  }
+
+  /* Standard data-table mobile card styles */
+  .data-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .data-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .data-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  }
+
+  [data-theme="light"] .data-table tbody tr {
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  }
+
+  .data-table tbody tr td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    text-align: right;
+  }
+
+  [data-theme="light"] .data-table tbody tr td {
+    border-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .data-table tbody tr td:last-child {
+    border-bottom: none;
+  }
+
+  .data-table tbody tr td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    text-align: left;
+    flex-shrink: 0;
+    margin-right: 1rem;
+  }
+
+  /* Modern table mobile transformation */
+  .modern-table:not(.no-mobile-transform) thead {
+    display: none;
+  }
+
+  .modern-table:not(.no-mobile-transform) tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .modern-table:not(.no-mobile-transform) tbody tr {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transform: none;
+    animation: none;
+  }
+
+  [data-theme="light"] .modern-table:not(.no-mobile-transform) tbody tr {
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  }
+
+  .modern-table:not(.no-mobile-transform) tbody tr:hover {
+    transform: none;
+  }
+
+  .modern-table:not(.no-mobile-transform) tbody tr:hover td {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .modern-table:not(.no-mobile-transform) tbody tr td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    text-align: right;
+  }
+
+  [data-theme="light"] .modern-table:not(.no-mobile-transform) tbody tr td {
+    border-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .modern-table:not(.no-mobile-transform) tbody tr td:last-child {
+    border-bottom: none;
+  }
+
+  .modern-table:not(.no-mobile-transform) tbody tr td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    text-align: left;
+    flex-shrink: 0;
+    margin-right: 1rem;
+  }
+
+  .modern-table:not(.no-mobile-transform) tbody tr td:first-child::before {
+    display: none;
+  }
+
+  .modern-table:not(.no-mobile-transform) tbody tr td:first-child {
+    border-bottom: 2px solid rgba(6, 182, 212, 0.2);
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    justify-content: flex-start;
+  }
+}
+
+/* ========================================
+   TOUCH-FRIENDLY CONTROLS - Mobile
+   ======================================== */
+
+/* Minimum touch target size (44px as per Apple HIG / Google Material) */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Button spacing for touch */
+.btn-group-touch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.btn-group-touch .btn {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Touch-optimized action buttons */
+@media (max-width: 768px) {
+  /* Ensure all interactive elements have proper touch targets */
+  .btn,
+  button,
+  .nav-item,
+  .tab-btn,
+  .theme-toggle,
+  .language-selector-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Checkbox and radio touch area */
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-width: 22px;
+    min-height: 22px;
+    cursor: pointer;
+  }
+
+  /* Label touch area for checkboxes/radios */
+  label:has(input[type="checkbox"]),
+  label:has(input[type="radio"]) {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    gap: 0.75rem;
+    cursor: pointer;
+    padding: 0.5rem 0;
+  }
+
+  /* Icon buttons */
+  .btn-icon,
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Button groups with proper spacing */
+  .btn-group,
+  .button-group,
+  .action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  /* Table action buttons */
+  .table-actions,
+  td .btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .table-actions .btn,
+  td .btn {
+    min-height: 40px;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.85rem;
+  }
+
+  /* Small icon-only buttons */
+  .btn-sm.btn-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  /* Dropdown menu items */
+  .dropdown-item,
+  .menu-item {
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+  }
+
+  /* Links in lists */
+  ul li a,
+  .list-item a {
+    display: block;
+    padding: 0.75rem 0;
+    min-height: 44px;
+  }
+
+  /* Pagination buttons */
+  .pagination .page-link,
+  .pagination button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.5rem;
+  }
+
+  /* Search clear button */
+  .search-clear,
+  .input-clear {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Select dropdown */
+  select.input-glass {
+    min-height: 48px;
+    padding: 0.75rem 2.5rem 0.75rem 1rem;
+  }
+
+  /* Textarea */
+  textarea.input-glass {
+    min-height: 100px;
+    font-size: 16px;
+  }
+}
+
+/* Very small screens (< 480px): Extra compact */
+@media (max-width: 479px) {
+  /* Stack buttons vertically if needed */
+  .btn-group-stack-mobile {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .btn-group-stack-mobile .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Full-width buttons */
+  .btn-full-mobile {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Compact table cards */
+  .table-card-mobile tbody tr,
+  .data-table tbody tr,
+  .modern-table:not(.no-mobile-transform) tbody tr {
+    padding: 0.75rem;
+  }
+
+  .table-card-mobile tbody tr td::before,
+  .data-table tbody tr td::before,
+  .modern-table:not(.no-mobile-transform) tbody tr td::before {
+    font-size: 0.7rem;
+    min-width: 80px;
+  }
+
+  /* Smaller badges on very small screens */
+  .badge {
+    padding: 0.15rem 0.5rem;
+    font-size: 0.7rem;
+  }
+}
+
+/* ========================================
+   TABLE UTILITY CLASSES
+   ======================================== */
+
+/* Priority classes for mobile visibility */
+.priority-high {
+  /* Always visible */
+}
+
+.priority-medium {
+  /* Hidden on very small screens */
+}
+
+.priority-low {
+  /* Hidden on small screens */
+}
+
+@media (max-width: 767px) {
+  .priority-low {
+    display: none !important;
+  }
+}
+
+@media (max-width: 479px) {
+  .priority-medium {
+    display: none !important;
+  }
+}
+
+/* Sticky first column for horizontal scroll */
+.table-sticky-col th:first-child,
+.table-sticky-col td:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--bg-card);
+  z-index: 1;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .table-sticky-col th:first-child,
+[data-theme="light"] .table-sticky-col td:first-child {
+  background: #ffffff;
+}
+
+/* Nowrap for specific columns */
+.nowrap {
+  white-space: nowrap;
+}
+
+/* Truncate text with ellipsis */
+.truncate {
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+  .truncate {
+    max-width: 100px;
+  }
+}
+
+/* Sortable column indicator */
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-right: 1.5rem !important;
+}
+
+.sortable::after {
+  content: '⇅';
+  position: absolute;
+  right: 0.5rem;
+  opacity: 0.4;
+  font-size: 0.75rem;
+}
+
+.sortable.sort-asc::after {
+  content: '↑';
+  opacity: 1;
+  color: var(--primary);
+}
+
+.sortable.sort-desc::after {
+  content: '↓';
+  opacity: 1;
+  color: var(--primary);
+}
+
+/* Numeric columns alignment */
+.col-numeric {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Date columns */
+.col-date {
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+/* Status columns centered */
+.col-status {
+  text-align: center;
+}
+
+/* ========================================
+ * BATCH IMPORT STYLES (v2.5)
+ * ======================================== */
+
+/* Drop Zone */
+.drop-zone {
+  border: 2px dashed var(--border-color);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  background: var(--bg-card);
+}
+
+.drop-zone:hover,
+.drop-zone.drag-over {
+  border-color: var(--primary);
+  background: rgba(6, 182, 212, 0.05);
+}
+
+.drop-zone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.drop-zone-icon {
+  font-size: 3rem;
+  opacity: 0.7;
+}
+
+/* Batch File List */
+.batch-file-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.batch-file-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.batch-file-icon {
+  font-size: 1.25rem;
+}
+
+.batch-file-name {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-file-size {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* Progress Bar */
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--success));
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Batch Results */
+.batch-results-summary {
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.batch-results-summary.success {
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid var(--success);
+}
+
+.batch-results-summary.warning {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid var(--warning);
+}
+
+.batch-results-summary h4 {
+  margin: 0 0 0.25rem 0;
+}
+
+.batch-results-summary p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.batch-results-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.batch-result-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.25rem;
+}
+
+.batch-result-item.success {
+  background: rgba(52, 211, 153, 0.05);
+}
+
+.batch-result-item.error {
+  background: rgba(248, 113, 113, 0.05);
+}
+
+.batch-result-icon {
+  font-size: 1rem;
+}
+
+.batch-result-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.batch-result-count {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.batch-result-error {
+  color: var(--danger);
+  font-size: 0.8rem;
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+/* ========================================
+ * ADVANCED ANALYTICS STYLES (v2.5)
+ * ======================================== */
+
+/* Year Comparison Stats */
+#year-comparison-stats {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+#year-comparison-stats .stat-card {
+  flex: 1;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  text-align: center;
+}
+
+#year-comparison-stats .stat-label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+#year-comparison-stats .stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Gauge Container */
+.gauge-container {
+  position: relative;
+  width: 200px;
+  height: 120px;
+  margin: 0 auto;
+}
+
+#gauge-value {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+/* Chart containers */
+.chart-container-lg {
+  height: 300px;
+  position: relative;
+}
+
+.chart-container-md {
+  height: 250px;
+  position: relative;
+}
+
+.chart-container-sm {
+  height: 180px;
+  position: relative;
 }

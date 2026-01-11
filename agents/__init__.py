@@ -2,7 +2,7 @@
 YUKYU PREMIUM - Sistema de Agentes Inteligentes
 ================================================
 
-Sistema completo de 12 agentes especializados para análisis y gestión.
+Sistema completo de 13 agentes especializados para análisis y gestión.
 
 Agentes Disponibles:
 --------------------
@@ -79,6 +79,13 @@ Agentes Disponibles:
     - Generación de gráficos (Chart.js/ApexCharts)
     - Análisis de código Canvas
 
+13. MemoryAgent (Memoria Persistente) [NUEVO]
+    - Persistencia de contexto entre sesiones
+    - Aprendizajes por categoría
+    - Errores conocidos y soluciones
+    - Historial de features
+    - Sincronización con CLAUDE_MEMORY.md
+
 Uso Básico:
 -----------
 
@@ -133,6 +140,9 @@ from .data_parser import DataParserAgent
 from .documentor import DocumentorAgent
 from .compliance import ComplianceAgent
 
+# Agente de Memoria
+from .memory import MemoryAgent, get_memory_agent, quick_save_learning, quick_find_solution
+
 # Nuevos Agentes Especializados
 from .nerd import NerdAgent, get_nerd_agent
 from .ui_designer import UIDesignerAgent, get_ui_designer_agent
@@ -157,6 +167,12 @@ __all__ = [
     'DataParserAgent',
     'DocumentorAgent',
     'ComplianceAgent',
+
+    # Agente de Memoria
+    'MemoryAgent',
+    'get_memory_agent',
+    'quick_save_learning',
+    'quick_find_solution',
 
     # Nuevos Agentes
     'NerdAgent',

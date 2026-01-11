@@ -404,6 +404,33 @@
                 <div class="flex-center gap-md">
                     <div class="flex-center gap-sm mr-md" id="year-filter"></div>
 
+                    <!-- Language Selector -->
+                    <div class="language-selector" id="language-selector">
+                        <button class="language-selector-btn" id="language-selector-btn"
+                                type="button"
+                                aria-label="Select language"
+                                aria-haspopup="listbox"
+                                aria-expanded="false">
+                            <span class="language-selector-flag" id="current-lang-flag">JP</span>
+                            <span class="language-selector-code" id="current-lang-code">JA</span>
+                            <span class="language-selector-arrow" aria-hidden="true">&#9660;</span>
+                        </button>
+                        <div class="language-dropdown" id="language-dropdown" role="listbox" aria-label="Available languages">
+                            <button class="language-option active" data-locale="ja" role="option" aria-selected="true" type="button">
+                                <span class="language-option-flag">JP</span>
+                                <span class="language-option-name">Japanese</span>
+                            </button>
+                            <button class="language-option" data-locale="es" role="option" aria-selected="false" type="button">
+                                <span class="language-option-flag">ES</span>
+                                <span class="language-option-name">Castellano</span>
+                            </button>
+                            <button class="language-option" data-locale="en" role="option" aria-selected="false" type="button">
+                                <span class="language-option-flag">EN</span>
+                                <span class="language-option-name">English</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Theme Toggle -->
                     <button class="theme-toggle" onclick="App.theme.toggle()" title="テーマ切替" aria-label="Toggle theme" type="button">
                         <div class="theme-toggle-track">
@@ -428,6 +455,11 @@
                         title="Sync Contract Employees" aria-label="Sync contract employees" type="button">
                         <span class="btn-icon" aria-hidden="true">🔧</span>
                         <span class="btn-spinner d-none"></span>
+                    </button>
+                    <button class="btn btn-glass" id="btn-export-pdf" onclick="App.reports.showExportModal()"
+                        title="Export PDF Reports" aria-label="Export PDF reports" type="button">
+                        <span class="btn-icon" aria-hidden="true">📄</span>
+                        <span class="btn-text">PDF</span>
                     </button>
                 </div>
             </header>
@@ -664,10 +696,26 @@
                         </div>
                     </div>
 
+                    <!-- Bulk Edit Toolbar (v2.3) -->
+                    <div class="bulk-edit-toolbar" id="bulk-edit-toolbar">
+                        <span class="bulk-edit-toolbar-count">
+                            <span id="bulk-selected-count">0</span> 名選択中
+                        </span>
+                        <button class="btn btn-sm btn-primary" onclick="App.bulkEdit.openModal()">
+                            ✏️ 一括編集
+                        </button>
+                        <button class="btn btn-sm btn-glass" onclick="App.bulkEdit.clearSelection()">
+                            選択解除
+                        </button>
+                    </div>
+
                     <div class="overflow-auto" style="max-height: 60vh;">
                         <table class="modern-table">
                             <thead>
                                 <tr>
+                                    <th class="table-checkbox">
+                                        <input type="checkbox" id="select-all-checkbox" onchange="App.bulkEdit.toggleSelectAll(this.checked)" title="全選択/解除">
+                                    </th>
                                     <th>ID</th>
                                     <th>Employee</th>
                                     <th>Type</th>
@@ -1715,29 +1763,244 @@
 
     <script src="/static/js/app.js?v=20251222"></script>
 
-    <!-- PWA Service Worker Registration -->
-    <script>
+    <!-- PWA Service Worker Registration & Offline Support -->
+    <script type="module">
+        import { offlineStorage, NetworkStatusManager } from '/static/js/modules/offline-storage.js';
+
+        // Initialize offline storage globally
+        window.offlineStorage = offlineStorage;
+
+        // Service Worker Registration with Enhanced Features
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/static/sw.js')
-                    .then(registration => {
-                        console.log('SW registered:', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('SW registration failed:', error);
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('/static/sw.js');
+                    console.log('[PWA] Service Worker registered:', registration.scope);
+
+                    // Check for updates
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        console.log('[PWA] New Service Worker installing...');
+
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                showUpdateToast();
+                            }
+                        });
                     });
+
+                    // Request background sync permission
+                    if ('sync' in registration) {
+                        console.log('[PWA] Background Sync supported');
+                    }
+
+                    // Request periodic sync permission (if supported)
+                    if ('periodicSync' in registration) {
+                        try {
+                            await registration.periodicSync.register('yukyu-periodic-sync', {
+                                minInterval: 24 * 60 * 60 * 1000
+                            });
+                            console.log('[PWA] Periodic Sync registered');
+                        } catch (err) {
+                            console.log('[PWA] Periodic Sync not available:', err.message);
+                        }
+                    }
+
+                } catch (error) {
+                    console.error('[PWA] Service Worker registration failed:', error);
+                }
+            });
+
+            // Listen for messages from Service Worker
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                const { type, data } = event.data;
+
+                switch (type) {
+                    case 'QUEUE_REQUEST':
+                        offlineStorage.addPendingLeaveRequest(data);
+                        showOfflineQueuedToast();
+                        break;
+
+                    case 'SYNC_PENDING':
+                        offlineStorage.syncPending();
+                        break;
+
+                    case 'CACHE_CLEARED':
+                        console.log('[PWA] Cache cleared');
+                        break;
+                }
             });
         }
 
         // PWA Install Prompt
-        let deferredPrompt;
+        let deferredPrompt = null;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            // Optional: Show custom install button
-            console.log('PWA install available');
+            showInstallButton();
+            console.log('[PWA] Install prompt available');
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredPrompt = null;
+            hideInstallButton();
+            console.log('[PWA] App installed successfully');
+        });
+
+        // PWA UI Helper Functions
+        function showUpdateToast() {
+            const toast = document.createElement('div');
+            toast.className = 'pwa-update-toast';
+            toast.innerHTML = `
+                <span>New version available!</span>
+                <button onclick="window.location.reload()">Update</button>
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 100);
+        }
+
+        function showOfflineQueuedToast() {
+            if (window.App && window.App.showToast) {
+                window.App.showToast('info', 'Request queued - will sync when online', 4000);
+            }
+        }
+
+        function showInstallButton() {
+            let btn = document.getElementById('pwa-install-btn');
+            if (!btn) {
+                btn = document.createElement('button');
+                btn.id = 'pwa-install-btn';
+                btn.className = 'pwa-install-btn';
+                btn.innerHTML = '<span class="install-icon">+</span> Install App';
+                btn.onclick = async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        console.log('[PWA] Install prompt result:', outcome);
+                        deferredPrompt = null;
+                        hideInstallButton();
+                    }
+                };
+                document.body.appendChild(btn);
+            }
+            btn.style.display = 'flex';
+        }
+
+        function hideInstallButton() {
+            const btn = document.getElementById('pwa-install-btn');
+            if (btn) btn.style.display = 'none';
+        }
+
+        // Initialize network status manager (shows online/offline indicator)
+        new NetworkStatusManager();
+
+        // Precache API data when online for offline use
+        window.addEventListener('load', async () => {
+            if (navigator.onLine) {
+                try {
+                    const year = new Date().getFullYear();
+                    const response = await fetch(`/api/employees?year=${year}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        await offlineStorage.saveEmployees(data.data || [], year);
+                        console.log('[PWA] Employees data cached for offline use');
+                    }
+                } catch (err) {
+                    console.log('[PWA] Could not precache employees:', err.message);
+                }
+            }
+        });
+
+        // Listen for sync complete events
+        window.addEventListener('yukyu-sync-complete', (e) => {
+            const { success, failed } = e.detail;
+            if (window.App && window.App.showToast) {
+                if (failed === 0) {
+                    window.App.showToast('success', `Synced ${success} pending requests`, 4000);
+                } else {
+                    window.App.showToast('warning', `Synced ${success}, ${failed} failed`, 5000);
+                }
+            }
         });
     </script>
+
+    <!-- PWA UI Styles -->
+    <style>
+        /* PWA Install Button */
+        .pwa-install-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            z-index: 9998;
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .pwa-install-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.5);
+        }
+
+        .pwa-install-btn .install-icon {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        /* PWA Update Toast */
+        .pwa-update-toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 14px;
+            z-index: 10001;
+            box-shadow: 0 10px 25px rgba(139, 92, 246, 0.4);
+            transition: transform 0.3s ease;
+        }
+
+        .pwa-update-toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .pwa-update-toast button {
+            padding: 6px 12px;
+            background: white;
+            color: #7c3aed;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pwa-update-toast button:hover {
+            transform: scale(1.05);
+        }
+
+        /* Light mode adjustments for PWA elements */
+        [data-theme="light"] .pwa-install-btn {
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+        }
+    </style>
 
     <!-- Confirmation Modal -->
     <div id="confirm-modal" class="confirm-modal" onclick="if(event.target === this) App.requests.hideConfirmation()">
@@ -1796,6 +2059,891 @@
             </div>
         </div>
     </div>
+
+    <!-- Edit Yukyu Usage Modal (v2.1 - NEW) -->
+    <div id="edit-yukyu-modal" class="confirm-modal" onclick="if(event.target === this) App.editYukyu.closeModal()">
+        <div class="confirm-modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+            <div class="confirm-modal-title">
+                ✏️ 有給使用データを編集
+            </div>
+
+            <!-- Employee Info Header -->
+            <div class="bg-primary-subtle p-md rounded mb-lg">
+                <div class="flex-between">
+                    <div>
+                        <div id="edit-emp-name" class="font-semibold text-lg">-</div>
+                        <div id="edit-emp-num" class="text-muted text-sm">社員番号: -</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="stat-label">現在の残日数</div>
+                        <div id="edit-emp-balance" class="text-2xl font-bold text-success">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Usage Details List -->
+            <div class="form-section mb-lg">
+                <div class="form-section-title">📅 使用日一覧</div>
+                <div id="edit-usage-list" class="usage-list-container" style="max-height: 300px; overflow-y: auto;">
+                    <div class="text-center text-muted p-lg">
+                        従業員を選択してください...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add New Usage -->
+            <div class="form-section mb-lg">
+                <div class="form-section-title">➕ 新しい使用日を追加</div>
+                <div class="grid grid-cols-3 gap-md">
+                    <div class="form-group">
+                        <label for="add-use-date">日付</label>
+                        <input type="date" id="add-use-date" class="input-glass w-full">
+                    </div>
+                    <div class="form-group">
+                        <label for="add-days-used">日数</label>
+                        <select id="add-days-used" class="input-glass w-full">
+                            <option value="1.0">1日 (全日)</option>
+                            <option value="0.5">0.5日 (半日)</option>
+                            <option value="0.25">0.25日 (2時間)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="display: flex; align-items: flex-end;">
+                        <button class="btn btn-primary w-full" onclick="App.editYukyu.addUsage()">
+                            追加
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="bg-info-subtle p-md rounded mb-lg">
+                <div class="flex-between">
+                    <span>変更後の使用日数:</span>
+                    <span id="edit-total-used" class="font-bold">0日</span>
+                </div>
+                <div class="flex-between mt-sm">
+                    <span>変更後の残日数:</span>
+                    <span id="edit-new-balance" class="font-bold text-success">0日</span>
+                </div>
+            </div>
+
+            <div class="confirm-actions">
+                <button class="btn btn-glass" onclick="App.editYukyu.closeModal()">
+                    キャンセル
+                </button>
+                <button class="btn btn-secondary" onclick="App.auditHistory.showEntityHistory('employee', App.editYukyu.currentEmployee?.id)">
+                    📜 履歴を見る
+                </button>
+                <button class="btn btn-primary" id="edit-save-btn" onclick="App.editYukyu.saveChanges()">
+                    💾 変更を保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit History Modal (v2.3 - NEW) -->
+    <div id="audit-history-modal" class="confirm-modal" onclick="if(event.target === this) App.auditHistory.closeModal()">
+        <div class="confirm-modal-content" style="max-width: 800px; max-height: 85vh; overflow-y: auto;">
+            <div class="confirm-modal-title">
+                📜 変更履歴
+            </div>
+
+            <div class="bg-primary-subtle p-md rounded mb-lg">
+                <div class="flex-between">
+                    <div>
+                        <div id="audit-entity-info" class="font-semibold">エンティティ情報</div>
+                    </div>
+                    <div>
+                        <select id="audit-action-filter" class="input-glass" onchange="App.auditHistory.applyFilter()">
+                            <option value="">全てのアクション</option>
+                            <option value="CREATE">CREATE</option>
+                            <option value="UPDATE">UPDATE</option>
+                            <option value="DELETE">DELETE</option>
+                            <option value="APPROVE">APPROVE</option>
+                            <option value="REJECT">REJECT</option>
+                            <option value="REVERT">REVERT</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="audit-history-list" class="usage-list-container" style="max-height: 500px; overflow-y: auto;">
+                <div class="text-center text-muted p-lg">
+                    <div class="spinner" style="margin: 0 auto;"></div>
+                    <p style="margin-top: 1rem;">履歴を読み込み中...</p>
+                </div>
+            </div>
+
+            <div class="confirm-actions">
+                <button class="btn btn-glass" onclick="App.auditHistory.closeModal()">
+                    閉じる
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Result Modal (v2.2 - NEW) -->
+    <div id="import-result-modal" class="confirm-modal" onclick="if(event.target === this) App.importReport.closeModal()">
+        <div class="confirm-modal-content import-result-content" style="max-width: 700px; max-height: 85vh; overflow-y: auto;">
+            <div class="confirm-modal-title" id="import-result-title">
+                <span id="import-result-icon">📊</span> インポート結果
+            </div>
+
+            <!-- Status Summary Banner -->
+            <div id="import-status-banner" class="import-status-banner import-status-success">
+                <div class="import-status-icon">✅</div>
+                <div class="import-status-text">
+                    <div class="import-status-title" id="import-status-title">インポート完了</div>
+                    <div class="import-status-subtitle" id="import-status-subtitle">全てのデータが正常に処理されました</div>
+                </div>
+            </div>
+
+            <!-- Statistics Grid -->
+            <div class="import-stats-grid">
+                <div class="import-stat-card import-stat-total">
+                    <div class="import-stat-value" id="import-stat-total">0</div>
+                    <div class="import-stat-label">総レコード</div>
+                </div>
+                <div class="import-stat-card import-stat-success">
+                    <div class="import-stat-value" id="import-stat-success">0</div>
+                    <div class="import-stat-label">成功</div>
+                </div>
+                <div class="import-stat-card import-stat-warning">
+                    <div class="import-stat-value" id="import-stat-warnings">0</div>
+                    <div class="import-stat-label">警告</div>
+                </div>
+                <div class="import-stat-card import-stat-error">
+                    <div class="import-stat-value" id="import-stat-errors">0</div>
+                    <div class="import-stat-label">エラー</div>
+                </div>
+            </div>
+
+            <!-- Breakdown Section -->
+            <div class="import-breakdown-section" id="import-breakdown-section">
+                <div class="form-section-title">📋 詳細内訳</div>
+                <div class="import-breakdown-grid" id="import-breakdown-grid">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+
+            <!-- Warnings List (Expandable) -->
+            <div class="import-warnings-section" id="import-warnings-section" style="display: none;">
+                <div class="import-warnings-header" onclick="App.importReport.toggleWarnings()">
+                    <span class="form-section-title">⚠️ 警告一覧</span>
+                    <span class="import-warnings-toggle" id="import-warnings-toggle">▼</span>
+                </div>
+                <div class="import-warnings-list" id="import-warnings-list" style="display: none;">
+                    <!-- Warning items will be added dynamically -->
+                </div>
+            </div>
+
+            <!-- Errors List (Expandable) -->
+            <div class="import-errors-section" id="import-errors-section" style="display: none;">
+                <div class="import-errors-header" onclick="App.importReport.toggleErrors()">
+                    <span class="form-section-title">❌ エラー一覧</span>
+                    <span class="import-errors-toggle" id="import-errors-toggle">▼</span>
+                </div>
+                <div class="import-errors-list" id="import-errors-list" style="display: none;">
+                    <!-- Error items will be added dynamically -->
+                </div>
+            </div>
+
+            <!-- Problematic Employees (Optional) -->
+            <div class="import-problems-section" id="import-problems-section" style="display: none;">
+                <div class="form-section-title">👤 要確認従業員</div>
+                <div class="import-problems-list" id="import-problems-list">
+                    <!-- Problem employee items -->
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="confirm-actions mt-lg">
+                <button class="btn btn-glass" onclick="App.importReport.downloadReport()">
+                    📥 レポートをダウンロード
+                </button>
+                <button class="btn btn-primary" onclick="App.importReport.closeModal()">
+                    ✓ 閉じる
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Edit Modal (v2.3 - NEW) -->
+    <div id="bulk-edit-modal" class="confirm-modal" onclick="if(event.target === this) App.bulkEdit.closeModal()">
+        <div class="confirm-modal-content" style="max-width: 800px; max-height: 85vh; overflow-y: auto;">
+            <div class="confirm-modal-title">
+                <span class="bulk-edit-icon">✏️</span>
+                一括編集 (Bulk Edit)
+            </div>
+
+            <!-- Selected Employees Count -->
+            <div class="bulk-edit-selection-info">
+                <div class="bulk-edit-count">
+                    <span id="bulk-edit-count">0</span> 名選択中
+                </div>
+                <button class="btn btn-sm btn-glass" onclick="App.bulkEdit.clearSelection()">
+                    選択解除
+                </button>
+            </div>
+
+            <!-- Selected Employees List (Collapsible) -->
+            <div class="bulk-edit-employees-section">
+                <div class="bulk-edit-employees-header" onclick="App.bulkEdit.toggleEmployeeList()">
+                    <span class="form-section-title">👥 選択された従業員</span>
+                    <span class="bulk-edit-toggle" id="bulk-edit-employees-toggle">▼</span>
+                </div>
+                <div class="bulk-edit-employees-list" id="bulk-edit-employees-list" style="max-height: 150px; overflow-y: auto;">
+                    <!-- Employee chips will be added dynamically -->
+                </div>
+            </div>
+
+            <!-- Edit Fields Section -->
+            <div class="bulk-edit-fields-section">
+                <div class="form-section-title">📝 編集内容</div>
+
+                <!-- Add Granted Days -->
+                <div class="bulk-edit-field-row">
+                    <label class="bulk-edit-checkbox">
+                        <input type="checkbox" id="bulk-edit-add-granted-check" onchange="App.bulkEdit.toggleField('add_granted')">
+                        <span>付与日数を追加</span>
+                    </label>
+                    <div class="bulk-edit-input-group" id="bulk-edit-add-granted-group" style="display: none;">
+                        <span class="bulk-edit-prefix">+</span>
+                        <input type="number" id="bulk-edit-add-granted" class="input-glass" min="0" max="20" step="0.5" placeholder="0">
+                        <span class="bulk-edit-suffix">日</span>
+                    </div>
+                </div>
+
+                <!-- Add Used Days -->
+                <div class="bulk-edit-field-row">
+                    <label class="bulk-edit-checkbox">
+                        <input type="checkbox" id="bulk-edit-add-used-check" onchange="App.bulkEdit.toggleField('add_used')">
+                        <span>使用日数を追加</span>
+                    </label>
+                    <div class="bulk-edit-input-group" id="bulk-edit-add-used-group" style="display: none;">
+                        <span class="bulk-edit-prefix">+</span>
+                        <input type="number" id="bulk-edit-add-used" class="input-glass" min="0" max="40" step="0.5" placeholder="0">
+                        <span class="bulk-edit-suffix">日</span>
+                    </div>
+                </div>
+
+                <!-- Change Haken (Factory) -->
+                <div class="bulk-edit-field-row">
+                    <label class="bulk-edit-checkbox">
+                        <input type="checkbox" id="bulk-edit-set-haken-check" onchange="App.bulkEdit.toggleField('set_haken')">
+                        <span>派遣先を変更</span>
+                    </label>
+                    <div class="bulk-edit-input-group" id="bulk-edit-set-haken-group" style="display: none;">
+                        <select id="bulk-edit-set-haken" class="input-glass">
+                            <option value="">派遣先を選択...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Section -->
+            <div class="bulk-edit-preview-section" id="bulk-edit-preview-section" style="display: none;">
+                <div class="form-section-title">🔍 変更プレビュー</div>
+                <div class="bulk-edit-preview-list" id="bulk-edit-preview-list">
+                    <!-- Preview items will be added dynamically -->
+                </div>
+            </div>
+
+            <!-- Warnings Section -->
+            <div class="bulk-edit-warnings-section" id="bulk-edit-warnings-section" style="display: none;">
+                <div class="form-section-title text-warning">⚠️ 警告</div>
+                <div class="bulk-edit-warnings-list" id="bulk-edit-warnings-list">
+                    <!-- Warning items -->
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="confirm-actions mt-lg">
+                <button class="btn btn-glass" onclick="App.bulkEdit.closeModal()">
+                    キャンセル
+                </button>
+                <button class="btn btn-info" onclick="App.bulkEdit.preview()">
+                    🔍 プレビュー
+                </button>
+                <button class="btn btn-primary" id="bulk-edit-apply-btn" onclick="App.bulkEdit.apply()" disabled>
+                    ✓ 適用する
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Bulk Edit Modal Styles (v2.3) */
+        .bulk-edit-selection-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(6, 182, 212, 0.1);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .bulk-edit-count {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .bulk-edit-count span {
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+
+        .bulk-edit-employees-section {
+            margin-bottom: 1rem;
+        }
+
+        .bulk-edit-employees-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
+        .bulk-edit-employees-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+
+        .bulk-edit-employee-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            background: rgba(6, 182, 212, 0.2);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .bulk-edit-employee-chip .remove {
+            cursor: pointer;
+            opacity: 0.6;
+        }
+
+        .bulk-edit-employee-chip .remove:hover {
+            opacity: 1;
+            color: var(--danger);
+        }
+
+        .bulk-edit-fields-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .bulk-edit-field-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .bulk-edit-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .bulk-edit-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+        }
+
+        .bulk-edit-input-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .bulk-edit-input-group input,
+        .bulk-edit-input-group select {
+            width: 150px;
+        }
+
+        .bulk-edit-prefix,
+        .bulk-edit-suffix {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .bulk-edit-preview-section,
+        .bulk-edit-warnings-section {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+
+        .bulk-edit-preview-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .bulk-edit-preview-item {
+            display: grid;
+            grid-template-columns: 100px 1fr 1fr 1fr;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.85rem;
+        }
+
+        .bulk-edit-preview-item:last-child {
+            border-bottom: none;
+        }
+
+        .bulk-edit-preview-header {
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .bulk-edit-change-arrow {
+            color: var(--primary);
+        }
+
+        .bulk-edit-warnings-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .bulk-edit-warning-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(251, 191, 36, 0.1);
+            border-left: 3px solid var(--warning);
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        /* Table checkbox column */
+        .table-checkbox {
+            width: 30px;
+            text-align: center;
+        }
+
+        .table-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        /* Bulk edit toolbar */
+        .bulk-edit-toolbar {
+            display: none;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(6, 182, 212, 0.1));
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .bulk-edit-toolbar.active {
+            display: flex;
+        }
+
+        .bulk-edit-toolbar-count {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .bulk-edit-icon {
+            margin-right: 0.5rem;
+        }
+    </style>
+
+    <style>
+        /* Import Result Modal Styles (v2.2) */
+        .import-result-content {
+            padding: 1.5rem;
+        }
+
+        .import-status-banner {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+        }
+
+        .import-status-success {
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .import-status-warning {
+            background: rgba(251, 191, 36, 0.15);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .import-status-error {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .import-status-icon {
+            font-size: 2rem;
+        }
+
+        .import-status-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+        }
+
+        .import-status-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .import-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .import-stat-card {
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .import-stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .import-stat-total {
+            border-color: rgba(6, 182, 212, 0.3);
+        }
+
+        .import-stat-success {
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .import-stat-warning {
+            border-color: rgba(251, 191, 36, 0.3);
+        }
+
+        .import-stat-error {
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .import-stat-value {
+            font-size: 1.75rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .import-stat-total .import-stat-value { color: var(--primary); }
+        .import-stat-success .import-stat-value { color: var(--success); }
+        .import-stat-warning .import-stat-value { color: var(--warning); }
+        .import-stat-error .import-stat-value { color: var(--danger); }
+
+        .import-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .import-breakdown-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .import-breakdown-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .import-breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0.75rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+
+        .import-breakdown-label {
+            color: var(--text-secondary);
+        }
+
+        .import-breakdown-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .import-warnings-section,
+        .import-errors-section {
+            margin-bottom: 1rem;
+        }
+
+        .import-warnings-header,
+        .import-errors-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .import-warnings-header:hover,
+        .import-errors-header:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .import-warnings-header .form-section-title,
+        .import-errors-header .form-section-title {
+            margin: 0;
+        }
+
+        .import-warnings-toggle,
+        .import-errors-toggle {
+            transition: transform 0.3s;
+        }
+
+        .import-warnings-toggle.expanded,
+        .import-errors-toggle.expanded {
+            transform: rotate(180deg);
+        }
+
+        .import-warnings-list,
+        .import-errors-list {
+            margin-top: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .import-warning-item,
+        .import-error-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .import-warning-item:last-child,
+        .import-error-item:last-child {
+            border-bottom: none;
+        }
+
+        .import-warning-item {
+            color: var(--warning);
+        }
+
+        .import-error-item {
+            color: var(--danger);
+        }
+
+        .import-warning-item .item-icon,
+        .import-error-item .item-icon {
+            flex-shrink: 0;
+        }
+
+        .import-warning-item .item-text,
+        .import-error-item .item-text {
+            flex: 1;
+        }
+
+        .import-warning-item .item-row,
+        .import-error-item .item-row {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-left: auto;
+        }
+
+        .import-problems-section {
+            margin-bottom: 1rem;
+        }
+
+        .import-problems-list {
+            display: grid;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .import-problem-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: rgba(248, 113, 113, 0.1);
+            border: 1px solid rgba(248, 113, 113, 0.2);
+            border-radius: 8px;
+            font-size: 0.875rem;
+        }
+
+        .import-problem-employee {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .import-problem-name {
+            font-weight: 600;
+        }
+
+        .import-problem-num {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .import-problem-issue {
+            color: var(--danger);
+            font-weight: 500;
+        }
+
+        .import-problem-action {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            background: var(--danger);
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+
+        .import-problem-action:hover {
+            filter: brightness(1.1);
+        }
+
+        /* Light theme adjustments */
+        [data-theme="light"] .import-stat-card {
+            background: rgba(0, 0, 0, 0.03);
+            border-color: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="light"] .import-warnings-list,
+        [data-theme="light"] .import-errors-list {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        [data-theme="light"] .import-warning-item,
+        [data-theme="light"] .import-error-item {
+            border-color: rgba(0, 0, 0, 0.05);
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .import-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .import-breakdown-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .import-result-content {
+                padding: 1rem;
+            }
+        }
+
+    </style>
+
+    <style>
+        /* Edit Yukyu Modal Styles */
+        .usage-list-container {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+        }
+
+        .usage-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.2s;
+        }
+
+        .usage-item:last-child {
+            border-bottom: none;
+        }
+
+        .usage-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .usage-item-date {
+            font-weight: 500;
+        }
+
+        .usage-item-days {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .usage-item-days select {
+            width: 120px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .usage-item-delete {
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.25rem 0.5rem;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .usage-item-delete:hover {
+            background: var(--danger-dark);
+        }
+
+        .usage-item.pending-delete {
+            background: rgba(239, 68, 68, 0.1);
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
+        .usage-item.pending-add {
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .usage-item.pending-update {
+            background: rgba(59, 130, 246, 0.1);
+        }
+    </style>
 </body>
 
 </html>

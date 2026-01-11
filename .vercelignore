@@ -1,0 +1,66 @@
+# Vercel Ignore File
+# ===================
+
+# Development files
+.git
+.gitignore
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv/
+ENV/
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov/
+tests/
+*.test.js
+jest.config.js
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Backups
+backups/
+*.bak
+
+# Database (will be created in /tmp on Vercel)
+*.db
+*.sqlite
+
+# Documentation (not needed for deploy)
+*.md
+!README.md
+docs/
+
+# Development configs
+.pre-commit-config.yaml
+docker-compose*.yml
+Dockerfile
+
+# Node (if any)
+node_modules/
+
+# Excel files (too large for serverless)
+*.xlsm
+*.xlsx
+
+# OS files
+.DS_Store
+Thumbs.db

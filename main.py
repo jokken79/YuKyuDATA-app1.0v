@@ -1,8 +1,8 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Depends
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
-# from starlette.middleware.gzip import GZIPMiddleware  # TODO: Fix import error
+from starlette.middleware.gzip import GZipMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
@@ -37,6 +37,7 @@ from middleware_security import (
     RequestLoggingMiddleware,
     AuthenticationLoggingMiddleware
 )
+from csrf_middleware import CSRFProtectionMiddleware, generate_csrf_token
 from pagination import PaginationParams, PaginatedResponse, paginate_list
 from caching import cached, invalidate_employee_cache, get_cache_stats
 from fiscal_year import (
@@ -61,6 +62,176 @@ from excel_export import (
     cleanup_old_exports,
     EXPORT_DIR
 )
+from reports import (
+    ReportGenerator,
+    save_report,
+    list_reports,
+    cleanup_old_reports,
+    REPORTS_DIR
+)
+from functools import wraps
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
+# ============================================
+# ASYNC EXECUTOR FOR EXCEL PARSING
+# ============================================
+# Global thread pool executor for CPU-bound Excel operations
+# This prevents blocking the event loop during heavy parsing
+_excel_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="excel_parser")
+
+
+# ============================================
+# AUDIT LOG HELPER FUNCTIONS
+# ============================================
+
+def get_client_info(request: Request) -> dict:
+    """Extrae informacion del cliente desde el Request de FastAPI."""
+    client_ip = request.client.host if request.client else None
+
+    # Intentar obtener IP real si esta detras de proxy
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        client_ip = forwarded_for.split(",")[0].strip()
+
+    user_agent = request.headers.get("User-Agent", "")
+
+    return {
+        "ip_address": client_ip,
+        "user_agent": user_agent[:500] if user_agent else None  # Limitar longitud
+    }
+
+
+def audit_action(action: str, entity_type: str, get_entity_id=None, get_old_value=None):
+    """
+    Decorador para registrar automaticamente acciones en el audit log.
+
+    Args:
+        action: Tipo de accion (CREATE, UPDATE, DELETE, APPROVE, REJECT, etc.)
+        entity_type: Tipo de entidad (employee, leave_request, yukyu_usage, etc.)
+        get_entity_id: Funcion para extraer entity_id de los argumentos
+        get_old_value: Funcion async para obtener el valor anterior (para UPDATE/DELETE)
+
+    Ejemplo de uso:
+        @audit_action("UPDATE", "yukyu_usage", get_entity_id=lambda args, kwargs: kwargs.get('detail_id'))
+        async def update_usage_detail(detail_id: int, update_data: UsageDetailUpdate):
+            ...
+    """
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Intentar extraer request del contexto
+            request = kwargs.get('request')
+            user = kwargs.get('user')
+
+            # Obtener info del cliente
+            client_info = {}
+            if request:
+                client_info = get_client_info(request)
+
+            # Obtener user_id
+            user_id = None
+            if user:
+                if hasattr(user, 'username'):
+                    user_id = user.username
+                elif isinstance(user, dict):
+                    user_id = user.get('username')
+
+            # Obtener entity_id
+            entity_id = None
+            if get_entity_id:
+                try:
+                    entity_id = get_entity_id(args, kwargs)
+                    if entity_id is not None:
+                        entity_id = str(entity_id)
+                except Exception:
+                    pass
+
+            # Obtener old_value para UPDATE/DELETE
+            old_value = None
+            if get_old_value and action in ["UPDATE", "DELETE"]:
+                try:
+                    if asyncio.iscoroutinefunction(get_old_value):
+                        old_value = await get_old_value(args, kwargs)
+                    else:
+                        old_value = get_old_value(args, kwargs)
+                except Exception:
+                    pass
+
+            # Ejecutar la funcion original
+            result = await func(*args, **kwargs)
+
+            # Determinar new_value del resultado
+            new_value = None
+            if isinstance(result, dict):
+                # Buscar datos relevantes en el resultado
+                for key in ['updated_record', 'created_record', 'deleted_record', 'updated_employee', 'data']:
+                    if key in result:
+                        new_value = result[key]
+                        break
+                if new_value is None and action == "CREATE":
+                    new_value = result
+
+            # Registrar en audit log
+            try:
+                database.log_audit(
+                    action=action,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    old_value=old_value,
+                    new_value=new_value,
+                    user_id=user_id,
+                    ip_address=client_info.get('ip_address'),
+                    user_agent=client_info.get('user_agent')
+                )
+            except Exception as e:
+                logger.warning(f"Failed to log audit: {str(e)}")
+
+            return result
+        return wrapper
+    return decorator
+
+
+async def log_audit_action(
+    request: Request,
+    action: str,
+    entity_type: str,
+    entity_id: str = None,
+    old_value = None,
+    new_value = None,
+    user = None,
+    additional_info: dict = None
+):
+    """
+    Funcion auxiliar para registrar manualmente una accion en el audit log.
+    Util cuando el decorador no es practico.
+    """
+    client_info = get_client_info(request)
+
+    user_id = None
+    if user:
+        if hasattr(user, 'username'):
+            user_id = user.username
+        elif isinstance(user, dict):
+            user_id = user.get('username')
+
+    try:
+        audit_id = database.log_audit(
+            action=action,
+            entity_type=entity_type,
+            entity_id=str(entity_id) if entity_id else None,
+            old_value=old_value,
+            new_value=new_value,
+            user_id=user_id,
+            ip_address=client_info.get('ip_address'),
+            user_agent=client_info.get('user_agent'),
+            additional_info=additional_info
+        )
+        return audit_id
+    except Exception as e:
+        logger.warning(f"Failed to log audit: {str(e)}")
+        return None
+
 
 # ============================================
 # PYDANTIC MODELS FOR VALIDATION
@@ -96,6 +267,86 @@ class LeaveRequestCreate(BaseModel):
 class DateRangeQuery(BaseModel):
     start_date: str
     end_date: str
+
+
+# === EDIT YUKYU DATA MODELS (v2.1) ===
+
+class UsageDetailUpdate(BaseModel):
+    """Modelo para actualizar un registro de uso de yukyu."""
+    days_used: Optional[float] = Field(None, ge=0.25, le=1.0, description="Días usados (0.25, 0.5, 1.0)")
+    use_date: Optional[str] = Field(None, description="Nueva fecha YYYY-MM-DD")
+
+    @field_validator('days_used')
+    @classmethod
+    def validate_days(cls, v):
+        if v is not None:
+            valid_values = [0.25, 0.5, 0.75, 1.0]
+            if v not in valid_values:
+                raise ValueError(f'days_used debe ser: {valid_values} (0.5 = medio día)')
+        return v
+
+
+class UsageDetailCreate(BaseModel):
+    """Modelo para crear un nuevo registro de uso de yukyu."""
+    employee_num: str = Field(..., min_length=1, description="Número de empleado")
+    name: str = Field(..., min_length=1, description="Nombre del empleado")
+    use_date: str = Field(..., description="Fecha de uso YYYY-MM-DD")
+    days_used: float = Field(1.0, ge=0.25, le=1.0, description="Días usados")
+
+    @field_validator('days_used')
+    @classmethod
+    def validate_days(cls, v):
+        valid_values = [0.25, 0.5, 0.75, 1.0]
+        if v not in valid_values:
+            raise ValueError(f'days_used debe ser: {valid_values} (0.5 = medio día)')
+        return v
+
+
+class EmployeeUpdate(BaseModel):
+    """Modelo para actualizar datos de empleado."""
+    name: Optional[str] = None
+    haken: Optional[str] = None
+    granted: Optional[float] = Field(None, ge=0, le=40)
+    used: Optional[float] = Field(None, ge=0, le=40)
+    validate_limit: bool = True  # Validar límite de 40 días acumulados
+
+
+# === BULK UPDATE MODEL (v2.3) ===
+
+class BulkUpdateRequest(BaseModel):
+    """Modelo para actualizar multiples empleados en una operacion."""
+    employee_nums: List[str] = Field(..., min_length=1, max_length=50,
+                                      description="Lista de numeros de empleado (max 50)")
+    year: int = Field(..., ge=2000, le=2100, description="Año fiscal")
+    updates: dict = Field(..., description="Campos a actualizar")
+    validate_limit: bool = True  # Validar límite de 40 días acumulados
+
+    @field_validator('employee_nums')
+    @classmethod
+    def validate_employee_nums(cls, v):
+        if len(v) > 50:
+            raise ValueError('Maximo 50 empleados por operacion')
+        if len(v) == 0:
+            raise ValueError('Se requiere al menos un empleado')
+        return v
+
+    @field_validator('updates')
+    @classmethod
+    def validate_updates(cls, v):
+        if not v:
+            raise ValueError('Se requiere al menos un campo a actualizar')
+        valid_fields = {'add_granted', 'add_used', 'set_haken', 'set_granted', 'set_used'}
+        invalid = set(v.keys()) - valid_fields
+        if invalid:
+            raise ValueError(f'Campos invalidos: {invalid}. Validos: {valid_fields}')
+        return v
+
+
+class BulkUpdatePreview(BaseModel):
+    """Modelo para previsualizar cambios de bulk update."""
+    employee_nums: List[str] = Field(..., min_length=1, max_length=50)
+    year: int = Field(..., ge=2000, le=2100)
+    updates: dict
 
 
 # ============================================
@@ -189,7 +440,7 @@ app = FastAPI(
 
     La API utiliza JWT Bearer tokens. Usa `/api/auth/login` para obtener un token.
     """,
-    version="2.0.0",
+    version="2.4.0",
     contact={
         "name": "YuKyuDATA Support",
         "email": "support@yukyu.example.com"
@@ -259,9 +510,25 @@ app.add_middleware(
     exclude_paths=["/health", "/docs", "/redoc", "/openapi.json", "/", "/api/auth/login", "/static"]
 )
 
+# Add CSRF protection middleware
+# Note: Requests with JWT Authorization header don't require CSRF token
+app.add_middleware(
+    CSRFProtectionMiddleware,
+    exclude_paths=[
+        "/api/auth/login",
+        "/api/csrf-token",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+        "/health",
+        "/"
+    ],
+    require_for_authenticated=False  # JWT-authenticated requests don't need CSRF
+)
+
 # Add GZIP compression middleware for performance
 # Compresses responses > 500 bytes for faster transfer
-# app.add_middleware(GZIPMiddleware, minimum_size=500)  # TODO: Fix import error
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # Constants - Relative paths from project directory
 PROJECT_DIR = Path(__file__).parent  # Directorio del proyecto
@@ -386,20 +653,46 @@ async def shutdown_event():
     except Exception as e:
         logger.error(f"⚠️  Shutdown error: {str(e)}", exc_info=True)
 
+# Get base directory for Vercel compatibility
+BASE_DIR = Path(__file__).resolve().parent
+
 # Mount static files (css, js, etc.)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
     """Serves the main dashboard page."""
-    with open("templates/index.html", "r", encoding="utf-8") as f:
+    template_path = BASE_DIR / "templates" / "index.html"
+    with open(template_path, "r", encoding="utf-8") as f:
         return f.read()
 
 
 # ============================================
 # AUTHENTICATION ENDPOINTS
 # ============================================
+
+@app.get("/api/csrf-token", tags=["Authentication"])
+async def get_csrf_token():
+    """
+    Generate a CSRF token for non-authenticated requests.
+
+    Frontend should:
+    1. Call this endpoint to get a token
+    2. Include token in X-CSRF-Token header for POST/PUT/DELETE requests
+    3. Token is not required if Authorization header (JWT) is present
+
+    Returns:
+        dict: CSRF token and usage instructions
+    """
+    token = generate_csrf_token()
+    return {
+        "csrf_token": token,
+        "header_name": "X-CSRF-Token",
+        "expires_in": 3600,  # Recommended to refresh every hour
+        "note": "Include this token in X-CSRF-Token header for POST/PUT/DELETE requests. Not required if using JWT authentication."
+    }
+
 
 @app.post("/api/auth/login", dependencies=[Depends(check_rate_limit)])
 async def login(login_data: AuthUserLogin):
@@ -658,46 +951,136 @@ async def clear_all_caches(user: CurrentUser = Depends(get_admin_user)):
 
 @app.post("/api/sync")
 async def sync_default_file(user: CurrentUser = Depends(get_admin_user)):
-    """Triggers auto-read of the default Excel file + individual usage dates."""
+    """
+    Triggers auto-read of the default Excel file + individual usage dates.
+    Uses enhanced parsing with half-day/hourly detection and validation.
+
+    ASYNC: Uses asyncio.to_thread() to prevent blocking the event loop during
+    CPU-intensive Excel parsing operations.
+    """
     if not DEFAULT_EXCEL_PATH.exists():
         raise HTTPException(status_code=404, detail=f"Default file not found at {DEFAULT_EXCEL_PATH}")
 
     try:
-        # Parse summary data (totals)
-        data = excel_service.parse_excel_file(DEFAULT_EXCEL_PATH)
-        database.save_employees(data)
+        logger.info(f"Sync initiated by {user.username} (async mode)")
+        start_time = asyncio.get_event_loop().time()
 
-        # Parse individual usage dates (columns R-BE - v2.0 feature)
-        usage_details = excel_service.parse_yukyu_usage_details(DEFAULT_EXCEL_PATH)
-        database.save_yukyu_usage_details(usage_details)
+        # Parse summary data and usage details in parallel (non-blocking)
+        logger.debug("Starting async Excel parsing...")
+        data, enhanced_result = await asyncio.gather(
+            asyncio.to_thread(excel_service.parse_excel_file, DEFAULT_EXCEL_PATH),
+            asyncio.to_thread(excel_service.parse_yukyu_usage_details_enhanced, str(DEFAULT_EXCEL_PATH))
+        )
+        parse_time = asyncio.get_event_loop().time() - start_time
+        logger.debug(f"Excel parsing completed in {parse_time:.2f}s")
 
+        # Extract data and metadata from enhanced result
+        usage_details = enhanced_result.get('data', [])
+        warnings = enhanced_result.get('warnings', [])
+        errors = enhanced_result.get('errors', [])
+        summary = enhanced_result.get('summary', {})
+
+        # Save to database in parallel (non-blocking)
+        logger.debug("Starting async database save...")
+        save_start = asyncio.get_event_loop().time()
+        await asyncio.gather(
+            asyncio.to_thread(database.save_employees, data),
+            asyncio.to_thread(database.save_yukyu_usage_details, usage_details)
+        )
+        save_time = asyncio.get_event_loop().time() - save_start
+        logger.debug(f"Database save completed in {save_time:.2f}s")
+
+        logger.info(f"Saved {len(data)} employee records + {len(usage_details)} usage details")
+
+        # Log warnings if any
+        if warnings:
+            logger.warning(f"Sync completed with {len(warnings)} warnings")
+            for w in warnings[:5]:  # Log first 5 warnings
+                logger.warning(f"  - {w.get('type', 'unknown')}: {w.get('message', '')}")
+
+        total_time = asyncio.get_event_loop().time() - start_time
+        logger.info(f"Total sync time: {total_time:.2f}s (parse: {parse_time:.2f}s, save: {save_time:.2f}s)")
+
+        # Prepare response with import summary
         return {
             "status": "success",
             "count": len(data),
             "usage_details_count": len(usage_details),
-            "message": f"Synced {len(data)} employees + {len(usage_details)} individual usage dates"
+            "message": f"Synced {len(data)} employees + {len(usage_details)} individual usage dates",
+            "import_summary": {
+                "total_rows_processed": summary.get('total_rows_processed', 0),
+                "total_dates_parsed": summary.get('total_dates_parsed', 0),
+                "full_day_count": summary.get('full_day_count', 0),
+                "half_day_count": summary.get('half_day_count', 0),
+                "hourly_count": summary.get('hourly_count', 0),
+                "dates_ignored": summary.get('dates_ignored', 0),
+                "invalid_dates": summary.get('invalid_dates', 0),
+                "cells_with_comments": summary.get('cells_with_comments', 0)
+            },
+            "warnings_count": len(warnings),
+            "warnings": warnings[:20] if warnings else [],  # Return first 20 warnings
+            "errors": errors,
+            "performance": {
+                "total_time_seconds": round(total_time, 2),
+                "parse_time_seconds": round(parse_time, 2),
+                "save_time_seconds": round(save_time, 2)
+            }
         }
     except Exception as e:
+        logger.error(f"Sync failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
 
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...), user: CurrentUser = Depends(get_admin_user)):
-    """Handles manual Excel file upload and processing. Requires admin authentication."""
+    """
+    Handles manual Excel file upload and processing. Requires admin authentication.
+
+    ASYNC: Uses asyncio.to_thread() to prevent blocking the event loop during
+    CPU-intensive Excel parsing operations.
+    """
+    temp_path = None
     try:
-        # Save temp file
+        logger.info(f"Upload initiated by {user.username}: {file.filename}")
+        start_time = asyncio.get_event_loop().time()
+
+        # Save temp file (I/O bound - use to_thread for large files)
         temp_path = UPLOAD_DIR / file.filename
-        with open(temp_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-            
-        # Process
-        data = excel_service.parse_excel_file(str(temp_path))
-        database.save_employees(data)
-        
+        content = await file.read()
+        await asyncio.to_thread(lambda: open(temp_path, "wb").write(content))
+        logger.debug(f"Saved temp file: {temp_path}")
+
+        # Parse Excel file (CPU bound - non-blocking)
+        logger.debug("Starting async Excel parsing...")
+        data = await asyncio.to_thread(excel_service.parse_excel_file, str(temp_path))
+        parse_time = asyncio.get_event_loop().time() - start_time
+        logger.debug(f"Excel parsing completed in {parse_time:.2f}s, found {len(data)} records")
+
+        # Save to database (non-blocking)
+        await asyncio.to_thread(database.save_employees, data)
+        total_time = asyncio.get_event_loop().time() - start_time
+
         # Cleanup
-        os.remove(temp_path)
-        
-        return {"status": "success", "count": len(data), "message": f"Successfully imported {len(data)} records"}
+        await asyncio.to_thread(os.remove, temp_path)
+        temp_path = None  # Mark as cleaned up
+
+        logger.info(f"Upload completed: {len(data)} records in {total_time:.2f}s")
+        return {
+            "status": "success",
+            "count": len(data),
+            "message": f"Successfully imported {len(data)} records",
+            "performance": {
+                "total_time_seconds": round(total_time, 2),
+                "parse_time_seconds": round(parse_time, 2)
+            }
+        }
     except Exception as e:
+        logger.error(f"Upload failed: {str(e)}")
+        # Cleanup on error
+        if temp_path and temp_path.exists():
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 @app.delete("/api/reset")
@@ -720,16 +1103,41 @@ async def get_genzai(status: str = None):
 
 @app.post("/api/sync-genzai")
 async def sync_genzai(user: CurrentUser = Depends(get_admin_user)):
-    """Syncs DBGenzaiX sheet from employee registry file. Requires admin authentication."""
+    """
+    Syncs DBGenzaiX sheet from employee registry file. Requires admin authentication.
+
+    ASYNC: Uses asyncio.to_thread() to prevent blocking the event loop during
+    CPU-intensive Excel parsing operations.
+    """
     if not EMPLOYEE_REGISTRY_PATH.exists():
         raise HTTPException(status_code=404, detail=f"Employee registry file not found at {EMPLOYEE_REGISTRY_PATH}")
 
     try:
-        data = excel_service.parse_genzai_sheet(EMPLOYEE_REGISTRY_PATH)
-        database.save_genzai(data)
-        logger.info(f"Genzai synced by {user.username}: {len(data)} dispatch employees")
-        return {"status": "success", "count": len(data), "message": f"Genzai synced: {len(data)} dispatch employees"}
+        logger.info(f"Genzai sync initiated by {user.username} (async mode)")
+        start_time = asyncio.get_event_loop().time()
+
+        # Parse Excel sheet (CPU bound - non-blocking)
+        logger.debug("Starting async Genzai Excel parsing...")
+        data = await asyncio.to_thread(excel_service.parse_genzai_sheet, EMPLOYEE_REGISTRY_PATH)
+        parse_time = asyncio.get_event_loop().time() - start_time
+        logger.debug(f"Genzai parsing completed in {parse_time:.2f}s, found {len(data)} records")
+
+        # Save to database (non-blocking)
+        await asyncio.to_thread(database.save_genzai, data)
+        total_time = asyncio.get_event_loop().time() - start_time
+
+        logger.info(f"Genzai synced by {user.username}: {len(data)} dispatch employees in {total_time:.2f}s")
+        return {
+            "status": "success",
+            "count": len(data),
+            "message": f"Genzai synced: {len(data)} dispatch employees",
+            "performance": {
+                "total_time_seconds": round(total_time, 2),
+                "parse_time_seconds": round(parse_time, 2)
+            }
+        }
     except Exception as e:
+        logger.error(f"Genzai sync failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Genzai sync failed: {str(e)}")
 
 @app.delete("/api/reset-genzai")
@@ -752,15 +1160,41 @@ async def get_ukeoi(status: str = None):
 
 @app.post("/api/sync-ukeoi")
 async def sync_ukeoi(user: CurrentUser = Depends(get_admin_user)):
-    """Syncs DBUkeoiX sheet from employee registry file."""
+    """
+    Syncs DBUkeoiX sheet from employee registry file. Requires admin authentication.
+
+    ASYNC: Uses asyncio.to_thread() to prevent blocking the event loop during
+    CPU-intensive Excel parsing operations.
+    """
     if not EMPLOYEE_REGISTRY_PATH.exists():
         raise HTTPException(status_code=404, detail=f"Employee registry file not found at {EMPLOYEE_REGISTRY_PATH}")
 
     try:
-        data = excel_service.parse_ukeoi_sheet(EMPLOYEE_REGISTRY_PATH)
-        database.save_ukeoi(data)
-        return {"status": "success", "count": len(data), "message": f"Ukeoi synced: {len(data)} contract employees"}
+        logger.info(f"Ukeoi sync initiated by {user.username} (async mode)")
+        start_time = asyncio.get_event_loop().time()
+
+        # Parse Excel sheet (CPU bound - non-blocking)
+        logger.debug("Starting async Ukeoi Excel parsing...")
+        data = await asyncio.to_thread(excel_service.parse_ukeoi_sheet, EMPLOYEE_REGISTRY_PATH)
+        parse_time = asyncio.get_event_loop().time() - start_time
+        logger.debug(f"Ukeoi parsing completed in {parse_time:.2f}s, found {len(data)} records")
+
+        # Save to database (non-blocking)
+        await asyncio.to_thread(database.save_ukeoi, data)
+        total_time = asyncio.get_event_loop().time() - start_time
+
+        logger.info(f"Ukeoi synced by {user.username}: {len(data)} contract employees in {total_time:.2f}s")
+        return {
+            "status": "success",
+            "count": len(data),
+            "message": f"Ukeoi synced: {len(data)} contract employees",
+            "performance": {
+                "total_time_seconds": round(total_time, 2),
+                "parse_time_seconds": round(parse_time, 2)
+            }
+        }
     except Exception as e:
+        logger.error(f"Ukeoi sync failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Ukeoi sync failed: {str(e)}")
 
 @app.delete("/api/reset-ukeoi")
@@ -792,16 +1226,41 @@ async def get_staff_employees(status: str = None, year: int = None, filter_by_ye
 
 @app.post("/api/sync-staff")
 async def sync_staff(user: CurrentUser = Depends(get_admin_user)):
-    """Syncs DBStaffX sheet from employee registry file. Requires admin authentication."""
+    """
+    Syncs DBStaffX sheet from employee registry file. Requires admin authentication.
+
+    ASYNC: Uses asyncio.to_thread() to prevent blocking the event loop during
+    CPU-intensive Excel parsing operations.
+    """
     if not EMPLOYEE_REGISTRY_PATH.exists():
         raise HTTPException(status_code=404, detail=f"Employee registry file not found at {EMPLOYEE_REGISTRY_PATH}")
 
     try:
-        data = excel_service.parse_staff_sheet(EMPLOYEE_REGISTRY_PATH)
-        database.save_staff(data)
-        logger.info(f"Staff synced by {user.username}: {len(data)} staff employees")
-        return {"status": "success", "count": len(data), "message": f"Staff synced: {len(data)} staff employees"}
+        logger.info(f"Staff sync initiated by {user.username} (async mode)")
+        start_time = asyncio.get_event_loop().time()
+
+        # Parse Excel sheet (CPU bound - non-blocking)
+        logger.debug("Starting async Staff Excel parsing...")
+        data = await asyncio.to_thread(excel_service.parse_staff_sheet, EMPLOYEE_REGISTRY_PATH)
+        parse_time = asyncio.get_event_loop().time() - start_time
+        logger.debug(f"Staff parsing completed in {parse_time:.2f}s, found {len(data)} records")
+
+        # Save to database (non-blocking)
+        await asyncio.to_thread(database.save_staff, data)
+        total_time = asyncio.get_event_loop().time() - start_time
+
+        logger.info(f"Staff synced by {user.username}: {len(data)} staff employees in {total_time:.2f}s")
+        return {
+            "status": "success",
+            "count": len(data),
+            "message": f"Staff synced: {len(data)} staff employees",
+            "performance": {
+                "total_time_seconds": round(total_time, 2),
+                "parse_time_seconds": round(parse_time, 2)
+            }
+        }
     except Exception as e:
+        logger.error(f"Staff sync failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Staff sync failed: {str(e)}")
 
 
@@ -1259,7 +1718,7 @@ async def get_employee_leave_info(employee_num: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/leave-requests")
-async def create_leave_request(request_data: dict):
+async def create_leave_request(request: Request, request_data: dict, user: CurrentUser = Depends(get_current_user)):
     """Create a new leave request with support for 時間単位有給 (hourly leave)."""
     try:
         from datetime import datetime
@@ -1303,7 +1762,7 @@ async def create_leave_request(request_data: dict):
                     break
 
         # Create request with new fields
-        request_id = database.create_leave_request(
+        new_request_id = database.create_leave_request(
             employee_num=request_data['employee_num'],
             employee_name=request_data['employee_name'],
             start_date=request_data['start_date'],
@@ -1316,10 +1775,35 @@ async def create_leave_request(request_data: dict):
             hourly_wage=hourly_wage
         )
 
+        # Audit log: CREATE leave_request
+        await log_audit_action(
+            request=request,
+            action="CREATE",
+            entity_type="leave_request",
+            entity_id=str(new_request_id),
+            new_value=request_data,
+            user=user
+        )
+
+        # Send notification for new leave request
+        try:
+            from notifications import notification_service
+            notification_service.notify_leave_request_created({
+                'employee_num': request_data['employee_num'],
+                'employee_name': request_data['employee_name'],
+                'start_date': request_data['start_date'],
+                'end_date': request_data['end_date'],
+                'days_requested': request_data['days_requested'],
+                'leave_type': request_data.get('leave_type', 'full'),
+                'reason': request_data.get('reason', '')
+            })
+        except Exception as notif_error:
+            logger.warning(f"Failed to send leave request notification: {notif_error}")
+
         return {
             "status": "success",
             "message": "申請が作成されました",
-            "request_id": request_id,
+            "request_id": new_request_id,
             "hourly_wage": hourly_wage,
             "cost_estimate": ((request_data['days_requested'] * 8) + hours_requested) * hourly_wage
         }
@@ -1338,13 +1822,60 @@ async def get_leave_requests_list(status: str = None, employee_num: str = None, 
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/leave-requests/{request_id}/approve")
-async def approve_leave_request(request_id: int, approval_data: dict):
+async def approve_leave_request(request: Request, request_id: int, approval_data: dict, user: CurrentUser = Depends(get_current_user)):
     """Approve a leave request and automatically update yukyu balance."""
     try:
-        approved_by = approval_data.get('approved_by', 'Manager')
+        approved_by = approval_data.get('approved_by', user.username if user else 'Manager')
+        validate_limit = approval_data.get('validate_limit', True)
+
+        # Get old value before approval
+        old_requests = database.get_leave_requests()
+        old_value = next((r for r in old_requests if r.get('id') == request_id), None)
+
+        # Validate balance limit before approval (optional)
+        if validate_limit and old_value:
+            employee_num = old_value.get('employee_num')
+            year = old_value.get('year')
+            if employee_num and year:
+                # Validar que el balance actual está dentro del límite de 40 días
+                database.validate_balance_limit(employee_num, year)
 
         # Approve request (this also updates the yukyu balance automatically)
         database.approve_leave_request(request_id, approved_by)
+
+        # Audit log: APPROVE leave_request
+        await log_audit_action(
+            request=request,
+            action="APPROVE",
+            entity_type="leave_request",
+            entity_id=str(request_id),
+            old_value=old_value,
+            new_value={"status": "APPROVED", "approved_by": approved_by},
+            user=user
+        )
+
+        # Send notification for approved leave request
+        try:
+            from notifications import notification_service
+            if old_value:
+                # Get updated balance after approval
+                from datetime import datetime
+                current_year = datetime.now().year
+                history = database.get_employee_yukyu_history(old_value.get('employee_num'), current_year)
+                balance_after = sum(record.get('balance', 0) for record in history)
+
+                notification_service.notify_leave_request_approved({
+                    'employee_num': old_value.get('employee_num'),
+                    'employee_name': old_value.get('employee_name'),
+                    'employee_email': old_value.get('employee_email'),  # May be None
+                    'start_date': old_value.get('start_date'),
+                    'end_date': old_value.get('end_date'),
+                    'days_requested': old_value.get('days_requested'),
+                    'approved_by': approved_by,
+                    'balance_after': balance_after
+                })
+        except Exception as notif_error:
+            logger.warning(f"Failed to send approval notification: {notif_error}")
 
         return {
             "status": "success",
@@ -1356,12 +1887,47 @@ async def approve_leave_request(request_id: int, approval_data: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/leave-requests/{request_id}/reject")
-async def reject_leave_request(request_id: int, rejection_data: dict):
+async def reject_leave_request(request: Request, request_id: int, rejection_data: dict, user: CurrentUser = Depends(get_current_user)):
     """Reject a leave request."""
     try:
-        rejected_by = rejection_data.get('rejected_by', 'Manager')
+        rejected_by = rejection_data.get('rejected_by', user.username if user else 'Manager')
+
+        # Get old value before rejection
+        old_requests = database.get_leave_requests()
+        old_value = next((r for r in old_requests if r.get('id') == request_id), None)
 
         database.reject_leave_request(request_id, rejected_by)
+
+        # Audit log: REJECT leave_request
+        await log_audit_action(
+            request=request,
+            action="REJECT",
+            entity_type="leave_request",
+            entity_id=str(request_id),
+            old_value=old_value,
+            new_value={"status": "REJECTED", "rejected_by": rejected_by},
+            user=user
+        )
+
+        # Send notification for rejected leave request
+        try:
+            from notifications import notification_service
+            if old_value:
+                rejection_reason = rejection_data.get('reason', 'No reason provided')
+                notification_service.notify_leave_request_rejected(
+                    request={
+                        'employee_num': old_value.get('employee_num'),
+                        'employee_name': old_value.get('employee_name'),
+                        'employee_email': old_value.get('employee_email'),  # May be None
+                        'start_date': old_value.get('start_date'),
+                        'end_date': old_value.get('end_date'),
+                        'days_requested': old_value.get('days_requested'),
+                        'rejected_by': rejected_by
+                    },
+                    reason=rejection_reason
+                )
+        except Exception as notif_error:
+            logger.warning(f"Failed to send rejection notification: {notif_error}")
 
         return {
             "status": "success",
@@ -1374,15 +1940,29 @@ async def reject_leave_request(request_id: int, rejection_data: dict):
 
 
 @app.delete("/api/leave-requests/{request_id}")
-async def cancel_leave_request(request_id: int, user: CurrentUser = Depends(get_current_user)):
+async def cancel_leave_request(request: Request, request_id: int, user: CurrentUser = Depends(get_current_user)):
     """
     Cancela una solicitud PENDIENTE - requires authentication.
     Solo funciona si el status es 'PENDING'.
     La solicitud se elimina completamente.
     """
     try:
+        # Get old value before cancellation
+        old_requests = database.get_leave_requests()
+        old_value = next((r for r in old_requests if r.get('id') == request_id), None)
+
         result = database.cancel_leave_request(request_id)
         logger.info(f"Leave request {request_id} cancelled by {user.username}: {result}")
+
+        # Audit log: DELETE leave_request
+        await log_audit_action(
+            request=request,
+            action="DELETE",
+            entity_type="leave_request",
+            entity_id=str(request_id),
+            old_value=old_value,
+            user=user
+        )
 
         return {
             "status": "success",
@@ -1397,7 +1977,7 @@ async def cancel_leave_request(request_id: int, user: CurrentUser = Depends(get_
 
 
 @app.post("/api/leave-requests/{request_id}/revert")
-async def revert_leave_request(request_id: int, revert_data: dict = None):
+async def revert_leave_request(request: Request, request_id: int, revert_data: dict = None, user: CurrentUser = Depends(get_current_user)):
     """
     Revierte una solicitud YA APROBADA.
     Devuelve los días usados al balance del empleado.
@@ -1407,9 +1987,25 @@ async def revert_leave_request(request_id: int, revert_data: dict = None):
         if revert_data is None:
             revert_data = {}
 
-        reverted_by = revert_data.get('reverted_by', 'Manager')
+        reverted_by = revert_data.get('reverted_by', user.username if user else 'Manager')
+
+        # Get old value before revert
+        old_requests = database.get_leave_requests()
+        old_value = next((r for r in old_requests if r.get('id') == request_id), None)
+
         result = database.revert_approved_request(request_id, reverted_by)
         logger.info(f"Leave request {request_id} reverted: {result}")
+
+        # Audit log: REVERT leave_request
+        await log_audit_action(
+            request=request,
+            action="REVERT",
+            entity_type="leave_request",
+            entity_id=str(request_id),
+            old_value=old_value,
+            new_value={"status": "CANCELLED", "reverted_by": reverted_by, "days_returned": result['days_returned']},
+            user=user
+        )
 
         return {
             "status": "success",
@@ -1487,6 +2083,200 @@ async def restore_backup(restore_data: dict, user: CurrentUser = Depends(get_adm
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         logger.error(f"Restore error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# AUDIT LOG ENDPOINTS (v2.3 - Complete Audit Trail)
+# ============================================
+
+@app.get("/api/audit-log", tags=["System"])
+async def get_audit_log_list(
+    request: Request,
+    entity_type: str = None,
+    entity_id: str = None,
+    action: str = None,
+    user_id: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    limit: int = 100,
+    offset: int = 0,
+    user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Obtiene registros del audit log con filtros opcionales.
+
+    Query Parameters:
+        entity_type: Tipo de entidad (employee, leave_request, yukyu_usage, etc.)
+        entity_id: ID especifico de la entidad
+        action: Tipo de accion (CREATE, UPDATE, DELETE, APPROVE, etc.)
+        user_id: Filtrar por usuario
+        start_date: Fecha inicio (YYYY-MM-DD)
+        end_date: Fecha fin (YYYY-MM-DD)
+        limit: Maximo registros (default 100)
+        offset: Offset para paginacion
+
+    Returns:
+        Lista de registros de audit
+    """
+    try:
+        logs = database.get_audit_log(
+            entity_type=entity_type,
+            entity_id=entity_id,
+            action=action,
+            user_id=user_id,
+            start_date=start_date,
+            end_date=end_date,
+            limit=min(limit, 500),  # Max 500 records
+            offset=offset
+        )
+
+        return {
+            "status": "success",
+            "data": logs,
+            "count": len(logs),
+            "filters": {
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+                "action": action,
+                "user_id": user_id,
+                "start_date": start_date,
+                "end_date": end_date
+            }
+        }
+    except Exception as e:
+        logger.error(f"Audit log error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/audit-log/{entity_type}/{entity_id}", tags=["System"])
+async def get_entity_audit_history(
+    entity_type: str,
+    entity_id: str,
+    limit: int = 50,
+    user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Obtiene el historial de cambios de una entidad especifica.
+
+    Path Parameters:
+        entity_type: Tipo de entidad (employee, leave_request, yukyu_usage)
+        entity_id: ID de la entidad
+
+    Returns:
+        Historial de cambios ordenado por fecha (mas reciente primero)
+    """
+    try:
+        history = database.get_entity_history(
+            entity_type=entity_type,
+            entity_id=entity_id,
+            limit=limit
+        )
+
+        return {
+            "status": "success",
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+            "history": history,
+            "count": len(history)
+        }
+    except Exception as e:
+        logger.error(f"Entity history error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/audit-log/user/{user_id}", tags=["System"])
+async def get_user_audit_log(
+    user_id: str,
+    limit: int = 100,
+    user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Obtiene todos los registros de audit de un usuario especifico.
+
+    Path Parameters:
+        user_id: ID del usuario
+
+    Returns:
+        Lista de acciones realizadas por el usuario
+    """
+    try:
+        logs = database.get_audit_log_by_user(user_id=user_id, limit=limit)
+
+        return {
+            "status": "success",
+            "user_id": user_id,
+            "data": logs,
+            "count": len(logs)
+        }
+    except Exception as e:
+        logger.error(f"User audit log error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/audit-log/stats", tags=["System"])
+async def get_audit_statistics(
+    days: int = 30,
+    user: CurrentUser = Depends(get_admin_user)
+):
+    """
+    Obtiene estadisticas del audit log.
+    Solo accesible por administradores.
+
+    Query Parameters:
+        days: Dias hacia atras para estadisticas (default 30)
+
+    Returns:
+        Estadisticas de auditoría (por accion, entidad, usuario)
+    """
+    try:
+        stats = database.get_audit_stats(days=days)
+
+        return {
+            "status": "success",
+            "stats": stats
+        }
+    except Exception as e:
+        logger.error(f"Audit stats error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/audit-log/cleanup", tags=["System"])
+async def cleanup_audit_logs(
+    days_to_keep: int = 365,
+    user: CurrentUser = Depends(get_admin_user)
+):
+    """
+    Elimina registros de audit log antiguos.
+    Solo accesible por administradores.
+
+    Query Parameters:
+        days_to_keep: Dias a mantener (default 365)
+
+    Returns:
+        Numero de registros eliminados
+    """
+    try:
+        # Log this action before cleanup
+        await log_audit_action(
+            request=None,
+            action="CLEANUP",
+            entity_type="audit_log",
+            user=user,
+            additional_info={"days_to_keep": days_to_keep}
+        )
+
+        deleted_count = database.cleanup_old_audit_logs(days_to_keep=days_to_keep)
+        logger.info(f"Audit log cleanup by {user.username}: {deleted_count} records deleted")
+
+        return {
+            "status": "success",
+            "message": f"Eliminados {deleted_count} registros antiguos",
+            "deleted_count": deleted_count,
+            "days_kept": days_to_keep
+        }
+    except Exception as e:
+        logger.error(f"Audit cleanup error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1632,6 +2422,439 @@ async def get_usage_by_employee_type(year: int):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# EDIT YUKYU DATA ENDPOINTS (v2.1 - NEW)
+# Permite editar datos importados desde Excel
+# ============================================
+
+@app.get("/api/yukyu/employee-summary/{employee_num}/{year}")
+async def get_employee_usage_summary(employee_num: str, year: int):
+    """
+    Obtiene resumen completo de uso de yukyu de un empleado.
+    Incluye todos los detalles individuales y detecta discrepancias.
+
+    Uso: Ver todos los días de uso de un empleado antes de editar.
+    """
+    try:
+        summary = database.get_employee_usage_summary(employee_num, year)
+
+        if not summary['employee']:
+            raise HTTPException(status_code=404, detail=f"Empleado {employee_num} no encontrado para año {year}")
+
+        return {
+            "status": "success",
+            "employee": summary['employee'],
+            "usage_details": summary['usage_details'],
+            "summary": summary['summary'],
+            "message": f"Encontrados {summary['summary']['total_records']} registros de uso"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/yukyu/usage-details/{detail_id}")
+async def update_usage_detail(request: Request, detail_id: int, update_data: UsageDetailUpdate, user: CurrentUser = Depends(get_current_user)):
+    """
+    Actualiza un registro específico de uso de yukyu.
+
+    Ejemplo: Cambiar 1/5 de día completo (1.0) a medio día (0.5).
+    Para el caso de Kenji que faltó medio día pero se importó mal.
+    """
+    try:
+        if update_data.days_used is None and update_data.use_date is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Debes proporcionar al menos days_used o use_date para actualizar"
+            )
+
+        # Get old value before update
+        old_details = database.get_yukyu_usage_details()
+        old_value = next((d for d in old_details if d.get('id') == detail_id), None)
+
+        updated = database.update_yukyu_usage_detail(
+            detail_id=detail_id,
+            days_used=update_data.days_used,
+            use_date=update_data.use_date
+        )
+
+        # Audit log: UPDATE yukyu_usage
+        await log_audit_action(
+            request=request,
+            action="UPDATE",
+            entity_type="yukyu_usage",
+            entity_id=str(detail_id),
+            old_value=old_value,
+            new_value=updated,
+            user=user
+        )
+
+        return {
+            "status": "success",
+            "message": f"Registro {detail_id} actualizado correctamente",
+            "updated_record": updated,
+            "note": "Recuerda llamar a /api/yukyu/recalculate para actualizar el balance del empleado"
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/yukyu/usage-details/{detail_id}")
+async def delete_usage_detail(request: Request, detail_id: int, user: CurrentUser = Depends(get_current_user)):
+    """
+    Elimina un registro específico de uso de yukyu.
+
+    Uso: Eliminar fechas que se importaron incorrectamente
+    (ej: celdas con comentarios que no debían ser fechas).
+    """
+    try:
+        # Get old value before delete
+        old_details = database.get_yukyu_usage_details()
+        old_value = next((d for d in old_details if d.get('id') == detail_id), None)
+
+        deleted = database.delete_yukyu_usage_detail(detail_id)
+
+        # Audit log: DELETE yukyu_usage
+        await log_audit_action(
+            request=request,
+            action="DELETE",
+            entity_type="yukyu_usage",
+            entity_id=str(detail_id),
+            old_value=old_value,
+            user=user
+        )
+
+        return {
+            "status": "success",
+            "message": f"Registro {detail_id} eliminado",
+            "deleted_record": deleted,
+            "note": "Recuerda llamar a /api/yukyu/recalculate para actualizar el balance del empleado"
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/yukyu/usage-details")
+async def create_usage_detail(request: Request, create_data: UsageDetailCreate, user: CurrentUser = Depends(get_current_user)):
+    """
+    Crea un nuevo registro de uso de yukyu.
+
+    Uso: Agregar fechas que no se importaron correctamente del Excel
+    (ej: celdas con comentarios que fueron ignoradas).
+    """
+    try:
+        created = database.add_single_yukyu_usage(
+            employee_num=create_data.employee_num,
+            name=create_data.name,
+            use_date=create_data.use_date,
+            days_used=create_data.days_used
+        )
+
+        # Audit log: CREATE yukyu_usage
+        await log_audit_action(
+            request=request,
+            action="CREATE",
+            entity_type="yukyu_usage",
+            entity_id=str(created.get('id')),
+            new_value=created,
+            user=user
+        )
+
+        return {
+            "status": "success",
+            "message": f"Nuevo registro creado para {create_data.employee_num}",
+            "created_record": created,
+            "note": "Recuerda llamar a /api/yukyu/recalculate para actualizar el balance del empleado"
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/yukyu/recalculate/{employee_num}/{year}")
+async def recalculate_employee_days(employee_num: str, year: int):
+    """
+    Recalcula los días usados de un empleado basándose en yukyu_usage_details.
+    Actualiza automáticamente: used, balance, usage_rate en tabla employees.
+
+    IMPORTANTE: Llamar después de agregar/editar/eliminar registros de uso.
+    """
+    try:
+        result = database.recalculate_employee_used_days(employee_num, year)
+
+        if 'error' in result:
+            raise HTTPException(status_code=404, detail=result['error'])
+
+        return {
+            "status": "success",
+            "message": f"Balance recalculado para empleado {employee_num}",
+            "recalculation": result
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/employees/{employee_num}/{year}")
+async def update_employee(request: Request, employee_num: str, year: int, update_data: EmployeeUpdate, user: CurrentUser = Depends(get_current_user)):
+    """
+    Actualiza datos de un empleado directamente.
+
+    Campos editables: name, haken, granted, used
+    Balance y usage_rate se recalculan automáticamente.
+    Valida límite de 40 días si validate_limit=True (por defecto).
+    """
+    try:
+        # Extraer validate_limit antes de filtrar
+        validate_limit = update_data.validate_limit
+
+        # Filtrar campos no-nulos (excluyendo validate_limit que no va a la DB)
+        update_dict = {k: v for k, v in update_data.model_dump().items()
+                       if v is not None and k != 'validate_limit'}
+
+        if not update_dict:
+            raise HTTPException(
+                status_code=400,
+                detail="Debes proporcionar al menos un campo para actualizar"
+            )
+
+        # Get old value before update
+        employee_id = f"{employee_num}_{year}"
+        old_employees = database.get_employees(year)
+        old_value = next((e for e in old_employees if e.get('id') == employee_id), None)
+
+        # Validate balance limit before update (optional)
+        if validate_limit:
+            # Calcular días adicionales si se incrementa granted
+            additional_days = 0.0
+            if 'granted' in update_dict and old_value:
+                old_granted = old_value.get('granted', 0) or 0
+                old_used = old_value.get('used', 0) or 0
+                new_granted = update_dict['granted']
+                new_used = update_dict.get('used', old_used)
+                # El balance nuevo sería: new_granted - new_used
+                # Comparar con el balance actual para ver el incremento
+                old_balance = old_granted - old_used
+                new_balance = new_granted - new_used
+                additional_days = new_balance - old_balance
+
+            # Solo validar si hay incremento en el balance
+            if additional_days > 0:
+                database.validate_balance_limit(employee_num, year, additional_days)
+
+        updated = database.update_employee(employee_num, year, **update_dict)
+
+        # Audit log: UPDATE employee
+        await log_audit_action(
+            request=request,
+            action="UPDATE",
+            entity_type="employee",
+            entity_id=employee_id,
+            old_value=old_value,
+            new_value=updated,
+            user=user
+        )
+
+        return {
+            "status": "success",
+            "message": f"Empleado {employee_num} actualizado",
+            "updated_employee": updated
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# === BULK UPDATE ENDPOINTS (v2.3 - Bulk Edit Feature) ===
+
+@app.post("/api/employees/bulk-update")
+async def bulk_update_employees_endpoint(request: Request, bulk_request: BulkUpdateRequest):
+    """
+    Actualiza multiples empleados en una sola operacion.
+    Maximo 50 empleados. Incluye validaciones y audit trail.
+    Valida límite de 40 días si validate_limit=True (por defecto).
+    """
+    try:
+        updated_by = "system"
+        try:
+            client_ip = request.client.host if request.client else "unknown"
+            updated_by = f"user@{client_ip}"
+        except Exception:
+            pass
+
+        # Validate balance limit before bulk update (optional)
+        if bulk_request.validate_limit:
+            updates = bulk_request.updates
+            # Verificar si hay incrementos en granted que puedan exceder el límite
+            if 'add_granted' in updates or 'set_granted' in updates:
+                validation_errors = []
+                for emp_num in bulk_request.employee_nums:
+                    try:
+                        # Obtener datos actuales del empleado
+                        employees = database.get_employees(bulk_request.year)
+                        emp = next((e for e in employees if e.get('employee_num') == emp_num), None)
+                        if emp:
+                            old_granted = emp.get('granted', 0) or 0
+                            old_used = emp.get('used', 0) or 0
+                            old_balance = old_granted - old_used
+
+                            # Calcular nuevo balance según el tipo de actualización
+                            if 'set_granted' in updates:
+                                new_granted = updates['set_granted']
+                                new_balance = new_granted - old_used
+                            elif 'add_granted' in updates:
+                                new_granted = old_granted + updates['add_granted']
+                                new_balance = new_granted - old_used
+                            else:
+                                new_balance = old_balance
+
+                            additional_days = new_balance - old_balance
+                            if additional_days > 0:
+                                database.validate_balance_limit(emp_num, bulk_request.year, additional_days)
+                    except ValueError as ve:
+                        validation_errors.append({
+                            "employee_num": emp_num,
+                            "error": str(ve)
+                        })
+
+                if validation_errors:
+                    raise ValueError(
+                        f"Validación de límite de 40 días fallida para {len(validation_errors)} empleado(s): "
+                        + ", ".join([e['employee_num'] for e in validation_errors])
+                    )
+
+        results = database.bulk_update_employees(
+            employee_nums=bulk_request.employee_nums,
+            year=bulk_request.year,
+            updates=bulk_request.updates,
+            updated_by=updated_by
+        )
+
+        log_sync_event("BULK_UPDATE", {
+            "operation_id": results.get("operation_id"),
+            "year": bulk_request.year,
+            "employee_count": len(bulk_request.employee_nums),
+            "updated_count": results.get("updated_count")
+        })
+
+        return {
+            "status": "success" if results["success"] else "partial",
+            "message": f"Actualizados {results['updated_count']} de {len(bulk_request.employee_nums)} empleados",
+            "operation_id": results["operation_id"],
+            "updated_count": results["updated_count"],
+            "total_requested": len(bulk_request.employee_nums),
+            "warnings": results["warnings"],
+            "errors": results["errors"],
+            "details": results["details"]
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Bulk update error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/employees/bulk-update/preview")
+async def preview_bulk_update(preview_request: BulkUpdatePreview):
+    """Previsualiza los cambios de un bulk update SIN aplicarlos."""
+    try:
+        employee_nums = preview_request.employee_nums
+        year = preview_request.year
+        updates = preview_request.updates
+        preview_results, warnings, not_found = [], [], []
+
+        for emp_num in employee_nums:
+            employees = database.get_employees(year)
+            employee = next((e for e in employees if e.get('employee_num') == emp_num), None)
+            if not employee:
+                not_found.append(emp_num)
+                continue
+
+            current = {"employee_num": emp_num, "name": employee.get("name", "Unknown"),
+                       "haken": employee.get("haken", ""), "granted": employee.get("granted", 0) or 0,
+                       "used": employee.get("used", 0) or 0, "balance": employee.get("balance", 0) or 0}
+            proposed = current.copy()
+
+            if 'add_granted' in updates and updates['add_granted']:
+                proposed['granted'] = current['granted'] + float(updates['add_granted'])
+            if 'set_granted' in updates and updates['set_granted'] is not None:
+                proposed['granted'] = float(updates['set_granted'])
+            if 'add_used' in updates and updates['add_used']:
+                proposed['used'] = current['used'] + float(updates['add_used'])
+            if 'set_used' in updates and updates['set_used'] is not None:
+                proposed['used'] = float(updates['set_used'])
+            if 'set_haken' in updates and updates['set_haken']:
+                proposed['haken'] = updates['set_haken']
+            proposed['balance'] = proposed['granted'] - proposed['used']
+
+            if proposed['balance'] < 0:
+                warnings.append({"employee_num": emp_num, "name": current['name'], "type": "negative_balance",
+                                 "message": f"Balance negativo: {proposed['balance']:.1f}"})
+            if proposed['granted'] > 40:
+                warnings.append({"employee_num": emp_num, "name": current['name'], "type": "excess_granted",
+                                 "message": f"Granted excede 40: {proposed['granted']:.1f}"})
+
+            preview_results.append({"employee_num": emp_num, "name": current['name'], "current": current,
+                                    "proposed": proposed, "changes": {k: {"from": current.get(k), "to": proposed.get(k)}
+                                    for k in ['granted', 'used', 'balance', 'haken'] if current.get(k) != proposed.get(k)}})
+
+        return {"status": "preview", "total_employees": len(employee_nums), "found": len(preview_results),
+                "not_found": not_found, "warnings": warnings, "has_warnings": len(warnings) > 0, "preview": preview_results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/employees/bulk-update/history")
+async def get_bulk_update_history_endpoint(operation_id: Optional[str] = None, employee_num: Optional[str] = None, limit: int = 100):
+    """Obtiene el historial de operaciones de bulk update."""
+    try:
+        history = database.get_bulk_update_history(operation_id=operation_id, employee_num=employee_num, limit=limit)
+        operations = {}
+        for record in history:
+            op_id = record['operation_id']
+            if op_id not in operations:
+                operations[op_id] = {"operation_id": op_id, "year": record['year'], "updated_at": record['updated_at'],
+                                     "updated_by": record['updated_by'], "batch_size": record['batch_size'], "changes": []}
+            operations[op_id]['changes'].append({"employee_num": record['employee_num'], "field": record['field_name'],
+                                                  "old_value": record['old_value'], "new_value": record['new_value']})
+        return {"status": "success", "total_records": len(history), "operations": list(operations.values())}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/employees/bulk-update/revert/{operation_id}")
+async def revert_bulk_update_endpoint(request: Request, operation_id: str):
+    """Revierte una operacion de bulk update. Restaura valores anteriores."""
+    try:
+        reverted_by = "system"
+        try:
+            client_ip = request.client.host if request.client else "unknown"
+            reverted_by = f"user@{client_ip}"
+        except Exception:
+            pass
+
+        results = database.revert_bulk_update(operation_id=operation_id, reverted_by=reverted_by)
+        log_sync_event("BULK_UPDATE_REVERT", {"operation_id": operation_id, "reverted_count": results.get("reverted_count")})
+
+        return {"status": "success" if results["success"] else "error",
+                "message": f"Revertidos {results['reverted_count']} empleados",
+                "original_operation_id": operation_id, "reverted_count": results["reverted_count"],
+                "errors": results.get("errors", []), "reverted_at": results["reverted_at"]}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # === COMPLIANCE & AGENT ENDPOINTS ===
 
@@ -2651,6 +3874,40 @@ async def get_dashboard_analytics(year: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.get("/api/analytics/monthly-trend/{year}")
+async def get_monthly_trend(year: int):
+    """
+    月次使用トレンドデータを取得。
+    年度の月別使用日数と累積使用日数を返す。
+    """
+    try:
+        # Get monthly usage summary
+        monthly = database.get_monthly_usage_summary(year)
+
+        # Japanese fiscal year: April (4) to March (3)
+        fiscal_months = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3]
+
+        monthly_usage = []
+        cumulative = 0
+        cumulative_usage = []
+
+        for month in fiscal_months:
+            total = monthly.get(month, {}).get('total_days', 0)
+            monthly_usage.append(round(total, 1))
+            cumulative += total
+            cumulative_usage.append(round(cumulative, 1))
+
+        return {
+            "year": year,
+            "monthly_usage": monthly_usage,
+            "cumulative_usage": cumulative_usage,
+            "total": round(cumulative, 1)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # === MONTHLY REPORTS ENDPOINTS ===
 
 @app.get("/api/reports/custom")
@@ -3336,6 +4593,322 @@ async def sync_to_master_excel(year: int):
 
 
 # ============================================
+# PDF REPORT ENDPOINTS
+# ============================================
+
+# Inicializar generador de reportes PDF
+_report_generator = None
+
+def get_report_generator() -> ReportGenerator:
+    """Obtiene instancia del generador de reportes (lazy initialization)"""
+    global _report_generator
+    if _report_generator is None:
+        _report_generator = ReportGenerator(company_name="UNS Corporation")
+    return _report_generator
+
+
+class CustomReportConfig(BaseModel):
+    """Modelo para configuracion de reporte personalizado"""
+    title: str = Field(..., min_length=1, max_length=100, description="Titulo del reporte")
+    filters: Optional[dict] = Field(default={}, description="Filtros a aplicar")
+    columns: Optional[List[str]] = Field(
+        default=['employee_num', 'name', 'granted', 'used', 'balance'],
+        description="Columnas a incluir"
+    )
+    sort_by: Optional[str] = Field(default='employee_num', description="Campo de ordenacion")
+    include_stats: Optional[bool] = Field(default=True, description="Incluir estadisticas")
+
+    @field_validator('columns')
+    @classmethod
+    def validate_columns(cls, v):
+        valid_columns = ['employee_num', 'name', 'haken', 'granted', 'used', 'balance', 'usage_rate', 'year']
+        for col in v:
+            if col not in valid_columns:
+                raise ValueError(f'Columna invalida: {col}. Validas: {valid_columns}')
+        return v
+
+
+@app.get("/api/reports/employee/{employee_num}/pdf")
+async def get_employee_report_pdf(
+    employee_num: str,
+    year: Optional[int] = None
+):
+    """
+    Genera reporte PDF individual de un empleado.
+
+    Args:
+        employee_num: Numero de empleado
+        year: Ano fiscal (opcional, si no se especifica muestra todos los anos)
+
+    Returns:
+        Archivo PDF para descarga
+    """
+    try:
+        generator = get_report_generator()
+        pdf_bytes = generator.generate_employee_report(employee_num, year)
+
+        # Generar nombre de archivo
+        year_suffix = f"_{year}" if year else "_all"
+        filename = f"reporte_empleado_{employee_num}{year_suffix}.pdf"
+
+        # Opcionalmente guardar copia
+        save_report(pdf_bytes, f"empleado_{employee_num}{year_suffix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(pdf_bytes))
+            }
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error generando reporte de empleado: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando reporte: {str(e)}")
+
+
+@app.get("/api/reports/annual/{year}/pdf")
+async def get_annual_ledger_pdf(year: int):
+    """
+    Genera el reporte anual oficial 年次有給休暇管理簿 (requerido por ley).
+
+    Este reporte cumple con los requisitos legales japoneses de
+    mantenimiento de registros de vacaciones pagadas (Art. 39 Ley Laboral).
+
+    Args:
+        year: Ano fiscal
+
+    Returns:
+        Archivo PDF para descarga
+    """
+    try:
+        generator = get_report_generator()
+        pdf_bytes = generator.generate_annual_ledger(year)
+
+        filename = f"年次有給休暇管理簿_{year}.pdf"
+
+        # Guardar copia oficial
+        save_report(pdf_bytes, f"annual_ledger_{year}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(pdf_bytes))
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error generando reporte anual: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando reporte: {str(e)}")
+
+
+@app.get("/api/reports/monthly/{year}/{month}/pdf")
+async def get_monthly_summary_pdf(year: int, month: int):
+    """
+    Genera reporte mensual de uso de vacaciones.
+
+    Args:
+        year: Ano
+        month: Mes (1-12)
+
+    Returns:
+        Archivo PDF para descarga
+    """
+    if not 1 <= month <= 12:
+        raise HTTPException(status_code=400, detail="Mes debe estar entre 1 y 12")
+
+    try:
+        generator = get_report_generator()
+        pdf_bytes = generator.generate_monthly_summary(year, month)
+
+        filename = f"reporte_mensual_{year}_{month:02d}.pdf"
+
+        # Guardar copia
+        save_report(pdf_bytes, f"monthly_{year}_{month:02d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(pdf_bytes))
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error generando reporte mensual: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando reporte: {str(e)}")
+
+
+@app.get("/api/reports/compliance/{year}/pdf")
+async def get_compliance_report_pdf(year: int):
+    """
+    Genera reporte de cumplimiento de la obligacion de 5 dias (5日取得義務).
+
+    Este reporte identifica empleados que:
+    - Cumplen con la obligacion (5+ dias usados)
+    - Estan en riesgo (3-4.9 dias usados)
+    - No cumplen (<3 dias usados)
+
+    Args:
+        year: Ano fiscal
+
+    Returns:
+        Archivo PDF para descarga
+    """
+    try:
+        generator = get_report_generator()
+        pdf_bytes = generator.generate_compliance_report(year)
+
+        filename = f"reporte_cumplimiento_5dias_{year}.pdf"
+
+        # Guardar copia
+        save_report(pdf_bytes, f"compliance_{year}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(pdf_bytes))
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error generando reporte de cumplimiento: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando reporte: {str(e)}")
+
+
+@app.post("/api/reports/custom/pdf")
+async def generate_custom_report_pdf(config: CustomReportConfig):
+    """
+    Genera un reporte personalizado basado en configuracion.
+
+    Body:
+        {
+            "title": "Mi Reporte",
+            "filters": {
+                "year": 2025,
+                "department": "Toyota",
+                "min_balance": 0,
+                "max_balance": 10
+            },
+            "columns": ["employee_num", "name", "granted", "used", "balance"],
+            "sort_by": "balance",
+            "include_stats": true
+        }
+
+    Returns:
+        Archivo PDF para descarga
+    """
+    try:
+        generator = get_report_generator()
+        pdf_bytes = generator.generate_custom_report(config.model_dump())
+
+        # Sanitizar titulo para nombre de archivo
+        safe_title = "".join(c if c.isalnum() or c in '-_' else '_' for c in config.title)
+        filename = f"reporte_custom_{safe_title}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+
+        # Guardar copia
+        save_report(pdf_bytes, f"custom_{safe_title}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(pdf_bytes))
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error generando reporte personalizado: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando reporte: {str(e)}")
+
+
+@app.get("/api/reports/files")
+async def list_pdf_reports():
+    """
+    Lista todos los reportes PDF generados.
+
+    Returns:
+        Lista de reportes con metadata (nombre, tamano, fecha)
+    """
+    try:
+        reports = list_reports()
+        return {
+            "status": "success",
+            "count": len(reports),
+            "reports": reports
+        }
+    except Exception as e:
+        logger.error(f"Error listando reportes: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/reports/download/{filename}")
+async def download_pdf_report(filename: str):
+    """
+    Descarga un reporte PDF previamente generado.
+
+    Args:
+        filename: Nombre del archivo (sin path)
+
+    Returns:
+        Archivo PDF para descarga
+    """
+    import os
+
+    # Sanitizar filename para prevenir path traversal
+    safe_filename = os.path.basename(filename)
+    if not safe_filename.endswith('.pdf'):
+        safe_filename += '.pdf'
+
+    filepath = os.path.join(REPORTS_DIR, safe_filename)
+
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+
+    return FileResponse(
+        filepath,
+        media_type="application/pdf",
+        filename=safe_filename
+    )
+
+
+@app.delete("/api/reports/cleanup")
+async def cleanup_pdf_reports(
+    days_to_keep: int = 30,
+    user: CurrentUser = Depends(get_admin_user)
+):
+    """
+    Elimina reportes PDF antiguos (requiere autenticacion admin).
+
+    Args:
+        days_to_keep: Dias de antiguedad para mantener (default 30)
+
+    Returns:
+        Numero de archivos eliminados
+    """
+    try:
+        deleted = cleanup_old_reports(days_to_keep)
+        logger.info(f"PDF cleanup by {user.username}: {deleted} files deleted")
+        return {
+            "status": "success",
+            "deleted_count": deleted,
+            "days_threshold": days_to_keep
+        }
+    except Exception as e:
+        logger.error(f"Error limpiando reportes: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
 # HEALTH & INFO ENDPOINTS
 # ============================================
 
@@ -3457,7 +5030,907 @@ async def health_check():
         }, 503
 
 
+# ============================================
+# PROJECT STATUS DASHBOARD
+# ============================================
+
+import subprocess
+import psutil
+
+# Track server start time for uptime calculation
+SERVER_START_TIME = datetime.now(timezone.utc)
+
+# Project version
+PROJECT_VERSION = "2.1.0"
+
+
+def get_git_commits(limit: int = 5) -> list:
+    """Get recent git commits"""
+    try:
+        result = subprocess.run(
+            ["git", "log", f"--oneline", f"-{limit}", "--format=%H|%s|%an|%ad", "--date=iso"],
+            cwd=str(Path(__file__).parent),
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode == 0:
+            commits = []
+            for line in result.stdout.strip().split('\n'):
+                if line:
+                    parts = line.split('|')
+                    if len(parts) >= 4:
+                        commits.append({
+                            "hash": parts[0][:7],
+                            "message": parts[1],
+                            "author": parts[2],
+                            "date": parts[3]
+                        })
+            return commits
+    except Exception as e:
+        logger.warning(f"Failed to get git commits: {e}")
+    return []
+
+
+def get_commits_per_day(days: int = 7) -> dict:
+    """Get commit count per day for the last N days"""
+    try:
+        result = subprocess.run(
+            ["git", "log", f"--since={days} days ago", "--format=%ad", "--date=short"],
+            cwd=str(Path(__file__).parent),
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode == 0:
+            from collections import Counter
+            dates = [line.strip() for line in result.stdout.strip().split('\n') if line.strip()]
+            counts = Counter(dates)
+            # Fill in missing days with 0
+            today = datetime.now().date()
+            result_dict = {}
+            for i in range(days - 1, -1, -1):
+                day = (today - timedelta(days=i)).isoformat()
+                result_dict[day] = counts.get(day, 0)
+            return result_dict
+    except Exception as e:
+        logger.warning(f"Failed to get commits per day: {e}")
+    return {}
+
+
+def load_memory_store() -> dict:
+    """Load memory_store.json if it exists"""
+    memory_path = Path(__file__).parent / "agents" / "memory_store.json"
+    if memory_path.exists():
+        try:
+            import json
+            with open(memory_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning(f"Failed to load memory_store.json: {e}")
+    return {}
+
+
+def get_system_info() -> dict:
+    """Get system resource information"""
+    try:
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+
+        return {
+            "cpu_percent": cpu_percent,
+            "memory": {
+                "total_gb": round(memory.total / (1024**3), 2),
+                "used_gb": round(memory.used / (1024**3), 2),
+                "percent": memory.percent
+            },
+            "disk": {
+                "total_gb": round(disk.total / (1024**3), 2),
+                "used_gb": round(disk.used / (1024**3), 2),
+                "percent": round(disk.percent, 1)
+            }
+        }
+    except Exception as e:
+        logger.warning(f"Failed to get system info: {e}")
+        return {}
+
+
+def get_uptime() -> dict:
+    """Get server uptime"""
+    now = datetime.now(timezone.utc)
+    uptime_delta = now - SERVER_START_TIME
+    total_seconds = int(uptime_delta.total_seconds())
+    days = total_seconds // 86400
+    hours = (total_seconds % 86400) // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+
+    return {
+        "started_at": SERVER_START_TIME.isoformat(),
+        "uptime_seconds": total_seconds,
+        "uptime_human": f"{days}d {hours}h {minutes}m {seconds}s"
+    }
+
+
+@app.get("/api/project-status")
+async def get_project_status():
+    """
+    Retorna el estado completo del proyecto para el dashboard.
+    Incluye: version, commits, TODOs, features, estado DB, sistema, errores.
+    """
+    try:
+        # Load memory store data
+        memory = load_memory_store()
+
+        # Get database counts
+        employees = database.get_employees()
+        genzai = database.get_genzai()
+        ukeoi = database.get_ukeoi()
+
+        # Try to get staff count
+        try:
+            staff = database.get_staff()
+            staff_count = len(staff)
+        except:
+            staff_count = 0
+
+        # Try to get leave requests count
+        try:
+            leave_requests = database.get_leave_requests()
+            leave_count = len(leave_requests) if leave_requests else 0
+        except:
+            leave_count = 0
+
+        # Try to get usage details count
+        try:
+            with database.get_db() as conn:
+                c = conn.cursor()
+                c.execute("SELECT COUNT(*) FROM yukyu_usage_details")
+                usage_count = c.fetchone()[0]
+        except:
+            usage_count = 0
+
+        # Extract TODOs from memory store
+        todos = []
+        if memory.get("todos"):
+            for todo_id, todo in memory["todos"].items():
+                todos.append({
+                    "id": todo_id,
+                    "title": todo.get("title", ""),
+                    "description": todo.get("description", ""),
+                    "priority": todo.get("priority", "medium"),
+                    "category": todo.get("category", "general"),
+                    "completed": todo.get("completed", False),
+                    "created_at": todo.get("created_at")
+                })
+
+        # Extract features from memory store
+        features = memory.get("features", [])
+
+        # Extract known errors from memory store
+        errors = []
+        if memory.get("errors"):
+            for err_id, err in memory["errors"].items():
+                errors.append({
+                    "id": err_id,
+                    "pattern": err.get("error_pattern", ""),
+                    "solution": err.get("solution", ""),
+                    "files": err.get("related_files", []),
+                    "verified": err.get("verified", False)
+                })
+
+        # Get learnings summary
+        learnings_count = sum(len(cat) for cat in memory.get("learnings", {}).values())
+
+        return {
+            "status": "success",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "project": {
+                "name": "YuKyuDATA-app",
+                "version": PROJECT_VERSION,
+                "description": "Employee Paid Leave Management System"
+            },
+            "git": {
+                "recent_commits": get_git_commits(5),
+                "commits_per_day": get_commits_per_day(7)
+            },
+            "database": {
+                "type": "postgresql" if database.USE_POSTGRESQL else "sqlite",
+                "tables": {
+                    "employees": len(employees),
+                    "genzai": len(genzai),
+                    "ukeoi": len(ukeoi),
+                    "staff": staff_count,
+                    "leave_requests": leave_count,
+                    "usage_details": usage_count
+                },
+                "total_records": len(employees) + len(genzai) + len(ukeoi) + staff_count + leave_count + usage_count
+            },
+            "todos": {
+                "items": todos,
+                "pending_count": sum(1 for t in todos if not t.get("completed")),
+                "completed_count": sum(1 for t in todos if t.get("completed"))
+            },
+            "features": {
+                "items": features,
+                "total_count": len(features),
+                "completed_count": sum(1 for f in features if f.get("status") == "completed")
+            },
+            "errors": {
+                "items": errors,
+                "unresolved_count": sum(1 for e in errors if not e.get("verified"))
+            },
+            "learnings_count": learnings_count,
+            "system": {
+                **get_system_info(),
+                **get_uptime()
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error getting project status: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+
+@app.get("/status", response_class=HTMLResponse)
+async def status_page():
+    """Sirve la pagina del dashboard de estado del proyecto"""
+    status_template = Path(__file__).parent / "templates" / "status.html"
+    if status_template.exists():
+        return status_template.read_text(encoding='utf-8')
+    else:
+        return HTMLResponse(
+            content="<h1>Status page not found</h1><p>Template file missing: templates/status.html</p>",
+            status_code=404
+        )
+
+
+# ============================================
+# GITHUB ISSUES INTEGRATION
+# ============================================
+
+class GitHubIssueCreate(BaseModel):
+    """Model for creating a GitHub issue"""
+    title: str = Field(..., min_length=1, max_length=256, description="Issue title")
+    body: str = Field("", max_length=65536, description="Issue body (Markdown supported)")
+    labels: List[str] = Field(default_factory=list, description="Issue labels")
+
+
+class GitHubCommentCreate(BaseModel):
+    """Model for adding a comment to a GitHub issue"""
+    comment: str = Field(..., min_length=1, max_length=65536, description="Comment text")
+
+
+@app.get("/api/github/issues")
+async def list_github_issues(
+    state: str = "open",
+    labels: Optional[str] = None,
+    per_page: int = 30,
+    page: int = 1
+):
+    """
+    Lista issues del repositorio de GitHub.
+
+    Args:
+        state: Estado de issues ('open', 'closed', 'all')
+        labels: Filtrar por etiquetas separadas por coma
+        per_page: Resultados por pagina (max 100)
+        page: Numero de pagina
+
+    Returns:
+        Lista de issues con sus datos principales
+    """
+    try:
+        from scripts.github_issues import GitHubIssues, GitHubAuthError, GitHubAPIError
+
+        gh = GitHubIssues()
+        issues = gh.list_issues(
+            state=state,
+            labels=labels,
+            per_page=per_page,
+            page=page
+        )
+
+        return {
+            "status": "success",
+            "count": len(issues),
+            "state": state,
+            "issues": issues
+        }
+
+    except GitHubAuthError as e:
+        logger.error(f"GitHub auth error: {e}")
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "github_auth_error",
+                "message": str(e),
+                "hint": "Configure GITHUB_TOKEN en el archivo .env"
+            }
+        )
+    except GitHubAPIError as e:
+        logger.error(f"GitHub API error: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "github_api_error",
+                "message": str(e)
+            }
+        )
+    except ImportError:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "module_not_found",
+                "message": "Modulo github_issues no encontrado"
+            }
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error listing GitHub issues: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "internal_error", "message": str(e)}
+        )
+
+
+@app.post("/api/github/issues")
+async def create_github_issue(issue_data: GitHubIssueCreate):
+    """
+    Crea un nuevo issue en GitHub.
+
+    Args:
+        issue_data: Datos del issue (title, body, labels)
+
+    Returns:
+        Datos del issue creado incluyendo numero y URL
+    """
+    try:
+        from scripts.github_issues import GitHubIssues, GitHubAuthError, GitHubAPIError
+
+        gh = GitHubIssues()
+        result = gh.create_issue(
+            title=issue_data.title,
+            body=issue_data.body,
+            labels=issue_data.labels if issue_data.labels else None
+        )
+
+        logger.info(f"GitHub issue created: #{result['number']} - {issue_data.title}")
+
+        return {
+            "status": "success",
+            "message": f"Issue #{result['number']} creado exitosamente",
+            "issue": result
+        }
+
+    except GitHubAuthError as e:
+        logger.error(f"GitHub auth error: {e}")
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "github_auth_error",
+                "message": str(e),
+                "hint": "Configure GITHUB_TOKEN en el archivo .env"
+            }
+        )
+    except GitHubAPIError as e:
+        logger.error(f"GitHub API error: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "github_api_error",
+                "message": str(e)
+            }
+        )
+    except ImportError:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "module_not_found",
+                "message": "Modulo github_issues no encontrado"
+            }
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error creating GitHub issue: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "internal_error", "message": str(e)}
+        )
+
+
+@app.get("/api/github/issues/{issue_number}")
+async def get_github_issue(issue_number: int):
+    """
+    Obtiene los detalles de un issue especifico.
+
+    Args:
+        issue_number: Numero del issue
+
+    Returns:
+        Datos completos del issue
+    """
+    try:
+        from scripts.github_issues import GitHubIssues, GitHubAuthError, GitHubAPIError
+
+        gh = GitHubIssues()
+        issue = gh.get_issue(issue_number)
+
+        return {
+            "status": "success",
+            "issue": issue
+        }
+
+    except GitHubAuthError as e:
+        raise HTTPException(status_code=401, detail={"error": "github_auth_error", "message": str(e)})
+    except GitHubAPIError as e:
+        raise HTTPException(status_code=502, detail={"error": "github_api_error", "message": str(e)})
+    except Exception as e:
+        logger.error(f"Error getting GitHub issue: {e}")
+        raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(e)})
+
+
+@app.post("/api/github/issues/{issue_number}/close")
+async def close_github_issue(issue_number: int, reason: Optional[str] = None):
+    """
+    Cierra un issue de GitHub.
+
+    Args:
+        issue_number: Numero del issue
+        reason: Razon del cierre ('completed' o 'not_planned')
+
+    Returns:
+        Datos del issue cerrado
+    """
+    try:
+        from scripts.github_issues import GitHubIssues, GitHubAuthError, GitHubAPIError
+
+        gh = GitHubIssues()
+        result = gh.close_issue(issue_number, reason=reason)
+
+        logger.info(f"GitHub issue closed: #{issue_number}")
+
+        return {
+            "status": "success",
+            "message": f"Issue #{issue_number} cerrado exitosamente",
+            "issue": result
+        }
+
+    except GitHubAuthError as e:
+        raise HTTPException(status_code=401, detail={"error": "github_auth_error", "message": str(e)})
+    except GitHubAPIError as e:
+        raise HTTPException(status_code=502, detail={"error": "github_api_error", "message": str(e)})
+    except Exception as e:
+        logger.error(f"Error closing GitHub issue: {e}")
+        raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(e)})
+
+
+@app.post("/api/github/issues/{issue_number}/comments")
+async def add_github_comment(issue_number: int, comment_data: GitHubCommentCreate):
+    """
+    Agrega un comentario a un issue de GitHub.
+
+    Args:
+        issue_number: Numero del issue
+        comment_data: Datos del comentario
+
+    Returns:
+        Datos del comentario creado
+    """
+    try:
+        from scripts.github_issues import GitHubIssues, GitHubAuthError, GitHubAPIError
+
+        gh = GitHubIssues()
+        result = gh.add_comment(issue_number, comment_data.comment)
+
+        logger.info(f"GitHub comment added to issue #{issue_number}")
+
+        return {
+            "status": "success",
+            "message": "Comentario agregado exitosamente",
+            "comment": result
+        }
+
+    except GitHubAuthError as e:
+        raise HTTPException(status_code=401, detail={"error": "github_auth_error", "message": str(e)})
+    except GitHubAPIError as e:
+        raise HTTPException(status_code=502, detail={"error": "github_api_error", "message": str(e)})
+    except Exception as e:
+        logger.error(f"Error adding GitHub comment: {e}")
+        raise HTTPException(status_code=500, detail={"error": "internal_error", "message": str(e)})
+
+
+@app.post("/api/github/sync-todos")
+async def sync_todos_to_github():
+    """
+    Sincroniza TODOs de memory_store.json a GitHub Issues.
+
+    Crea issues para:
+    - TODOs pendientes (no completados)
+    - Errores conocidos (no verificados)
+
+    Evita duplicados verificando si ya existe un issue con el mismo titulo.
+
+    Returns:
+        Resumen de la sincronizacion con issues creados y omitidos
+    """
+    try:
+        from scripts.github_issues import GitHubIssues, GitHubAuthError, GitHubAPIError
+
+        gh = GitHubIssues()
+        result = gh.sync_todos_to_issues()
+
+        logger.info(
+            f"GitHub sync completed: {result['summary']['created_count']} created, "
+            f"{result['summary']['skipped_count']} skipped"
+        )
+
+        return result
+
+    except GitHubAuthError as e:
+        logger.error(f"GitHub auth error during sync: {e}")
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "github_auth_error",
+                "message": str(e),
+                "hint": "Configure GITHUB_TOKEN en el archivo .env"
+            }
+        )
+    except GitHubAPIError as e:
+        logger.error(f"GitHub API error during sync: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "github_api_error",
+                "message": str(e)
+            }
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error during GitHub sync: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "internal_error", "message": str(e)}
+        )
+
+
+@app.get("/api/github/status")
+async def github_integration_status():
+    """
+    Verifica el estado de la integracion con GitHub.
+
+    Returns:
+        Estado de la configuracion y conectividad
+    """
+    import os
+
+    token_configured = bool(os.getenv("GITHUB_TOKEN"))
+    repo_configured = os.getenv("GITHUB_REPO", "jokken79/YuKyuDATA-app1.0v")
+
+    result = {
+        "status": "configured" if token_configured else "not_configured",
+        "token_configured": token_configured,
+        "repository": repo_configured,
+        "connection_test": None
+    }
+
+    if token_configured:
+        try:
+            from scripts.github_issues import GitHubIssues, GitHubAuthError, GitHubAPIError
+
+            gh = GitHubIssues()
+            # Test connection by listing 1 issue
+            gh.list_issues(per_page=1)
+            result["connection_test"] = "success"
+        except GitHubAuthError:
+            result["connection_test"] = "auth_failed"
+        except GitHubAPIError as e:
+            result["connection_test"] = f"api_error: {str(e)}"
+        except Exception as e:
+            result["connection_test"] = f"error: {str(e)}"
+
+    return result
+
+
+# ============================================
+# NOTIFICATION ENDPOINTS
+# ============================================
+
+from notifications import notification_service
+
+
+class NotificationSettingsUpdate(BaseModel):
+    """Modelo para actualizar configuracion de notificaciones."""
+    smtp_host: Optional[str] = None
+    smtp_port: Optional[int] = None
+    smtp_user: Optional[str] = None
+    smtp_password: Optional[str] = None
+    smtp_from: Optional[str] = None
+    smtp_from_name: Optional[str] = None
+    email_enabled: Optional[bool] = None
+    slack_webhook_url: Optional[str] = None
+    slack_channel: Optional[str] = None
+    slack_enabled: Optional[bool] = None
+    notify_on_leave_created: Optional[bool] = None
+    notify_on_leave_approved: Optional[bool] = None
+    notify_on_leave_rejected: Optional[bool] = None
+    notify_on_expiring_days: Optional[bool] = None
+    notify_on_compliance_warning: Optional[bool] = None
+    manager_emails: Optional[str] = None
+
+
+class TestEmailRequest(BaseModel):
+    """Modelo para enviar email de prueba."""
+    to: str = Field(..., description="Email del destinatario")
+
+
+@app.get("/api/notifications/settings")
+async def get_notification_settings(user: CurrentUser = Depends(get_current_user)):
+    """
+    Obtiene la configuracion actual de notificaciones.
+
+    Los passwords y URLs sensibles se muestran enmascarados.
+    Requiere autenticacion.
+    """
+    try:
+        settings = notification_service.get_settings()
+        return {
+            "status": "success",
+            "settings": settings
+        }
+    except Exception as e:
+        logger.error(f"Error getting notification settings: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/notifications/settings")
+async def update_notification_settings(
+    settings_update: NotificationSettingsUpdate,
+    user: CurrentUser = Depends(get_admin_user)
+):
+    """
+    Actualiza la configuracion de notificaciones.
+
+    Solo los campos proporcionados seran actualizados.
+    Requiere autenticacion como admin.
+    """
+    try:
+        # Convertir a dict excluyendo None
+        update_data = {k: v for k, v in settings_update.model_dump().items() if v is not None}
+
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No settings to update")
+
+        success = notification_service.update_settings(update_data)
+
+        if success:
+            logger.info(f"Notification settings updated by {user.username}")
+            return {
+                "status": "success",
+                "message": "Settings updated successfully",
+                "updated_fields": list(update_data.keys())
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to update settings")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating notification settings: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/notifications/test-email")
+async def test_email_notification(
+    request: TestEmailRequest,
+    user: CurrentUser = Depends(get_admin_user)
+):
+    """
+    Envia un email de prueba para verificar la configuracion SMTP.
+
+    Requiere autenticacion como admin.
+    """
+    try:
+        result = notification_service.test_email(request.to)
+
+        if result["status"] == "success":
+            logger.info(f"Test email sent to {request.to} by {user.username}")
+            return {
+                "status": "success",
+                "message": f"Test email sent to {request.to}"
+            }
+        else:
+            logger.warning(f"Test email failed: {result['message']}")
+            return {
+                "status": "error",
+                "message": result["message"]
+            }
+
+    except Exception as e:
+        logger.error(f"Error sending test email: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/notifications/test-slack")
+async def test_slack_notification(user: CurrentUser = Depends(get_admin_user)):
+    """
+    Envia un mensaje de prueba a Slack para verificar la configuracion.
+
+    Requiere autenticacion como admin.
+    """
+    try:
+        result = notification_service.test_slack()
+
+        if result["status"] == "success":
+            logger.info(f"Test Slack message sent by {user.username}")
+            return {
+                "status": "success",
+                "message": "Test Slack message sent successfully"
+            }
+        else:
+            logger.warning(f"Test Slack failed: {result['message']}")
+            return {
+                "status": "error",
+                "message": result["message"]
+            }
+
+    except Exception as e:
+        logger.error(f"Error sending test Slack: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/notifications/logs")
+async def get_notification_logs(
+    limit: int = 100,
+    notification_type: Optional[str] = None,
+    event_type: Optional[str] = None,
+    user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Obtiene el historial de notificaciones enviadas.
+
+    Query parameters:
+    - limit: Numero maximo de registros (default 100)
+    - notification_type: Filtrar por tipo (email, slack)
+    - event_type: Filtrar por evento (leave_created, leave_approved, etc.)
+
+    Requiere autenticacion.
+    """
+    try:
+        logs = notification_service.get_notification_logs(
+            limit=limit,
+            notification_type=notification_type,
+            event_type=event_type
+        )
+
+        return {
+            "status": "success",
+            "count": len(logs),
+            "logs": logs
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting notification logs: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/notifications/send-expiring-warnings")
+async def send_expiring_days_warnings(
+    threshold_months: int = 3,
+    year: Optional[int] = None,
+    user: CurrentUser = Depends(get_admin_user)
+):
+    """
+    Envia notificaciones de advertencia a empleados con dias que estan por vencer.
+
+    Query parameters:
+    - threshold_months: Meses antes de la expiracion (default 3)
+    - year: Ano fiscal (default: ano actual)
+
+    Requiere autenticacion como admin.
+    """
+    try:
+        if year is None:
+            year = datetime.now().year
+
+        # Obtener empleados con dias por vencer
+        expiring_employees = check_expiring_soon(year, threshold_months)
+
+        if not expiring_employees:
+            return {
+                "status": "success",
+                "message": "No employees with expiring days found",
+                "notifications_sent": 0
+            }
+
+        sent_count = 0
+        errors = []
+
+        for emp in expiring_employees:
+            try:
+                result = notification_service.notify_expiring_days(
+                    employee=emp,
+                    days_expiring=emp.get('days_expiring', 0),
+                    deadline=emp.get('expiry_date', 'N/A')
+                )
+
+                if result.get('email', {}).get('status') == 'success' or \
+                   result.get('slack', {}).get('status') == 'success':
+                    sent_count += 1
+            except Exception as e:
+                errors.append(f"{emp.get('name', 'Unknown')}: {str(e)}")
+
+        logger.info(f"Expiring days warnings sent: {sent_count}/{len(expiring_employees)}")
+
+        return {
+            "status": "success",
+            "message": f"Sent {sent_count} notifications",
+            "notifications_sent": sent_count,
+            "total_employees": len(expiring_employees),
+            "errors": errors if errors else None
+        }
+
+    except Exception as e:
+        logger.error(f"Error sending expiring warnings: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/notifications/send-compliance-warning")
+async def send_compliance_warnings(
+    year: Optional[int] = None,
+    user: CurrentUser = Depends(get_admin_user)
+):
+    """
+    Envia notificaciones de advertencia de cumplimiento de 5 dias.
+
+    Notifica sobre empleados que no han cumplido con la obligacion de 5 dias.
+
+    Query parameters:
+    - year: Ano fiscal (default: ano actual)
+
+    Requiere autenticacion como admin.
+    """
+    try:
+        if year is None:
+            year = datetime.now().year
+
+        # Obtener estado de cumplimiento
+        compliance = check_5day_compliance(year)
+
+        at_risk = compliance.get('at_risk', [])
+        non_compliant = compliance.get('non_compliant', [])
+
+        all_at_risk = at_risk + non_compliant
+
+        if not all_at_risk:
+            return {
+                "status": "success",
+                "message": "All employees are compliant",
+                "notifications_sent": 0
+            }
+
+        result = notification_service.notify_compliance_warning(all_at_risk)
+
+        email_sent = result.get('email', {}).get('status') == 'success'
+        slack_sent = result.get('slack', {}).get('status') == 'success'
+
+        logger.info(f"Compliance warning sent for {len(all_at_risk)} employees")
+
+        return {
+            "status": "success",
+            "message": f"Compliance warning sent for {len(all_at_risk)} employees",
+            "employees_at_risk": len(all_at_risk),
+            "email_sent": email_sent,
+            "slack_sent": slack_sent
+        }
+
+    except Exception as e:
+        logger.error(f"Error sending compliance warning: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     logger.info("Starting YuKyuDATA-app server...")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-

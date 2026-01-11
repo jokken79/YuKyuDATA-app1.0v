@@ -446,11 +446,11 @@ def check_5day_compliance(year: int) -> Dict:
             'remaining_to_comply': remaining_required
         }
 
-        if used >= min_use:
+        if used >= min_use:  # 5+ días - cumple requisito
             compliant.append(emp_data)
-        elif remaining_required > 0 and remaining_required < min_use:
+        elif used >= 3:  # 3-4 días (al menos 60% del requisito)
             at_risk.append(emp_data)
-        else:
+        else:  # 0-2 días - no cumple
             non_compliant.append(emp_data)
 
     return {

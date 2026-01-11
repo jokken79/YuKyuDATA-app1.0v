@@ -1,6 +1,6 @@
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from contextlib import contextmanager
 from typing import Optional, Generator, Dict, List, Any
@@ -15,7 +15,22 @@ except ImportError:
     import sqlite3
     USE_POSTGRESQL = False
 
-DB_NAME = "yukyu.db"
+# Vercel compatibility: Use /tmp for serverless or custom path via env var
+def get_db_path():
+    """Get database path, handling Vercel serverless environment."""
+    custom_path = os.getenv('DATABASE_PATH')
+    if custom_path:
+        return custom_path
+
+    # Check if running on Vercel (serverless)
+    if os.getenv('VERCEL') or os.getenv('AWS_LAMBDA_FUNCTION_NAME'):
+        # Use /tmp for serverless (ephemeral storage)
+        return '/tmp/yukyu.db'
+
+    # Default: local directory
+    return 'yukyu.db'
+
+DB_NAME = get_db_path()
 DATABASE_URL = os.getenv('DATABASE_URL', f'sqlite:///{DB_NAME}')
 
 # Initialize connection manager for PostgreSQL
@@ -183,12 +198,19 @@ def init_db():
         c.execute('CREATE INDEX IF NOT EXISTS idx_lr_status ON leave_requests(status)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_lr_year ON leave_requests(year)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_lr_dates ON leave_requests(start_date, end_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_lr_employee_date ON leave_requests(employee_num, start_date)')
 
         # Indexes for genzai/ukeoi tables
         c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_emp ON genzai(employee_num)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_status ON genzai(status)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_hire_date ON genzai(hire_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_leave_date ON genzai(leave_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_hire_leave ON genzai(hire_date, leave_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_status_hire ON genzai(status, hire_date)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_emp ON ukeoi(employee_num)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_status ON ukeoi(status)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_hire_date ON ukeoi(hire_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_leave_date ON ukeoi(leave_date)')
 
         # ============================================
         # SCHEMA MIGRATIONS (add columns if not exist)
@@ -244,6 +266,8 @@ def init_db():
         ''')
         c.execute('CREATE INDEX IF NOT EXISTS idx_staff_emp ON staff(employee_num)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_staff_status ON staff(status)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_staff_visa_expiry ON staff(visa_expiry)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_staff_visa_type ON staff(visa_type)')
 
         # Add grant_year to employees for FIFO tracking
         try:
@@ -251,7 +275,100 @@ def init_db():
         except sqlite3.OperationalError:
             pass
 
+        # ============================================
+        # AUDIT LOG TABLE (v2.3 - Complete Audit Trail)
+        # ============================================
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                user_id TEXT,
+                action TEXT NOT NULL,
+                entity_type TEXT NOT NULL,
+                entity_id TEXT,
+                old_value TEXT,
+                new_value TEXT,
+                ip_address TEXT,
+                user_agent TEXT,
+                additional_info TEXT
+            )
+        ''')
+
+        # Indexes for fast audit log queries
+        c.execute('CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity_type, entity_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action)')
+
         conn.commit()
+
+
+# ============================================
+# BALANCE LIMIT VALIDATION (Japanese Labor Law)
+# Maximum accumulated days: 40 (2 years carry-over max)
+# ============================================
+
+MAX_ACCUMULATED_DAYS = 40
+
+
+def validate_balance_limit(employee_num: str, year: int, additional_days: float = 0) -> bool:
+    """
+    Verifica que el balance total no exceda 40 días.
+    Lanza ValueError si se excede el límite.
+
+    Args:
+        employee_num: Número de empleado
+        year: Año fiscal actual
+        additional_days: Días adicionales a agregar (para validar antes de operaciones)
+
+    Returns:
+        True si el balance está dentro del límite
+
+    Raises:
+        ValueError: Si el balance excede el límite de 40 días
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+        # Sumar balance de año actual y año anterior (máximo 2 años carry-over)
+        c.execute('''
+            SELECT COALESCE(SUM(balance), 0) as total_balance
+            FROM employees
+            WHERE employee_num = ? AND year >= ?
+        ''', (employee_num, year - 1))
+        result = c.fetchone()
+        current_balance = result['total_balance'] if result else 0
+        total = current_balance + additional_days
+
+        if total > MAX_ACCUMULATED_DAYS:
+            raise ValueError(
+                f"Balance excede límite de {MAX_ACCUMULATED_DAYS} días: {total:.1f} días. "
+                f"Balance actual: {current_balance:.1f}, adicional: {additional_days:.1f}"
+            )
+        return True
+
+
+def get_employee_total_balance(employee_num: str, year: int) -> float:
+    """
+    Obtiene el balance total de un empleado (año actual + anterior).
+    Útil para validaciones antes de operaciones.
+
+    Args:
+        employee_num: Número de empleado
+        year: Año fiscal actual
+
+    Returns:
+        Balance total acumulado
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute('''
+            SELECT COALESCE(SUM(balance), 0) as total_balance
+            FROM employees
+            WHERE employee_num = ? AND year >= ?
+        ''', (employee_num, year - 1))
+        result = c.fetchone()
+        return result['total_balance'] if result else 0.0
+
 
 def save_employees(employees_data):
     """
@@ -1138,6 +1255,314 @@ def clear_yukyu_usage_details():
 
 
 # ============================================
+# EDIT YUKYU USAGE DETAILS (NEW - v2.1 feature)
+# Permite editar datos importados desde Excel
+# ============================================
+
+def update_yukyu_usage_detail(detail_id: int, days_used: float = None, use_date: str = None):
+    """
+    Actualiza un registro específico de uso de yukyu.
+    Útil para corregir errores de importación (ej: medio día vs día completo).
+
+    Args:
+        detail_id: ID del registro a actualizar
+        days_used: Nuevo valor de días usados (0.5, 1.0, etc)
+        use_date: Nueva fecha (YYYY-MM-DD) - opcional
+
+    Returns:
+        dict con el registro actualizado
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+        timestamp = datetime.now().isoformat()
+
+        # Verificar que existe el registro
+        existing = c.execute("SELECT * FROM yukyu_usage_details WHERE id = ?", (detail_id,)).fetchone()
+        if not existing:
+            raise ValueError(f"Registro ID {detail_id} no encontrado")
+
+        # Construir query de actualización
+        updates = []
+        params = []
+
+        if days_used is not None:
+            updates.append("days_used = ?")
+            params.append(days_used)
+
+        if use_date is not None:
+            updates.append("use_date = ?")
+            params.append(use_date)
+            # Actualizar año y mes también
+            from datetime import datetime as dt
+            parsed = dt.strptime(use_date, '%Y-%m-%d')
+            updates.append("year = ?")
+            params.append(parsed.year)
+            updates.append("month = ?")
+            params.append(parsed.month)
+
+        if not updates:
+            raise ValueError("Debes proporcionar al menos un campo para actualizar")
+
+        updates.append("last_updated = ?")
+        params.append(timestamp)
+        params.append(detail_id)
+
+        query = f"UPDATE yukyu_usage_details SET {', '.join(updates)} WHERE id = ?"
+        c.execute(query, tuple(params))
+        conn.commit()
+
+        # Retornar registro actualizado
+        updated = c.execute("SELECT * FROM yukyu_usage_details WHERE id = ?", (detail_id,)).fetchone()
+        return dict(updated)
+
+
+def delete_yukyu_usage_detail(detail_id: int):
+    """
+    Elimina un registro específico de uso de yukyu.
+    Útil para eliminar fechas importadas incorrectamente.
+
+    Args:
+        detail_id: ID del registro a eliminar
+
+    Returns:
+        dict con info del registro eliminado
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+
+        # Obtener datos antes de eliminar
+        existing = c.execute("SELECT * FROM yukyu_usage_details WHERE id = ?", (detail_id,)).fetchone()
+        if not existing:
+            raise ValueError(f"Registro ID {detail_id} no encontrado")
+
+        result = dict(existing)
+
+        # Eliminar
+        c.execute("DELETE FROM yukyu_usage_details WHERE id = ?", (detail_id,))
+        conn.commit()
+
+        return result
+
+
+def add_single_yukyu_usage(employee_num: str, name: str, use_date: str, days_used: float = 1.0):
+    """
+    Agrega un nuevo registro individual de uso de yukyu.
+    Útil para agregar fechas que no se importaron correctamente del Excel.
+
+    Args:
+        employee_num: Número de empleado
+        name: Nombre del empleado
+        use_date: Fecha de uso (YYYY-MM-DD)
+        days_used: Días usados (0.5, 1.0, etc) - default 1.0
+
+    Returns:
+        dict con el nuevo registro creado
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+        timestamp = datetime.now().isoformat()
+
+        # Parsear fecha para obtener año y mes
+        from datetime import datetime as dt
+        parsed = dt.strptime(use_date, '%Y-%m-%d')
+        year = parsed.year
+        month = parsed.month
+
+        # Verificar si ya existe
+        existing = c.execute(
+            "SELECT id FROM yukyu_usage_details WHERE employee_num = ? AND use_date = ?",
+            (employee_num, use_date)
+        ).fetchone()
+
+        if existing:
+            raise ValueError(f"Ya existe un registro para empleado {employee_num} en fecha {use_date}")
+
+        # Insertar nuevo registro
+        c.execute('''
+            INSERT INTO yukyu_usage_details
+            (employee_num, name, use_date, year, month, days_used, last_updated)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (employee_num, name, use_date, year, month, days_used, timestamp))
+
+        new_id = c.lastrowid
+        conn.commit()
+
+        # Retornar registro creado
+        created = c.execute("SELECT * FROM yukyu_usage_details WHERE id = ?", (new_id,)).fetchone()
+        return dict(created)
+
+
+def recalculate_employee_used_days(employee_num: str, year: int):
+    """
+    Recalcula los días usados de un empleado basándose en yukyu_usage_details.
+    Actualiza la tabla employees automáticamente.
+
+    Args:
+        employee_num: Número de empleado
+        year: Año fiscal
+
+    Returns:
+        dict con el resultado del recálculo
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+        timestamp = datetime.now().isoformat()
+
+        # Calcular total de días usados desde los detalles
+        result = c.execute('''
+            SELECT COALESCE(SUM(days_used), 0) as total_used
+            FROM yukyu_usage_details
+            WHERE employee_num = ? AND year = ?
+        ''', (employee_num, year)).fetchone()
+
+        new_used = result['total_used'] if result else 0.0
+
+        # Obtener datos actuales del empleado
+        employee_id = f"{employee_num}_{year}"
+        employee = c.execute("SELECT * FROM employees WHERE id = ?", (employee_id,)).fetchone()
+
+        if not employee:
+            return {
+                "employee_num": employee_num,
+                "year": year,
+                "error": f"Empleado {employee_id} no encontrado en tabla employees",
+                "calculated_used": new_used
+            }
+
+        old_used = employee['used'] or 0.0
+        granted = employee['granted'] or 0.0
+        new_balance = granted - new_used
+        new_usage_rate = (new_used / granted * 100) if granted > 0 else 0.0
+
+        # Actualizar empleado
+        c.execute('''
+            UPDATE employees
+            SET used = ?, balance = ?, usage_rate = ?, last_updated = ?
+            WHERE id = ?
+        ''', (new_used, new_balance, new_usage_rate, timestamp, employee_id))
+
+        conn.commit()
+
+        return {
+            "employee_num": employee_num,
+            "year": year,
+            "old_used": old_used,
+            "new_used": new_used,
+            "granted": granted,
+            "new_balance": new_balance,
+            "new_usage_rate": round(new_usage_rate, 2)
+        }
+
+
+def update_employee(employee_num: str, year: int, **kwargs):
+    """
+    Actualiza campos específicos de un empleado.
+    Útil para corregir datos importados incorrectamente.
+
+    Args:
+        employee_num: Número de empleado
+        year: Año fiscal
+        **kwargs: Campos a actualizar (granted, used, balance, haken, name, etc)
+
+    Returns:
+        dict con el empleado actualizado
+    """
+    allowed_fields = {'name', 'haken', 'granted', 'used', 'balance', 'expired', 'usage_rate'}
+
+    with get_db() as conn:
+        c = conn.cursor()
+        timestamp = datetime.now().isoformat()
+
+        employee_id = f"{employee_num}_{year}"
+
+        # Verificar que existe
+        existing = c.execute("SELECT * FROM employees WHERE id = ?", (employee_id,)).fetchone()
+        if not existing:
+            raise ValueError(f"Empleado {employee_id} no encontrado")
+
+        # Filtrar solo campos permitidos
+        updates = []
+        params = []
+
+        for field, value in kwargs.items():
+            if field in allowed_fields:
+                updates.append(f"{field} = ?")
+                params.append(value)
+
+        if not updates:
+            raise ValueError(f"No se proporcionaron campos válidos. Campos permitidos: {allowed_fields}")
+
+        # Si se actualizó granted o used, recalcular balance y usage_rate
+        new_granted = kwargs.get('granted', existing['granted'])
+        new_used = kwargs.get('used', existing['used'])
+
+        if 'granted' in kwargs or 'used' in kwargs:
+            new_balance = new_granted - new_used
+            new_usage_rate = (new_used / new_granted * 100) if new_granted > 0 else 0.0
+
+            if 'balance' not in kwargs:
+                updates.append("balance = ?")
+                params.append(new_balance)
+            if 'usage_rate' not in kwargs:
+                updates.append("usage_rate = ?")
+                params.append(new_usage_rate)
+
+        updates.append("last_updated = ?")
+        params.append(timestamp)
+        params.append(employee_id)
+
+        query = f"UPDATE employees SET {', '.join(updates)} WHERE id = ?"
+        c.execute(query, tuple(params))
+        conn.commit()
+
+        # Retornar registro actualizado
+        updated = c.execute("SELECT * FROM employees WHERE id = ?", (employee_id,)).fetchone()
+        return dict(updated)
+
+
+def get_employee_usage_summary(employee_num: str, year: int):
+    """
+    Obtiene un resumen completo del uso de yukyu de un empleado.
+    Incluye datos agregados y detalles individuales.
+
+    Args:
+        employee_num: Número de empleado
+        year: Año fiscal
+
+    Returns:
+        dict con resumen completo
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+
+        employee_id = f"{employee_num}_{year}"
+
+        # Datos del empleado
+        employee = c.execute("SELECT * FROM employees WHERE id = ?", (employee_id,)).fetchone()
+
+        # Detalles de uso
+        details = c.execute('''
+            SELECT * FROM yukyu_usage_details
+            WHERE employee_num = ? AND year = ?
+            ORDER BY use_date ASC
+        ''', (employee_num, year)).fetchall()
+
+        # Calcular totales desde detalles
+        total_from_details = sum(d['days_used'] for d in details) if details else 0
+
+        return {
+            "employee": dict(employee) if employee else None,
+            "usage_details": [dict(d) for d in details],
+            "summary": {
+                "total_records": len(details),
+                "total_days_from_details": total_from_details,
+                "employee_used": employee['used'] if employee else None,
+                "discrepancy": (employee['used'] - total_from_details) if employee else None
+            }
+        }
+
+
+# ============================================
 # CANCEL/REVERT LEAVE REQUESTS
 # ============================================
 
@@ -1342,3 +1767,654 @@ def restore_backup(backup_filename, backup_dir="backups"):
         "previous_backup": current_backup['filename'],
         "restored_at": datetime.now().isoformat()
     }
+
+
+# ============================================
+# AUDIT LOG FUNCTIONS (v2.3 - Complete Audit Trail)
+# ============================================
+
+def log_audit(
+    action: str,
+    entity_type: str,
+    entity_id: str = None,
+    old_value: Any = None,
+    new_value: Any = None,
+    user_id: str = None,
+    ip_address: str = None,
+    user_agent: str = None,
+    additional_info: Dict = None
+) -> int:
+    """
+    Registra una accion en el audit log.
+
+    Args:
+        action: Tipo de accion (CREATE, UPDATE, DELETE, APPROVE, REJECT, REVERT, LOGIN, etc.)
+        entity_type: Tipo de entidad (employee, leave_request, yukyu_usage, genzai, ukeoi, etc.)
+        entity_id: ID de la entidad afectada
+        old_value: Valor anterior (dict o cualquier valor serializable a JSON)
+        new_value: Nuevo valor (dict o cualquier valor serializable a JSON)
+        user_id: ID del usuario que realizo la accion
+        ip_address: Direccion IP del cliente
+        user_agent: User-Agent del navegador
+        additional_info: Informacion adicional (dict)
+
+    Returns:
+        ID del registro de audit creado
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+        timestamp = datetime.now().isoformat()
+
+        # Serializar valores a JSON si son diccionarios o listas
+        old_value_json = json.dumps(old_value, ensure_ascii=False, default=str) if old_value is not None else None
+        new_value_json = json.dumps(new_value, ensure_ascii=False, default=str) if new_value is not None else None
+        additional_info_json = json.dumps(additional_info, ensure_ascii=False, default=str) if additional_info else None
+
+        if USE_POSTGRESQL:
+            c.execute('''
+                INSERT INTO audit_log
+                (timestamp, user_id, action, entity_type, entity_id, old_value, new_value, ip_address, user_agent, additional_info)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            ''', (timestamp, user_id, action, entity_type, entity_id, old_value_json, new_value_json, ip_address, user_agent, additional_info_json))
+            audit_id = c.fetchone()[0]
+        else:
+            c.execute('''
+                INSERT INTO audit_log
+                (timestamp, user_id, action, entity_type, entity_id, old_value, new_value, ip_address, user_agent, additional_info)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (timestamp, user_id, action, entity_type, entity_id, old_value_json, new_value_json, ip_address, user_agent, additional_info_json))
+            audit_id = c.lastrowid
+
+        conn.commit()
+        return audit_id
+
+
+def get_audit_log(
+    entity_type: str = None,
+    entity_id: str = None,
+    action: str = None,
+    user_id: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    limit: int = 100,
+    offset: int = 0
+) -> List[Dict]:
+    """
+    Obtiene registros del audit log con filtros opcionales.
+
+    Args:
+        entity_type: Filtrar por tipo de entidad
+        entity_id: Filtrar por ID de entidad
+        action: Filtrar por tipo de accion
+        user_id: Filtrar por usuario
+        start_date: Fecha inicio (YYYY-MM-DD)
+        end_date: Fecha fin (YYYY-MM-DD)
+        limit: Maximo de registros a retornar
+        offset: Offset para paginacion
+
+    Returns:
+        Lista de registros de audit
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+
+        query = "SELECT * FROM audit_log WHERE 1=1"
+        params = []
+
+        if entity_type:
+            query += " AND entity_type = ?"
+            params.append(entity_type)
+
+        if entity_id:
+            query += " AND entity_id = ?"
+            params.append(entity_id)
+
+        if action:
+            query += " AND action = ?"
+            params.append(action)
+
+        if user_id:
+            query += " AND user_id = ?"
+            params.append(user_id)
+
+        if start_date:
+            query += " AND timestamp >= ?"
+            params.append(start_date)
+
+        if end_date:
+            query += " AND timestamp <= ?"
+            params.append(end_date + "T23:59:59")
+
+        query += " ORDER BY timestamp DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        rows = c.execute(query, tuple(params)).fetchall()
+
+        # Parsear JSON en old_value y new_value
+        result = []
+        for row in rows:
+            record = dict(row)
+            if record.get('old_value'):
+                try:
+                    record['old_value'] = json.loads(record['old_value'])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            if record.get('new_value'):
+                try:
+                    record['new_value'] = json.loads(record['new_value'])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            if record.get('additional_info'):
+                try:
+                    record['additional_info'] = json.loads(record['additional_info'])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            result.append(record)
+
+        return result
+
+
+def get_audit_log_by_user(user_id: str, limit: int = 100) -> List[Dict]:
+    """
+    Obtiene todos los registros de audit de un usuario especifico.
+
+    Args:
+        user_id: ID del usuario
+        limit: Maximo de registros a retornar
+
+    Returns:
+        Lista de registros de audit del usuario
+    """
+    return get_audit_log(user_id=user_id, limit=limit)
+
+
+def get_entity_history(entity_type: str, entity_id: str, limit: int = 50) -> List[Dict]:
+    """
+    Obtiene el historial completo de cambios de una entidad.
+
+    Args:
+        entity_type: Tipo de entidad
+        entity_id: ID de la entidad
+        limit: Maximo de registros
+
+    Returns:
+        Lista de cambios ordenados por fecha (mas reciente primero)
+    """
+    return get_audit_log(entity_type=entity_type, entity_id=entity_id, limit=limit)
+
+
+def get_audit_stats(days: int = 30) -> Dict:
+    """
+    Obtiene estadisticas del audit log.
+
+    Args:
+        days: Numero de dias hacia atras para calcular estadisticas
+
+    Returns:
+        Dict con estadisticas de auditoría
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+
+        cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
+
+        # Conteo por tipo de accion
+        actions_query = """
+            SELECT action, COUNT(*) as count
+            FROM audit_log
+            WHERE timestamp >= ?
+            GROUP BY action
+            ORDER BY count DESC
+        """
+        action_rows = c.execute(actions_query, (cutoff_date,)).fetchall()
+        actions = {row['action']: row['count'] for row in action_rows}
+
+        # Conteo por tipo de entidad
+        entities_query = """
+            SELECT entity_type, COUNT(*) as count
+            FROM audit_log
+            WHERE timestamp >= ?
+            GROUP BY entity_type
+            ORDER BY count DESC
+        """
+        entity_rows = c.execute(entities_query, (cutoff_date,)).fetchall()
+        entities = {row['entity_type']: row['count'] for row in entity_rows}
+
+        # Conteo por usuario
+        users_query = """
+            SELECT user_id, COUNT(*) as count
+            FROM audit_log
+            WHERE timestamp >= ? AND user_id IS NOT NULL
+            GROUP BY user_id
+            ORDER BY count DESC
+            LIMIT 10
+        """
+        user_rows = c.execute(users_query, (cutoff_date,)).fetchall()
+        top_users = {row['user_id']: row['count'] for row in user_rows}
+
+        # Total de registros
+        total = c.execute(
+            "SELECT COUNT(*) as total FROM audit_log WHERE timestamp >= ?",
+            (cutoff_date,)
+        ).fetchone()['total']
+
+        return {
+            "period_days": days,
+            "total_records": total,
+            "by_action": actions,
+            "by_entity_type": entities,
+            "top_users": top_users
+        }
+
+
+def cleanup_old_audit_logs(days_to_keep: int = 365) -> int:
+    """
+    Elimina registros de audit log mas antiguos que el numero de dias especificado.
+
+    Args:
+        days_to_keep: Numero de dias a mantener (por defecto 365 = 1 año)
+
+    Returns:
+        Numero de registros eliminados
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+
+        cutoff_date = (datetime.now() - timedelta(days=days_to_keep)).isoformat()
+
+        c.execute("DELETE FROM audit_log WHERE timestamp < ?", (cutoff_date,))
+        deleted_count = c.rowcount
+
+        conn.commit()
+        return deleted_count
+
+
+# ============================================
+# BULK UPDATE FUNCTIONS (v2.3 - Bulk Edit Feature)
+# ============================================
+
+def init_bulk_audit_table():
+    """Creates the bulk_update_audit table for tracking mass changes."""
+    with get_db() as conn:
+        c = conn.cursor()
+
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS bulk_update_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                operation_id TEXT NOT NULL,
+                employee_num TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                field_name TEXT NOT NULL,
+                old_value TEXT,
+                new_value TEXT,
+                updated_by TEXT DEFAULT 'system',
+                updated_at TEXT NOT NULL,
+                batch_size INTEGER DEFAULT 1,
+                UNIQUE(operation_id, employee_num, field_name)
+            )
+        ''')
+
+        c.execute('CREATE INDEX IF NOT EXISTS idx_bulk_audit_operation ON bulk_update_audit(operation_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_bulk_audit_employee ON bulk_update_audit(employee_num)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_bulk_audit_date ON bulk_update_audit(updated_at)')
+
+        conn.commit()
+
+
+def bulk_update_employees(employee_nums: List[str], year: int, updates: Dict[str, Any],
+                          updated_by: str = "system") -> Dict[str, Any]:
+    """
+    Actualiza multiples empleados en una sola operacion.
+    Implementa validaciones y audit trail.
+
+    Args:
+        employee_nums: Lista de numeros de empleado a actualizar
+        year: Año fiscal
+        updates: Diccionario con campos a actualizar:
+            - add_granted: float (dias a sumar a granted)
+            - add_used: float (dias a sumar a used)
+            - set_haken: str (nuevo valor de haken/factory)
+            - set_granted: float (establecer dias otorgados)
+            - set_used: float (establecer dias usados)
+        updated_by: Usuario que realiza la operacion
+
+    Returns:
+        Dict con resultados de la operacion:
+            - success: bool
+            - updated_count: int
+            - errors: list
+            - operation_id: str
+            - audit_records: list
+            - warnings: list (e.g., balance negativo)
+    """
+    import uuid
+
+    # Validate max 50 employees per operation
+    if len(employee_nums) > 50:
+        raise ValueError("Maximo 50 empleados por operacion de bulk update")
+
+    if not updates:
+        raise ValueError("Se debe proporcionar al menos un campo para actualizar")
+
+    # Valid update fields
+    valid_fields = {'add_granted', 'add_used', 'set_haken', 'set_granted', 'set_used'}
+    invalid_fields = set(updates.keys()) - valid_fields
+    if invalid_fields:
+        raise ValueError(f"Campos invalidos: {invalid_fields}. Campos validos: {valid_fields}")
+
+    # Initialize audit table if not exists
+    init_bulk_audit_table()
+
+    operation_id = str(uuid.uuid4())[:8]
+    timestamp = datetime.now().isoformat()
+
+    results = {
+        "success": True,
+        "updated_count": 0,
+        "errors": [],
+        "warnings": [],
+        "operation_id": operation_id,
+        "audit_records": [],
+        "details": []
+    }
+
+    with get_db() as conn:
+        c = conn.cursor()
+
+        for emp_num in employee_nums:
+            employee_id = f"{emp_num}_{year}"
+
+            try:
+                # Get current employee data
+                employee = c.execute(
+                    "SELECT * FROM employees WHERE id = ?",
+                    (employee_id,)
+                ).fetchone()
+
+                if not employee:
+                    results["errors"].append({
+                        "employee_num": emp_num,
+                        "error": f"Empleado {employee_id} no encontrado"
+                    })
+                    continue
+
+                emp_data = dict(employee)
+                old_values = {}
+                new_values = {}
+                update_parts = []
+                params = []
+
+                # Process add_granted (sumar a dias otorgados)
+                if 'add_granted' in updates and updates['add_granted']:
+                    add_amount = float(updates['add_granted'])
+                    old_granted = emp_data.get('granted', 0) or 0
+                    new_granted = old_granted + add_amount
+
+                    if new_granted > 40:
+                        results["warnings"].append({
+                            "employee_num": emp_num,
+                            "warning": f"Granted excede 40 dias ({new_granted:.1f})"
+                        })
+
+                    old_values['granted'] = old_granted
+                    new_values['granted'] = new_granted
+                    update_parts.append("granted = ?")
+                    params.append(new_granted)
+
+                # Process set_granted (establecer dias otorgados)
+                if 'set_granted' in updates and updates['set_granted'] is not None:
+                    new_granted = float(updates['set_granted'])
+                    old_granted = emp_data.get('granted', 0) or 0
+
+                    if new_granted > 40:
+                        results["warnings"].append({
+                            "employee_num": emp_num,
+                            "warning": f"Granted excede 40 dias ({new_granted:.1f})"
+                        })
+
+                    old_values['granted'] = old_granted
+                    new_values['granted'] = new_granted
+                    update_parts.append("granted = ?")
+                    params.append(new_granted)
+
+                # Process add_used (sumar a dias usados)
+                if 'add_used' in updates and updates['add_used']:
+                    add_amount = float(updates['add_used'])
+                    old_used = emp_data.get('used', 0) or 0
+                    new_used = old_used + add_amount
+
+                    old_values['used'] = old_used
+                    new_values['used'] = new_used
+                    update_parts.append("used = ?")
+                    params.append(new_used)
+
+                # Process set_used (establecer dias usados)
+                if 'set_used' in updates and updates['set_used'] is not None:
+                    new_used = float(updates['set_used'])
+                    old_used = emp_data.get('used', 0) or 0
+
+                    old_values['used'] = old_used
+                    new_values['used'] = new_used
+                    update_parts.append("used = ?")
+                    params.append(new_used)
+
+                # Process set_haken (cambiar派遣先)
+                if 'set_haken' in updates and updates['set_haken']:
+                    old_haken = emp_data.get('haken', '')
+                    new_haken = str(updates['set_haken'])
+
+                    old_values['haken'] = old_haken
+                    new_values['haken'] = new_haken
+                    update_parts.append("haken = ?")
+                    params.append(new_haken)
+
+                if not update_parts:
+                    continue
+
+                # Recalculate balance and usage_rate if granted or used changed
+                final_granted = new_values.get('granted', emp_data.get('granted', 0) or 0)
+                final_used = new_values.get('used', emp_data.get('used', 0) or 0)
+
+                if 'granted' in new_values or 'used' in new_values:
+                    new_balance = final_granted - final_used
+                    new_usage_rate = (final_used / final_granted * 100) if final_granted > 0 else 0
+
+                    # Check for negative balance warning
+                    if new_balance < 0:
+                        results["warnings"].append({
+                            "employee_num": emp_num,
+                            "name": emp_data.get('name', 'Unknown'),
+                            "warning": f"Balance negativo: {new_balance:.1f} dias",
+                            "balance": new_balance
+                        })
+
+                    update_parts.append("balance = ?")
+                    params.append(new_balance)
+                    update_parts.append("usage_rate = ?")
+                    params.append(round(new_usage_rate, 2))
+
+                    old_values['balance'] = emp_data.get('balance', 0)
+                    new_values['balance'] = new_balance
+                    old_values['usage_rate'] = emp_data.get('usage_rate', 0)
+                    new_values['usage_rate'] = round(new_usage_rate, 2)
+
+                # Add last_updated
+                update_parts.append("last_updated = ?")
+                params.append(timestamp)
+                params.append(employee_id)
+
+                # Execute update
+                query = f"UPDATE employees SET {', '.join(update_parts)} WHERE id = ?"
+                c.execute(query, tuple(params))
+
+                # Record audit entries
+                for field in new_values:
+                    c.execute('''
+                        INSERT INTO bulk_update_audit
+                        (operation_id, employee_num, year, field_name, old_value, new_value, updated_by, updated_at, batch_size)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        operation_id,
+                        emp_num,
+                        year,
+                        field,
+                        str(old_values.get(field, '')),
+                        str(new_values.get(field, '')),
+                        updated_by,
+                        timestamp,
+                        len(employee_nums)
+                    ))
+
+                    results["audit_records"].append({
+                        "employee_num": emp_num,
+                        "field": field,
+                        "old_value": old_values.get(field),
+                        "new_value": new_values.get(field)
+                    })
+
+                results["updated_count"] += 1
+                results["details"].append({
+                    "employee_num": emp_num,
+                    "name": emp_data.get('name', 'Unknown'),
+                    "changes": new_values
+                })
+
+            except Exception as e:
+                results["errors"].append({
+                    "employee_num": emp_num,
+                    "error": str(e)
+                })
+
+        conn.commit()
+
+    results["success"] = results["updated_count"] > 0 and len(results["errors"]) == 0
+    return results
+
+
+def get_bulk_update_history(operation_id: str = None, employee_num: str = None,
+                            limit: int = 100) -> List[Dict]:
+    """
+    Obtiene el historial de actualizaciones masivas.
+
+    Args:
+        operation_id: Filtrar por ID de operacion
+        employee_num: Filtrar por numero de empleado
+        limit: Maximo de registros a retornar
+
+    Returns:
+        Lista de registros de auditoria
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+
+        query = "SELECT * FROM bulk_update_audit WHERE 1=1"
+        params = []
+
+        if operation_id:
+            query += " AND operation_id = ?"
+            params.append(operation_id)
+
+        if employee_num:
+            query += " AND employee_num = ?"
+            params.append(employee_num)
+
+        query += " ORDER BY updated_at DESC LIMIT ?"
+        params.append(limit)
+
+        try:
+            rows = c.execute(query, tuple(params)).fetchall()
+            return [dict(row) for row in rows]
+        except Exception:
+            # Table might not exist yet
+            return []
+
+
+def revert_bulk_update(operation_id: str, reverted_by: str = "system") -> Dict[str, Any]:
+    """
+    Revierte una operacion de bulk update usando el audit trail.
+
+    Args:
+        operation_id: ID de la operacion a revertir
+        reverted_by: Usuario que realiza la reversion
+
+    Returns:
+        Dict con resultados de la reversion
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+
+        # Get all audit records for this operation
+        rows = c.execute(
+            "SELECT * FROM bulk_update_audit WHERE operation_id = ?",
+            (operation_id,)
+        ).fetchall()
+
+        if not rows:
+            raise ValueError(f"Operacion {operation_id} no encontrada en el historial")
+
+        audit_records = [dict(row) for row in rows]
+        timestamp = datetime.now().isoformat()
+        reverted_count = 0
+        errors = []
+
+        # Group by employee
+        employees_changes = {}
+        for record in audit_records:
+            emp_num = record['employee_num']
+            if emp_num not in employees_changes:
+                employees_changes[emp_num] = {
+                    'year': record['year'],
+                    'fields': {}
+                }
+            employees_changes[emp_num]['fields'][record['field_name']] = record['old_value']
+
+        # Revert each employee
+        for emp_num, changes in employees_changes.items():
+            year = changes['year']
+            employee_id = f"{emp_num}_{year}"
+
+            try:
+                update_parts = []
+                params = []
+
+                for field, old_value in changes['fields'].items():
+                    if field in ['granted', 'used', 'balance', 'usage_rate']:
+                        update_parts.append(f"{field} = ?")
+                        params.append(float(old_value) if old_value else 0)
+                    elif field == 'haken':
+                        update_parts.append(f"{field} = ?")
+                        params.append(old_value or '')
+
+                if update_parts:
+                    update_parts.append("last_updated = ?")
+                    params.append(timestamp)
+                    params.append(employee_id)
+
+                    query = f"UPDATE employees SET {', '.join(update_parts)} WHERE id = ?"
+                    c.execute(query, tuple(params))
+                    reverted_count += 1
+
+            except Exception as e:
+                errors.append({
+                    "employee_num": emp_num,
+                    "error": str(e)
+                })
+
+        # Mark original audit records as reverted
+        c.execute('''
+            UPDATE bulk_update_audit
+            SET updated_by = ?
+            WHERE operation_id = ?
+        ''', (f"REVERTED by {reverted_by}", operation_id))
+
+        conn.commit()
+
+        return {
+            "success": reverted_count > 0,
+            "reverted_count": reverted_count,
+            "original_operation_id": operation_id,
+            "errors": errors,
+            "reverted_by": reverted_by,
+            "reverted_at": timestamp
+        }

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentacion del Proyecto
+    url: https://github.com/jokken79/YuKyuDATA-app1.0v/blob/main/CLAUDE.md
+    about: Lee la documentacion del proyecto antes de abrir un issue
+  - name: Discusiones
+    url: https://github.com/jokken79/YuKyuDATA-app1.0v/discussions
+    about: Usa las discusiones para preguntas generales

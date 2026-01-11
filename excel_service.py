@@ -1,7 +1,216 @@
 import openpyxl
 from openpyxl import load_workbook
 import os
+import re
+import logging
 from datetime import datetime
+from typing import Dict, List, Tuple, Any, Optional
+
+# ============================================
+# LOGGING CONFIGURATION
+# ============================================
+logger = logging.getLogger(__name__)
+
+# ============================================
+# CONSTANTS FOR HALF-DAY / HOURLY DETECTION
+# ============================================
+
+# Patterns for half-day leave detection
+HALF_DAY_PATTERNS = [
+    r'半',           # 半 = half
+    r'0\.5',         # 0.5 explicit
+    r'午前',         # 午前 = morning (AM half-day)
+    r'午後',         # 午後 = afternoon (PM half-day)
+    r'半休',         # 半休 = half-day leave
+    r'AM',           # AM half-day
+    r'PM',           # PM half-day
+]
+
+# Patterns for hourly leave detection (2 hours = 0.25 days)
+HOURLY_PATTERNS = [
+    r'2h',           # 2 hours
+    r'2時間',        # 2時間 = 2 hours
+    r'時間休',       # 時間休 = hourly leave
+    r'(\d+)h',       # Generic hours pattern
+    r'(\d+)時間',    # Generic hours in Japanese
+]
+
+# Patterns to remove when parsing dates
+DATE_NOISE_PATTERNS = [
+    r'終業',         # end of work
+    r'至',           # until
+    r'から',         # from
+    r'まで',         # until
+    r'休',           # leave
+    r'取得',         # acquired
+]
+
+
+# ============================================
+# HELPER FUNCTIONS FOR LEAVE TYPE DETECTION
+# ============================================
+
+def detect_leave_type(cell_value: Any) -> Tuple[str, float]:
+    """
+    Detects the type of leave from a cell value.
+
+    Args:
+        cell_value: The raw cell value (can be datetime, string, or number)
+
+    Returns:
+        Tuple of (leave_type, days_used)
+        - leave_type: 'full', 'half_am', 'half_pm', 'hourly', or 'unknown'
+        - days_used: float value (1.0, 0.5, 0.25, etc.)
+    """
+    if cell_value is None:
+        return ('unknown', 0.0)
+
+    cell_str = str(cell_value).strip()
+
+    # Check for hourly leave first (more specific)
+    for pattern in HOURLY_PATTERNS:
+        match = re.search(pattern, cell_str, re.IGNORECASE)
+        if match:
+            # Try to extract hours if pattern has group
+            if match.groups():
+                try:
+                    hours = int(match.group(1))
+                    # Assuming 8-hour workday
+                    days = hours / 8.0
+                    return ('hourly', round(days, 2))
+                except (ValueError, IndexError):
+                    pass
+            # Default 2 hours = 0.25 days
+            return ('hourly', 0.25)
+
+    # Check for half-day patterns
+    for pattern in HALF_DAY_PATTERNS:
+        if re.search(pattern, cell_str, re.IGNORECASE):
+            # Determine AM or PM
+            if re.search(r'午前|AM', cell_str, re.IGNORECASE):
+                return ('half_am', 0.5)
+            elif re.search(r'午後|PM', cell_str, re.IGNORECASE):
+                return ('half_pm', 0.5)
+            else:
+                return ('half_am', 0.5)  # Default to AM if not specified
+
+    # Check if it's just a date (full day)
+    if isinstance(cell_value, datetime):
+        return ('full', 1.0)
+
+    # If it's a string that looks like a date, it's a full day
+    if cell_str and not any(pattern in cell_str.lower() for pattern in ['半', '0.5', 'h', '時間']):
+        # Check if it contains date-like patterns
+        if re.search(r'\d{4}[-/]\d{1,2}[-/]\d{1,2}', cell_str):
+            return ('full', 1.0)
+
+    return ('full', 1.0)  # Default to full day
+
+
+def clean_date_string(date_str: str) -> str:
+    """
+    Removes noise patterns from a date string to facilitate parsing.
+
+    Args:
+        date_str: Raw date string possibly containing Japanese text
+
+    Returns:
+        Cleaned date string
+    """
+    cleaned = date_str
+    for pattern in DATE_NOISE_PATTERNS:
+        cleaned = re.sub(pattern, '', cleaned)
+
+    # Also remove common separators that aren't part of dates
+    cleaned = cleaned.strip()
+
+    return cleaned
+
+
+def parse_date_from_cell(cell_value: Any) -> Optional[datetime]:
+    """
+    Attempts to parse a date from various cell formats.
+    Handles comments and mixed content gracefully.
+
+    Args:
+        cell_value: The cell value (datetime, string, number)
+
+    Returns:
+        datetime object if successfully parsed, None otherwise
+    """
+    if cell_value is None:
+        return None
+
+    # Already a datetime
+    if isinstance(cell_value, datetime):
+        return cell_value
+
+    # Excel serial date (number)
+    if isinstance(cell_value, (int, float)):
+        try:
+            from datetime import timedelta
+            # Excel epoch is 1899-12-30
+            excel_epoch = datetime(1899, 12, 30)
+            # Validate reasonable range (1900-2100)
+            if 1 < cell_value < 73050:  # ~2100
+                return excel_epoch + timedelta(days=int(cell_value))
+        except Exception:
+            pass
+        return None
+
+    # String parsing
+    if isinstance(cell_value, str):
+        date_str = clean_date_string(cell_value)
+
+        # Try various date formats
+        date_formats = [
+            '%Y/%m/%d',
+            '%Y-%m-%d',
+            '%Y/%m/%d %H:%M:%S',
+            '%Y-%m-%d %H:%M:%S',
+            '%Y年%m月%d日',
+            '%m/%d/%Y',
+            '%d/%m/%Y',
+        ]
+
+        for fmt in date_formats:
+            try:
+                return datetime.strptime(date_str.strip(), fmt)
+            except ValueError:
+                continue
+
+        # Try to extract date using regex
+        date_match = re.search(r'(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})', date_str)
+        if date_match:
+            try:
+                year = int(date_match.group(1))
+                month = int(date_match.group(2))
+                day = int(date_match.group(3))
+                return datetime(year, month, day)
+            except ValueError:
+                pass
+
+    return None
+
+
+def is_valid_date_for_yukyu(parsed_date: Optional[datetime]) -> bool:
+    """
+    Validates if a parsed date is reasonable for yukyu (paid leave) records.
+
+    Args:
+        parsed_date: The datetime to validate
+
+    Returns:
+        True if the date is valid, False otherwise
+    """
+    if parsed_date is None:
+        return False
+
+    # Reasonable year range: 2000-2100
+    if parsed_date.year < 2000 or parsed_date.year > 2100:
+        return False
+
+    return True
 
 def parse_excel_file(file_path):
     """
@@ -473,3 +682,287 @@ def parse_yukyu_usage_details(file_path):
     
     wb.close()
     return usage_details
+
+
+def parse_yukyu_usage_details_enhanced(file_path: str) -> Dict[str, Any]:
+    """
+    Enhanced version of parse_yukyu_usage_details with:
+    - Automatic half-day detection (半, 0.5, 午前, 午後)
+    - Hourly leave detection (2h, 2時間)
+    - Comment handling
+    - Comprehensive validation and reporting
+
+    Args:
+        file_path: Path to the Excel file
+
+    Returns:
+        Dict with keys:
+        - 'data': List of parsed usage details
+        - 'warnings': List of warning messages (non-fatal issues)
+        - 'errors': List of error messages (parsing failures)
+        - 'summary': Dict with import statistics
+    """
+    logger.info(f"Starting enhanced parsing of: {file_path}")
+
+    if not os.path.exists(file_path):
+        logger.error(f"File not found: {file_path}")
+        return {
+            'data': [],
+            'warnings': [],
+            'errors': [f"File not found: {file_path}"],
+            'summary': {
+                'total_rows_processed': 0,
+                'total_dates_parsed': 0,
+                'dates_ignored': 0,
+                'half_day_count': 0,
+                'hourly_count': 0,
+                'full_day_count': 0
+            }
+        }
+
+    try:
+        wb = load_workbook(file_path, data_only=True)
+    except Exception as e:
+        logger.error(f"Failed to open workbook: {e}")
+        return {
+            'data': [],
+            'warnings': [],
+            'errors': [f"Failed to open workbook: {str(e)}"],
+            'summary': {
+                'total_rows_processed': 0,
+                'total_dates_parsed': 0,
+                'dates_ignored': 0,
+                'half_day_count': 0,
+                'hourly_count': 0,
+                'full_day_count': 0
+            }
+        }
+
+    sheet = wb.active
+    usage_details = []
+    warnings = []
+    errors = []
+
+    # Statistics
+    stats = {
+        'total_rows_processed': 0,
+        'total_dates_parsed': 0,
+        'dates_ignored': 0,
+        'half_day_count': 0,
+        'hourly_count': 0,
+        'full_day_count': 0,
+        'cells_with_comments': 0,
+        'invalid_dates': 0
+    }
+
+    # Column configuration
+    header_row_idx = 5
+    emp_num_col = 3   # Column C: 社員番号
+    name_col = 5      # Column E: 氏名
+    date_start_col = 18  # Column R
+    date_end_col = 57    # Column BE
+
+    logger.info(f"Processing rows from {header_row_idx + 1} to {sheet.max_row}")
+
+    # Process each data row
+    for row_idx in range(header_row_idx + 1, sheet.max_row + 1):
+        # Get employee info
+        emp_num_cell = sheet.cell(row=row_idx, column=emp_num_col)
+        name_cell = sheet.cell(row=row_idx, column=name_col)
+
+        emp_num = emp_num_cell.value
+        name = name_cell.value
+
+        # Skip if no employee number or name
+        if not emp_num or not name:
+            continue
+
+        stats['total_rows_processed'] += 1
+        emp_num = str(emp_num).strip()
+        name = str(name).strip()
+
+        # Process date columns
+        for col_idx in range(date_start_col, date_end_col + 1):
+            cell = sheet.cell(row=row_idx, column=col_idx)
+            cell_value = cell.value
+
+            # Skip empty cells
+            if cell_value is None:
+                continue
+
+            # Check for comments (openpyxl stores them in cell.comment)
+            has_comment = False
+            comment_text = ""
+            if hasattr(cell, 'comment') and cell.comment:
+                has_comment = True
+                comment_text = str(cell.comment.text) if cell.comment.text else ""
+                stats['cells_with_comments'] += 1
+                warnings.append({
+                    'row': row_idx,
+                    'column': col_idx,
+                    'employee': emp_num,
+                    'type': 'comment',
+                    'message': f"Cell has comment: {comment_text[:50]}...",
+                    'cell_value': str(cell_value)
+                })
+                logger.warning(f"Row {row_idx}, Col {col_idx}: Cell has comment for employee {emp_num}")
+
+            # Detect leave type BEFORE parsing date
+            leave_type, days_used = detect_leave_type(cell_value)
+
+            # Try to parse the date
+            parsed_date = parse_date_from_cell(cell_value)
+
+            # Validate the parsed date
+            if parsed_date is None:
+                # Could not parse - check if it looks like it should be a date
+                cell_str = str(cell_value).strip()
+
+                # Check if it contains date-like patterns but failed to parse
+                if re.search(r'\d+[-/]\d+[-/]\d+|\d+年\d+月\d+日', cell_str):
+                    stats['invalid_dates'] += 1
+                    warnings.append({
+                        'row': row_idx,
+                        'column': col_idx,
+                        'employee': emp_num,
+                        'type': 'parse_failure',
+                        'message': f"Could not parse date-like value: {cell_str}",
+                        'cell_value': cell_str
+                    })
+                    logger.warning(f"Row {row_idx}, Col {col_idx}: Failed to parse date-like value: {cell_str}")
+                else:
+                    # Doesn't look like a date at all
+                    stats['dates_ignored'] += 1
+                continue
+
+            if not is_valid_date_for_yukyu(parsed_date):
+                stats['invalid_dates'] += 1
+                warnings.append({
+                    'row': row_idx,
+                    'column': col_idx,
+                    'employee': emp_num,
+                    'type': 'invalid_date',
+                    'message': f"Date out of valid range: {parsed_date}",
+                    'cell_value': str(cell_value)
+                })
+                logger.warning(f"Row {row_idx}, Col {col_idx}: Date out of range: {parsed_date}")
+                continue
+
+            # Successfully parsed - add to results
+            use_date = parsed_date.strftime('%Y-%m-%d')
+            year = parsed_date.year
+            month = parsed_date.month
+
+            usage_details.append({
+                'employee_num': emp_num,
+                'name': name,
+                'use_date': use_date,
+                'year': year,
+                'month': month,
+                'days_used': days_used,
+                'leave_type': leave_type,
+                'has_comment': has_comment,
+                'raw_value': str(cell_value)[:100]  # Keep first 100 chars for debugging
+            })
+
+            stats['total_dates_parsed'] += 1
+
+            # Update type-specific counters
+            if leave_type in ('half_am', 'half_pm'):
+                stats['half_day_count'] += 1
+            elif leave_type == 'hourly':
+                stats['hourly_count'] += 1
+            else:
+                stats['full_day_count'] += 1
+
+    wb.close()
+
+    # Log summary
+    logger.info(f"Enhanced parsing complete for {file_path}")
+    logger.info(f"  Rows processed: {stats['total_rows_processed']}")
+    logger.info(f"  Dates parsed: {stats['total_dates_parsed']}")
+    logger.info(f"  Full days: {stats['full_day_count']}")
+    logger.info(f"  Half days: {stats['half_day_count']}")
+    logger.info(f"  Hourly: {stats['hourly_count']}")
+    logger.info(f"  Ignored: {stats['dates_ignored']}")
+    logger.info(f"  Invalid dates: {stats['invalid_dates']}")
+    logger.info(f"  Cells with comments: {stats['cells_with_comments']}")
+    logger.info(f"  Warnings: {len(warnings)}")
+
+    return {
+        'data': usage_details,
+        'warnings': warnings,
+        'errors': errors,
+        'summary': stats
+    }
+
+
+def get_import_report(enhanced_result: Dict[str, Any]) -> str:
+    """
+    Generates a human-readable import report from enhanced parsing results.
+
+    Args:
+        enhanced_result: Result from parse_yukyu_usage_details_enhanced()
+
+    Returns:
+        Formatted string report
+    """
+    summary = enhanced_result.get('summary', {})
+    warnings = enhanced_result.get('warnings', [])
+    errors = enhanced_result.get('errors', [])
+
+    report_lines = [
+        "=" * 60,
+        "YUKYU IMPORT REPORT",
+        "=" * 60,
+        "",
+        "STATISTICS:",
+        f"  Total rows processed: {summary.get('total_rows_processed', 0)}",
+        f"  Total dates parsed:   {summary.get('total_dates_parsed', 0)}",
+        f"    - Full days:        {summary.get('full_day_count', 0)}",
+        f"    - Half days:        {summary.get('half_day_count', 0)}",
+        f"    - Hourly:           {summary.get('hourly_count', 0)}",
+        f"  Dates ignored:        {summary.get('dates_ignored', 0)}",
+        f"  Invalid dates:        {summary.get('invalid_dates', 0)}",
+        f"  Cells with comments:  {summary.get('cells_with_comments', 0)}",
+        "",
+    ]
+
+    if errors:
+        report_lines.extend([
+            "ERRORS:",
+            "-" * 40,
+        ])
+        for error in errors[:10]:  # Limit to first 10
+            if isinstance(error, dict):
+                report_lines.append(f"  - Row {error.get('row')}: {error.get('message')}")
+            else:
+                report_lines.append(f"  - {error}")
+        if len(errors) > 10:
+            report_lines.append(f"  ... and {len(errors) - 10} more errors")
+        report_lines.append("")
+
+    if warnings:
+        report_lines.extend([
+            "WARNINGS (first 20):",
+            "-" * 40,
+        ])
+        for warning in warnings[:20]:  # Limit to first 20
+            if isinstance(warning, dict):
+                report_lines.append(
+                    f"  [{warning.get('type', 'unknown')}] Row {warning.get('row')}, "
+                    f"Employee {warning.get('employee')}: {warning.get('message')}"
+                )
+            else:
+                report_lines.append(f"  - {warning}")
+        if len(warnings) > 20:
+            report_lines.append(f"  ... and {len(warnings) - 20} more warnings")
+        report_lines.append("")
+
+    report_lines.extend([
+        "=" * 60,
+        "END OF REPORT",
+        "=" * 60,
+    ])
+
+    return "\n".join(report_lines)

@@ -1,0 +1,31 @@
+# =============================================================================
+# YuKyuDATA-app - Vercel Production Dependencies
+# =============================================================================
+# Optimized for Vercel serverless deployment
+# =============================================================================
+
+# Core Framework
+fastapi>=0.109.0,<0.112.0
+uvicorn>=0.27.0,<0.31.0
+pydantic>=2.5.3,<3.0.0
+starlette>=0.35.0,<0.42.0
+
+# Excel Processing
+openpyxl>=3.1.2,<4.0.0
+XlsxWriter>=3.1.9,<4.0.0
+
+# PDF Generation
+reportlab>=4.0.0,<5.0.0
+
+# Authentication & Security
+PyJWT>=2.8.0,<3.0.0
+python-multipart>=0.0.6,<0.1.0
+passlib[bcrypt]>=1.7.4,<2.0.0
+
+# Configuration
+python-dotenv>=1.0.0,<2.0.0
+
+# Utilities
+python-dateutil>=2.8.2,<3.0.0
+anyio>=4.0.0,<5.0.0
+httpx>=0.26.0,<0.28.0

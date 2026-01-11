@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YuKyu - Offline Mode</title>
+    <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-cyan: #06b6d4;
+            --accent-cyan-dark: #0891b2;
+            --warning-amber: #f59e0b;
+            --success-green: #10b981;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #020617 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            color: var(--text-primary);
+        }
+
+        .container {
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .offline-card {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 3rem 2rem;
+            box-shadow:
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(6, 182, 212, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .offline-icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 2rem;
+            position: relative;
+        }
+
+        .offline-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .pulse-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            border: 3px solid var(--warning-amber);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+            opacity: 0.5;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.2; }
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            background: linear-gradient(135deg, var(--accent-cyan), #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .status-section {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .status-value {
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .status-value.online {
+            color: var(--success-green);
+        }
+
+        .status-value.offline {
+            color: var(--warning-amber);
+        }
+
+        .btn-retry {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-cyan-dark));
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+        }
+
+        .btn-retry:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
+        }
+
+        .btn-retry:active {
+            transform: translateY(0);
+        }
+
+        .btn-retry.loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .btn-retry .spinner {
+            display: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .btn-retry.loading .spinner {
+            display: block;
+        }
+
+        .btn-retry.loading .btn-text {
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .cached-data-section {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .cached-data-title {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .cached-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .cached-stat {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .cached-stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        .cached-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .footer-note {
+            margin-top: 2rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+        /* Connection restored toast */
+        .toast-connected {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: linear-gradient(135deg, var(--success-green), #059669);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast-connected.show {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="offline-card">
+            <div class="offline-icon">
+                <div class="pulse-ring"></div>
+                <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Cloud with X -->
+                    <path d="M85 65C85 51.745 74.255 41 61 41C50.327 41 41.277 48.227 38.5 58C27.178 58.728 18 68.372 18 80C18 92.15 27.85 102 40 102H80C92.15 102 102 92.15 102 80C102 71.094 96.272 63.5 88 60.354"
+                          stroke="#f59e0b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"
+                          fill="rgba(245, 158, 11, 0.1)"/>
+                    <!-- X mark -->
+                    <path d="M50 60L70 80M70 60L50 80"
+                          stroke="#f59e0b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- Signal bars (dimmed) -->
+                    <rect x="88" y="95" width="6" height="10" rx="2" fill="rgba(148, 163, 184, 0.3)"/>
+                    <rect x="98" y="88" width="6" height="17" rx="2" fill="rgba(148, 163, 184, 0.3)"/>
+                    <rect x="108" y="80" width="6" height="25" rx="2" fill="rgba(148, 163, 184, 0.3)"/>
+                </svg>
+            </div>
+
+            <h1>Offline Mode</h1>
+            <p class="subtitle">
+                Network connection is currently unavailable.<br>
+                You can still access cached data while offline.
+            </p>
+
+            <div class="status-section">
+                <div class="status-item">
+                    <span class="status-label">Network Status</span>
+                    <span class="status-value offline" id="network-status">Offline</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Last Sync</span>
+                    <span class="status-value" id="last-sync">Checking...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Pending Requests</span>
+                    <span class="status-value" id="pending-count">0</span>
+                </div>
+            </div>
+
+            <button class="btn-retry" id="btn-retry" onclick="retryConnection()">
+                <span class="spinner"></span>
+                <span class="btn-text">Retry Connection</span>
+            </button>
+
+            <div class="cached-data-section">
+                <div class="cached-data-title">Cached Data Available</div>
+                <div class="cached-stats">
+                    <div class="cached-stat">
+                        <div class="cached-stat-value" id="cached-employees">--</div>
+                        <div class="cached-stat-label">Employees</div>
+                    </div>
+                    <div class="cached-stat">
+                        <div class="cached-stat-value" id="cached-requests">--</div>
+                        <div class="cached-stat-label">Leave Requests</div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="footer-note">
+                YuKyuDATA v1.0 - Progressive Web App
+            </p>
+        </div>
+    </div>
+
+    <div class="toast-connected" id="toast-connected">
+        Connected! Redirecting...
+    </div>
+
+    <script>
+        // Check for cached data stats
+        async function loadCachedStats() {
+            try {
+                // Try to get stats from IndexedDB
+                const db = await openDatabase();
+
+                if (db) {
+                    const employeeCount = await countRecords(db, 'employees');
+                    const requestCount = await countRecords(db, 'leaveRequests');
+                    const pendingCount = await countRecords(db, 'pendingSync');
+                    const lastSync = await getLastSync(db);
+
+                    document.getElementById('cached-employees').textContent = employeeCount || '0';
+                    document.getElementById('cached-requests').textContent = requestCount || '0';
+                    document.getElementById('pending-count').textContent = pendingCount || '0';
+                    document.getElementById('last-sync').textContent = lastSync || 'Never';
+                }
+            } catch (e) {
+                console.log('Could not load cached stats:', e);
+            }
+        }
+
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('YuKyuOfflineDB', 1);
+                request.onerror = () => resolve(null);
+                request.onsuccess = () => resolve(request.result);
+            });
+        }
+
+        function countRecords(db, storeName) {
+            return new Promise((resolve) => {
+                try {
+                    const tx = db.transaction(storeName, 'readonly');
+                    const store = tx.objectStore(storeName);
+                    const countReq = store.count();
+                    countReq.onsuccess = () => resolve(countReq.result);
+                    countReq.onerror = () => resolve(0);
+                } catch (e) {
+                    resolve(0);
+                }
+            });
+        }
+
+        function getLastSync(db) {
+            return new Promise((resolve) => {
+                try {
+                    const tx = db.transaction('metadata', 'readonly');
+                    const store = tx.objectStore('metadata');
+                    const req = store.get('lastSync');
+                    req.onsuccess = () => {
+                        if (req.result && req.result.value) {
+                            const date = new Date(req.result.value);
+                            resolve(date.toLocaleString('ja-JP'));
+                        } else {
+                            resolve('Never');
+                        }
+                    };
+                    req.onerror = () => resolve('Unknown');
+                } catch (e) {
+                    resolve('Unknown');
+                }
+            });
+        }
+
+        // Retry connection
+        function retryConnection() {
+            const btn = document.getElementById('btn-retry');
+            btn.classList.add('loading');
+
+            fetch('/', { method: 'HEAD', cache: 'no-cache' })
+                .then(response => {
+                    if (response.ok) {
+                        showConnectedToast();
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 1500);
+                    } else {
+                        btn.classList.remove('loading');
+                        alert('Server is not responding. Please try again later.');
+                    }
+                })
+                .catch(() => {
+                    btn.classList.remove('loading');
+                    // Still offline
+                });
+        }
+
+        function showConnectedToast() {
+            const toast = document.getElementById('toast-connected');
+            toast.classList.add('show');
+        }
+
+        // Listen for online event
+        window.addEventListener('online', () => {
+            document.getElementById('network-status').textContent = 'Online';
+            document.getElementById('network-status').classList.remove('offline');
+            document.getElementById('network-status').classList.add('online');
+            showConnectedToast();
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1500);
+        });
+
+        // Update network status on load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (navigator.onLine) {
+                document.getElementById('network-status').textContent = 'Online';
+                document.getElementById('network-status').classList.remove('offline');
+                document.getElementById('network-status').classList.add('online');
+            }
+            loadCachedStats();
+        });
+    </script>
+</body>
+</html>

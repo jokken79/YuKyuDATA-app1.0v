@@ -1,12 +1,17 @@
 {
-  "name": "YuKyu Premium - 有給休暇管理",
+  "name": "YuKyuDATA - 有給管理システム",
   "short_name": "YuKyu",
-  "description": "有給休暇管理システム - Premium Dashboard",
+  "description": "Employee Vacation Management System - 有給休暇管理システム",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#38bdf8",
+  "theme_color": "#0ea5e9",
+  "background_color": "#0f172a",
   "orientation": "any",
+  "scope": "/",
+  "lang": "ja",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "utilities"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/static/icons/icon.svg",
@@ -15,15 +20,82 @@
       "purpose": "any"
     },
     {
-      "src": "/static/icons/icon.svg",
+      "src": "/static/icons/icon-72.svg",
+      "sizes": "72x72",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-96.svg",
+      "sizes": "96x96",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-128.svg",
+      "sizes": "128x128",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-144.svg",
+      "sizes": "144x144",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-152.svg",
+      "sizes": "152x152",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-384.svg",
+      "sizes": "384x384",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-maskable-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/static/icons/icon-maskable-512.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "maskable"
     }
   ],
-  "categories": ["business", "productivity"],
-  "lang": "ja",
-  "dir": "ltr",
-  "scope": "/",
-  "prefer_related_applications": false
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View vacation dashboard",
+      "url": "/?view=dashboard",
+      "icons": [{ "src": "/static/icons/icon-96.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Leave Request",
+      "short_name": "Request",
+      "description": "Submit a leave request",
+      "url": "/?view=requests",
+      "icons": [{ "src": "/static/icons/icon-96.svg", "sizes": "96x96" }]
+    }
+  ],
+  "related_applications": [],
+  "handle_links": "preferred"
 }

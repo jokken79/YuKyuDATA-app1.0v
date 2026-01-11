@@ -1,0 +1,149 @@
+# docker-compose.dev.yml - Development Environment
+# YuKyuDATA FastAPI Application
+#
+# Usage:
+#   docker-compose -f docker-compose.dev.yml up --build
+#   docker-compose -f docker-compose.dev.yml down
+#
+# Features:
+#   - Hot-reload enabled via volume mounts
+#   - SQLite database (simple development)
+#   - Environment variables from .env file
+#   - Health checks
+#   - Automatic restart on failure
+
+version: '3.9'
+
+services:
+  # ============================================
+  # FASTAPI APPLICATION
+  # ============================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yukyu-dev
+    restart: unless-stopped
+
+    # ============================================
+    # PORT MAPPING
+    # ============================================
+    ports:
+      - "8000:8000"
+
+    # ============================================
+    # VOLUME MOUNTS (Hot Reload)
+    # ============================================
+    volumes:
+      # Python source files (hot-reload)
+      - ./main.py:/app/main.py:ro
+      - ./database.py:/app/database.py:ro
+      - ./excel_service.py:/app/excel_service.py:ro
+      - ./fiscal_year.py:/app/fiscal_year.py:ro
+      - ./config.py:/app/config.py:ro
+      - ./logger.py:/app/logger.py:ro
+      - ./excel_export.py:/app/excel_export.py:ro
+
+      # Templates and static files (hot-reload)
+      - ./templates:/app/templates:ro
+      - ./static:/app/static:ro
+
+      # Excel data files (read-write for sync)
+      - ./有給休暇管理.xlsm:/app/有給休暇管理.xlsm:rw
+      - ./【新】社員台帳(UNS)T　2022.04.05～.xlsm:/app/【新】社員台帳(UNS)T　2022.04.05～.xlsm:rw
+
+      # SQLite database (persist between restarts)
+      - ./yukyu.db:/app/yukyu.db:rw
+
+      # Backups directory
+      - ./backups:/app/backups:rw
+
+      # Logs directory
+      - ./logs:/app/logs:rw
+
+      # Tests (for running tests inside container)
+      - ./tests:/app/tests:ro
+
+      # Agents directory (optional)
+      - ./agents:/app/agents:ro
+
+    # ============================================
+    # ENVIRONMENT VARIABLES
+    # ============================================
+    environment:
+      - APP_ENV=development
+      - DEBUG=true
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+
+      # Database
+      - DATABASE_TYPE=sqlite
+      - DATABASE_URL=sqlite:///./yukyu.db
+
+      # JWT (use defaults for dev)
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-key-change-in-production}
+      - JWT_ALGORITHM=HS256
+      - JWT_EXPIRATION_HOURS=24
+
+      # CORS (allow all in dev)
+      - CORS_ORIGINS=http://localhost:8000,http://localhost:3000,http://127.0.0.1:8000
+
+      # Rate limiting (relaxed for development)
+      - RATE_LIMIT_ENABLED=false
+
+      # Logging
+      - LOG_LEVEL=DEBUG
+
+    # ============================================
+    # ENV FILE
+    # ============================================
+    env_file:
+      - .env
+
+    # ============================================
+    # HEALTHCHECK
+    # ============================================
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/db-status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # ============================================
+    # LABELS
+    # ============================================
+    labels:
+      - "com.yukyu.environment=development"
+      - "com.yukyu.service=app"
+
+# ============================================
+# NETWORKS (Optional - uses default bridge)
+# ============================================
+networks:
+  default:
+    driver: bridge
+
+# ============================================
+# USAGE INSTRUCTIONS
+# ============================================
+# 1. Copy .env.example to .env:
+#    cp .env.example .env
+#
+# 2. Start development server:
+#    docker-compose -f docker-compose.dev.yml up --build
+#
+# 3. Access application:
+#    http://localhost:8000
+#
+# 4. View logs:
+#    docker-compose -f docker-compose.dev.yml logs -f
+#
+# 5. Run tests inside container:
+#    docker-compose -f docker-compose.dev.yml exec app pytest tests/ -v
+#
+# 6. Stop services:
+#    docker-compose -f docker-compose.dev.yml down
+#
+# 7. Rebuild after dependency changes:
+#    docker-compose -f docker-compose.dev.yml up --build

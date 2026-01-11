@@ -18,6 +18,318 @@ const App = {
     },
 
     // ========================================
+    // INTERNATIONALIZATION (i18n) MODULE
+    // ========================================
+    i18n: {
+        currentLocale: 'ja',
+        translations: {},
+        supportedLocales: ['ja', 'es', 'en'],
+        storageKey: 'yukyu-locale',
+        localesPath: '/static/locales',
+        isInitialized: false,
+        changeListeners: [],
+
+        localeInfo: {
+            ja: { name: 'Japanese', nativeName: 'Japanese', flag: 'JP', code: 'JA' },
+            es: { name: 'Spanish', nativeName: 'Castellano', flag: 'ES', code: 'ES' },
+            en: { name: 'English', nativeName: 'English', flag: 'EN', code: 'EN' }
+        },
+
+        async init() {
+            if (this.isInitialized) return;
+
+            // Load saved locale or detect from browser
+            const savedLocale = localStorage.getItem(this.storageKey);
+            const browserLocale = this.detectBrowserLocale();
+            this.currentLocale = savedLocale || browserLocale || 'ja';
+
+            // Load translations
+            await this.loadTranslations(this.currentLocale);
+
+            // Update document lang attribute
+            document.documentElement.lang = this.currentLocale;
+
+            // Update UI selector
+            this.updateLanguageSelector();
+
+            // Setup event listeners
+            this.setupLanguageSelector();
+
+            this.isInitialized = true;
+            console.log(`i18n initialized with locale: ${this.currentLocale}`);
+        },
+
+        detectBrowserLocale() {
+            const browserLang = navigator.language || navigator.userLanguage || '';
+            const langCode = browserLang.split('-')[0].toLowerCase();
+
+            if (langCode === 'ja') return 'ja';
+            if (langCode === 'es') return 'es';
+            if (langCode === 'en') return 'en';
+
+            return 'ja';
+        },
+
+        async loadTranslations(locale) {
+            if (!this.supportedLocales.includes(locale)) {
+                console.warn(`Locale "${locale}" not supported. Using "ja".`);
+                locale = 'ja';
+            }
+
+            if (this.translations[locale]) {
+                return this.translations[locale];
+            }
+
+            try {
+                const response = await fetch(`${this.localesPath}/${locale}.json`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const translations = await response.json();
+                this.translations[locale] = translations;
+
+                console.log(`Loaded translations for: ${locale}`);
+                return translations;
+
+            } catch (error) {
+                console.error(`Failed to load translations for ${locale}:`, error);
+
+                if (locale !== 'ja') {
+                    return this.loadTranslations('ja');
+                }
+
+                this.translations[locale] = {};
+                return {};
+            }
+        },
+
+        async setLocale(locale) {
+            if (!this.supportedLocales.includes(locale)) {
+                console.warn(`Locale "${locale}" not supported.`);
+                return;
+            }
+
+            if (locale === this.currentLocale) {
+                return;
+            }
+
+            // Load translations if not cached
+            await this.loadTranslations(locale);
+
+            this.currentLocale = locale;
+            localStorage.setItem(this.storageKey, locale);
+
+            // Update document lang attribute
+            document.documentElement.lang = locale;
+
+            // Update UI selector
+            this.updateLanguageSelector();
+
+            // Update all translated elements
+            this.updateDOM();
+
+            // Notify listeners
+            this.notifyListeners();
+
+            console.log(`Locale changed to: ${locale}`);
+
+            // Show toast notification
+            const info = this.localeInfo[locale];
+            App.ui.showToast('info', `Language: ${info.nativeName}`);
+        },
+
+        getLocale() {
+            return this.currentLocale;
+        },
+
+        t(key, params = {}) {
+            const translations = this.translations[this.currentLocale] || {};
+            let value = this.getNestedValue(translations, key);
+
+            // Fallback to Japanese
+            if (value === undefined && this.currentLocale !== 'ja') {
+                const jaTranslations = this.translations['ja'] || {};
+                value = this.getNestedValue(jaTranslations, key);
+            }
+
+            // Return key if not found
+            if (value === undefined) {
+                return key;
+            }
+
+            // Interpolate parameters
+            return this.interpolate(value, params);
+        },
+
+        getNestedValue(obj, key) {
+            const keys = key.split('.');
+            let current = obj;
+
+            for (const k of keys) {
+                if (current === null || current === undefined) {
+                    return undefined;
+                }
+                current = current[k];
+            }
+
+            return current;
+        },
+
+        interpolate(template, params) {
+            if (!params || typeof template !== 'string') {
+                return template;
+            }
+
+            return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+                return params.hasOwnProperty(key) ? params[key] : match;
+            });
+        },
+
+        onLocaleChange(callback) {
+            if (typeof callback === 'function') {
+                this.changeListeners.push(callback);
+            }
+
+            return () => {
+                const index = this.changeListeners.indexOf(callback);
+                if (index > -1) {
+                    this.changeListeners.splice(index, 1);
+                }
+            };
+        },
+
+        notifyListeners() {
+            const locale = this.currentLocale;
+            this.changeListeners.forEach(callback => {
+                try {
+                    callback(locale);
+                } catch (error) {
+                    console.error('Error in locale change listener:', error);
+                }
+            });
+        },
+
+        updateDOM() {
+            // Update elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                const translation = this.t(key);
+                if (translation !== key) {
+                    element.textContent = translation;
+                }
+            });
+
+            // Update placeholders with data-i18n-placeholder
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+                const key = element.getAttribute('data-i18n-placeholder');
+                const translation = this.t(key);
+                if (translation !== key) {
+                    element.placeholder = translation;
+                }
+            });
+
+            // Update titles with data-i18n-title
+            document.querySelectorAll('[data-i18n-title]').forEach(element => {
+                const key = element.getAttribute('data-i18n-title');
+                const translation = this.t(key);
+                if (translation !== key) {
+                    element.title = translation;
+                }
+            });
+
+            // Update aria-labels with data-i18n-aria
+            document.querySelectorAll('[data-i18n-aria]').forEach(element => {
+                const key = element.getAttribute('data-i18n-aria');
+                const translation = this.t(key);
+                if (translation !== key) {
+                    element.setAttribute('aria-label', translation);
+                }
+            });
+        },
+
+        setupLanguageSelector() {
+            const selectorBtn = document.getElementById('language-selector-btn');
+            const selector = document.getElementById('language-selector');
+            const dropdown = document.getElementById('language-dropdown');
+
+            if (!selectorBtn || !selector) return;
+
+            // Toggle dropdown on button click
+            selectorBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selector.classList.toggle('open');
+                selectorBtn.setAttribute('aria-expanded',
+                    selector.classList.contains('open') ? 'true' : 'false'
+                );
+            });
+
+            // Handle language option clicks
+            if (dropdown) {
+                dropdown.querySelectorAll('.language-option').forEach(option => {
+                    option.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        const locale = option.dataset.locale;
+                        if (locale) {
+                            await this.setLocale(locale);
+                            selector.classList.remove('open');
+                            selectorBtn.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                });
+            }
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!selector.contains(e.target)) {
+                    selector.classList.remove('open');
+                    selectorBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            // Keyboard navigation
+            selectorBtn.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    selector.classList.remove('open');
+                    selectorBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+        },
+
+        updateLanguageSelector() {
+            const flagEl = document.getElementById('current-lang-flag');
+            const codeEl = document.getElementById('current-lang-code');
+            const dropdown = document.getElementById('language-dropdown');
+
+            const info = this.localeInfo[this.currentLocale];
+
+            if (flagEl) flagEl.textContent = info.flag;
+            if (codeEl) codeEl.textContent = info.code;
+
+            // Update active state in dropdown
+            if (dropdown) {
+                dropdown.querySelectorAll('.language-option').forEach(option => {
+                    const isActive = option.dataset.locale === this.currentLocale;
+                    option.classList.toggle('active', isActive);
+                    option.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                });
+            }
+        },
+
+        getLocaleInfo() {
+            return this.localeInfo[this.currentLocale];
+        },
+
+        getAllLocalesInfo() {
+            return this.supportedLocales.map(code => ({
+                code,
+                ...this.localeInfo[code]
+            }));
+        }
+    },
+
+    // ========================================
     // SECURITY UTILITIES (XSS Prevention)
     // ========================================
     utils: {
@@ -243,6 +555,9 @@ const App = {
         // Initialize theme
         this.theme.init();
 
+        // Initialize internationalization (i18n)
+        await this.i18n.init();
+
         // Initial Fetch
         await this.data.fetchEmployees();
 
@@ -452,8 +767,27 @@ const App = {
                     throw new Error(errorText || `Server error: ${res.status}`);
                 }
                 const json = await res.json();
-                App.ui.showToast('success', `✅ ${json.count}件の有給データを同期しました`, 5000);
+
+                // Mostrar toast rápido
+                App.ui.showToast('success', `✅ ${json.count}件の有給データを同期しました`, 3000);
+
+                // Obtener datos actualizados para el reporte de importación
                 await this.fetchEmployees(App.state.year);
+
+                // Preparar datos para el modal de resultado de importación
+                const importData = {
+                    count: json.count || 0,
+                    skipped: json.skipped || 0,
+                    duplicates: json.duplicates || 0,
+                    validation: json.validation || null,
+                    employees: App.state.data || []
+                };
+
+                // Mostrar modal de resultado de importación
+                if (App.importReport && typeof App.importReport.showImportResult === 'function') {
+                    App.importReport.showImportResult(importData);
+                }
+
             } catch (err) {
                 console.error('Sync error:', err);
                 if (err.message.includes('fetch') || err.name === 'TypeError') {
@@ -728,7 +1062,7 @@ const App = {
                 tbody.textContent = '';
                 const tr = document.createElement('tr');
                 const td = document.createElement('td');
-                td.colSpan = 7;
+                td.colSpan = 9;  // Updated for bulk edit checkbox column
                 td.style.textAlign = 'center';
                 td.style.padding = '2rem';
                 td.textContent = 'No matching records found';
@@ -759,8 +1093,19 @@ const App = {
                 const rateColor = usageRate >= 80 ? 'var(--success)' : usageRate >= 50 ? 'var(--warning)' : 'var(--danger)';
                 const rateGlow = usageRate >= 80 ? '0 0 8px var(--success)' : usageRate >= 50 ? '0 0 8px var(--warning)' : '0 0 8px var(--danger)';
 
+                // Check if employee is selected
+                const isSelected = App.bulkEdit && App.bulkEdit.selectedEmployees.has(e.employeeNum);
+
                 return `
                 <tr class="employee-row" data-employee-num="${empNum}" style="cursor: pointer;">
+                    <td class="table-checkbox" onclick="event.stopPropagation();">
+                        <input type="checkbox"
+                            class="employee-select-checkbox"
+                            data-employee-num="${empNum}"
+                            ${isSelected ? 'checked' : ''}
+                            onchange="App.bulkEdit.toggleEmployee('${empNum}', this.checked)"
+                            title="選択">
+                    </td>
                     <td><div class="font-bold">${empNum}</div></td>
                     <td>
                         <div class="employee-name-cell">
@@ -836,12 +1181,26 @@ const App = {
             const yearLabel = document.getElementById('trends-year-label');
             if (yearLabel) yearLabel.textContent = `(${App.state.year})`;
 
-            container.innerHTML = App.state.availableYears.map(y => `
-                <button class="btn btn-glass ${Number(App.state.year) === Number(y) ? 'btn-primary' : ''}" 
-                        onclick="App.state.year=${y}; App.data.fetchEmployees(${y});">
-                    ${y}
+            // XSS prevention: use data attributes and sanitize year values
+            container.innerHTML = App.state.availableYears.map(y => {
+                const safeYear = parseInt(y) || 0;
+                return `
+                <button class="btn btn-glass year-btn ${Number(App.state.year) === Number(safeYear) ? 'btn-primary' : ''}"
+                        data-year="${safeYear}">
+                    ${safeYear}
                 </button>
-            `).join('');
+            `}).join('');
+
+            // Add event listeners safely
+            container.querySelectorAll('.year-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const year = parseInt(btn.dataset.year);
+                    if (year) {
+                        App.state.year = year;
+                        App.data.fetchEmployees(year);
+                    }
+                });
+            });
         },
 
         async renderCharts() {
@@ -1089,32 +1448,41 @@ const App = {
                     `;
                 }
 
+                // XSS prevention: escape all user data
+                const safeEmpNum = App.utils.escapeHtml(emp.employeeNum);
+                const safeEmpNumAttr = App.utils.escapeAttr(emp.employeeNum);
+                const safeHaken = App.utils.escapeHtml(emp.haken || employee.factory || '-');
+                const safeType = App.utils.escapeHtml(employee.type || (emp.type === 'haken' ? '派遣' : emp.type === 'ukeoi' ? '請負' : 'スタッフ'));
+                const safeStatus = App.utils.escapeHtml(employee.status || '在職中');
+                const safeTotalAvailable = App.utils.safeNumber(totalAvailable);
+                const safeRenewalDate = App.utils.escapeHtml(renewalDate);
+
                 document.getElementById('modal-content').innerHTML = `
                     <!-- Información básica -->
                     <div class="bento-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1.5rem; gap: 0.8rem;">
                         <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
                             <div style="color: #94a3b8; font-size: 0.8rem;">社員番号</div>
-                            <div style="font-size: 1.2rem; font-weight: bold;">${emp.employeeNum}</div>
+                            <div style="font-size: 1.2rem; font-weight: bold;">${safeEmpNum}</div>
                         </div>
                         <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
                             <div style="color: #94a3b8; font-size: 0.8rem;">派遣先</div>
-                            <div style="font-size: 0.9rem; font-weight: bold;">${emp.haken || employee.factory || '-'}</div>
+                            <div style="font-size: 0.9rem; font-weight: bold;">${safeHaken}</div>
                         </div>
                         <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
                             <div style="color: #94a3b8; font-size: 0.8rem;">タイプ</div>
-                            <div style="font-size: 1rem;">${employee.type || (emp.type === 'haken' ? '派遣' : emp.type === 'ukeoi' ? '請負' : 'スタッフ')}</div>
+                            <div style="font-size: 1rem;">${safeType}</div>
                         </div>
                         <div class="glass-panel" style="padding: 0.8rem; text-align: center;">
                             <div style="color: #94a3b8; font-size: 0.8rem;">ステータス</div>
-                            <div style="font-size: 1rem; color: ${employee.status === '在職中' ? '#22c55e' : '#ef4444'};">${employee.status || '在職中'}</div>
+                            <div style="font-size: 1rem; color: ${employee.status === '在職中' ? '#22c55e' : '#ef4444'};">${safeStatus}</div>
                         </div>
                     </div>
 
                     <!-- Balance total actual -->
                     <div class="glass-panel" style="padding: 1rem; margin-bottom: 1rem; background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(56, 189, 248, 0.2)); text-align: center;">
                         <div style="color: #94a3b8; font-size: 0.9rem;">💰 有給残日数 (合計)</div>
-                        <div style="font-size: 2rem; font-weight: bold; color: #22c55e;">${totalAvailable}日</div>
-                        <div style="color: #94a3b8; font-size: 0.8rem;">次回付与: ${renewalDate}</div>
+                        <div style="font-size: 2rem; font-weight: bold; color: #22c55e;">${safeTotalAvailable}日</div>
+                        <div style="color: #94a3b8; font-size: 0.8rem;">次回付与: ${safeRenewalDate}</div>
                     </div>
 
                     <!-- Historial de 2 años -->
@@ -1123,19 +1491,52 @@ const App = {
 
                     <!-- Fechas de uso recientes -->
                     ${usageDatesHtml}
+
+                    <!-- Botón de edición (v2.1 NEW) -->
+                    <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <button class="btn btn-primary" style="width: 100%;" data-action="edit-yukyu" data-employee-num="${safeEmpNumAttr}">
+                            ✏️ 有給使用データを編集
+                        </button>
+                        <p style="text-align: center; color: #94a3b8; font-size: 0.75rem; margin-top: 0.5rem;">
+                            日付の追加・修正・削除ができます
+                        </p>
+                    </div>
+
+                    <!-- Botón de PDF (v2.4 NEW) -->
+                    <div style="margin-top: 1rem;">
+                        <button class="btn btn-secondary" style="width: 100%;" data-action="download-pdf" data-employee-num="${safeEmpNumAttr}">
+                            📄 PDFレポートをダウンロード
+                        </button>
+                    </div>
                 `;
+
+                // Add event listeners safely (prevent XSS via onclick)
+                document.querySelector('[data-action="edit-yukyu"]')?.addEventListener('click', () => {
+                    App.ui.closeModal();
+                    App.editYukyu.openModal(emp.employeeNum);
+                });
+                document.querySelector('[data-action="download-pdf"]')?.addEventListener('click', () => {
+                    App.reports.downloadEmployeePDF(emp.employeeNum, App.state.year || null);
+                });
 
             } catch (error) {
                 console.error('Error loading employee details:', error);
-                // Fallback a datos básicos si el API falla
+                // Fallback a datos básicos si el API falla - XSS prevention: escape all user data
+                const safeEmpNum = App.utils.escapeHtml(emp.employeeNum);
+                const safeHaken = App.utils.escapeHtml(emp.haken);
+                const safeGranted = App.utils.safeNumber(emp.granted);
+                const safeUsed = App.utils.safeNumber(emp.used);
+                const safeBalance = App.utils.safeNumber(emp.balance);
+                const safeUsageRate = App.utils.safeNumber(emp.usageRate);
+
                 document.getElementById('modal-content').innerHTML = `
                     <div class="bento-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 2rem;">
-                        <div><span class="text-gray-400">ID:</span> ${emp.employeeNum}</div>
-                        <div><span class="text-gray-400">Factory:</span> ${emp.haken}</div>
-                        <div><span class="text-gray-400">Granted:</span> ${emp.granted}</div>
-                        <div><span class="text-gray-400">Used:</span> ${emp.used}</div>
-                        <div><span class="text-gray-400">Balance:</span> ${emp.balance}</div>
-                        <div><span class="text-gray-400">Rate:</span> ${emp.usageRate}%</div>
+                        <div><span class="text-gray-400">ID:</span> ${safeEmpNum}</div>
+                        <div><span class="text-gray-400">Factory:</span> ${safeHaken}</div>
+                        <div><span class="text-gray-400">Granted:</span> ${safeGranted}</div>
+                        <div><span class="text-gray-400">Used:</span> ${safeUsed}</div>
+                        <div><span class="text-gray-400">Balance:</span> ${safeBalance}</div>
+                        <div><span class="text-gray-400">Rate:</span> ${safeUsageRate}%</div>
                     </div>
                     <p style="color: #f59e0b; font-size: 0.9rem;">⚠️ 詳細データの取得に失敗しました</p>
                 `;
@@ -2546,8 +2947,8 @@ const App = {
                         // Display hours or days based on leave type
                         const isHourly = req.leave_type === 'hourly';
                         const duration = isHourly
-                            ? `${req.hours_requested || 0}時間`
-                            : `${req.days_requested}日`;
+                            ? `${App.utils.safeNumber(req.hours_requested)}時間`
+                            : `${App.utils.safeNumber(req.days_requested)}日`;
                         const typeLabel = {
                             'full': '全日',
                             'half_am': '午前半休',
@@ -2555,25 +2956,33 @@ const App = {
                             'hourly': '時間休'
                         }[req.leave_type] || '全日';
 
+                        // XSS prevention: escape all user data
+                        const safeId = parseInt(req.id) || 0;
+                        const safeName = App.utils.escapeHtml(req.employee_name);
+                        const safeStartDate = App.utils.escapeHtml(req.start_date);
+                        const safeEndDate = App.utils.escapeHtml(req.end_date);
+                        const safeReason = App.utils.escapeHtml(req.reason || '-');
+                        const safeRequestedAt = App.utils.escapeHtml(req.requested_at?.slice(0, 10) || '-');
+
                         // Show revert button only for approved requests
                         const actionBtn = req.status === 'APPROVED'
-                            ? `<button class="btn btn-glass btn-revert" data-request-id="${req.id}"
+                            ? `<button class="btn btn-glass btn-revert" data-request-id="${safeId}"
                                 style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: rgba(251, 191, 36, 0.2);"
                                 title="承認を取り消す">↩ 取消</button>`
                             : '-';
 
                         return `
                             <tr>
-                                <td>${req.id}</td>
-                                <td>${req.employee_name}</td>
-                                <td>${req.start_date} 〜 ${req.end_date}</td>
+                                <td>${safeId}</td>
+                                <td>${safeName}</td>
+                                <td>${safeStartDate} 〜 ${safeEndDate}</td>
                                 <td>
                                     <span class="badge badge-info" style="margin-right: 0.25rem; padding: 0.1rem 0.4rem; font-size: 0.65rem;">${typeLabel}</span>
                                     ${duration}
                                 </td>
-                                <td>${req.reason || '-'}</td>
+                                <td>${safeReason}</td>
                                 <td><span class="badge ${statusBadge}">${statusText}</span></td>
-                                <td>${req.requested_at?.slice(0, 10) || '-'}</td>
+                                <td>${safeRequestedAt}</td>
                                 <td>${actionBtn}</td>
                             </tr>
                         `;
@@ -2873,16 +3282,21 @@ const App = {
                 if (json.non_compliant_employees && json.non_compliant_employees.length > 0) {
                     container.innerHTML = json.non_compliant_employees.map(emp => {
                         const statusColor = emp.status === 'non_compliant' ? 'var(--danger)' : 'var(--warning)';
+                        // XSS prevention: escape all user data
+                        const safeName = App.utils.escapeHtml(emp.name);
+                        const safeEmpNum = App.utils.escapeHtml(emp.employee_num);
+                        const safeDaysUsed = App.utils.safeNumber(emp.days_used).toFixed(1);
+                        const safeDaysRemaining = App.utils.safeNumber(emp.days_remaining).toFixed(1);
                         return `
                             <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem; border-left: 3px solid ${statusColor};">
                                 <div class="flex-between">
                                     <div>
-                                        <div style="font-weight: 600;">${emp.name}</div>
-                                        <div style="font-size: 0.85rem; color: var(--muted);">${emp.employee_num}</div>
+                                        <div style="font-weight: 600;">${safeName}</div>
+                                        <div style="font-size: 0.85rem; color: var(--muted);">${safeEmpNum}</div>
                                     </div>
                                     <div style="text-align: right;">
-                                        <div style="font-size: 1.1rem; font-weight: 700; color: ${statusColor};">${emp.days_used.toFixed(1)}日</div>
-                                        <div style="font-size: 0.8rem; color: var(--muted);">残り ${emp.days_remaining.toFixed(1)}日必要</div>
+                                        <div style="font-size: 1.1rem; font-weight: 700; color: ${statusColor};">${safeDaysUsed}日</div>
+                                        <div style="font-size: 0.8rem; color: var(--muted);">残り ${safeDaysRemaining}日必要</div>
                                     </div>
                                 </div>
                             </div>
@@ -2910,12 +3324,16 @@ const App = {
                 if (json.alerts && json.alerts.length > 0) {
                     container.innerHTML = json.alerts.map(alert => {
                         const levelIcon = alert.level === 'critical' ? '🔴' : alert.level === 'warning' ? '🟡' : '🔵';
+                        // XSS prevention: escape all user data
+                        const safeName = App.utils.escapeHtml(alert.employee_name);
+                        const safeMessage = App.utils.escapeHtml(alert.message_ja);
+                        const safeAction = App.utils.escapeHtml(alert.action_required || '-');
                         return `
                             <div style="padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem;">
-                                <div style="font-weight: 600;">${levelIcon} ${alert.employee_name}</div>
-                                <div style="font-size: 0.9rem; margin-top: 0.25rem;">${alert.message_ja}</div>
+                                <div style="font-weight: 600;">${levelIcon} ${safeName}</div>
+                                <div style="font-size: 0.9rem; margin-top: 0.25rem;">${safeMessage}</div>
                                 <div style="font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem;">
-                                    対応: ${alert.action_required || '-'}
+                                    対応: ${safeAction}
                                 </div>
                             </div>
                         `;
@@ -2952,16 +3370,24 @@ const App = {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${json.entries.map(e => `
+                                ${json.entries.map(e => {
+                                    // XSS prevention: escape all user data
+                                    const safeEmpNum = App.utils.escapeHtml(e.employee_num);
+                                    const safeName = App.utils.escapeHtml(e.employee_name);
+                                    const safeGrantDate = App.utils.escapeHtml(e.grant_date);
+                                    const safeGranted = App.utils.safeNumber(e.granted_days);
+                                    const safeUsed = App.utils.safeNumber(e.used_days);
+                                    const safeRemaining = App.utils.safeNumber(e.remaining_days);
+                                    return `
                                     <tr>
-                                        <td>${e.employee_num}</td>
-                                        <td>${e.employee_name}</td>
-                                        <td>${e.grant_date}</td>
-                                        <td>${e.granted_days}</td>
-                                        <td>${e.used_days}</td>
-                                        <td>${e.remaining_days}</td>
+                                        <td>${safeEmpNum}</td>
+                                        <td>${safeName}</td>
+                                        <td>${safeGrantDate}</td>
+                                        <td>${safeGranted}</td>
+                                        <td>${safeUsed}</td>
+                                        <td>${safeRemaining}</td>
                                     </tr>
-                                `).join('')}
+                                `}).join('')}
                             </tbody>
                         </table>
                     `;
@@ -3031,13 +3457,19 @@ const App = {
 
                 let content = '<div style="max-height: 400px; overflow-y: auto;">';
                 if (json.entries && json.entries.length > 0) {
-                    content += json.entries.map(e => `
+                    content += json.entries.map(e => {
+                        // XSS prevention: escape all user data
+                        const safeAction = App.utils.escapeHtml(e.action);
+                        const safeEntityType = App.utils.escapeHtml(e.entity_type);
+                        const safeEntityId = App.utils.escapeHtml(e.entity_id || '-');
+                        const safeTimestamp = App.utils.escapeHtml(e.timestamp?.slice(0, 19) || '');
+                        return `
                         <div style="padding: 0.5rem; background: rgba(255,255,255,0.03); margin-bottom: 0.25rem; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
-                            <span style="color: var(--primary);">[${e.action}]</span>
-                            <span style="color: var(--muted);">${e.entity_type}/${e.entity_id || '-'}</span>
-                            <span style="color: #64748b; float: right;">${e.timestamp?.slice(0, 19)}</span>
+                            <span style="color: var(--primary);">[${safeAction}]</span>
+                            <span style="color: var(--muted);">${safeEntityType}/${safeEntityId}</span>
+                            <span style="color: #64748b; float: right;">${safeTimestamp}</span>
                         </div>
-                    `).join('');
+                    `}).join('');
                 } else {
                     content += '<div style="text-align: center; padding: 2rem; color: var(--muted);">No audit log entries</div>';
                 }
@@ -3145,7 +3577,9 @@ const App = {
             if (!isOtherMonth && events.length > 0) {
                 const displayEvents = events.slice(0, 2);
                 displayEvents.forEach(e => {
-                    html += `<div class="calendar-event" style="background: ${e.color};">${e.title.split('(')[0].trim()}</div>`;
+                    // XSS prevention: escape title before display
+                    const safeTitle = App.utils.escapeHtml(e.title?.split('(')[0]?.trim() || '');
+                    html += `<div class="calendar-event" style="background: ${e.color};">${safeTitle}</div>`;
                 });
                 if (events.length > 2) {
                     html += `<div class="calendar-event-count">+${events.length - 2}</div>`;
@@ -3167,11 +3601,15 @@ const App = {
                 container.innerHTML = events.map(e => {
                     const typeLabels = { 'full': '全日', 'half_am': '午前半休', 'half_pm': '午後半休', 'hourly': '時間休', 'usage': '使用日' };
                     const typeLabel = typeLabels[e.leave_type] || typeLabels[e.type] || '休暇';
+                    // XSS prevention: escape all user data
+                    const safeName = App.utils.escapeHtml(e.employee_name);
+                    const safeDays = App.utils.safeNumber(e.days);
+                    const safeHours = App.utils.safeNumber(e.hours);
                     return `
                         <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem; border-left: 3px solid ${e.color};">
-                            <div style="font-weight: 600;">${e.employee_name}</div>
+                            <div style="font-weight: 600;">${safeName}</div>
                             <div style="font-size: 0.85rem; color: var(--muted);">
-                                ${typeLabel} ${e.days ? `(${e.days}日)` : ''} ${e.hours ? `(${e.hours}時間)` : ''}
+                                ${typeLabel} ${safeDays ? `(${safeDays}日)` : ''} ${safeHours ? `(${safeHours}時間)` : ''}
                             </div>
                         </div>
                     `;
@@ -3319,31 +3757,41 @@ const App = {
 
         renderTopUsers(topUsers) {
             const container = document.getElementById('top-users-list');
-            container.innerHTML = topUsers.map((u, i) => `
+            container.innerHTML = topUsers.map((u, i) => {
+                // XSS prevention: escape all user data
+                const safeName = App.utils.escapeHtml(u.name);
+                const safeEmpNum = App.utils.escapeHtml(u.employee_num);
+                const safeUsed = App.utils.safeNumber(u.used);
+                return `
                 <div style="display: flex; align-items: center; padding: 0.5rem; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 0.5rem;">
                     <div style="width: 30px; height: 30px; background: ${i < 3 ? 'var(--warning)' : 'rgba(255,255,255,0.1)'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 0.75rem; font-weight: 700; font-size: 0.8rem;">
                         ${i + 1}
                     </div>
                     <div style="flex: 1;">
-                        <div style="font-weight: 600;">${u.name}</div>
-                        <div style="font-size: 0.8rem; color: var(--muted);">${u.employee_num}</div>
+                        <div style="font-weight: 600;">${safeName}</div>
+                        <div style="font-size: 0.8rem; color: var(--muted);">${safeEmpNum}</div>
                     </div>
-                    <div style="font-weight: 700; color: var(--success);">${u.used}日</div>
+                    <div style="font-weight: 700; color: var(--success);">${safeUsed}日</div>
                 </div>
-            `).join('');
+            `}).join('');
         },
 
         renderHighBalance(highBalance) {
             const container = document.getElementById('high-balance-list');
-            container.innerHTML = highBalance.map(u => `
+            container.innerHTML = highBalance.map(u => {
+                // XSS prevention: escape all user data
+                const safeName = App.utils.escapeHtml(u.name);
+                const safeEmpNum = App.utils.escapeHtml(u.employee_num);
+                const safeBalance = App.utils.safeNumber(u.balance);
+                return `
                 <div style="display: flex; align-items: center; padding: 0.5rem; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 0.5rem;">
                     <div style="flex: 1;">
-                        <div style="font-weight: 600;">${u.name}</div>
-                        <div style="font-size: 0.8rem; color: var(--muted);">${u.employee_num}</div>
+                        <div style="font-weight: 600;">${safeName}</div>
+                        <div style="font-size: 0.8rem; color: var(--muted);">${safeEmpNum}</div>
                     </div>
-                    <div style="font-weight: 700; color: var(--warning);">${u.balance}日</div>
+                    <div style="font-weight: 700; color: var(--warning);">${safeBalance}日</div>
                 </div>
-            `).join('');
+            `}).join('');
         },
 
         async loadPredictions() {
@@ -3360,18 +3808,24 @@ const App = {
 
                 const container = document.getElementById('at-risk-employees');
                 if (json.at_risk_employees && json.at_risk_employees.length > 0) {
-                    container.innerHTML = json.at_risk_employees.map(e => `
+                    container.innerHTML = json.at_risk_employees.map(e => {
+                        // XSS prevention: escape all user data
+                        const safeName = App.utils.escapeHtml(e.name);
+                        const safeEmpNum = App.utils.escapeHtml(e.employee_num);
+                        const safeCurrentUsed = App.utils.safeNumber(e.current_used);
+                        const safeDaysNeeded = App.utils.safeNumber(e.days_needed);
+                        return `
                         <div style="display: flex; align-items: center; padding: 0.5rem; background: rgba(248, 113, 113, 0.1); border-radius: 8px; margin-bottom: 0.5rem; border-left: 3px solid var(--danger);">
                             <div style="flex: 1;">
-                                <div style="font-weight: 600;">${e.name}</div>
-                                <div style="font-size: 0.8rem; color: var(--muted);">${e.employee_num}</div>
+                                <div style="font-weight: 600;">${safeName}</div>
+                                <div style="font-size: 0.8rem; color: var(--muted);">${safeEmpNum}</div>
                             </div>
                             <div style="text-align: right;">
-                                <div style="font-size: 0.8rem; color: var(--muted);">現在 ${e.current_used}日</div>
-                                <div style="font-weight: 700; color: var(--danger);">あと ${e.days_needed}日必要</div>
+                                <div style="font-size: 0.8rem; color: var(--muted);">現在 ${safeCurrentUsed}日</div>
+                                <div style="font-weight: 700; color: var(--danger);">あと ${safeDaysNeeded}日必要</div>
                             </div>
                         </div>
-                    `).join('');
+                    `}).join('');
                 } else {
                     container.innerHTML = '<div style="text-align: center; color: var(--success); padding: 1rem;">✅ 5日義務達成リスク者はいません</div>';
                 }
@@ -3399,6 +3853,229 @@ const App = {
             } finally {
                 App.ui.hideLoading();
             }
+        },
+
+        // ========================================
+        // ADVANCED ANALYTICS - Year Comparison
+        // ========================================
+        async loadYearComparison() {
+            const currentYear = App.state.year || new Date().getFullYear();
+            const previousYear = currentYear - 1;
+
+            try {
+                const [currentRes, previousRes] = await Promise.all([
+                    fetch(`${App.config.apiBase}/analytics/dashboard/${currentYear}`),
+                    fetch(`${App.config.apiBase}/analytics/dashboard/${previousYear}`)
+                ]);
+
+                const currentData = await currentRes.json();
+                const previousData = await previousRes.json();
+
+                this.renderYearComparison(currentData, previousData, currentYear, previousYear);
+            } catch (e) {
+                console.error('Year comparison error:', e);
+            }
+        },
+
+        renderYearComparison(current, previous, currentYear, previousYear) {
+            const ctx = document.getElementById('chart-year-comparison');
+            if (!ctx) return;
+
+            if (App.state.charts['yearComparison']) {
+                App.state.charts['yearComparison'].destroy();
+            }
+
+            const labels = ['付与日数', '使用日数', '平均使用率'];
+            const currentValues = [
+                current.summary?.total_granted || 0,
+                current.summary?.total_used || 0,
+                current.summary?.average_rate || 0
+            ];
+            const previousValues = [
+                previous.summary?.total_granted || 0,
+                previous.summary?.total_used || 0,
+                previous.summary?.average_rate || 0
+            ];
+
+            App.state.charts['yearComparison'] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: `${previousYear}年`,
+                            data: previousValues,
+                            backgroundColor: 'rgba(156, 163, 175, 0.5)',
+                            borderColor: '#9ca3af',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        },
+                        {
+                            label: `${currentYear}年`,
+                            data: currentValues,
+                            backgroundColor: 'rgba(6, 182, 212, 0.5)',
+                            borderColor: '#06b6d4',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#6b6b6b' } },
+                        y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#6b6b6b' } }
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { color: '#6b6b6b' } },
+                        title: { display: true, text: '年度比較', color: '#6b6b6b' }
+                    }
+                }
+            });
+
+            // Update comparison stats
+            const usedDiff = currentValues[1] - previousValues[1];
+            const rateDiff = currentValues[2] - previousValues[2];
+            const statsContainer = document.getElementById('year-comparison-stats');
+            if (statsContainer) {
+                statsContainer.innerHTML = `
+                    <div class="stat-card">
+                        <span class="stat-label">使用日数変化</span>
+                        <span class="stat-value ${usedDiff >= 0 ? 'text-success' : 'text-danger'}">
+                            ${usedDiff >= 0 ? '+' : ''}${usedDiff.toFixed(1)}日
+                        </span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">使用率変化</span>
+                        <span class="stat-value ${rateDiff >= 0 ? 'text-success' : 'text-danger'}">
+                            ${rateDiff >= 0 ? '+' : ''}${rateDiff.toFixed(1)}%
+                        </span>
+                    </div>
+                `;
+            }
+        },
+
+        // ========================================
+        // ADVANCED ANALYTICS - Monthly Trend
+        // ========================================
+        async loadMonthlyTrend() {
+            const year = App.state.year || new Date().getFullYear();
+
+            try {
+                const res = await fetch(`${App.config.apiBase}/analytics/monthly-trend/${year}`);
+                const data = await res.json();
+                this.renderMonthlyTrend(data);
+            } catch (e) {
+                console.error('Monthly trend error:', e);
+            }
+        },
+
+        renderMonthlyTrend(data) {
+            const ctx = document.getElementById('chart-monthly-trend');
+            if (!ctx) return;
+
+            if (App.state.charts['monthlyTrend']) {
+                App.state.charts['monthlyTrend'].destroy();
+            }
+
+            const months = ['4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '1月', '2月', '3月'];
+            const usageData = data.monthly_usage || Array(12).fill(0);
+            const cumulativeData = data.cumulative_usage || [];
+
+            App.state.charts['monthlyTrend'] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [
+                        {
+                            label: '月次使用',
+                            data: usageData,
+                            borderColor: '#06b6d4',
+                            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: '累積使用',
+                            data: cumulativeData,
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'transparent',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#6b6b6b' } },
+                        y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#6b6b6b' } }
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { color: '#6b6b6b' } },
+                        title: { display: true, text: '月次使用トレンド', color: '#6b6b6b' }
+                    }
+                }
+            });
+        },
+
+        // ========================================
+        // ADVANCED ANALYTICS - Compliance Gauge
+        // ========================================
+        renderComplianceGauge(complianceRate) {
+            const ctx = document.getElementById('chart-compliance-gauge');
+            if (!ctx) return;
+
+            if (App.state.charts['complianceGauge']) {
+                App.state.charts['complianceGauge'].destroy();
+            }
+
+            const rate = complianceRate || 0;
+            const color = rate >= 90 ? '#34d399' : rate >= 70 ? '#fbbf24' : '#f87171';
+
+            App.state.charts['complianceGauge'] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [rate, 100 - rate],
+                        backgroundColor: [color, 'rgba(255,255,255,0.1)'],
+                        borderWidth: 0,
+                        circumference: 180,
+                        rotation: 270
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    }
+                }
+            });
+
+            // Update gauge value display
+            const gaugeValue = document.getElementById('gauge-value');
+            if (gaugeValue) {
+                gaugeValue.textContent = `${rate.toFixed(1)}%`;
+                gaugeValue.style.color = color;
+            }
+        },
+
+        // ========================================
+        // ADVANCED ANALYTICS - Load All
+        // ========================================
+        async loadAdvancedAnalytics() {
+            await Promise.all([
+                this.loadYearComparison(),
+                this.loadMonthlyTrend()
+            ]);
         }
     },
 
@@ -3545,15 +4222,29 @@ const App = {
 
                 const tbody = document.getElementById('report-year-summary');
                 if (json.reports && json.reports.length > 0) {
-                    tbody.innerHTML = json.reports.map(r => `
-                        <tr style="cursor: pointer;" onclick="App.reports.selectMonth(${r.month})">
-                            <td style="font-weight: 600;">${r.label}</td>
-                            <td style="font-size: 0.85rem; color: var(--muted);">${r.period}</td>
-                            <td>${r.employee_count}人</td>
-                            <td style="color: var(--primary); font-weight: 600;">${r.total_days}日</td>
+                    tbody.innerHTML = json.reports.map(r => {
+                        // XSS prevention: escape all user data
+                        const safeMonth = parseInt(r.month) || 0;
+                        const safeLabel = App.utils.escapeHtml(r.label);
+                        const safePeriod = App.utils.escapeHtml(r.period);
+                        const safeEmpCount = App.utils.safeNumber(r.employee_count);
+                        const safeTotalDays = App.utils.safeNumber(r.total_days);
+                        return `
+                        <tr style="cursor: pointer;" data-month="${safeMonth}">
+                            <td style="font-weight: 600;">${safeLabel}</td>
+                            <td style="font-size: 0.85rem; color: var(--muted);">${safePeriod}</td>
+                            <td>${safeEmpCount}人</td>
+                            <td style="color: var(--primary); font-weight: 600;">${safeTotalDays}日</td>
                             <td><button class="btn btn-glass" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;">詳細</button></td>
                         </tr>
-                    `).join('');
+                    `}).join('');
+
+                    // Add event listeners safely (prevent XSS via onclick)
+                    tbody.querySelectorAll('tr[data-month]').forEach(row => {
+                        row.addEventListener('click', () => {
+                            App.reports.selectMonth(parseInt(row.dataset.month));
+                        });
+                    });
                 } else {
                     tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">データがありません</td></tr>';
                 }
@@ -3614,21 +4305,29 @@ const App = {
             const container = document.getElementById('report-employee-list');
             if (employees && employees.length > 0) {
                 container.innerHTML = employees.map(emp => {
+                    // XSS prevention: escape all user data
+                    const safeName = App.utils.escapeHtml(emp.name);
+                    const safeEmpNum = App.utils.escapeHtml(emp.employee_num);
+                    const safeFactory = App.utils.escapeHtml(emp.factory || '-');
+                    const safeTotalDays = App.utils.safeNumber(emp.total_days);
+                    const safeTotalHours = App.utils.safeNumber(emp.total_hours);
+
                     const datesHtml = emp.dates.map(d => {
                         const typeLabel = { 'full': '全', 'half_am': '午前', 'half_pm': '午後', 'hourly': '時' }[d.type] || '';
-                        return `<span class="badge badge-info" style="margin: 0.1rem; padding: 0.15rem 0.4rem; font-size: 0.65rem;">${d.date.slice(5)} ${typeLabel}</span>`;
+                        const safeDate = App.utils.escapeHtml(d.date?.slice(5) || '');
+                        return `<span class="badge badge-info" style="margin: 0.1rem; padding: 0.15rem 0.4rem; font-size: 0.65rem;">${safeDate} ${typeLabel}</span>`;
                     }).join('');
 
                     return `
                         <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem;">
                             <div class="flex-between" style="margin-bottom: 0.5rem;">
                                 <div>
-                                    <div style="font-weight: 600;">${emp.name}</div>
-                                    <div style="font-size: 0.8rem; color: var(--muted);">${emp.employee_num} | ${emp.factory || '-'}</div>
+                                    <div style="font-weight: 600;">${safeName}</div>
+                                    <div style="font-size: 0.8rem; color: var(--muted);">${safeEmpNum} | ${safeFactory}</div>
                                 </div>
                                 <div style="text-align: right;">
-                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${emp.total_days}日</div>
-                                    ${emp.total_hours > 0 ? `<div style="font-size: 0.8rem; color: var(--warning);">+${emp.total_hours}時間</div>` : ''}
+                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary);">${safeTotalDays}日</div>
+                                    ${safeTotalHours > 0 ? `<div style="font-size: 0.8rem; color: var(--warning);">+${safeTotalHours}時間</div>` : ''}
                                 </div>
                             </div>
                             <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
@@ -3645,20 +4344,26 @@ const App = {
         renderFactoryList(factories) {
             const container = document.getElementById('report-factory-list');
             if (factories && factories.length > 0) {
-                container.innerHTML = factories.map(f => `
+                container.innerHTML = factories.map(f => {
+                    // XSS prevention: escape all user data
+                    const safeFactory = App.utils.escapeHtml(f.factory);
+                    const safeEmpCount = App.utils.safeNumber(f.employee_count);
+                    const safeTotalDays = App.utils.safeNumber(f.total_days);
+                    const safeNames = f.employees.map(e => App.utils.escapeHtml(e.name)).join(', ');
+                    return `
                     <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem;">
                         <div class="flex-between" style="margin-bottom: 0.5rem;">
-                            <div style="font-weight: 600;">${f.factory}</div>
+                            <div style="font-weight: 600;">${safeFactory}</div>
                             <div>
-                                <span style="font-size: 0.9rem; color: var(--muted);">${f.employee_count}人</span>
-                                <span style="font-size: 1.1rem; font-weight: 700; color: var(--primary); margin-left: 0.5rem;">${f.total_days}日</span>
+                                <span style="font-size: 0.9rem; color: var(--muted);">${safeEmpCount}人</span>
+                                <span style="font-size: 1.1rem; font-weight: 700; color: var(--primary); margin-left: 0.5rem;">${safeTotalDays}日</span>
                             </div>
                         </div>
                         <div style="font-size: 0.8rem; color: var(--muted);">
-                            ${f.employees.map(e => e.name).join(', ')}
+                            ${safeNames}
                         </div>
                     </div>
-                `).join('');
+                `}).join('');
             } else {
                 container.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 2rem;">データがありません</div>';
             }
@@ -3671,10 +4376,14 @@ const App = {
                     const bgColor = d.count >= 5 ? 'rgba(248, 113, 113, 0.3)' :
                         d.count >= 3 ? 'rgba(251, 191, 36, 0.3)' :
                             'rgba(56, 189, 248, 0.15)';
+                    // XSS prevention: escape all user data
+                    const safeDate = App.utils.escapeHtml(d.date?.slice(5) || '');
+                    const safeCount = App.utils.safeNumber(d.count);
+                    const safeEmployees = d.employees.map(e => App.utils.escapeHtml(e)).join(', ');
                     return `
-                        <div style="padding: 0.5rem; background: ${bgColor}; border-radius: 8px; text-align: center;" title="${d.employees.join(', ')}">
-                            <div style="font-weight: 600; font-size: 0.9rem;">${d.date.slice(5)}</div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">${d.count}</div>
+                        <div style="padding: 0.5rem; background: ${bgColor}; border-radius: 8px; text-align: center;" title="${safeEmployees}">
+                            <div style="font-weight: 600; font-size: 0.9rem;">${safeDate}</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">${safeCount}</div>
                             <div style="font-size: 0.7rem; color: var(--muted);">人</div>
                         </div>
                     `;
@@ -3963,6 +4672,2134 @@ const App = {
                 </tr>
             `}).join('');
         }
+    }
+};
+
+// ============================================
+// EDIT YUKYU DATA MODULE (v2.1 - NEW)
+// Permite editar datos importados desde Excel
+// ============================================
+App.editYukyu = {
+    currentEmployee: null,
+    currentYear: null,
+    originalDetails: [],
+    pendingChanges: {
+        updates: [],   // {id, days_used}
+        deletes: [],   // [id, id, ...]
+        adds: []       // {use_date, days_used}
+    },
+
+    /**
+     * Abre el modal de edición para un empleado
+     */
+    async openModal(employeeNum, year = null) {
+        this.currentEmployee = null;
+        this.currentYear = year || App.state.year;
+        this.pendingChanges = { updates: [], deletes: [], adds: [] };
+
+        // Mostrar modal con loading
+        document.getElementById('edit-emp-name').textContent = 'Cargando...';
+        document.getElementById('edit-emp-num').textContent = `社員番号: ${employeeNum}`;
+        document.getElementById('edit-emp-balance').textContent = '-';
+        document.getElementById('edit-usage-list').innerHTML = `
+            <div class="text-center text-muted p-lg">
+                <div class="spinner" style="margin: 0 auto;"></div>
+                <p style="margin-top: 1rem;">データを読み込み中...</p>
+            </div>
+        `;
+        document.getElementById('edit-yukyu-modal').classList.add('active');
+
+        try {
+            // Cargar datos del empleado
+            const res = await fetch(`${App.config.apiBase}/yukyu/employee-summary/${employeeNum}/${this.currentYear}`);
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || 'Failed to load data');
+            }
+
+            const data = await res.json();
+            this.currentEmployee = data.employee;
+            this.originalDetails = data.usage_details || [];
+
+            // Actualizar UI
+            this.renderEmployeeInfo();
+            this.renderUsageList();
+            this.updateSummary();
+
+        } catch (error) {
+            console.error('Error loading employee data:', error);
+            App.ui.showToast('error', `データ読み込みエラー: ${error.message}`);
+            this.closeModal();
+        }
+    },
+
+    /**
+     * Renderiza la información del empleado
+     */
+    renderEmployeeInfo() {
+        if (!this.currentEmployee) return;
+
+        document.getElementById('edit-emp-name').textContent = this.currentEmployee.name;
+        document.getElementById('edit-emp-num').textContent = `社員番号: ${this.currentEmployee.employee_num}`;
+        document.getElementById('edit-emp-balance').textContent = `${this.currentEmployee.balance.toFixed(1)}日`;
+    },
+
+    /**
+     * Renderiza la lista de días de uso
+     */
+    renderUsageList() {
+        const container = document.getElementById('edit-usage-list');
+
+        if (this.originalDetails.length === 0 && this.pendingChanges.adds.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted p-lg">
+                    使用記録がありません。下のフォームから追加できます。
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+
+        // Renderizar detalles existentes
+        this.originalDetails.forEach(detail => {
+            const isDeleted = this.pendingChanges.deletes.includes(detail.id);
+            const update = this.pendingChanges.updates.find(u => u.id === detail.id);
+            const currentDays = update ? update.days_used : detail.days_used;
+
+            let itemClass = 'usage-item';
+            if (isDeleted) itemClass += ' pending-delete';
+            else if (update) itemClass += ' pending-update';
+
+            html += `
+                <div class="${itemClass}" data-id="${detail.id}">
+                    <div class="usage-item-date">
+                        📅 ${detail.use_date}
+                    </div>
+                    <div class="usage-item-days">
+                        <select class="input-glass" onchange="App.editYukyu.updateDays(${detail.id}, this.value)" ${isDeleted ? 'disabled' : ''}>
+                            <option value="1.0" ${currentDays == 1.0 ? 'selected' : ''}>1日 (全日)</option>
+                            <option value="0.5" ${currentDays == 0.5 ? 'selected' : ''}>0.5日 (半日)</option>
+                            <option value="0.25" ${currentDays == 0.25 ? 'selected' : ''}>0.25日 (2時間)</option>
+                        </select>
+                        ${isDeleted ?
+                            `<button class="btn btn-glass btn-sm" onclick="App.editYukyu.undoDelete(${detail.id})">↩ 戻す</button>` :
+                            `<button class="usage-item-delete" onclick="App.editYukyu.markDelete(${detail.id})">🗑 削除</button>`
+                        }
+                    </div>
+                </div>
+            `;
+        });
+
+        // Renderizar nuevos items pendientes
+        this.pendingChanges.adds.forEach((add, index) => {
+            html += `
+                <div class="usage-item pending-add" data-add-index="${index}">
+                    <div class="usage-item-date">
+                        📅 ${add.use_date} <span class="badge badge-success">新規</span>
+                    </div>
+                    <div class="usage-item-days">
+                        <select class="input-glass" onchange="App.editYukyu.updatePendingAdd(${index}, this.value)">
+                            <option value="1.0" ${add.days_used == 1.0 ? 'selected' : ''}>1日 (全日)</option>
+                            <option value="0.5" ${add.days_used == 0.5 ? 'selected' : ''}>0.5日 (半日)</option>
+                            <option value="0.25" ${add.days_used == 0.25 ? 'selected' : ''}>0.25日 (2時間)</option>
+                        </select>
+                        <button class="usage-item-delete" onclick="App.editYukyu.removePendingAdd(${index})">🗑 削除</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    },
+
+    /**
+     * Actualiza días de un registro existente
+     */
+    updateDays(id, newDays) {
+        const days = parseFloat(newDays);
+        const original = this.originalDetails.find(d => d.id === id);
+
+        if (!original) return;
+
+        // Si volvió al valor original, quitar de updates
+        if (original.days_used === days) {
+            this.pendingChanges.updates = this.pendingChanges.updates.filter(u => u.id !== id);
+        } else {
+            // Actualizar o agregar
+            const existing = this.pendingChanges.updates.find(u => u.id === id);
+            if (existing) {
+                existing.days_used = days;
+            } else {
+                this.pendingChanges.updates.push({ id, days_used: days });
+            }
+        }
+
+        this.renderUsageList();
+        this.updateSummary();
+    },
+
+    /**
+     * Marca un registro para eliminar
+     */
+    markDelete(id) {
+        if (!this.pendingChanges.deletes.includes(id)) {
+            this.pendingChanges.deletes.push(id);
+        }
+        this.renderUsageList();
+        this.updateSummary();
+    },
+
+    /**
+     * Deshace la eliminación de un registro
+     */
+    undoDelete(id) {
+        this.pendingChanges.deletes = this.pendingChanges.deletes.filter(d => d !== id);
+        this.renderUsageList();
+        this.updateSummary();
+    },
+
+    /**
+     * Agrega un nuevo registro de uso
+     */
+    addUsage() {
+        const dateInput = document.getElementById('add-use-date');
+        const daysSelect = document.getElementById('add-days-used');
+
+        const useDate = dateInput.value;
+        const daysUsed = parseFloat(daysSelect.value);
+
+        if (!useDate) {
+            App.ui.showToast('error', '日付を選択してください');
+            return;
+        }
+
+        // Verificar que la fecha no exista ya
+        const existsInOriginal = this.originalDetails.some(d => d.use_date === useDate);
+        const existsInPending = this.pendingChanges.adds.some(a => a.use_date === useDate);
+
+        if (existsInOriginal || existsInPending) {
+            App.ui.showToast('error', 'この日付は既に登録されています');
+            return;
+        }
+
+        this.pendingChanges.adds.push({
+            use_date: useDate,
+            days_used: daysUsed
+        });
+
+        // Limpiar input
+        dateInput.value = '';
+
+        this.renderUsageList();
+        this.updateSummary();
+        App.ui.showToast('success', '使用日を追加しました（未保存）');
+    },
+
+    /**
+     * Actualiza un registro pendiente de agregar
+     */
+    updatePendingAdd(index, newDays) {
+        if (this.pendingChanges.adds[index]) {
+            this.pendingChanges.adds[index].days_used = parseFloat(newDays);
+            this.updateSummary();
+        }
+    },
+
+    /**
+     * Elimina un registro pendiente de agregar
+     */
+    removePendingAdd(index) {
+        this.pendingChanges.adds.splice(index, 1);
+        this.renderUsageList();
+        this.updateSummary();
+    },
+
+    /**
+     * Actualiza el resumen de cambios
+     */
+    updateSummary() {
+        if (!this.currentEmployee) return;
+
+        // Calcular total de días usados después de cambios
+        let totalUsed = 0;
+
+        // Sumar días originales (excepto los eliminados, con updates aplicados)
+        this.originalDetails.forEach(detail => {
+            if (this.pendingChanges.deletes.includes(detail.id)) return;
+
+            const update = this.pendingChanges.updates.find(u => u.id === detail.id);
+            totalUsed += update ? update.days_used : detail.days_used;
+        });
+
+        // Sumar días nuevos
+        this.pendingChanges.adds.forEach(add => {
+            totalUsed += add.days_used;
+        });
+
+        const granted = this.currentEmployee.granted || 0;
+        const newBalance = granted - totalUsed;
+
+        document.getElementById('edit-total-used').textContent = `${totalUsed.toFixed(1)}日`;
+        document.getElementById('edit-new-balance').textContent = `${newBalance.toFixed(1)}日`;
+
+        // Cambiar color si el balance es negativo
+        const balanceEl = document.getElementById('edit-new-balance');
+        balanceEl.className = newBalance < 0 ? 'font-bold text-danger' :
+                              newBalance < 5 ? 'font-bold text-warning' :
+                              'font-bold text-success';
+    },
+
+    /**
+     * Guarda todos los cambios
+     */
+    async saveChanges() {
+        const hasChanges = this.pendingChanges.updates.length > 0 ||
+                          this.pendingChanges.deletes.length > 0 ||
+                          this.pendingChanges.adds.length > 0;
+
+        if (!hasChanges) {
+            App.ui.showToast('warning', '変更がありません');
+            return;
+        }
+
+        const saveBtn = document.getElementById('edit-save-btn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = '保存中...';
+
+        try {
+            // 1. Procesar eliminaciones
+            for (const id of this.pendingChanges.deletes) {
+                const res = await fetch(`${App.config.apiBase}/yukyu/usage-details/${id}`, {
+                    method: 'DELETE'
+                });
+                if (!res.ok) throw new Error(`Failed to delete record ${id}`);
+            }
+
+            // 2. Procesar actualizaciones
+            for (const update of this.pendingChanges.updates) {
+                const res = await fetch(`${App.config.apiBase}/yukyu/usage-details/${update.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ days_used: update.days_used })
+                });
+                if (!res.ok) throw new Error(`Failed to update record ${update.id}`);
+            }
+
+            // 3. Procesar nuevos registros
+            for (const add of this.pendingChanges.adds) {
+                const res = await fetch(`${App.config.apiBase}/yukyu/usage-details`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        employee_num: this.currentEmployee.employee_num,
+                        name: this.currentEmployee.name,
+                        use_date: add.use_date,
+                        days_used: add.days_used
+                    })
+                });
+                if (!res.ok) throw new Error(`Failed to add record for ${add.use_date}`);
+            }
+
+            // 4. Recalcular balance del empleado
+            const recalcRes = await fetch(
+                `${App.config.apiBase}/yukyu/recalculate/${this.currentEmployee.employee_num}/${this.currentYear}`,
+                { method: 'POST' }
+            );
+
+            if (!recalcRes.ok) throw new Error('Failed to recalculate balance');
+
+            App.ui.showToast('success', '✅ 変更が保存されました');
+            this.closeModal();
+
+            // Refrescar datos de la app
+            await App.data.fetchData();
+            App.ui.updateAll();
+
+        } catch (error) {
+            console.error('Error saving changes:', error);
+            App.ui.showToast('error', `保存エラー: ${error.message}`);
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = '💾 変更を保存';
+        }
+    },
+
+    /**
+     * Cierra el modal
+     */
+    closeModal() {
+        document.getElementById('edit-yukyu-modal').classList.remove('active');
+        this.currentEmployee = null;
+        this.originalDetails = [];
+        this.pendingChanges = { updates: [], deletes: [], adds: [] };
+    }
+};
+
+// ============================================
+// IMPORT REPORT MODULE (v2.2 - NEW)
+// Sistema de validación visual para importación de Excel
+// ============================================
+App.importReport = {
+    // Estado del último reporte de importación
+    lastReport: null,
+    warningsExpanded: false,
+    errorsExpanded: false,
+
+    /**
+     * Muestra el modal con el resultado de importación
+     * @param {Object} data - Datos de la respuesta de sync
+     */
+    showImportResult(data) {
+        this.lastReport = this.processImportData(data);
+
+        const modal = document.getElementById('import-result-modal');
+        if (!modal) {
+            console.error('Import result modal not found');
+            return;
+        }
+
+        // Actualizar estadísticas
+        this.updateStatistics();
+
+        // Actualizar banner de estado
+        this.updateStatusBanner();
+
+        // Actualizar breakdown
+        this.updateBreakdown();
+
+        // Actualizar warnings
+        this.updateWarnings();
+
+        // Actualizar errores
+        this.updateErrors();
+
+        // Actualizar empleados problemáticos
+        this.updateProblematicEmployees();
+
+        // Mostrar modal
+        modal.classList.add('active');
+
+        // Reset expansion states
+        this.warningsExpanded = false;
+        this.errorsExpanded = false;
+    },
+
+    /**
+     * Procesa los datos de importación para generar el reporte
+     */
+    processImportData(data) {
+        const report = {
+            timestamp: new Date().toISOString(),
+            total: data.count || 0,
+            success: 0,
+            warnings: [],
+            errors: [],
+            problematicEmployees: [],
+            breakdown: {
+                fullDays: 0,
+                halfDays: 0,
+                hourlyLeave: 0,
+                noUsage: 0,
+                highUsage: 0,
+                lowBalance: 0,
+                expiringSoon: 0
+            }
+        };
+
+        // Si hay datos de validación en la respuesta
+        if (data.validation) {
+            report.warnings = data.validation.warnings || [];
+            report.errors = data.validation.errors || [];
+        }
+
+        // Analizar datos de empleados para generar breakdown
+        if (data.employees && Array.isArray(data.employees)) {
+            data.employees.forEach(emp => {
+                // Clasificar por tipo de uso
+                if (emp.used >= 1) {
+                    report.breakdown.fullDays++;
+                } else if (emp.used >= 0.5) {
+                    report.breakdown.halfDays++;
+                } else if (emp.used > 0 && emp.used < 0.5) {
+                    report.breakdown.hourlyLeave++;
+                } else if (emp.used === 0) {
+                    report.breakdown.noUsage++;
+                }
+
+                // Detectar problemas
+                const usageRate = emp.granted > 0 ? (emp.used / emp.granted) * 100 : 0;
+
+                if (usageRate >= 80) {
+                    report.breakdown.highUsage++;
+                    report.warnings.push({
+                        type: 'high_usage',
+                        employee: emp.name,
+                        employeeNum: emp.employee_num,
+                        message: `使用率が高い (${usageRate.toFixed(1)}%)`,
+                        value: usageRate
+                    });
+                }
+
+                if (emp.balance <= 5 && emp.balance > 0) {
+                    report.breakdown.lowBalance++;
+                    report.warnings.push({
+                        type: 'low_balance',
+                        employee: emp.name,
+                        employeeNum: emp.employee_num,
+                        message: `残日数が少ない (${emp.balance}日)`,
+                        value: emp.balance
+                    });
+                }
+
+                // Validar datos inválidos
+                if (!emp.name || emp.name.trim() === '') {
+                    report.errors.push({
+                        type: 'invalid_name',
+                        employee: emp.employee_num,
+                        message: '氏名が空です',
+                        row: emp.row || '不明'
+                    });
+                }
+
+                if (emp.granted < 0 || emp.used < 0) {
+                    report.errors.push({
+                        type: 'negative_value',
+                        employee: emp.name || emp.employee_num,
+                        message: '負の値が検出されました',
+                        row: emp.row || '不明'
+                    });
+                }
+
+                if (emp.used > emp.granted) {
+                    report.warnings.push({
+                        type: 'over_usage',
+                        employee: emp.name,
+                        employeeNum: emp.employee_num,
+                        message: `使用日数が付与日数を超えています (${emp.used}/${emp.granted})`,
+                        value: emp.used - emp.granted
+                    });
+                    report.problematicEmployees.push({
+                        name: emp.name,
+                        employeeNum: emp.employee_num,
+                        issue: '使用超過',
+                        detail: `${emp.used}日/${emp.granted}日`
+                    });
+                }
+            });
+        }
+
+        // Calcular éxitos (total - errores)
+        report.success = report.total - report.errors.length;
+
+        // Agregar warnings basados en datos de respuesta directa
+        if (data.skipped && data.skipped > 0) {
+            report.warnings.push({
+                type: 'skipped_rows',
+                message: `${data.skipped}行がスキップされました`,
+                value: data.skipped
+            });
+        }
+
+        if (data.duplicates && data.duplicates > 0) {
+            report.warnings.push({
+                type: 'duplicates',
+                message: `${data.duplicates}件の重複データが検出されました`,
+                value: data.duplicates
+            });
+        }
+
+        return report;
+    },
+
+    /**
+     * Actualiza las estadísticas en el modal
+     */
+    updateStatistics() {
+        const report = this.lastReport;
+        if (!report) return;
+
+        document.getElementById('import-stat-total').textContent = report.total;
+        document.getElementById('import-stat-success').textContent = report.success;
+        document.getElementById('import-stat-warnings').textContent = report.warnings.length;
+        document.getElementById('import-stat-errors').textContent = report.errors.length;
+    },
+
+    /**
+     * Actualiza el banner de estado según el resultado
+     */
+    updateStatusBanner() {
+        const report = this.lastReport;
+        if (!report) return;
+
+        const banner = document.getElementById('import-status-banner');
+        const icon = banner.querySelector('.import-status-icon');
+        const title = document.getElementById('import-status-title');
+        const subtitle = document.getElementById('import-status-subtitle');
+        const modalIcon = document.getElementById('import-result-icon');
+
+        // Remover clases anteriores
+        banner.classList.remove('import-status-success', 'import-status-warning', 'import-status-error');
+
+        if (report.errors.length > 0) {
+            // Estado: Error
+            banner.classList.add('import-status-error');
+            icon.textContent = '❌';
+            title.textContent = 'インポートに問題があります';
+            subtitle.textContent = `${report.errors.length}件のエラーと${report.warnings.length}件の警告があります`;
+            modalIcon.textContent = '⚠️';
+        } else if (report.warnings.length > 0) {
+            // Estado: Warning
+            banner.classList.add('import-status-warning');
+            icon.textContent = '⚠️';
+            title.textContent = 'インポート完了（警告あり）';
+            subtitle.textContent = `${report.success}件を処理しました。${report.warnings.length}件の警告があります`;
+            modalIcon.textContent = '📊';
+        } else {
+            // Estado: Success
+            banner.classList.add('import-status-success');
+            icon.textContent = '✅';
+            title.textContent = 'インポート完了';
+            subtitle.textContent = `${report.success}件のデータが正常に処理されました`;
+            modalIcon.textContent = '✅';
+        }
+    },
+
+    /**
+     * Actualiza la sección de breakdown
+     */
+    updateBreakdown() {
+        const report = this.lastReport;
+        if (!report) return;
+
+        const grid = document.getElementById('import-breakdown-grid');
+        const breakdown = report.breakdown;
+
+        grid.innerHTML = `
+            <div class="import-breakdown-item">
+                <span class="import-breakdown-label">全日使用</span>
+                <span class="import-breakdown-value">${breakdown.fullDays}件</span>
+            </div>
+            <div class="import-breakdown-item">
+                <span class="import-breakdown-label">半日使用</span>
+                <span class="import-breakdown-value">${breakdown.halfDays}件</span>
+            </div>
+            <div class="import-breakdown-item">
+                <span class="import-breakdown-label">時間単位使用</span>
+                <span class="import-breakdown-value">${breakdown.hourlyLeave}件</span>
+            </div>
+            <div class="import-breakdown-item">
+                <span class="import-breakdown-label">未使用</span>
+                <span class="import-breakdown-value">${breakdown.noUsage}件</span>
+            </div>
+            <div class="import-breakdown-item">
+                <span class="import-breakdown-label">高使用率 (80%+)</span>
+                <span class="import-breakdown-value" style="color: var(--warning);">${breakdown.highUsage}件</span>
+            </div>
+            <div class="import-breakdown-item">
+                <span class="import-breakdown-label">残日数少 (5日以下)</span>
+                <span class="import-breakdown-value" style="color: var(--danger);">${breakdown.lowBalance}件</span>
+            </div>
+        `;
+    },
+
+    /**
+     * Actualiza la lista de warnings
+     */
+    updateWarnings() {
+        const report = this.lastReport;
+        if (!report) return;
+
+        const section = document.getElementById('import-warnings-section');
+        const list = document.getElementById('import-warnings-list');
+
+        if (report.warnings.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = 'block';
+
+        // Agrupar warnings por tipo
+        const groupedWarnings = {};
+        report.warnings.forEach(warning => {
+            const type = warning.type || 'other';
+            if (!groupedWarnings[type]) {
+                groupedWarnings[type] = [];
+            }
+            groupedWarnings[type].push(warning);
+        });
+
+        let html = '';
+        for (const [type, warnings] of Object.entries(groupedWarnings)) {
+            warnings.slice(0, 10).forEach(warning => {
+                html += `
+                    <div class="import-warning-item">
+                        <span class="item-icon">⚠️</span>
+                        <span class="item-text">
+                            ${warning.employee ? `<strong>${warning.employee}</strong>: ` : ''}
+                            ${this.escapeHtml(warning.message)}
+                        </span>
+                        ${warning.employeeNum ? `<span class="item-row">${warning.employeeNum}</span>` : ''}
+                    </div>
+                `;
+            });
+            if (warnings.length > 10) {
+                html += `
+                    <div class="import-warning-item" style="font-style: italic; opacity: 0.7;">
+                        <span class="item-icon">...</span>
+                        <span class="item-text">他 ${warnings.length - 10}件</span>
+                    </div>
+                `;
+            }
+        }
+
+        list.innerHTML = html;
+    },
+
+    /**
+     * Actualiza la lista de errores
+     */
+    updateErrors() {
+        const report = this.lastReport;
+        if (!report) return;
+
+        const section = document.getElementById('import-errors-section');
+        const list = document.getElementById('import-errors-list');
+
+        if (report.errors.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = 'block';
+
+        let html = '';
+        report.errors.slice(0, 20).forEach(error => {
+            html += `
+                <div class="import-error-item">
+                    <span class="item-icon">❌</span>
+                    <span class="item-text">
+                        ${error.employee ? `<strong>${error.employee}</strong>: ` : ''}
+                        ${this.escapeHtml(error.message)}
+                    </span>
+                    ${error.row ? `<span class="item-row">行 ${error.row}</span>` : ''}
+                </div>
+            `;
+        });
+
+        if (report.errors.length > 20) {
+            html += `
+                <div class="import-error-item" style="font-style: italic; opacity: 0.7;">
+                    <span class="item-icon">...</span>
+                    <span class="item-text">他 ${report.errors.length - 20}件のエラー</span>
+                </div>
+            `;
+        }
+
+        list.innerHTML = html;
+    },
+
+    /**
+     * Actualiza la sección de empleados problemáticos
+     */
+    updateProblematicEmployees() {
+        const report = this.lastReport;
+        if (!report) return;
+
+        const section = document.getElementById('import-problems-section');
+        const list = document.getElementById('import-problems-list');
+
+        if (report.problematicEmployees.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = 'block';
+
+        let html = '';
+        report.problematicEmployees.slice(0, 10).forEach((emp, idx) => {
+            // XSS prevention: escape all user data
+            const safeEmpNum = this.escapeHtml(emp.employeeNum);
+            const safeDetail = this.escapeHtml(emp.detail);
+            html += `
+                <div class="import-problem-item">
+                    <div class="import-problem-employee">
+                        <span class="import-problem-name">${this.escapeHtml(emp.name)}</span>
+                        <span class="import-problem-num">(${safeEmpNum})</span>
+                    </div>
+                    <span class="import-problem-issue">${this.escapeHtml(emp.issue)}: ${safeDetail}</span>
+                    <button class="import-problem-action" data-emp-index="${idx}">
+                        詳細
+                    </button>
+                </div>
+            `;
+        });
+
+        list.innerHTML = html;
+
+        // Add event listeners safely (prevent XSS via onclick)
+        list.querySelectorAll('.import-problem-action').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.empIndex);
+                const emp = report.problematicEmployees[idx];
+                if (emp) App.importReport.viewEmployee(emp.employeeNum);
+            });
+        });
+    },
+
+    /**
+     * Alterna la expansión de warnings
+     */
+    toggleWarnings() {
+        this.warningsExpanded = !this.warningsExpanded;
+        const list = document.getElementById('import-warnings-list');
+        const toggle = document.getElementById('import-warnings-toggle');
+
+        list.style.display = this.warningsExpanded ? 'block' : 'none';
+        toggle.classList.toggle('expanded', this.warningsExpanded);
+    },
+
+    /**
+     * Alterna la expansión de errores
+     */
+    toggleErrors() {
+        this.errorsExpanded = !this.errorsExpanded;
+        const list = document.getElementById('import-errors-list');
+        const toggle = document.getElementById('import-errors-toggle');
+
+        list.style.display = this.errorsExpanded ? 'block' : 'none';
+        toggle.classList.toggle('expanded', this.errorsExpanded);
+    },
+
+    /**
+     * Ver detalles de un empleado problemático
+     */
+    viewEmployee(employeeNum) {
+        this.closeModal();
+        // Buscar en la tabla y resaltar, o abrir modal de detalles
+        if (App.ui && App.ui.openModal) {
+            App.ui.openModal(employeeNum);
+        }
+    },
+
+    /**
+     * Resalta empleados problemáticos en la tabla principal
+     */
+    highlightProblematicEmployees() {
+        if (!this.lastReport || !this.lastReport.problematicEmployees) return;
+
+        const problemEmployeeNums = this.lastReport.problematicEmployees.map(e => e.employeeNum);
+        const tableRows = document.querySelectorAll('#employee-table tbody tr');
+
+        tableRows.forEach(row => {
+            const empNumCell = row.querySelector('td:first-child');
+            if (empNumCell) {
+                const empNum = empNumCell.textContent.trim();
+                if (problemEmployeeNums.includes(empNum)) {
+                    row.classList.add('row-problematic');
+                    row.style.animation = 'pulse-highlight 2s ease-in-out 3';
+                } else {
+                    row.classList.remove('row-problematic');
+                    row.style.animation = '';
+                }
+            }
+        });
+    },
+
+    /**
+     * Descarga el reporte en formato JSON o CSV
+     */
+    downloadReport(format = 'json') {
+        if (!this.lastReport) {
+            App.ui.showToast('error', 'レポートデータがありません');
+            return;
+        }
+
+        const report = this.lastReport;
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+
+        if (format === 'json') {
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `import_report_${timestamp}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } else {
+            // CSV format
+            const lines = [
+                'Type,Employee,EmployeeNum,Message,Value',
+                ...report.warnings.map(w =>
+                    `Warning,"${w.employee || ''}","${w.employeeNum || ''}","${w.message}","${w.value || ''}"`
+                ),
+                ...report.errors.map(e =>
+                    `Error,"${e.employee || ''}","${e.row || ''}","${e.message}",""`
+                )
+            ];
+            const csv = lines.join('\n');
+            const bom = '\uFEFF'; // BOM for Excel UTF-8
+            const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `import_report_${timestamp}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        App.ui.showToast('success', 'レポートをダウンロードしました');
+    },
+
+    /**
+     * Cierra el modal
+     */
+    closeModal() {
+        const modal = document.getElementById('import-result-modal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    },
+
+    /**
+     * Utilidad para escapar HTML
+     */
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+};
+
+// ============================================
+// AUDIT HISTORY MODULE (v2.3 - NEW)
+// Sistema de visualizacion de historial de cambios
+// ============================================
+App.auditHistory = {
+    // Estado del modulo
+    currentEntityType: null,
+    currentEntityId: null,
+    allHistory: [],
+    filteredHistory: [],
+
+    /**
+     * Muestra el historial de una entidad especifica
+     * @param {string} entityType - Tipo de entidad (employee, leave_request, yukyu_usage)
+     * @param {string} entityId - ID de la entidad
+     */
+    async showEntityHistory(entityType, entityId) {
+        if (!entityId) {
+            App.ui.showToast('warning', 'エンティティIDが必要です');
+            return;
+        }
+
+        this.currentEntityType = entityType;
+        this.currentEntityId = entityId;
+        this.allHistory = [];
+        this.filteredHistory = [];
+
+        // Mostrar modal con loading
+        document.getElementById('audit-entity-info').textContent = `${this.getEntityTypeLabel(entityType)}: ${entityId}`;
+        document.getElementById('audit-history-list').innerHTML = `
+            <div class="text-center text-muted p-lg">
+                <div class="spinner" style="margin: 0 auto;"></div>
+                <p style="margin-top: 1rem;">履歴を読み込み中...</p>
+            </div>
+        `;
+        document.getElementById('audit-action-filter').value = '';
+        document.getElementById('audit-history-modal').classList.add('active');
+
+        try {
+            const res = await fetch(`${App.config.apiBase}/audit-log/${entityType}/${entityId}`);
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || 'Failed to load history');
+            }
+
+            const data = await res.json();
+            this.allHistory = data.history || [];
+            this.filteredHistory = [...this.allHistory];
+
+            this.renderHistory();
+
+        } catch (error) {
+            console.error('Error loading audit history:', error);
+            document.getElementById('audit-history-list').innerHTML = `
+                <div class="text-center text-danger p-lg">
+                    <p>履歴の読み込みに失敗しました: ${this.escapeHtml(error.message)}</p>
+                </div>
+            `;
+        }
+    },
+
+    /**
+     * Aplica el filtro de accion
+     */
+    applyFilter() {
+        const filterValue = document.getElementById('audit-action-filter').value;
+
+        if (filterValue) {
+            this.filteredHistory = this.allHistory.filter(h => h.action === filterValue);
+        } else {
+            this.filteredHistory = [...this.allHistory];
+        }
+
+        this.renderHistory();
+    },
+
+    /**
+     * Renderiza la lista de historial
+     */
+    renderHistory() {
+        const container = document.getElementById('audit-history-list');
+
+        if (this.filteredHistory.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted p-lg">
+                    履歴がありません
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+
+        this.filteredHistory.forEach(record => {
+            const timestamp = new Date(record.timestamp).toLocaleString('ja-JP');
+            const actionBadge = this.getActionBadge(record.action);
+            const changes = this.formatChanges(record.old_value, record.new_value);
+
+            html += `
+                <div class="audit-history-item" style="border-bottom: 1px solid var(--border-color); padding: 1rem 0;">
+                    <div class="flex-between mb-sm">
+                        <div>
+                            ${actionBadge}
+                            <span class="text-muted text-sm ml-sm">by ${this.escapeHtml(record.user_id || 'system')}</span>
+                        </div>
+                        <div class="text-muted text-sm">
+                            ${timestamp}
+                        </div>
+                    </div>
+                    ${changes ? `<div class="audit-changes mt-sm">${changes}</div>` : ''}
+                    ${record.ip_address ? `<div class="text-muted text-xs mt-sm">IP: ${this.escapeHtml(record.ip_address)}</div>` : ''}
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    },
+
+    /**
+     * Obtiene el badge de accion
+     */
+    getActionBadge(action) {
+        const badges = {
+            'CREATE': '<span class="badge badge-success">CREATE</span>',
+            'UPDATE': '<span class="badge badge-warning">UPDATE</span>',
+            'DELETE': '<span class="badge badge-danger">DELETE</span>',
+            'APPROVE': '<span class="badge badge-info">APPROVE</span>',
+            'REJECT': '<span class="badge badge-secondary">REJECT</span>',
+            'REVERT': '<span class="badge badge-warning">REVERT</span>',
+            'CLEANUP': '<span class="badge badge-secondary">CLEANUP</span>'
+        };
+        return badges[action] || `<span class="badge">${this.escapeHtml(action)}</span>`;
+    },
+
+    /**
+     * Formatea los cambios para mostrar
+     */
+    formatChanges(oldValue, newValue) {
+        if (!oldValue && !newValue) return '';
+
+        let html = '<div class="text-sm" style="background: var(--bg-secondary); padding: 0.5rem; border-radius: 4px;">';
+
+        if (oldValue && typeof oldValue === 'object') {
+            const fields = Object.keys(newValue || oldValue);
+            fields.forEach(field => {
+                if (field === 'last_updated' || field === 'id') return; // Skip metadata fields
+
+                const oldVal = oldValue?.[field];
+                const newVal = newValue?.[field];
+
+                if (oldVal !== newVal) {
+                    html += `
+                        <div class="flex-between py-xs">
+                            <span class="font-medium">${this.escapeHtml(field)}:</span>
+                            <span>
+                                ${oldVal !== undefined ? `<span class="text-danger line-through">${this.formatValue(oldVal)}</span>` : ''}
+                                ${oldVal !== undefined && newVal !== undefined ? ' → ' : ''}
+                                ${newVal !== undefined ? `<span class="text-success">${this.formatValue(newVal)}</span>` : ''}
+                            </span>
+                        </div>
+                    `;
+                }
+            });
+        } else {
+            if (oldValue) {
+                html += `<div class="text-danger">旧: ${this.formatValue(oldValue)}</div>`;
+            }
+            if (newValue) {
+                html += `<div class="text-success">新: ${this.formatValue(newValue)}</div>`;
+            }
+        }
+
+        html += '</div>';
+        return html;
+    },
+
+    /**
+     * Formatea un valor para mostrar
+     */
+    formatValue(value) {
+        if (value === null || value === undefined) return '-';
+        if (typeof value === 'object') return JSON.stringify(value);
+        return this.escapeHtml(String(value));
+    },
+
+    /**
+     * Obtiene la etiqueta del tipo de entidad
+     */
+    getEntityTypeLabel(entityType) {
+        const labels = {
+            'employee': '従業員',
+            'leave_request': '有給申請',
+            'yukyu_usage': '有給使用',
+            'genzai': '派遣社員',
+            'ukeoi': '請負社員',
+            'staff': 'スタッフ'
+        };
+        return labels[entityType] || entityType;
+    },
+
+    /**
+     * Cierra el modal
+     */
+    closeModal() {
+        document.getElementById('audit-history-modal').classList.remove('active');
+        this.currentEntityType = null;
+        this.currentEntityId = null;
+        this.allHistory = [];
+        this.filteredHistory = [];
+    },
+
+    /**
+     * Utilidad para escapar HTML
+     */
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+};
+
+// ========================================
+// BULK EDIT MODULE (v2.3 - NEW)
+// ========================================
+App.bulkEdit = {
+    // State
+    selectedEmployees: new Map(), // Map<employeeNum, employeeData>
+    previewData: null,
+    warnings: [],
+
+    /**
+     * Toggle selection for a single employee
+     */
+    toggleEmployee(employeeNum, checked) {
+        if (checked) {
+            const emp = App.state.data.find(e => e.employeeNum === employeeNum);
+            if (emp) {
+                this.selectedEmployees.set(employeeNum, emp);
+            }
+        } else {
+            this.selectedEmployees.delete(employeeNum);
+        }
+        this.updateToolbar();
+    },
+
+    /**
+     * Toggle select all visible employees
+     */
+    toggleSelectAll(checked) {
+        const checkboxes = document.querySelectorAll('.employee-select-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = checked;
+            const empNum = cb.dataset.employeeNum;
+            if (checked) {
+                const emp = App.state.data.find(e => e.employeeNum === empNum);
+                if (emp) this.selectedEmployees.set(empNum, emp);
+            } else {
+                this.selectedEmployees.delete(empNum);
+            }
+        });
+        this.updateToolbar();
+    },
+
+    /**
+     * Clear all selections
+     */
+    clearSelection() {
+        this.selectedEmployees.clear();
+        document.querySelectorAll('.employee-select-checkbox').forEach(cb => cb.checked = false);
+        document.getElementById('select-all-checkbox').checked = false;
+        this.updateToolbar();
+        this.closeModal();
+    },
+
+    /**
+     * Update toolbar visibility and count
+     */
+    updateToolbar() {
+        const toolbar = document.getElementById('bulk-edit-toolbar');
+        const countEl = document.getElementById('bulk-selected-count');
+        const count = this.selectedEmployees.size;
+
+        if (countEl) countEl.textContent = count;
+        if (toolbar) {
+            if (count > 0) {
+                toolbar.classList.add('active');
+            } else {
+                toolbar.classList.remove('active');
+            }
+        }
+    },
+
+    /**
+     * Open the bulk edit modal
+     */
+    openModal() {
+        if (this.selectedEmployees.size === 0) {
+            App.ui.showToast('warning', 'No hay empleados seleccionados');
+            return;
+        }
+        if (this.selectedEmployees.size > 50) {
+            App.ui.showToast('error', 'Maximo 50 empleados por operacion');
+            return;
+        }
+
+        // Update modal content
+        document.getElementById('bulk-edit-count').textContent = this.selectedEmployees.size;
+
+        // Populate employee list - XSS prevention: use data attributes instead of inline onclick
+        const listEl = document.getElementById('bulk-edit-employees-list');
+        const employeesArray = Array.from(this.selectedEmployees.values());
+        listEl.innerHTML = employeesArray.map((emp, idx) => `
+            <div class="bulk-edit-employee-chip">
+                <span>${App.utils.escapeHtml(emp.name)}</span>
+                <span class="remove" data-emp-index="${idx}">&times;</span>
+            </div>
+        `).join('');
+
+        // Add event listeners safely (prevent XSS via onclick)
+        listEl.querySelectorAll('.remove').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.empIndex);
+                const emp = employeesArray[idx];
+                if (emp) App.bulkEdit.removeFromSelection(emp.employeeNum);
+            });
+        });
+
+        // Populate haken dropdown
+        const hakenSelect = document.getElementById('bulk-edit-set-haken');
+        const factories = [...new Set(App.state.data.map(e => e.haken).filter(Boolean))];
+        hakenSelect.innerHTML = '<option value="">派遣先を選択...</option>' +
+            factories.map(f => `<option value="${App.utils.escapeAttr(f)}">${App.utils.escapeHtml(f)}</option>`).join('');
+
+        // Reset fields
+        this.resetFields();
+
+        // Show modal
+        document.getElementById('bulk-edit-modal').classList.add('active');
+    },
+
+    /**
+     * Close the modal
+     */
+    closeModal() {
+        document.getElementById('bulk-edit-modal').classList.remove('active');
+        this.previewData = null;
+        this.warnings = [];
+    },
+
+    /**
+     * Remove employee from selection
+     */
+    removeFromSelection(employeeNum) {
+        this.selectedEmployees.delete(employeeNum);
+        const cb = document.querySelector(`.employee-select-checkbox[data-employee-num="${employeeNum}"]`);
+        if (cb) cb.checked = false;
+        this.updateToolbar();
+
+        if (this.selectedEmployees.size === 0) {
+            this.closeModal();
+        } else {
+            document.getElementById('bulk-edit-count').textContent = this.selectedEmployees.size;
+            const chip = document.querySelector(`.bulk-edit-employee-chip:has([onclick*="${employeeNum}"])`);
+            if (chip) chip.remove();
+        }
+    },
+
+    /**
+     * Toggle employee list visibility
+     */
+    toggleEmployeeList() {
+        const list = document.getElementById('bulk-edit-employees-list');
+        const toggle = document.getElementById('bulk-edit-employees-toggle');
+        if (list.style.display === 'none') {
+            list.style.display = 'flex';
+            toggle.textContent = '▲';
+        } else {
+            list.style.display = 'none';
+            toggle.textContent = '▼';
+        }
+    },
+
+    /**
+     * Toggle a field's input visibility
+     */
+    toggleField(fieldName) {
+        const group = document.getElementById(`bulk-edit-${fieldName.replace('_', '-')}-group`);
+        const checkbox = document.getElementById(`bulk-edit-${fieldName.replace('_', '-')}-check`);
+        if (group && checkbox) {
+            group.style.display = checkbox.checked ? 'flex' : 'none';
+        }
+        // Reset preview when field changes
+        document.getElementById('bulk-edit-preview-section').style.display = 'none';
+        document.getElementById('bulk-edit-apply-btn').disabled = true;
+    },
+
+    /**
+     * Reset all fields
+     */
+    resetFields() {
+        ['add-granted', 'add-used', 'set-haken'].forEach(field => {
+            const check = document.getElementById(`bulk-edit-${field}-check`);
+            const group = document.getElementById(`bulk-edit-${field}-group`);
+            const input = document.getElementById(`bulk-edit-${field}`);
+            if (check) check.checked = false;
+            if (group) group.style.display = 'none';
+            if (input) input.value = '';
+        });
+        document.getElementById('bulk-edit-preview-section').style.display = 'none';
+        document.getElementById('bulk-edit-warnings-section').style.display = 'none';
+        document.getElementById('bulk-edit-apply-btn').disabled = true;
+    },
+
+    /**
+     * Get current updates from form
+     */
+    getUpdates() {
+        const updates = {};
+
+        if (document.getElementById('bulk-edit-add-granted-check').checked) {
+            const val = parseFloat(document.getElementById('bulk-edit-add-granted').value);
+            if (!isNaN(val) && val > 0) updates.add_granted = val;
+        }
+        if (document.getElementById('bulk-edit-add-used-check').checked) {
+            const val = parseFloat(document.getElementById('bulk-edit-add-used').value);
+            if (!isNaN(val) && val > 0) updates.add_used = val;
+        }
+        if (document.getElementById('bulk-edit-set-haken-check').checked) {
+            const val = document.getElementById('bulk-edit-set-haken').value;
+            if (val) updates.set_haken = val;
+        }
+
+        return updates;
+    },
+
+    /**
+     * Preview changes before applying
+     */
+    async preview() {
+        const updates = this.getUpdates();
+        if (Object.keys(updates).length === 0) {
+            App.ui.showToast('warning', '変更する項目を選択してください');
+            return;
+        }
+
+        const employeeNums = Array.from(this.selectedEmployees.keys());
+        const year = App.state.year;
+
+        try {
+            App.ui.showLoading();
+            const response = await fetch(`${App.config.apiBase}/employees/bulk-update/preview`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ employee_nums: employeeNums, year, updates })
+            });
+
+            const result = await response.json();
+            App.ui.hideLoading();
+
+            if (!response.ok) {
+                throw new Error(result.detail || 'Preview failed');
+            }
+
+            this.previewData = result;
+            this.warnings = result.warnings || [];
+
+            // Render preview
+            this.renderPreview(result.preview);
+
+            // Show warnings if any
+            if (this.warnings.length > 0) {
+                this.renderWarnings(this.warnings);
+                document.getElementById('bulk-edit-warnings-section').style.display = 'block';
+            } else {
+                document.getElementById('bulk-edit-warnings-section').style.display = 'none';
+            }
+
+            // Enable apply button
+            document.getElementById('bulk-edit-apply-btn').disabled = false;
+            document.getElementById('bulk-edit-preview-section').style.display = 'block';
+
+        } catch (error) {
+            App.ui.hideLoading();
+            App.ui.showToast('error', `プレビューエラー: ${error.message}`);
+        }
+    },
+
+    /**
+     * Render preview table
+     */
+    renderPreview(previewItems) {
+        const listEl = document.getElementById('bulk-edit-preview-list');
+
+        let html = `
+            <div class="bulk-edit-preview-item bulk-edit-preview-header">
+                <div>従業員</div>
+                <div>付与</div>
+                <div>使用</div>
+                <div>残日数</div>
+            </div>
+        `;
+
+        previewItems.forEach(item => {
+            const changes = item.changes || {};
+            const grantedChange = changes.granted ? `${item.current.granted} → ${item.proposed.granted}` : item.current.granted;
+            const usedChange = changes.used ? `${item.current.used} → ${item.proposed.used}` : item.current.used;
+            const balanceChange = changes.balance ? `${item.current.balance} → ${item.proposed.balance}` : item.current.balance;
+
+            const balanceClass = item.proposed.balance < 0 ? 'text-danger' : item.proposed.balance < 5 ? 'text-warning' : '';
+
+            html += `
+                <div class="bulk-edit-preview-item">
+                    <div>${App.utils.escapeHtml(item.name)}</div>
+                    <div>${changes.granted ? `<span class="text-muted">${item.current.granted}</span> <span class="bulk-edit-change-arrow">→</span> <strong>${item.proposed.granted}</strong>` : item.current.granted}</div>
+                    <div>${changes.used ? `<span class="text-muted">${item.current.used}</span> <span class="bulk-edit-change-arrow">→</span> <strong>${item.proposed.used}</strong>` : item.current.used}</div>
+                    <div class="${balanceClass}">${changes.balance ? `<span class="text-muted">${item.current.balance}</span> <span class="bulk-edit-change-arrow">→</span> <strong>${item.proposed.balance}</strong>` : item.current.balance}</div>
+                </div>
+            `;
+        });
+
+        listEl.innerHTML = html;
+    },
+
+    /**
+     * Render warnings
+     */
+    renderWarnings(warnings) {
+        const listEl = document.getElementById('bulk-edit-warnings-list');
+        listEl.innerHTML = warnings.map(w => `
+            <div class="bulk-edit-warning-item">
+                <span>⚠️</span>
+                <span>${App.utils.escapeHtml(w.name || w.employee_num)}: ${App.utils.escapeHtml(w.message)}</span>
+            </div>
+        `).join('');
+    },
+
+    /**
+     * Apply the bulk update
+     */
+    async apply() {
+        const updates = this.getUpdates();
+        if (Object.keys(updates).length === 0) {
+            App.ui.showToast('warning', '変更する項目を選択してください');
+            return;
+        }
+
+        // Confirm if there are warnings
+        if (this.warnings.length > 0) {
+            if (!confirm(`${this.warnings.length}件の警告があります。続行しますか？`)) {
+                return;
+            }
+        }
+
+        const employeeNums = Array.from(this.selectedEmployees.keys());
+        const year = App.state.year;
+
+        try {
+            App.ui.showLoading();
+            const response = await fetch(`${App.config.apiBase}/employees/bulk-update`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ employee_nums: employeeNums, year, updates })
+            });
+
+            const result = await response.json();
+            App.ui.hideLoading();
+
+            if (!response.ok) {
+                throw new Error(result.detail || 'Update failed');
+            }
+
+            // Show success message
+            App.ui.showToast('success', `${result.updated_count}名のデータを更新しました (ID: ${result.operation_id})`);
+
+            // Close modal and clear selection
+            this.closeModal();
+            this.clearSelection();
+
+            // Refresh data
+            await App.data.fetchEmployees(App.state.year);
+
+        } catch (error) {
+            App.ui.hideLoading();
+            App.ui.showToast('error', `更新エラー: ${error.message}`);
+        }
+    }
+};
+
+// ========================================
+// BATCH IMPORT MODULE (v2.5 - NEW)
+// Importar múltiples archivos Excel
+// ========================================
+App.batchImport = {
+    files: [],
+    results: [],
+    isProcessing: false,
+
+    /**
+     * Abrir modal de batch import
+     */
+    openModal() {
+        this.files = [];
+        this.results = [];
+        this.isProcessing = false;
+
+        const modal = document.getElementById('batch-import-modal');
+        if (!modal) {
+            this.createModal();
+        }
+        document.getElementById('batch-import-modal').style.display = 'flex';
+        this.updateUI();
+    },
+
+    /**
+     * Crear modal dinámicamente
+     */
+    createModal() {
+        const modal = document.createElement('div');
+        modal.id = 'batch-import-modal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 700px;">
+                <div class="modal-header">
+                    <h3>📁 バッチインポート - 複数ファイル</h3>
+                    <button class="modal-close" onclick="App.batchImport.closeModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Drop Zone -->
+                    <div id="batch-drop-zone" class="drop-zone" ondragover="App.batchImport.handleDragOver(event)"
+                         ondrop="App.batchImport.handleDrop(event)" ondragleave="App.batchImport.handleDragLeave(event)">
+                        <input type="file" id="batch-file-input" multiple accept=".xlsx,.xlsm,.xls"
+                               onchange="App.batchImport.handleFileSelect(event)" style="display: none;">
+                        <div class="drop-zone-content">
+                            <span class="drop-zone-icon">📂</span>
+                            <p>ファイルをドラッグ&ドロップ</p>
+                            <p class="text-muted">または</p>
+                            <button class="btn btn-primary" onclick="document.getElementById('batch-file-input').click()">
+                                ファイルを選択
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- File List -->
+                    <div id="batch-file-list" class="batch-file-list" style="margin-top: 1rem;"></div>
+
+                    <!-- Progress -->
+                    <div id="batch-progress" style="display: none; margin-top: 1rem;">
+                        <div class="progress-bar-container">
+                            <div id="batch-progress-bar" class="progress-bar" style="width: 0%;"></div>
+                        </div>
+                        <p id="batch-progress-text" class="text-center text-muted" style="margin-top: 0.5rem;"></p>
+                    </div>
+
+                    <!-- Results -->
+                    <div id="batch-results" style="display: none; margin-top: 1rem;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="App.batchImport.closeModal()">閉じる</button>
+                    <button id="batch-import-btn" class="btn btn-primary" onclick="App.batchImport.startImport()" disabled>
+                        インポート開始
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    },
+
+    /**
+     * Cerrar modal
+     */
+    closeModal() {
+        const modal = document.getElementById('batch-import-modal');
+        if (modal) modal.style.display = 'none';
+    },
+
+    /**
+     * Handle drag over
+     */
+    handleDragOver(event) {
+        event.preventDefault();
+        event.currentTarget.classList.add('drag-over');
+    },
+
+    /**
+     * Handle drag leave
+     */
+    handleDragLeave(event) {
+        event.currentTarget.classList.remove('drag-over');
+    },
+
+    /**
+     * Handle file drop
+     */
+    handleDrop(event) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('drag-over');
+        const files = Array.from(event.dataTransfer.files).filter(f =>
+            f.name.endsWith('.xlsx') || f.name.endsWith('.xlsm') || f.name.endsWith('.xls')
+        );
+        this.addFiles(files);
+    },
+
+    /**
+     * Handle file select
+     */
+    handleFileSelect(event) {
+        const files = Array.from(event.target.files);
+        this.addFiles(files);
+    },
+
+    /**
+     * Add files to list
+     */
+    addFiles(newFiles) {
+        newFiles.forEach(file => {
+            if (!this.files.find(f => f.name === file.name)) {
+                this.files.push(file);
+            }
+        });
+        this.updateUI();
+    },
+
+    /**
+     * Remove file from list
+     */
+    removeFile(index) {
+        this.files.splice(index, 1);
+        this.updateUI();
+    },
+
+    /**
+     * Update UI
+     */
+    updateUI() {
+        const listEl = document.getElementById('batch-file-list');
+        const importBtn = document.getElementById('batch-import-btn');
+
+        if (this.files.length === 0) {
+            listEl.innerHTML = '<p class="text-muted text-center">ファイルが選択されていません</p>';
+            importBtn.disabled = true;
+        } else {
+            listEl.innerHTML = this.files.map((file, i) => `
+                <div class="batch-file-item">
+                    <span class="batch-file-icon">📄</span>
+                    <span class="batch-file-name">${App.utils.escapeHtml(file.name)}</span>
+                    <span class="batch-file-size">${(file.size / 1024).toFixed(1)} KB</span>
+                    <button class="btn btn-sm btn-danger" onclick="App.batchImport.removeFile(${i})">✕</button>
+                </div>
+            `).join('');
+            importBtn.disabled = this.isProcessing;
+        }
+    },
+
+    /**
+     * Start batch import
+     */
+    async startImport() {
+        if (this.files.length === 0 || this.isProcessing) return;
+
+        this.isProcessing = true;
+        this.results = [];
+
+        const progressEl = document.getElementById('batch-progress');
+        const progressBar = document.getElementById('batch-progress-bar');
+        const progressText = document.getElementById('batch-progress-text');
+        const resultsEl = document.getElementById('batch-results');
+        const importBtn = document.getElementById('batch-import-btn');
+
+        progressEl.style.display = 'block';
+        resultsEl.style.display = 'none';
+        importBtn.disabled = true;
+
+        for (let i = 0; i < this.files.length; i++) {
+            const file = this.files[i];
+            const progress = ((i + 1) / this.files.length) * 100;
+
+            progressBar.style.width = `${progress}%`;
+            progressText.textContent = `処理中: ${file.name} (${i + 1}/${this.files.length})`;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch(`${App.config.apiBase}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                this.results.push({
+                    filename: file.name,
+                    success: response.ok,
+                    count: result.count || 0,
+                    message: result.message || result.detail || 'Unknown error'
+                });
+            } catch (error) {
+                this.results.push({
+                    filename: file.name,
+                    success: false,
+                    count: 0,
+                    message: error.message
+                });
+            }
+        }
+
+        this.isProcessing = false;
+        progressEl.style.display = 'none';
+        this.showResults();
+    },
+
+    /**
+     * Show import results
+     */
+    showResults() {
+        const resultsEl = document.getElementById('batch-results');
+        const successCount = this.results.filter(r => r.success).length;
+        const totalImported = this.results.reduce((sum, r) => sum + r.count, 0);
+
+        resultsEl.style.display = 'block';
+        resultsEl.innerHTML = `
+            <div class="batch-results-summary ${successCount === this.results.length ? 'success' : 'warning'}">
+                <h4>${successCount}/${this.results.length} ファイル成功</h4>
+                <p>合計 ${totalImported} 件のレコードをインポートしました</p>
+            </div>
+            <div class="batch-results-list">
+                ${this.results.map(r => `
+                    <div class="batch-result-item ${r.success ? 'success' : 'error'}">
+                        <span class="batch-result-icon">${r.success ? '✅' : '❌'}</span>
+                        <span class="batch-result-name">${App.utils.escapeHtml(r.filename)}</span>
+                        <span class="batch-result-count">${r.count}件</span>
+                        ${!r.success ? `<span class="batch-result-error">${App.utils.escapeHtml(r.message)}</span>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        // Clear files
+        this.files = [];
+        this.updateUI();
+
+        // Refresh main data
+        App.data.fetchEmployees(App.state.year);
+    }
+};
+
+// ========================================
+// PDF REPORTS MODULE (v2.4 - NEW)
+// Sistema de generacion de reportes PDF
+// ========================================
+App.reports = {
+    /**
+     * Descarga reporte PDF de un empleado
+     * @param {string} employeeNum - Numero de empleado
+     * @param {number|null} year - Ano fiscal (opcional)
+     */
+    async downloadEmployeePDF(employeeNum, year = null) {
+        try {
+            App.ui.showLoading('PDFを生成中...');
+
+            let url = `${App.config.apiBase}/reports/employee/${employeeNum}/pdf`;
+            if (year) {
+                url += `?year=${year}`;
+            }
+
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'PDF生成に失敗しました');
+            }
+
+            const blob = await response.blob();
+            const filename = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '')
+                || `reporte_empleado_${employeeNum}.pdf`;
+
+            this.downloadBlob(blob, filename);
+            App.ui.hideLoading();
+            App.ui.showToast('success', 'PDFレポートをダウンロードしました');
+
+        } catch (error) {
+            App.ui.hideLoading();
+            App.ui.showToast('error', `PDF生成エラー: ${error.message}`);
+            console.error('PDF download error:', error);
+        }
+    },
+
+    /**
+     * Descarga reporte anual (年次有給休暇管理簿)
+     * @param {number} year - Ano fiscal
+     */
+    async downloadAnnualLedger(year) {
+        try {
+            App.ui.showLoading('年次管理簿を生成中...');
+
+            const response = await fetch(`${App.config.apiBase}/reports/annual/${year}/pdf`);
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'PDF生成に失敗しました');
+            }
+
+            const blob = await response.blob();
+            const filename = `年次有給休暇管理簿_${year}.pdf`;
+
+            this.downloadBlob(blob, filename);
+            App.ui.hideLoading();
+            App.ui.showToast('success', '年次管理簿をダウンロードしました');
+
+        } catch (error) {
+            App.ui.hideLoading();
+            App.ui.showToast('error', `PDF生成エラー: ${error.message}`);
+            console.error('Annual ledger download error:', error);
+        }
+    },
+
+    /**
+     * Descarga reporte mensual
+     * @param {number} year - Ano
+     * @param {number} month - Mes (1-12)
+     */
+    async downloadMonthlySummary(year, month) {
+        try {
+            App.ui.showLoading('月次レポートを生成中...');
+
+            const response = await fetch(`${App.config.apiBase}/reports/monthly/${year}/${month}/pdf`);
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'PDF生成に失敗しました');
+            }
+
+            const blob = await response.blob();
+            const filename = `reporte_mensual_${year}_${String(month).padStart(2, '0')}.pdf`;
+
+            this.downloadBlob(blob, filename);
+            App.ui.hideLoading();
+            App.ui.showToast('success', '月次レポートをダウンロードしました');
+
+        } catch (error) {
+            App.ui.hideLoading();
+            App.ui.showToast('error', `PDF生成エラー: ${error.message}`);
+            console.error('Monthly summary download error:', error);
+        }
+    },
+
+    /**
+     * Descarga reporte de cumplimiento (5日取得義務)
+     * @param {number} year - Ano fiscal
+     */
+    async downloadComplianceReport(year) {
+        try {
+            App.ui.showLoading('コンプライアンスレポートを生成中...');
+
+            const response = await fetch(`${App.config.apiBase}/reports/compliance/${year}/pdf`);
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'PDF生成に失敗しました');
+            }
+
+            const blob = await response.blob();
+            const filename = `reporte_cumplimiento_5dias_${year}.pdf`;
+
+            this.downloadBlob(blob, filename);
+            App.ui.hideLoading();
+            App.ui.showToast('success', 'コンプライアンスレポートをダウンロードしました');
+
+        } catch (error) {
+            App.ui.hideLoading();
+            App.ui.showToast('error', `PDF生成エラー: ${error.message}`);
+            console.error('Compliance report download error:', error);
+        }
+    },
+
+    /**
+     * Genera y descarga un reporte personalizado
+     * @param {Object} config - Configuracion del reporte
+     */
+    async downloadCustomReport(config) {
+        try {
+            App.ui.showLoading('カスタムレポートを生成中...');
+
+            const response = await fetch(`${App.config.apiBase}/reports/custom/pdf`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'PDF生成に失敗しました');
+            }
+
+            const blob = await response.blob();
+            const filename = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '')
+                || `reporte_custom.pdf`;
+
+            this.downloadBlob(blob, filename);
+            App.ui.hideLoading();
+            App.ui.showToast('success', 'カスタムレポートをダウンロードしました');
+
+        } catch (error) {
+            App.ui.hideLoading();
+            App.ui.showToast('error', `PDF生成エラー: ${error.message}`);
+            console.error('Custom report download error:', error);
+        }
+    },
+
+    /**
+     * Muestra modal de opciones de exportacion PDF
+     */
+    showExportModal() {
+        const year = App.state.year || new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1;
+
+        const modalHtml = `
+            <div id="pdf-export-modal" class="modal active">
+                <div class="modal-content" style="max-width: 500px;">
+                    <div class="modal-header">
+                        <h3>PDFレポートをエクスポート</h3>
+                        <button class="modal-close" onclick="App.reports.closeModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="export-options">
+                            <!-- Reporte Anual -->
+                            <div class="export-option glass-panel" style="padding: 1rem; margin-bottom: 1rem; cursor: pointer;"
+                                 onclick="App.reports.downloadAnnualLedger(${year}); App.reports.closeModal();">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <span style="font-size: 2rem;">📊</span>
+                                    <div>
+                                        <h4 style="margin: 0; color: var(--text-primary);">年次有給休暇管理簿</h4>
+                                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.85rem;">
+                                            ${year}年度 - 法定必須書類
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Reporte de Cumplimiento -->
+                            <div class="export-option glass-panel" style="padding: 1rem; margin-bottom: 1rem; cursor: pointer;"
+                                 onclick="App.reports.downloadComplianceReport(${year}); App.reports.closeModal();">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <span style="font-size: 2rem;">✅</span>
+                                    <div>
+                                        <h4 style="margin: 0; color: var(--text-primary);">5日取得義務レポート</h4>
+                                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.85rem;">
+                                            ${year}年度 - コンプライアンス状況
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Reporte Mensual -->
+                            <div class="export-option glass-panel" style="padding: 1rem; margin-bottom: 1rem;">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <span style="font-size: 2rem;">📅</span>
+                                    <div style="flex: 1;">
+                                        <h4 style="margin: 0; color: var(--text-primary);">月次レポート</h4>
+                                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                                            <select id="pdf-month-select" style="flex: 1; padding: 0.5rem; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                                                ${Array.from({length: 12}, (_, i) => i + 1).map(m =>
+                                                    `<option value="${m}" ${m === currentMonth ? 'selected' : ''}>${m}月</option>`
+                                                ).join('')}
+                                            </select>
+                                            <button class="btn btn-primary btn-sm" onclick="App.reports.downloadMonthlySummary(${year}, document.getElementById('pdf-month-select').value); App.reports.closeModal();">
+                                                ダウンロード
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Reporte Personalizado -->
+                            <div class="export-option glass-panel" style="padding: 1rem; cursor: pointer;"
+                                 onclick="App.reports.showCustomReportForm();">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <span style="font-size: 2rem;">⚙️</span>
+                                    <div>
+                                        <h4 style="margin: 0; color: var(--text-primary);">カスタムレポート</h4>
+                                        <p style="margin: 0; color: var(--text-secondary); font-size: 0.85rem;">
+                                            フィルターと列を選択
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Insertar modal en el DOM
+        const existingModal = document.getElementById('pdf-export-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Agregar estilos hover
+        document.querySelectorAll('.export-option').forEach(opt => {
+            opt.addEventListener('mouseenter', () => {
+                opt.style.transform = 'translateX(5px)';
+                opt.style.borderColor = 'var(--primary)';
+            });
+            opt.addEventListener('mouseleave', () => {
+                opt.style.transform = '';
+                opt.style.borderColor = '';
+            });
+        });
+    },
+
+    /**
+     * Muestra formulario de reporte personalizado
+     */
+    showCustomReportForm() {
+        const year = App.state.year || new Date().getFullYear();
+        const factories = [...new Set(App.state.data.map(e => e.haken).filter(Boolean))];
+
+        const formHtml = `
+            <div id="custom-report-form">
+                <h4 style="margin-bottom: 1rem;">カスタムレポート設定</h4>
+
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.3rem; color: var(--text-secondary);">タイトル</label>
+                    <input type="text" id="custom-report-title" value="カスタム有給レポート"
+                           style="width: 100%; padding: 0.5rem; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.3rem; color: var(--text-secondary);">派遣先フィルター</label>
+                    <select id="custom-report-dept" style="width: 100%; padding: 0.5rem; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                        <option value="">全て</option>
+                        ${factories.map(f => `<option value="${App.utils.escapeAttr(f)}">${App.utils.escapeHtml(f)}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.3rem; color: var(--text-secondary);">残日数フィルター</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="number" id="custom-report-min-balance" placeholder="最小" min="0" max="40"
+                               style="flex: 1; padding: 0.5rem; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                        <input type="number" id="custom-report-max-balance" placeholder="最大" min="0" max="40"
+                               style="flex: 1; padding: 0.5rem; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.3rem; color: var(--text-secondary);">並び替え</label>
+                    <select id="custom-report-sort" style="width: 100%; padding: 0.5rem; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                        <option value="employee_num">社員番号</option>
+                        <option value="name">名前</option>
+                        <option value="balance">残日数</option>
+                        <option value="used">使用日数</option>
+                        <option value="usage_rate">使用率</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.5rem;">
+                    <button class="btn btn-secondary" onclick="App.reports.showExportModal();">戻る</button>
+                    <button class="btn btn-primary" onclick="App.reports.generateCustomReport();">PDF生成</button>
+                </div>
+            </div>
+        `;
+
+        document.querySelector('#pdf-export-modal .modal-body').innerHTML = formHtml;
+    },
+
+    /**
+     * Genera reporte personalizado desde el formulario
+     */
+    async generateCustomReport() {
+        const year = App.state.year || new Date().getFullYear();
+        const config = {
+            title: document.getElementById('custom-report-title').value || 'Custom Report',
+            filters: {
+                year: year,
+                department: document.getElementById('custom-report-dept').value || null,
+                min_balance: parseFloat(document.getElementById('custom-report-min-balance').value) || null,
+                max_balance: parseFloat(document.getElementById('custom-report-max-balance').value) || null
+            },
+            columns: ['employee_num', 'name', 'haken', 'granted', 'used', 'balance', 'usage_rate'],
+            sort_by: document.getElementById('custom-report-sort').value,
+            include_stats: true
+        };
+
+        // Limpiar filtros nulos
+        Object.keys(config.filters).forEach(key => {
+            if (config.filters[key] === null || config.filters[key] === '') {
+                delete config.filters[key];
+            }
+        });
+
+        this.closeModal();
+        await this.downloadCustomReport(config);
+    },
+
+    /**
+     * Cierra el modal de exportacion
+     */
+    closeModal() {
+        const modal = document.getElementById('pdf-export-modal');
+        if (modal) {
+            modal.remove();
+        }
+    },
+
+    /**
+     * Utilidad para descargar un blob como archivo
+     * @param {Blob} blob - Blob del archivo
+     * @param {string} filename - Nombre del archivo
+     */
+    downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 };
 
