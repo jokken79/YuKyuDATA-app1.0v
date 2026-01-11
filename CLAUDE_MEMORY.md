@@ -6,9 +6,9 @@ Claude debe leer este archivo al inicio de cada sesión para recordar contexto i
 ---
 
 ## Última Actualización
-- **Fecha**: 2026-01-10
-- **Sesión**: Mega-mejora v2.3 - Notifications, i18n, PWA, PDF, E2E
-- **Commits**: 4 (edición Excel + memoria + mega-mejora v2.2 + v2.3)
+- **Fecha**: 2026-01-11
+- **Sesión**: Security & Testing v2.4 - XSS, CSRF, Tests, Performance
+- **Commits**: 6 (v2.1 + v2.2 + v2.3 + v2.4)
 
 ---
 
@@ -34,6 +34,20 @@ Claude debe leer este archivo al inicio de cada sesión para recordar contexto i
 ---
 
 ## Features Implementadas (Historial)
+
+### v2.4 (2026-01-11) - Security & Testing
+**8 mejoras de seguridad y testing implementadas:**
+
+| Feature | Archivos | Descripción |
+|---------|----------|-------------|
+| XSS Fix | `app.js` | 13 vulnerabilidades XSS corregidas |
+| CSRF Protection | `csrf_middleware.py`, `main.py` | Middleware CSRF para POST/PUT/DELETE |
+| SQL Indexes | `database.py` | 4 índices nuevos (hire_date, leave_date, visa_expiry) |
+| Fetch Timeout | `data-service.js` | AbortController con timeout 30s |
+| Fiscal Tests | `tests/test_fiscal_year.py` | Tests unitarios para 12 funciones críticas |
+| 40-Day Limit | `fiscal_year.py` | Validación de límite máximo acumulable |
+| AT_RISK Fix | `fiscal_year.py` | Bug corregido en check_5day_compliance() |
+| Async Parsing | `main.py` | asyncio.to_thread() para Excel no bloqueante |
 
 ### v2.3 (2026-01-10) - Notifications, i18n, PWA, PDF, E2E
 **8 mejoras principales implementadas:**
@@ -248,8 +262,8 @@ python scripts/sync-issues.py     # Sincronizar TODOs a Issues
 
 | Date | Hash | Message |
 |------|------|---------|
+| 2026-01-11 | 8023305 | feat: Security, performance & testing improvements (v2.4) |
+| 2026-01-10 | c07a85e | chore: Mark audit log and bulk edit TODOs as completed |
+| 2026-01-10 | 3167930 | docs: Update CLAUDE_MEMORY.md with v2.3 session summary |
 | 2026-01-10 | 7fb8bfe | feat: Add notifications, i18n, PWA offline, PDF reports, E2E tests |
-| 2026-01-10 | 2b07f29 | chore: Mark completed TODOs in memory store |
-| 2026-01-10 | 8d7bc59 | docs: Update CLAUDE_MEMORY.md with recent commits log |
-| 2026-01-10 | d5e106d | docs: Update CLAUDE_MEMORY.md with v2.2 session summary |
-| 2026-01-10 | 64c4de2 | feat: Major improvements - Memory, Docker, CI/CD, Parser, Dashboard (v2.2) |
+| 2026-01-10 | 11b1381 | fix: Correct GZipMiddleware import and enable gzip compression |
