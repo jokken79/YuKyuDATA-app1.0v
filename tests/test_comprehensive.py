@@ -5,21 +5,42 @@ YuKyu Premium - Comprehensive Test Suite
 Created as part of comprehensive analysis to cover testing gaps.
 """
 
-import pytest
-from fastapi.testclient import TestClient
-from datetime import datetime, timedelta
-import sys
 import os
 import tempfile
 import json
+from datetime import datetime, timedelta
 
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import pytest
+from fastapi.testclient import TestClient
 
 from main import app
 import database
 
 client = TestClient(app)
+
+# Default auth headers for protected API endpoints
+_login_response = client.post(
+    "/api/auth/login",
+    json={"username": os.environ.get("ADMIN_USERNAME", "admin"), "password": "admin123"},
+)
+AUTH_HEADERS = {}
+if _login_response.status_code == 200:
+    AUTH_HEADERS["Authorization"] = f"Bearer {_login_response.json().get('access_token', '')}"
+
+
+def _wrap_with_auth(method_name):
+    original = getattr(client, method_name)
+
+    def wrapper(url, **kwargs):
+        headers = {**AUTH_HEADERS, **kwargs.pop("headers", {})}
+        return original(url, headers=headers, **kwargs)
+
+    return wrapper
+
+
+client.get = _wrap_with_auth("get")
+client.post = _wrap_with_auth("post")
+client.delete = _wrap_with_auth("delete")
 
 
 # ============================================

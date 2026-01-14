@@ -13,6 +13,9 @@ import os
 import jwt
 from pathlib import Path
 from datetime import datetime, timedelta, date
+import hashlib
+import hmac
+import secrets
 
 # Local modules
 import database
@@ -117,19 +120,47 @@ rate_limiter = RateLimiter(max_requests=100, window_seconds=60)
 # ============================================
 
 # JWT Configuration
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "yukyu-secret-key-2024-change-in-production")
+
+
+def require_env(name: str) -> str:
+    """Return required environment variable or raise a runtime error."""
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(f"Environment variable '{name}' is required for secure authentication")
+    return value
+
+
+def derive_password_hash(password: str, salt: str) -> str:
+    """Generate a PBKDF2-HMAC-SHA256 hash for the provided password."""
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100_000)
+    return dk.hex()
+
+
+def verify_password(password: str, expected_hash: str, salt: str) -> bool:
+    """Verify a password against its hash using constant-time comparison."""
+    candidate = derive_password_hash(password, salt)
+    return hmac.compare_digest(candidate, expected_hash)
+
+
+JWT_SECRET_KEY = require_env("JWT_SECRET_KEY")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
 # Security
 security = HTTPBearer(auto_error=False)
 
-# User database (simple in-memory for now)
+# User database (configurable via environment variables)
+ADMIN_USERNAME = require_env("ADMIN_USERNAME")
+ADMIN_PASSWORD_SALT = require_env("ADMIN_PASSWORD_SALT")
+ADMIN_PASSWORD_HASH = require_env("ADMIN_PASSWORD_HASH")
+ADMIN_NAME = os.getenv("ADMIN_NAME", "Administrator")
+
 USERS_DB = {
-    "admin": {
-        "password": "admin123",
+    ADMIN_USERNAME: {
+        "password_hash": ADMIN_PASSWORD_HASH,
+        "salt": ADMIN_PASSWORD_SALT,
         "role": "admin",
-        "name": "Administrator"
+        "name": ADMIN_NAME
     }
 }
 
@@ -267,6 +298,14 @@ EMPLOYEE_REGISTRY_PATH = r"D:\YuKyuDATA-app\【新】社員台帳(UNS)T　2022.0
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
+# Upload security
+ALLOWED_UPLOAD_TYPES = {
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel.sheet.macroEnabled.12"
+}
+MAX_UPLOAD_SIZE = int(os.getenv("UPLOAD_MAX_BYTES", 5 * 1024 * 1024))  # 5 MB default
+
 # Initialize Database
 database.init_db()
 
@@ -334,6 +373,36 @@ auto_sync_on_startup()
 # Mount static files (css, js, etc.)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# ============================================
+# AUTH MIDDLEWARE FOR API ENDPOINTS
+# ============================================
+PUBLIC_API_PATHS = {
+    "/api/auth/login",
+    "/api/auth/verify",
+    "/api/health",
+    "/api/info",
+}
+
+
+@app.middleware("http")
+async def enforce_api_auth(request: Request, call_next):
+    """Require authentication for all /api routes except explicitly whitelisted ones."""
+    path = request.url.path
+    if path.startswith("/api") and path not in PUBLIC_API_PATHS:
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.lower().startswith("bearer "):
+            return JSONResponse(status_code=401, content={"detail": "Authentication required"})
+
+        token = auth_header.split(" ", 1)[1]
+        try:
+            payload = verify_jwt_token(token)
+            request.state.user = payload
+        except HTTPException as exc:
+            return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+    response = await call_next(request)
+    return response
+
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
@@ -358,9 +427,9 @@ async def login(login_data: UserLogin):
     username = login_data.username
     password = login_data.password
 
-    # Check if user exists
+    # Check if user exists and password is valid
     user = USERS_DB.get(username)
-    if not user or user["password"] != password:
+    if not user or not verify_password(password, user["password_hash"], user["salt"]):
         raise HTTPException(
             status_code=401,
             detail="Invalid username or password"
@@ -449,7 +518,7 @@ async def get_employees(year: int = None, enhanced: bool = False, active_only: b
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/sync")
-async def sync_default_file():
+async def sync_default_file(user: dict = Depends(require_admin)):
     """Triggers auto-read of the default Excel file + individual usage dates."""
     if not os.path.exists(DEFAULT_EXCEL_PATH):
         raise HTTPException(status_code=404, detail=f"Default file not found at {DEFAULT_EXCEL_PATH}")
@@ -473,24 +542,45 @@ async def sync_default_file():
         raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
 
 @app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_admin)
+):
     """Handles manual Excel file upload and processing."""
+    safe_name = Path(file.filename).name
+    if not safe_name.lower().endswith((".xls", ".xlsx", ".xlsm")):
+        raise HTTPException(status_code=400, detail="Only Excel files are allowed (.xls, .xlsx, .xlsm)")
+
+    if file.content_type not in ALLOWED_UPLOAD_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid file type")
+
+    # Enforce file size limit
+    file.file.seek(0, os.SEEK_END)
+    file_size = file.file.tell()
+    file.file.seek(0)
+    if file_size > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="File too large")
+
+    temp_path = UPLOAD_DIR / f"{datetime.utcnow().timestamp()}_{secrets.token_hex(4)}_{safe_name}"
+
     try:
-        # Save temp file
-        temp_path = UPLOAD_DIR / file.filename
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-            
-        # Process
+
         data = excel_service.parse_excel_file(str(temp_path))
         database.save_employees(data)
-        
-        # Cleanup
-        os.remove(temp_path)
-        
+
         return {"status": "success", "count": len(data), "message": f"Successfully imported {len(data)} records"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+    finally:
+        if temp_path.exists():
+            try:
+                temp_path.unlink()
+            except OSError:
+                logger.warning("Failed to clean up uploaded file %s", temp_path)
 
 @app.delete("/api/reset")
 async def reset_db(user: dict = Depends(require_admin)):
@@ -511,7 +601,7 @@ async def get_genzai(status: str = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/sync-genzai")
-async def sync_genzai():
+async def sync_genzai(user: dict = Depends(require_admin)):
     """Syncs DBGenzaiX sheet from employee registry file."""
     if not os.path.exists(EMPLOYEE_REGISTRY_PATH):
         raise HTTPException(status_code=404, detail=f"Employee registry file not found at {EMPLOYEE_REGISTRY_PATH}")
@@ -542,7 +632,7 @@ async def get_ukeoi(status: str = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/sync-ukeoi")
-async def sync_ukeoi():
+async def sync_ukeoi(user: dict = Depends(require_admin)):
     """Syncs DBUkeoiX sheet from employee registry file."""
     if not os.path.exists(EMPLOYEE_REGISTRY_PATH):
         raise HTTPException(status_code=404, detail=f"Employee registry file not found at {EMPLOYEE_REGISTRY_PATH}")
@@ -582,7 +672,7 @@ async def get_staff_employees(status: str = None, year: int = None, filter_by_ye
 
 
 @app.post("/api/sync-staff")
-async def sync_staff():
+async def sync_staff(user: dict = Depends(require_admin)):
     """Syncs DBStaffX sheet from employee registry file."""
     if not os.path.exists(EMPLOYEE_REGISTRY_PATH):
         raise HTTPException(status_code=404, detail=f"Employee registry file not found at {EMPLOYEE_REGISTRY_PATH}")
@@ -2351,6 +2441,8 @@ async def get_custom_report(start_date: str, end_date: str):
                 for date, data in sorted(daily_summary.items())
             ]
         }
+    except HTTPException as exc:
+        raise exc
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=f"日付フォーマットエラー: {str(ve)}")
     except Exception as e:

@@ -42,6 +42,32 @@ Python 3.8+
 pip install fastapi uvicorn openpyxl
 ```
 
+### Configuración de autenticación segura
+
+Estas variables **son obligatorias** para iniciar la API y evitar credenciales por defecto:
+
+- `JWT_SECRET_KEY`: clave secreta para firmar los tokens JWT.
+- `ADMIN_USERNAME`: usuario administrador.
+- `ADMIN_PASSWORD_SALT`: sal utilizada para derivar el hash.
+- `ADMIN_PASSWORD_HASH`: hash PBKDF2-HMAC-SHA256 de la contraseña administradora (100k iteraciones).
+- `ADMIN_NAME` (opcional): nombre visible del administrador.
+- `UPLOAD_MAX_BYTES` (opcional): límite de tamaño de subida (por defecto 5 MB).
+
+Genera el hash de la contraseña con Python (ejemplo para `admin123`):
+
+```bash
+python - <<'PY'
+import hashlib
+password = "admin123"
+salt = "elige-una-sal-segura"
+dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
+print(f"ADMIN_PASSWORD_SALT={salt}")
+print(f"ADMIN_PASSWORD_HASH={dk.hex()}")
+PY
+```
+
+Carga las variables en tu entorno (por ejemplo con `.env`) antes de ejecutar el servidor.
+
 ---
 
 ## Inicio Rápido

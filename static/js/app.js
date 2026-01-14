@@ -254,27 +254,56 @@ const App = {
     // ========================================
     theme: {
         current: 'dark',
+        userPreferred: false,
 
         init() {
-            // Load saved theme or default to dark
+            // Load saved theme or respect user preference
             const saved = localStorage.getItem('yukyu-theme');
-            this.current = saved || 'dark';
-            this.apply();
+            this.userPreferred = Boolean(saved);
+
+            if (saved) {
+                this.current = saved;
+            } else {
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+                this.current = prefersDark.matches ? 'dark' : 'light';
+                prefersDark.addEventListener('change', (event) => {
+                    if (!this.userPreferred) {
+                        this.current = event.matches ? 'dark' : 'light';
+                        this.apply(false);
+                    }
+                });
+            }
+
+            this.apply(false);
         },
 
         toggle() {
             this.current = this.current === 'dark' ? 'light' : 'dark';
+            this.userPreferred = true;
             this.apply();
             localStorage.setItem('yukyu-theme', this.current);
             App.ui.showToast('info', this.current === 'dark' ? '🌙 ダークモード' : '☀️ ライトモード');
         },
 
-        apply() {
+        apply(announceChange = true) {
             document.documentElement.setAttribute('data-theme', this.current);
             const icon = document.getElementById('theme-icon');
             const label = document.getElementById('theme-label');
             if (icon) icon.textContent = this.current === 'dark' ? '🌙' : '☀️';
             if (label) label.textContent = this.current === 'dark' ? 'Dark' : 'Light';
+
+            const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+            if (themeColorMeta) {
+                const metaColor = this.current === 'dark' ? '#0f172a' : '#f8fafc';
+                themeColorMeta.setAttribute('content', metaColor);
+            }
+
+            const announcer = document.getElementById('theme-announcer');
+            if (announceChange && announcer) {
+                announcer.textContent = this.current === 'dark'
+                    ? 'ダークモードに切り替えました'
+                    : 'ライトモードに切り替えました';
+            }
 
             // ============================================
             // ACTUALIZAR FLATPICKR DINÁMICAMENTE
