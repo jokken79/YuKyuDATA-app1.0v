@@ -7,8 +7,8 @@ Claude debe leer este archivo al inicio de cada sesión para recordar contexto i
 
 ## Última Actualización
 - **Fecha**: 2026-01-14
-- **Sesión**: TODO Review & Test Improvements v2.5
-- **Commits**: 7 (v2.1 + v2.2 + v2.3 + v2.4 + v2.5)
+- **Sesión**: UI/UX Enhancements v2.7
+- **Commits**: 9 (v2.1 + v2.2 + v2.3 + v2.4 + v2.5 + v2.6 + v2.7)
 
 ---
 
@@ -34,6 +34,48 @@ Claude debe leer este archivo al inicio de cada sesión para recordar contexto i
 ---
 
 ## Features Implementadas (Historial)
+
+### v2.7 (2026-01-14) - UI/UX Enhancements (Sprint 1, 2 & 3)
+**Implementación completa de mejoras UI/UX recomendadas por el agente experto:**
+
+| Sprint | Feature | Archivos | Descripción |
+|--------|---------|----------|-------------|
+| 1 | Form Validation | `ui-enhancements.js` | Sistema de validación con feedback real-time, mensajes localizados |
+| 1 | Loading States | `ui-enhancements.js` | Spinners, aria-busy, estados de éxito/error |
+| 1 | Confirm Dialogs | `ui-enhancements.js` | Confirmación para acciones destructivas (delete/reset) |
+| 2 | Focus Trap | `ui-enhancements.js` | Trap de foco en modales para accesibilidad |
+| 2 | Tablet Responsive | `ui-enhancements.css` | Fixes para breakpoint 768px, sidebar toggle |
+| 2 | CSS Tokens | `ui-enhancements.css` | Variables consolidadas para transiciones, sombras, radios |
+| 3 | Progress Indicators | `ui-enhancements.js` | Indicadores de progreso con estados indeterminate/complete/error |
+| 3 | Tooltip System | `ui-enhancements.js` | Tooltips accesibles con posicionamiento dinámico |
+| 3 | Light Theme Contrast | `ui-enhancements.css` | Mejoras de contraste para modo claro (WCAG AA) |
+
+**Archivos creados:**
+- `static/js/modules/ui-enhancements.js` (600+ líneas)
+- `static/css/ui-enhancements.css` (400+ líneas)
+
+**Integración:**
+- Module ES6 exportado con clases: `FormValidator`, `LoadingState`, `ConfirmDialog`, `FocusTrap`, `Tooltip`, `ProgressIndicator`
+- Auto-inicialización de tooltips en botones principales
+- Atributos data-tooltip añadidos a botones sync
+- Accesible globalmente via `window.UIEnhancements`
+
+### v2.6 (2026-01-14) - Notification Read Status
+**Implementación de estado de lectura para notificaciones:**
+
+| Feature | Archivos | Descripción |
+|---------|----------|-------------|
+| Notification Reads Table | `database.py` | Nueva tabla `notification_reads` para trackear estado de lectura por usuario |
+| Read Status Tracking | `database.py` | Funciones: `mark_notification_read()`, `mark_all_notifications_read()`, `get_read_notification_ids()`, `get_unread_count()` |
+| GET /api/notifications | `main.py` | Actualizado para incluir `is_read` por usuario y filtro `unread_only` |
+| POST /api/notifications/{id}/mark-read | `main.py` | Nuevo endpoint para marcar notificación como leída |
+| POST /api/notifications/mark-all-read | `main.py` | Nuevo endpoint para marcar múltiples notificaciones como leídas |
+| GET /api/notifications/unread-count | `main.py` | Nuevo endpoint para obtener conteo de no leídas |
+
+**Detalles técnicos:**
+- Estado de lectura es per-usuario (multi-usuario ready)
+- Usa UNIQUE constraint para evitar duplicados
+- Índices para búsquedas rápidas por user_id y notification_id
 
 ### v2.5 (2026-01-14) - TODO Review & Test Improvements
 **5 TODOs corregidos + Análisis completo de testing y CI/CD:**
@@ -223,14 +265,14 @@ python scripts/sync-issues.py     # Sincronizar TODOs a Issues
 6. [x] **Reportes PDF** - Generación automática (v2.3)
 
 ### Nuevas sugerencias (v2.5):
-7. [ ] **LIFO Deduction Tests** - Tests críticos para deducción de días (PRIORIDAD ALTA)
-8. [ ] **Sanitizer Tests** - Tests de prevención XSS para seguridad (PRIORIDAD ALTA)
-9. [ ] **E2E Tests Playwright** - Flujos críticos automatizados
-10. [ ] **GitHub Actions E2E** - Workflow para e2e-tests.yml
-11. [ ] **Coverage 80%** - Aumentar threshold en ci.yml
-12. [ ] **Dockerfile.secure** - Crear imagen segura para producción
+7. [x] **LIFO Deduction Tests** - Tests críticos para deducción de días (COMPLETADO: `tests/test_lifo_deduction.py`)
+8. [x] **Sanitizer Tests** - Tests de prevención XSS para seguridad (COMPLETADO: `tests/unit/test-sanitizer.test.js`)
+9. [x] **E2E Tests Playwright** - Flujos críticos automatizados (COMPLETADO: `tests/e2e/*.spec.js`)
+10. [x] **GitHub Actions E2E** - Workflow para e2e-tests.yml (COMPLETADO: `.github/workflows/e2e-tests.yml`)
+11. [x] **Coverage 80%** - Aumentar threshold en ci.yml (COMPLETADO: `--cov-fail-under=80`)
+12. [x] **Dockerfile.secure** - Crear imagen segura para producción (COMPLETADO: `Dockerfile.secure`)
 13. [ ] **Mobile-first refactor** - Mejor experiencia móvil
-14. [ ] **API Documentation** - Swagger/OpenAPI docs
+14. [x] **API Documentation** - Swagger/OpenAPI docs (COMPLETADO: `/docs`, `/redoc`)
 
 ---
 

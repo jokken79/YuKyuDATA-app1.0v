@@ -300,6 +300,23 @@ def init_db():
         c.execute('CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action)')
 
+        # ============================================
+        # NOTIFICATION READS TABLE (v2.6 - Track Read Status)
+        # ============================================
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS notification_reads (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                notification_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                read_at TEXT NOT NULL,
+                UNIQUE(notification_id, user_id)
+            )
+        ''')
+
+        # Index for fast lookup
+        c.execute('CREATE INDEX IF NOT EXISTS idx_notif_reads_user ON notification_reads(user_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_notif_reads_notif ON notification_reads(notification_id)')
+
         conn.commit()
 
 
@@ -2418,3 +2435,123 @@ def revert_bulk_update(operation_id: str, reverted_by: str = "system") -> Dict[s
             "reverted_by": reverted_by,
             "reverted_at": timestamp
         }
+
+
+# ============================================
+# NOTIFICATION READ STATUS FUNCTIONS (v2.6)
+# ============================================
+
+def mark_notification_read(notification_id: str, user_id: str) -> bool:
+    """
+    Marca una notificación como leída para un usuario específico.
+
+    Args:
+        notification_id: ID de la notificación
+        user_id: ID del usuario
+
+    Returns:
+        True si se marcó correctamente, False si ya estaba marcada
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+        try:
+            c.execute('''
+                INSERT INTO notification_reads (notification_id, user_id, read_at)
+                VALUES (?, ?, ?)
+            ''', (notification_id, user_id, datetime.now().isoformat()))
+            conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            # Ya estaba marcada como leída (UNIQUE constraint)
+            return False
+
+
+def mark_all_notifications_read(user_id: str, notification_ids: list) -> int:
+    """
+    Marca múltiples notificaciones como leídas para un usuario.
+
+    Args:
+        user_id: ID del usuario
+        notification_ids: Lista de IDs de notificaciones
+
+    Returns:
+        Número de notificaciones marcadas como leídas
+    """
+    if not notification_ids:
+        return 0
+
+    with get_db() as conn:
+        c = conn.cursor()
+        timestamp = datetime.now().isoformat()
+        marked_count = 0
+
+        for notif_id in notification_ids:
+            try:
+                c.execute('''
+                    INSERT INTO notification_reads (notification_id, user_id, read_at)
+                    VALUES (?, ?, ?)
+                ''', (notif_id, user_id, timestamp))
+                marked_count += 1
+            except sqlite3.IntegrityError:
+                # Ya estaba marcada
+                pass
+
+        conn.commit()
+        return marked_count
+
+
+def is_notification_read(notification_id: str, user_id: str) -> bool:
+    """
+    Verifica si una notificación ha sido leída por un usuario.
+
+    Args:
+        notification_id: ID de la notificación
+        user_id: ID del usuario
+
+    Returns:
+        True si está leída, False si no
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute('''
+            SELECT 1 FROM notification_reads
+            WHERE notification_id = ? AND user_id = ?
+        ''', (notification_id, user_id))
+        return c.fetchone() is not None
+
+
+def get_read_notification_ids(user_id: str) -> set:
+    """
+    Obtiene todos los IDs de notificaciones leídas por un usuario.
+
+    Args:
+        user_id: ID del usuario
+
+    Returns:
+        Set de notification_ids que han sido leídas
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute('''
+            SELECT notification_id FROM notification_reads
+            WHERE user_id = ?
+        ''', (user_id,))
+        return {row['notification_id'] for row in c.fetchall()}
+
+
+def get_unread_count(user_id: str, notification_ids: list) -> int:
+    """
+    Cuenta cuántas notificaciones no han sido leídas por un usuario.
+
+    Args:
+        user_id: ID del usuario
+        notification_ids: Lista de IDs de notificaciones a verificar
+
+    Returns:
+        Número de notificaciones no leídas
+    """
+    if not notification_ids:
+        return 0
+
+    read_ids = get_read_notification_ids(user_id)
+    return len([nid for nid in notification_ids if nid not in read_ids])

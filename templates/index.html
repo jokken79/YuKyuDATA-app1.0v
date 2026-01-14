@@ -39,6 +39,8 @@
     <link rel="stylesheet" href="/static/css/design-system/components.css">
     <link rel="stylesheet" href="/static/css/design-system/utilities.css">
     <link rel="stylesheet" href="/static/css/design-system/accessibility.css">
+    <!-- UI Enhancements - Sprint 1,2,3 improvements (v2.7) -->
+    <link rel="stylesheet" href="/static/css/ui-enhancements.css">
 
     <!-- Libraries -->
     <!-- ApexCharts - Modern charting library -->
@@ -441,19 +443,28 @@
                         <span class="theme-toggle-label" id="theme-label">Dark</span>
                     </button>
 
-                    <button class="btn btn-primary" id="btn-sync-main" onclick="App.data.sync()" aria-label="Sync vacation data" type="button">
+                    <button class="btn btn-primary" id="btn-sync-main" onclick="App.data.sync()"
+                        aria-label="Sync vacation data" type="button"
+                        data-tooltip="有給データをExcelから同期 / Sincronizar datos de vacaciones"
+                        data-loading="同期中...">
                         <span class="btn-icon" aria-hidden="true">⚡</span>
                         <span class="btn-text">Sync</span>
                         <span class="btn-spinner d-none"></span>
                     </button>
                     <button class="btn btn-glass" id="btn-sync-genzai" onclick="App.data.syncGenzai()"
-                        title="Sync Dispatch Employees" aria-label="Sync dispatch employees" type="button">
+                        aria-label="Sync dispatch employees" type="button"
+                        data-tooltip="派遣社員データを同期 / Sincronizar empleados dispatch"
+                        data-loading="同期中...">
                         <span class="btn-icon" aria-hidden="true">🏢</span>
+                        <span class="btn-text d-md-inline d-none">Genzai</span>
                         <span class="btn-spinner d-none"></span>
                     </button>
                     <button class="btn btn-glass" id="btn-sync-ukeoi" onclick="App.data.syncUkeoi()"
-                        title="Sync Contract Employees" aria-label="Sync contract employees" type="button">
+                        aria-label="Sync contract employees" type="button"
+                        data-tooltip="請負社員データを同期 / Sincronizar empleados contrato"
+                        data-loading="同期中...">
                         <span class="btn-icon" aria-hidden="true">🔧</span>
+                        <span class="btn-text d-md-inline d-none">Ukeoi</span>
                         <span class="btn-spinner d-none"></span>
                     </button>
                     <button class="btn btn-glass" id="btn-export-pdf" onclick="App.reports.showExportModal()"
@@ -1762,6 +1773,77 @@
     </script>
 
     <script src="/static/js/app.js?v=20251222"></script>
+
+    <!-- UI Enhancements Module (Sprint 1, 2 & 3) -->
+    <script type="module">
+        import {
+            FormValidator,
+            LoadingState,
+            ConfirmDialog,
+            FocusTrap,
+            Tooltip,
+            ProgressIndicator,
+            initUIEnhancements
+        } from '/static/js/modules/ui-enhancements.js';
+
+        // Expose to global scope for use in App
+        window.UIEnhancements = {
+            FormValidator,
+            LoadingState,
+            ConfirmDialog,
+            FocusTrap,
+            Tooltip,
+            ProgressIndicator
+        };
+
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize tooltip system
+            Tooltip.init();
+
+            // Add tooltips to key buttons
+            const tooltips = {
+                'btn-sync-main': 'Excelから有給データを同期します / Sincronizar datos de vacaciones desde Excel',
+                'btn-sync-genzai': '派遣社員データを同期 / Sincronizar empleados dispatch',
+                'btn-sync-ukeoi': '請負社員データを同期 / Sincronizar empleados contrato',
+                'year-select': '年度を選択 / Seleccionar año fiscal',
+                'search-input': '名前または社員番号で検索 / Buscar por nombre o número'
+            };
+
+            Object.entries(tooltips).forEach(([id, text]) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.setAttribute('data-tooltip', text);
+                }
+            });
+
+            // Wrap destructive actions with confirmation dialogs
+            if (typeof App !== 'undefined' && App.data) {
+                // Store original reset methods if they exist
+                const originalMethods = {};
+
+                // Wrap any reset/delete methods with confirmation
+                const wrapWithConfirmation = (methodName, confirmMessage, dataType) => {
+                    if (App.data[methodName] && typeof App.data[methodName] === 'function') {
+                        originalMethods[methodName] = App.data[methodName].bind(App.data);
+                        App.data[methodName] = async function(...args) {
+                            const confirmed = await ConfirmDialog.confirmReset(dataType);
+                            if (confirmed) {
+                                return originalMethods[methodName](...args);
+                            }
+                        };
+                    }
+                };
+
+                // Apply to known destructive methods
+                wrapWithConfirmation('resetData', 'todos los datos de vacaciones');
+                wrapWithConfirmation('resetGenzai', 'los datos de empleados dispatch');
+                wrapWithConfirmation('resetUkeoi', 'los datos de empleados contrato');
+            }
+
+            console.log('✨ UI Enhancements v2.7 initialized');
+        });
+    </script>
 
     <!-- PWA Service Worker Registration & Offline Support -->
     <script type="module">
