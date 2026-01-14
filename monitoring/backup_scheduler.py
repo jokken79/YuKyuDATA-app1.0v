@@ -275,14 +275,109 @@ class BackupScheduler:
         logger.info("\n" + "=" * 70 + "\n")
 
     def _send_notification(self, subject: str, message: str):
-        """Send backup notification."""
+        """Send backup notification via email and/or Slack."""
         notifications = self.schedule_config.get('notifications', {})
 
         # Log notification
         logger.info(f"📧 Notification: {subject}")
         logger.info(f"   {message}")
 
-        # TODO: Implement email/Slack notifications
+        # Send Slack notification
+        slack_webhook = notifications.get('slack_webhook') or os.getenv('SLACK_WEBHOOK_URL')
+        if slack_webhook:
+            self._send_slack_notification(slack_webhook, subject, message)
+
+        # Send email notification
+        email_to = notifications.get('email_to') or os.getenv('NOTIFICATION_EMAIL')
+        if email_to:
+            self._send_email_notification(email_to, subject, message)
+
+    def _send_slack_notification(self, webhook_url: str, subject: str, message: str):
+        """Send notification to Slack webhook."""
+        try:
+            import urllib.request
+            import urllib.error
+
+            payload = json.dumps({
+                "text": f"*{subject}*\n{message}",
+                "blocks": [
+                    {
+                        "type": "header",
+                        "text": {"type": "plain_text", "text": f"🗄️ {subject}"}
+                    },
+                    {
+                        "type": "section",
+                        "text": {"type": "mrkdwn", "text": message}
+                    },
+                    {
+                        "type": "context",
+                        "elements": [
+                            {"type": "mrkdwn", "text": f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"}
+                        ]
+                    }
+                ]
+            }).encode('utf-8')
+
+            req = urllib.request.Request(
+                webhook_url,
+                data=payload,
+                headers={'Content-Type': 'application/json'}
+            )
+            urllib.request.urlopen(req, timeout=10)
+            logger.info("✅ Slack notification sent")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to send Slack notification: {e}")
+
+    def _send_email_notification(self, email_to: str, subject: str, message: str):
+        """Send notification via email using SMTP."""
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+
+            smtp_host = os.getenv('SMTP_HOST', 'localhost')
+            smtp_port = int(os.getenv('SMTP_PORT', '587'))
+            smtp_user = os.getenv('SMTP_USER', '')
+            smtp_password = os.getenv('SMTP_PASSWORD', '')
+            smtp_from = os.getenv('SMTP_FROM', 'yukyu-backup@localhost')
+
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = f"[YuKyu Backup] {subject}"
+            msg['From'] = smtp_from
+            msg['To'] = email_to
+
+            # Plain text version
+            text_content = f"{subject}\n\n{message}\n\nTimestamp: {datetime.now().isoformat()}"
+
+            # HTML version
+            html_content = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; padding: 20px;">
+                <h2 style="color: #2563eb;">🗄️ {subject}</h2>
+                <p style="font-size: 14px; color: #374151;">{message}</p>
+                <hr style="border: 1px solid #e5e7eb;">
+                <p style="font-size: 12px; color: #6b7280;">
+                    Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                </p>
+            </body>
+            </html>
+            """
+
+            msg.attach(MIMEText(text_content, 'plain'))
+            msg.attach(MIMEText(html_content, 'html'))
+
+            # Only send if SMTP is configured
+            if smtp_host != 'localhost' or smtp_user:
+                with smtplib.SMTP(smtp_host, smtp_port) as server:
+                    if smtp_user and smtp_password:
+                        server.starttls()
+                        server.login(smtp_user, smtp_password)
+                    server.sendmail(smtp_from, [email_to], msg.as_string())
+                logger.info(f"✅ Email notification sent to {email_to}")
+            else:
+                logger.info(f"ℹ️ Email notification skipped (SMTP not configured)")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to send email notification: {e}")
 
     def verify_backup_dependencies(self) -> bool:
         """Verify all backup dependencies are available."""
