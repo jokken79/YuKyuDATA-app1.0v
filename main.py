@@ -3420,11 +3420,22 @@ async def get_activity_report(days: int = 7):
 
 # === NOTIFICATIONS ENDPOINTS ===
 
-@app.get("/api/notifications")
-async def get_notifications(employee_num: str = None, unread_only: bool = False):
+@app.get("/api/notifications", tags=["Notifications"])
+async def get_notifications(
+    employee_num: str = None,
+    unread_only: bool = False,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Obtiene notificaciones del sistema.
     Las notificaciones incluyen alertas de compliance, solicitudes aprobadas/rechazadas, etc.
+
+    Args:
+        employee_num: Filtrar por número de empleado (opcional)
+        unread_only: Si es True, solo devuelve notificaciones no leídas
+
+    Returns:
+        Lista de notificaciones con estado de lectura
     """
     try:
         from agents.compliance import get_compliance
@@ -3433,10 +3444,24 @@ async def get_notifications(employee_num: str = None, unread_only: bool = False)
         # Obtener alertas como notificaciones
         alerts = compliance.get_active_alerts()
 
+        # Obtener IDs de notificaciones leídas para este usuario
+        read_ids = database.get_read_notification_ids(user.username)
+
         notifications = []
+        unread_count = 0
+
         for alert in alerts:
             if employee_num and alert.employee_num != employee_num:
                 continue
+
+            is_read = alert.alert_id in read_ids
+
+            # Filtrar por no leídas si se solicita
+            if unread_only and is_read:
+                continue
+
+            if not is_read:
+                unread_count += 1
 
             notifications.append({
                 "id": alert.alert_id,
@@ -3446,13 +3471,108 @@ async def get_notifications(employee_num: str = None, unread_only: bool = False)
                 "message": alert.message_ja,
                 "employee_num": alert.employee_num,
                 "created_at": alert.created_at,
-                "is_read": False  # Por implementar
+                "is_read": is_read
             })
 
         return {
             "status": "success",
             "count": len(notifications),
+            "unread_count": unread_count,
             "notifications": notifications
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class MarkNotificationReadRequest(BaseModel):
+    """Request body para marcar notificación como leída."""
+    notification_id: str = Field(..., description="ID de la notificación a marcar")
+
+
+class MarkAllNotificationsReadRequest(BaseModel):
+    """Request body para marcar múltiples notificaciones como leídas."""
+    notification_ids: List[str] = Field(..., description="Lista de IDs de notificaciones")
+
+
+@app.post("/api/notifications/{notification_id}/mark-read", tags=["Notifications"])
+async def mark_notification_as_read(
+    notification_id: str,
+    user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Marca una notificación específica como leída para el usuario actual.
+
+    Args:
+        notification_id: ID de la notificación
+
+    Returns:
+        Estado de la operación
+    """
+    try:
+        was_unread = database.mark_notification_read(notification_id, user.username)
+        return {
+            "status": "success",
+            "notification_id": notification_id,
+            "was_unread": was_unread,
+            "message": "Notification marked as read" if was_unread else "Notification was already read"
+        }
+    except Exception as e:
+        logger.error(f"Error marking notification as read: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/notifications/mark-all-read", tags=["Notifications"])
+async def mark_all_notifications_as_read(
+    request: MarkAllNotificationsReadRequest,
+    user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Marca múltiples notificaciones como leídas para el usuario actual.
+
+    Args:
+        request: Lista de IDs de notificaciones a marcar
+
+    Returns:
+        Número de notificaciones marcadas
+    """
+    try:
+        marked_count = database.mark_all_notifications_read(user.username, request.notification_ids)
+        return {
+            "status": "success",
+            "marked_count": marked_count,
+            "total_requested": len(request.notification_ids),
+            "message": f"Marked {marked_count} notifications as read"
+        }
+    except Exception as e:
+        logger.error(f"Error marking all notifications as read: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/notifications/unread-count", tags=["Notifications"])
+async def get_unread_notification_count(
+    user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Obtiene el número de notificaciones no leídas para el usuario actual.
+
+    Returns:
+        Conteo de notificaciones no leídas
+    """
+    try:
+        from agents.compliance import get_compliance
+        compliance = get_compliance()
+
+        # Obtener todas las alertas
+        alerts = compliance.get_active_alerts()
+        all_ids = [alert.alert_id for alert in alerts]
+
+        # Contar no leídas
+        unread_count = database.get_unread_count(user.username, all_ids)
+
+        return {
+            "status": "success",
+            "unread_count": unread_count,
+            "total_count": len(all_ids)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
