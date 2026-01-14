@@ -6,9 +6,9 @@ Claude debe leer este archivo al inicio de cada sesión para recordar contexto i
 ---
 
 ## Última Actualización
-- **Fecha**: 2026-01-11
-- **Sesión**: Security & Testing v2.4 - XSS, CSRF, Tests, Performance
-- **Commits**: 6 (v2.1 + v2.2 + v2.3 + v2.4)
+- **Fecha**: 2026-01-14
+- **Sesión**: TODO Review & Test Improvements v2.5
+- **Commits**: 7 (v2.1 + v2.2 + v2.3 + v2.4 + v2.5)
 
 ---
 
@@ -34,6 +34,28 @@ Claude debe leer este archivo al inicio de cada sesión para recordar contexto i
 ---
 
 ## Features Implementadas (Historial)
+
+### v2.5 (2026-01-14) - TODO Review & Test Improvements
+**5 TODOs corregidos + Análisis completo de testing y CI/CD:**
+
+| Feature | Archivos | Descripción |
+|---------|----------|-------------|
+| CSP Hardening | `config.security.py` | `unsafe-inline` removido, usa `strict-dynamic` |
+| Backup Notifications | `monitoring/backup_scheduler.py` | Email/Slack notifications implementadas |
+| Smart Test Assertions | `agents/testing.py` | Assertions específicas por tipo de función |
+| New Employees Count | `agents/documentor.py` | Conteo de empleados nuevos en reportes |
+| Leave Requests Module | `static/js/modules/leave-requests-manager.js` | Módulo completo de solicitudes |
+
+**Análisis de Testing realizado:**
+- 30+ endpoints sin tests documentados
+- Módulos críticos sin cobertura: LIFO Deduction, Sanitizer, Excel parsing
+- Recomendación: Aumentar coverage de 50% a 80%
+
+**Mejoras CI/CD recomendadas:**
+- E2E tests con Playwright
+- Performance benchmarks
+- Dependabot auto-merge
+- Release automation
 
 ### v2.4 (2026-01-11) - Security & Testing
 **8 mejoras de seguridad y testing implementadas:**
@@ -200,11 +222,15 @@ python scripts/sync-issues.py     # Sincronizar TODOs a Issues
 5. [x] **Modo offline** - PWA con service worker (v2.3)
 6. [x] **Reportes PDF** - Generación automática (v2.3)
 
-### Nuevas sugerencias:
-7. [ ] **Mobile-first refactor** - Mejor experiencia móvil
-8. [ ] **Dashboard analytics** - Gráficos avanzados con comparativas
-9. [ ] **API Documentation** - Swagger/OpenAPI docs
-10. [ ] **Batch imports** - Importar múltiples Excel a la vez
+### Nuevas sugerencias (v2.5):
+7. [ ] **LIFO Deduction Tests** - Tests críticos para deducción de días (PRIORIDAD ALTA)
+8. [ ] **Sanitizer Tests** - Tests de prevención XSS para seguridad (PRIORIDAD ALTA)
+9. [ ] **E2E Tests Playwright** - Flujos críticos automatizados
+10. [ ] **GitHub Actions E2E** - Workflow para e2e-tests.yml
+11. [ ] **Coverage 80%** - Aumentar threshold en ci.yml
+12. [ ] **Dockerfile.secure** - Crear imagen segura para producción
+13. [ ] **Mobile-first refactor** - Mejor experiencia móvil
+14. [ ] **API Documentation** - Swagger/OpenAPI docs
 
 ---
 
@@ -262,8 +288,8 @@ python scripts/sync-issues.py     # Sincronizar TODOs a Issues
 
 | Date | Hash | Message |
 |------|------|---------|
+| 2026-01-14 | TBD | feat: Fix 5 TODOs, improve testing & CI/CD analysis (v2.5) |
 | 2026-01-11 | 8023305 | feat: Security, performance & testing improvements (v2.4) |
 | 2026-01-10 | c07a85e | chore: Mark audit log and bulk edit TODOs as completed |
 | 2026-01-10 | 3167930 | docs: Update CLAUDE_MEMORY.md with v2.3 session summary |
 | 2026-01-10 | 7fb8bfe | feat: Add notifications, i18n, PWA offline, PDF reports, E2E tests |
-| 2026-01-10 | 11b1381 | fix: Correct GZipMiddleware import and enable gzip compression |

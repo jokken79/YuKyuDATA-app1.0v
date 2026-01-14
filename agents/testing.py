@@ -528,6 +528,65 @@ class TestingAgent:
 
         return suggestions
 
+    def _generate_specific_assertions(self, func: FunctionInfo) -> str:
+        """Generate specific assertions based on function name and docstring patterns."""
+        assertions = []
+        name_lower = func.name.lower()
+        docstring = (func.docstring or "").lower()
+
+        # Analyze function name to determine likely return type
+        if any(x in name_lower for x in ['get_', 'fetch_', 'load_', 'read_']):
+            # Likely returns data
+            assertions.append("    assert result is not None")
+            if 'list' in name_lower or 'all' in name_lower or name_lower.endswith('s'):
+                assertions.append("    assert isinstance(result, (list, tuple))")
+                assertions.append("    # Verify list contents if not empty")
+                assertions.append("    # assert len(result) >= 0")
+            elif 'dict' in docstring or 'mapping' in docstring:
+                assertions.append("    assert isinstance(result, dict)")
+                assertions.append("    # Verify expected keys exist")
+                assertions.append("    # assert 'id' in result")
+            else:
+                assertions.append("    # Verify result type and content")
+
+        elif any(x in name_lower for x in ['calculate_', 'compute_', 'count_']):
+            # Likely returns a number
+            assertions.append("    assert result is not None")
+            assertions.append("    assert isinstance(result, (int, float))")
+            assertions.append("    assert result >= 0  # Adjust based on expected range")
+
+        elif any(x in name_lower for x in ['check_', 'is_', 'has_', 'can_', 'validate_']):
+            # Likely returns boolean
+            assertions.append("    assert isinstance(result, bool)")
+            assertions.append("    # Test both True and False cases")
+
+        elif any(x in name_lower for x in ['create_', 'save_', 'insert_', 'add_']):
+            # Likely returns created entity or ID
+            assertions.append("    assert result is not None")
+            assertions.append("    # Verify entity was created")
+            assertions.append("    # assert 'id' in result or isinstance(result, int)")
+
+        elif any(x in name_lower for x in ['update_', 'modify_', 'set_']):
+            # Likely returns success indicator or updated entity
+            assertions.append("    assert result is not None")
+            assertions.append("    # Verify update was successful")
+
+        elif any(x in name_lower for x in ['delete_', 'remove_', 'clear_']):
+            # Likely returns success indicator
+            assertions.append("    assert result is True or result is None")
+
+        elif any(x in name_lower for x in ['parse_', 'extract_', 'process_']):
+            # Likely returns processed data
+            assertions.append("    assert result is not None")
+            assertions.append("    # Verify parsed/processed output structure")
+
+        else:
+            # Default assertions
+            assertions.append("    assert result is not None")
+            assertions.append("    # Add specific assertions based on expected return type")
+
+        return "\n".join(assertions)
+
     def _generate_test_for_function(self, func: FunctionInfo) -> Optional[TestSuggestion]:
         """Genera una sugerencia de test para una función."""
         # Determinar tipo de test
@@ -541,6 +600,9 @@ class TestingAgent:
         params_str = ", ".join(func.params) if func.params else ""
         mock_params = ", ".join([f"mock_{p}" for p in func.params]) if func.params else ""
 
+        # Generate type-specific assertions based on function analysis
+        specific_assertions = self._generate_specific_assertions(func)
+
         example = f'''
 def test_{func.name}_success():
     """Test that {func.name} works correctly."""
@@ -551,14 +613,23 @@ def test_{func.name}_success():
     result = {func.name}({params_str})
 
     # Assert
-    assert result is not None
-    # TODO: Add specific assertions
+{specific_assertions}
 
 
 def test_{func.name}_edge_case():
     """Test {func.name} with edge case."""
-    # Test con valores límite o casos especiales
+    # Test with boundary values and special cases
+    # - Empty inputs
+    # - Maximum/minimum values
+    # - None/null handling
     pass
+
+
+def test_{func.name}_error_handling():
+    """Test {func.name} error handling."""
+    # Test with invalid inputs to verify proper error handling
+    with pytest.raises(Exception):
+        {func.name}(None)  # or other invalid input
 '''
 
         priority = "high" if func.complexity > 5 else "medium" if func.complexity > 2 else "low"

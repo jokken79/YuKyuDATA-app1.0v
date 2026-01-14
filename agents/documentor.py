@@ -422,6 +422,71 @@ class DocumentorAgent:
         start = (datetime.now() - timedelta(hours=hours)).isoformat()
         return self.search_history(start_date=start)
 
+    def _count_new_employees(self, conn: sqlite3.Connection, start_date: str, end_date: str) -> int:
+        """
+        Count employees hired within a given period.
+
+        Args:
+            conn: SQLite connection
+            start_date: Period start (ISO format)
+            end_date: Period end (ISO format)
+
+        Returns:
+            Number of new employees hired in the period
+        """
+        try:
+            # Check if hire_date column exists in genzai and ukeoi tables
+            # Count from both tables (dispatch and contract employees)
+            total = 0
+
+            # Count from genzai (dispatch employees)
+            try:
+                genzai_count = conn.execute('''
+                    SELECT COUNT(*) FROM genzai
+                    WHERE hire_date IS NOT NULL
+                    AND hire_date >= ?
+                    AND hire_date <= ?
+                    AND (leave_date IS NULL OR leave_date > ?)
+                ''', (start_date, end_date, start_date)).fetchone()[0]
+                total += genzai_count
+            except sqlite3.OperationalError:
+                # Table may not exist or have hire_date column
+                pass
+
+            # Count from ukeoi (contract employees)
+            try:
+                ukeoi_count = conn.execute('''
+                    SELECT COUNT(*) FROM ukeoi
+                    WHERE hire_date IS NOT NULL
+                    AND hire_date >= ?
+                    AND hire_date <= ?
+                    AND (leave_date IS NULL OR leave_date > ?)
+                ''', (start_date, end_date, start_date)).fetchone()[0]
+                total += ukeoi_count
+            except sqlite3.OperationalError:
+                # Table may not exist or have hire_date column
+                pass
+
+            # Count from staff (office employees)
+            try:
+                staff_count = conn.execute('''
+                    SELECT COUNT(*) FROM staff
+                    WHERE hire_date IS NOT NULL
+                    AND hire_date >= ?
+                    AND hire_date <= ?
+                    AND (leave_date IS NULL OR leave_date > ?)
+                ''', (start_date, end_date, start_date)).fetchone()[0]
+                total += staff_count
+            except sqlite3.OperationalError:
+                # Table may not exist or have hire_date column
+                pass
+
+            return total
+
+        except Exception as e:
+            logger.warning(f"Error counting new employees: {e}")
+            return 0
+
     # ========================================
     # REPORTES DE ACTIVIDAD
     # ========================================
@@ -481,6 +546,9 @@ class DocumentorAgent:
 
             top_actions = [{"action": r[0], "count": r[1]} for r in top_actions_rows]
 
+            # Count new employees hired in this period
+            new_employees = self._count_new_employees(conn, start_date, end_date)
+
             conn.close()
 
             return ActivityReport(
@@ -490,7 +558,7 @@ class DocumentorAgent:
                 total_requests=total_requests,
                 approved_requests=approved,
                 rejected_requests=rejected,
-                new_employees=0,  # TODO: implementar
+                new_employees=new_employees,
                 top_actions=top_actions
             )
 

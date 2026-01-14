@@ -121,9 +121,9 @@ class SecuritySettings(BaseSettings):
         "X-XSS-Protection": "1; mode=block",
         "Content-Security-Policy": (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "  # TODO: Remove unsafe-inline
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data:; "
+            "script-src 'self' 'strict-dynamic'; "  # Uses strict-dynamic for ES6 modules (safer than unsafe-inline)
+            "style-src 'self' 'unsafe-inline'; "  # Styles still need inline for dynamic theming
+            "img-src 'self' data: blob:; "
             "font-src 'self'; "
             "connect-src 'self'; "
             "frame-ancestors 'none'; "

@@ -12,6 +12,7 @@ import { DataService } from './modules/data-service.js';
 import { Visualizations, ChartManager } from './modules/chart-manager.js';
 import UIManager from './modules/ui-manager.js';
 import { ExportService } from './modules/export-service.js';
+import { LeaveRequestsManager } from './modules/leave-requests-manager.js';
 
 // ========================================
 // APLICACIÓN PRINCIPAL
@@ -237,6 +238,13 @@ const App = {
         this.ui._manager = new UIManager(this.state, this.config, this.visualizations, this.charts._manager);
         this.export = new ExportService();
 
+        // Initialize Leave Requests Manager with UI callbacks
+        this.requests._manager.init({
+            showToast: (type, msg, duration) => this.ui.showToast(type, msg, duration),
+            showLoading: () => this.ui.showLoading(),
+            hideLoading: () => this.ui.hideLoading()
+        });
+
         this.ui.showLoading();
 
         // Inicializar tema
@@ -380,18 +388,39 @@ const App = {
     // - employeeTypes (módulo de tipos de empleados)
     // - animations (módulo de animaciones GSAP)
 
-    // Placeholder para módulos no refactorizados
+    // Leave Requests Module - Fully implemented via LeaveRequestsManager
     requests: {
-        // TODO: Implementar o mantener del original
-        selectedEmployee: null,
-        loadFactories() { console.warn('requests.loadFactories not implemented'); },
-        loadPending() { console.warn('requests.loadPending not implemented'); },
-        loadHistory() { console.warn('requests.loadHistory not implemented'); },
-        selectEmployee(id) { console.warn('requests.selectEmployee not implemented:', id); },
-        approve(id) { console.warn('requests.approve not implemented:', id); },
-        reject(id) { console.warn('requests.reject not implemented:', id); },
-        cancel(id) { console.warn('requests.cancel not implemented:', id); },
-        revert(id) { console.warn('requests.revert not implemented:', id); }
+        _manager: LeaveRequestsManager,
+        get selectedEmployee() { return this._manager.selectedEmployee; },
+        set selectedEmployee(val) { this._manager.selectedEmployee = val; },
+
+        async loadFactories() {
+            return this._manager.loadFactories();
+        },
+        async loadPending() {
+            return this._manager.loadPending();
+        },
+        async loadHistory(status = null) {
+            return this._manager.loadHistory(status);
+        },
+        async selectEmployee(id) {
+            return this._manager.selectEmployee(id);
+        },
+        async approve(id) {
+            return this._manager.approve(id);
+        },
+        async reject(id, reason) {
+            return this._manager.reject(id, reason);
+        },
+        async cancel(id) {
+            return this._manager.cancel(id);
+        },
+        async revert(id) {
+            return this._manager.revert(id);
+        },
+        async create(requestData) {
+            return this._manager.create(requestData);
+        }
     },
 
     calendar: {
