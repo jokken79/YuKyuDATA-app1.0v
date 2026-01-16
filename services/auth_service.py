@@ -5,11 +5,11 @@ Servicio mejorado de autenticación con OAuth2, refresh tokens y seguridad robus
 
 import jwt
 import secrets
+import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 from fastapi import HTTPException, status
 from pydantic import BaseModel
-from passlib.context import CryptContext
 
 # Configuración de seguridad
 SECRET_KEY = secrets.token_urlsafe(32)  # Generar key aleatoria
@@ -38,9 +38,6 @@ class AuthService:
     """Servicio de autenticación con OAuth2 y refresh tokens"""
 
     def __init__(self):
-        # Context para hashing de contraseñas
-        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
         # Almacén de refresh tokens válidos (en producción usar Redis)
         self.active_refresh_tokens: Dict[str, str] = {}  # token -> username
 
@@ -51,7 +48,7 @@ class AuthService:
         self.users_db = {
             "admin": {
                 "username": "admin",
-                "hashed_password": self.pwd_context.hash("admin123"),  # Hash en vez de plaintext
+                "hashed_password": self.get_password_hash("admin123"),
                 "email": "admin@yukyu.com",
                 "full_name": "Administrator",
                 "role": "admin",
@@ -59,7 +56,7 @@ class AuthService:
             },
             "manager": {
                 "username": "manager",
-                "hashed_password": self.pwd_context.hash("manager123"),
+                "hashed_password": self.get_password_hash("manager123"),
                 "email": "manager@yukyu.com",
                 "full_name": "Manager User",
                 "role": "manager",
@@ -69,11 +66,11 @@ class AuthService:
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verificar contraseña contra hash"""
-        return self.pwd_context.verify(plain_password, hashed_password)
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
     def get_password_hash(self, password: str) -> str:
         """Generar hash de contraseña"""
-        return self.pwd_context.hash(password)
+        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     def authenticate_user(self, username: str, password: str) -> Optional[dict]:
         """

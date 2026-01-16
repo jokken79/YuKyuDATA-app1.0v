@@ -21,7 +21,7 @@ class PaginationParams(BaseModel):
     page: int = Field(1, ge=1, description="Page number (1-indexed)")
     per_page: int = Field(20, ge=1, le=100, description="Items per page (max 100)")
     sort_by: Optional[str] = Field(None, description="Sort column")
-    sort_order: Optional[str] = Field("asc", regex="^(asc|desc)$", description="Sort order")
+    sort_order: Optional[str] = Field("asc", pattern="^(asc|desc)$", description="Sort order")
 
     class Config:
         json_schema_extra = {

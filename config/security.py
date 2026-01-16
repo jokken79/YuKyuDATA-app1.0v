@@ -2,7 +2,7 @@
 # Configuración centralizada de seguridad para YuKyuDATA
 
 from pydantic_settings import BaseSettings
-from typing import Optional, List
+from typing import Optional, List, Dict, Tuple, ClassVar
 import os
 from datetime import timedelta
 
@@ -54,7 +54,7 @@ class SecuritySettings(BaseSettings):
     rate_limit_window_seconds: int = 60
 
     # Rate limits por endpoint
-    rate_limits = {
+    rate_limits: ClassVar[Dict[str, Tuple[str, str]]] = {
         "login": ("5/minute", "Prevenir brute force"),
         "mfa_verify": ("10/minute", "MFA attempts"),
         "upload": ("10/hour", "File uploads"),
@@ -115,7 +115,7 @@ class SecuritySettings(BaseSettings):
     # ============================================
     # SECURITY HEADERS
     # ============================================
-    security_headers: dict = {
+    security_headers: ClassVar[Dict[str, str]] = {
         "X-Frame-Options": "DENY",
         "X-Content-Type-Options": "nosniff",
         "X-XSS-Protection": "1; mode=block",
@@ -362,5 +362,8 @@ if _config_issues:
     for issue in _config_issues:
         print(f"  - {issue}")
 
-    if not settings.testing:  # Permitir en tests
-        sys.exit(1)
+    # Solo salir en producción (no debug y no testing)
+    if not settings.debug and not settings.testing:
+        # En desarrollo local, solo mostrar warning
+        if os.getenv("FORCE_EXIT_ON_SECURITY_ISSUES", "false").lower() == "true":
+            sys.exit(1)

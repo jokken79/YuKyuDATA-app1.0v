@@ -200,17 +200,11 @@ def init_db():
         c.execute('CREATE INDEX IF NOT EXISTS idx_lr_dates ON leave_requests(start_date, end_date)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_lr_employee_date ON leave_requests(employee_num, start_date)')
 
-        # Indexes for genzai/ukeoi tables
+        # Indexes for genzai/ukeoi tables (basic - columns always exist)
         c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_emp ON genzai(employee_num)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_status ON genzai(status)')
-        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_hire_date ON genzai(hire_date)')
-        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_leave_date ON genzai(leave_date)')
-        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_hire_leave ON genzai(hire_date, leave_date)')
-        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_status_hire ON genzai(status, hire_date)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_emp ON ukeoi(employee_num)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_status ON ukeoi(status)')
-        c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_hire_date ON ukeoi(hire_date)')
-        c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_leave_date ON ukeoi(leave_date)')
 
         # ============================================
         # SCHEMA MIGRATIONS (add columns if not exist)
@@ -239,6 +233,14 @@ def init_db():
             c.execute("ALTER TABLE ukeoi ADD COLUMN leave_date TEXT")
         except sqlite3.OperationalError:
             pass
+
+        # Create indexes on hire_date/leave_date (after columns are added)
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_hire_date ON genzai(hire_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_leave_date ON genzai(leave_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_hire_leave ON genzai(hire_date, leave_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_status_hire ON genzai(status, hire_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_hire_date ON ukeoi(hire_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_leave_date ON ukeoi(leave_date)')
 
         # Create Staff table if not exists
         c.execute('''

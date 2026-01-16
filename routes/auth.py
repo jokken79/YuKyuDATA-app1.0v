@@ -28,7 +28,7 @@ class RegisterRequest(BaseModel):
     """Request body para registro de usuario"""
     username: str = Field(..., min_length=3, max_length=50)
     password: str = Field(..., min_length=8, description="Mínimo 8 caracteres")
-    email: str = Field(..., regex=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+    email: str = Field(..., pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
     full_name: str = Field(..., min_length=1)
 
 
