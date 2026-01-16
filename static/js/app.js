@@ -4661,8 +4661,19 @@ const App = {
                 const usageRate = e.granted > 0 ? Math.round((e.used / e.granted) * 100) : 0;
                 const balanceClass = balance < 0 ? 'badge-critical' : balance < 5 ? 'badge-danger' : 'badge-success';
 
+                // Check if employee is selected
+                const isSelected = App.bulkEdit && App.bulkEdit.selectedEmployees.has(e.employee_num);
+
                 return `
                 <tr class="employee-row" data-employee-num="${empNum}" style="cursor: pointer;">
+                    <td class="table-checkbox" onclick="event.stopPropagation();">
+                        <input type="checkbox"
+                            class="employee-select-checkbox"
+                            data-employee-num="${empNum}"
+                            ${isSelected ? 'checked' : ''}
+                            onchange="App.bulkEdit.toggleEmployee('${empNum}', this.checked)"
+                            title="選択">
+                    </td>
                     <td><div class="font-bold">${empNum}</div></td>
                     <td><div class="font-bold text-white">${name}</div></td>
                     <td><span class="badge ${typeBadge}">${typeLabel}</span></td>

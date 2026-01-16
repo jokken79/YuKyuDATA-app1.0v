@@ -18,7 +18,8 @@
 
 /* Increase sidebar width for better text visibility */
 :root {
-  --sidebar-width: 260px; /* Increased from 220px */
+  --sidebar-width: 260px;
+  /* Increased from 220px */
 }
 
 /* Sidebar container adjustments */
@@ -201,7 +202,7 @@
   background: linear-gradient(135deg, #1e293b, #0f172a);
   border: 1px solid rgba(6, 182, 212, 0.4);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   color: #fbbf24;
 }
 
@@ -382,8 +383,13 @@ header .btn .btn-text {
 }
 
 @keyframes progressShimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* Hide when not loading */
@@ -404,10 +410,9 @@ header .btn .btn-text {
 .stat-card.loading .stat-value,
 .stat-card.loading .stat-label {
   background: linear-gradient(90deg,
-    rgba(255, 255, 255, 0.05) 25%,
-    rgba(255, 255, 255, 0.1) 50%,
-    rgba(255, 255, 255, 0.05) 75%
-  );
+      rgba(255, 255, 255, 0.05) 25%,
+      rgba(255, 255, 255, 0.1) 50%,
+      rgba(255, 255, 255, 0.05) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 4px;
@@ -415,8 +420,13 @@ header .btn .btn-text {
 }
 
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* Progress rings - smooth animation */
@@ -486,7 +496,7 @@ header .btn .btn-text {
   .nav-item .nav-text,
   .nav-group-label,
   .nav-badge,
-  .logo > div {
+  .logo>div {
     display: none;
   }
 
@@ -522,7 +532,7 @@ header .btn .btn-text {
   .sidebar.is-open .nav-item .nav-text,
   .sidebar.is-open .nav-group-label,
   .sidebar.is-open .nav-badge,
-  .sidebar.is-open .logo > div {
+  .sidebar.is-open .logo>div {
     display: block;
   }
 
@@ -592,10 +602,116 @@ header .btn .btn-text {
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
+
   .progress-ring__circle,
   .global-progress .progress-bar,
   .theme-toggle-thumb {
     transition: none;
     animation: none;
   }
+}
+
+/* ============================================
+ * CRITICAL FIXES - SPRINT 3 (REVISED)
+ * ============================================ */
+
+/* 1. Sidebar Text Visibility - Force High Contrast */
+body[data-theme="dark"] .sidebar .nav-item .nav-text,
+body[data-theme="dark"] .sidebar .nav-link .nav-text,
+[data-theme="dark"] .nav-text {
+  color: #ffffff !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: inline-block !important;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  -webkit-text-fill-color: #ffffff !important;
+  /* Override any gradient text */
+}
+
+/* Ensure no parent is hiding it */
+.sidebar.is-open .nav-text {
+  display: inline-block !important;
+}
+
+[data-theme="dark"] .sidebar .nav-group-label {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+/* 2. Scrollbar Fixes - Remove the "Blue Line" */
+/* Global scrollbar refinement */
+*::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+  background-color: transparent !important;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  margin: 2px 0;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(6, 182, 212, 0.2) !important;
+  /* Very subtle cyan */
+  border-radius: 10px;
+  border: 1px solid transparent !important;
+  transition: background-color 0.3s;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(6, 182, 212, 0.5) !important;
+}
+
+/* 3. Checkbox Styling - Fix "White Squares" */
+input[type="checkbox"].employee-select-checkbox,
+.table-checkbox input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  background: rgba(30, 41, 59, 0.8) !important;
+  /* Dark background */
+  border: 2px solid rgba(148, 163, 184, 0.5) !important;
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  vertical-align: middle;
+  outline: none;
+}
+
+input[type="checkbox"].employee-select-checkbox:checked,
+.table-checkbox input[type="checkbox"]:checked {
+  background: #06b6d4 !important;
+  /* Cyan primary */
+  border-color: #06b6d4 !important;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.5);
+}
+
+input[type="checkbox"].employee-select-checkbox:checked::after,
+.table-checkbox input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  color: white;
+  font-size: 13px;
+  font-weight: 800;
+  left: 50%;
+  top: 48%;
+  transform: translate(-50%, -50%);
+  line-height: 1;
+}
+
+input[type="checkbox"]:hover {
+  border-color: #06b6d4 !important;
+}
+
+/* Ensure table Alignment */
+.table-checkbox {
+  width: 40px;
+  text-align: center;
+  padding-left: 1rem !important;
 }
