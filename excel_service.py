@@ -3,6 +3,8 @@ from openpyxl import load_workbook
 import os
 import re
 import logging
+import pandas as pd
+import numpy as np
 from datetime import datetime
 from typing import Dict, List, Tuple, Any, Optional
 
@@ -686,215 +688,166 @@ def parse_yukyu_usage_details(file_path):
 
 def parse_yukyu_usage_details_enhanced(file_path: str) -> Dict[str, Any]:
     """
-    Enhanced version of parse_yukyu_usage_details with:
+    Enhanced version of parse_yukyu_usage_details using Pandas for robustness.
     - Automatic half-day detection (半, 0.5, 午前, 午後)
     - Hourly leave detection (2h, 2時間)
     - Comment handling
-    - Comprehensive validation and reporting
-
+    - Robust date parsing
+    
     Args:
         file_path: Path to the Excel file
-
+        
     Returns:
-        Dict with keys:
-        - 'data': List of parsed usage details
-        - 'warnings': List of warning messages (non-fatal issues)
-        - 'errors': List of error messages (parsing failures)
-        - 'summary': Dict with import statistics
+        Dict with keys: data, warnings, errors, summary
     """
-    logger.info(f"Starting enhanced parsing of: {file_path}")
+    logger.info(f"Starting enhanced parsing (Pandas) of: {file_path}")
+    
+    result = {
+        'data': [],
+        'warnings': [],
+        'errors': [],
+        'summary': {
+            'total_rows_processed': 0,
+            'total_dates_parsed': 0,
+            'half_day_count': 0,
+            'hourly_count': 0,
+            'full_day_count': 0
+        }
+    }
 
     if not os.path.exists(file_path):
-        logger.error(f"File not found: {file_path}")
-        return {
-            'data': [],
-            'warnings': [],
-            'errors': [f"File not found: {file_path}"],
-            'summary': {
-                'total_rows_processed': 0,
-                'total_dates_parsed': 0,
-                'dates_ignored': 0,
-                'half_day_count': 0,
-                'hourly_count': 0,
-                'full_day_count': 0
-            }
-        }
+        result['errors'].append(f"File not found: {file_path}")
+        return result
 
     try:
-        wb = load_workbook(file_path, data_only=True)
-    except Exception as e:
-        logger.error(f"Failed to open workbook: {e}")
-        return {
-            'data': [],
-            'warnings': [],
-            'errors': [f"Failed to open workbook: {str(e)}"],
-            'summary': {
-                'total_rows_processed': 0,
-                'total_dates_parsed': 0,
-                'dates_ignored': 0,
-                'half_day_count': 0,
-                'hourly_count': 0,
-                'full_day_count': 0
-            }
-        }
+        # Determine sheet name
+        xl = pd.ExcelFile(file_path)
+        sheet_name = 0
+        if '作業者データ　有給' in xl.sheet_names:
+            sheet_name = '作業者データ　有給'
+            logger.info("Targeting sheet: 作業者データ　有給")
+        else:
+            logger.info(f"Targeting first sheet: {xl.sheet_names[0]}")
 
-    sheet = wb.active
-    usage_details = []
-    warnings = []
-    errors = []
-
-    # Statistics
-    stats = {
-        'total_rows_processed': 0,
-        'total_dates_parsed': 0,
-        'dates_ignored': 0,
-        'half_day_count': 0,
-        'hourly_count': 0,
-        'full_day_count': 0,
-        'cells_with_comments': 0,
-        'invalid_dates': 0
-    }
-
-    # Column configuration
-    header_row_idx = 5
-    emp_num_col = 3   # Column C: 社員番号
-    name_col = 5      # Column E: 氏名
-    date_start_col = 18  # Column R
-    date_end_col = 57    # Column BE
-
-    logger.info(f"Processing rows from {header_row_idx + 1} to {sheet.max_row}")
-
-    # Process each data row
-    for row_idx in range(header_row_idx + 1, sheet.max_row + 1):
-        # Get employee info
-        emp_num_cell = sheet.cell(row=row_idx, column=emp_num_col)
-        name_cell = sheet.cell(row=row_idx, column=name_col)
-
-        emp_num = emp_num_cell.value
-        name = name_cell.value
-
-        # Skip if no employee number or name
-        if not emp_num or not name:
-            continue
-
-        stats['total_rows_processed'] += 1
-        emp_num = str(emp_num).strip()
-        name = str(name).strip()
-
-        # Process date columns
-        for col_idx in range(date_start_col, date_end_col + 1):
-            cell = sheet.cell(row=row_idx, column=col_idx)
-            cell_value = cell.value
-
-            # Skip empty cells
-            if cell_value is None:
-                continue
-
-            # Check for comments (openpyxl stores them in cell.comment)
-            has_comment = False
-            comment_text = ""
-            if hasattr(cell, 'comment') and cell.comment:
-                has_comment = True
-                comment_text = str(cell.comment.text) if cell.comment.text else ""
-                stats['cells_with_comments'] += 1
-                warnings.append({
-                    'row': row_idx,
-                    'column': col_idx,
-                    'employee': emp_num,
-                    'type': 'comment',
-                    'message': f"Cell has comment: {comment_text[:50]}...",
-                    'cell_value': str(cell_value)
-                })
-                logger.warning(f"Row {row_idx}, Col {col_idx}: Cell has comment for employee {emp_num}")
-
-            # Detect leave type BEFORE parsing date
-            leave_type, days_used = detect_leave_type(cell_value)
-
-            # Try to parse the date
-            parsed_date = parse_date_from_cell(cell_value)
-
-            # Validate the parsed date
-            if parsed_date is None:
-                # Could not parse - check if it looks like it should be a date
-                cell_str = str(cell_value).strip()
-
-                # Check if it contains date-like patterns but failed to parse
-                if re.search(r'\d+[-/]\d+[-/]\d+|\d+年\d+月\d+日', cell_str):
-                    stats['invalid_dates'] += 1
-                    warnings.append({
-                        'row': row_idx,
-                        'column': col_idx,
-                        'employee': emp_num,
-                        'type': 'parse_failure',
-                        'message': f"Could not parse date-like value: {cell_str}",
-                        'cell_value': cell_str
-                    })
-                    logger.warning(f"Row {row_idx}, Col {col_idx}: Failed to parse date-like value: {cell_str}")
-                else:
-                    # Doesn't look like a date at all
-                    stats['dates_ignored'] += 1
-                continue
-
-            if not is_valid_date_for_yukyu(parsed_date):
-                stats['invalid_dates'] += 1
-                warnings.append({
-                    'row': row_idx,
-                    'column': col_idx,
-                    'employee': emp_num,
-                    'type': 'invalid_date',
-                    'message': f"Date out of valid range: {parsed_date}",
-                    'cell_value': str(cell_value)
-                })
-                logger.warning(f"Row {row_idx}, Col {col_idx}: Date out of range: {parsed_date}")
-                continue
-
-            # Successfully parsed - add to results
-            use_date = parsed_date.strftime('%Y-%m-%d')
-            year = parsed_date.year
-            month = parsed_date.month
-
-            usage_details.append({
-                'employee_num': emp_num,
-                'name': name,
-                'use_date': use_date,
-                'year': year,
-                'month': month,
-                'days_used': days_used,
-                'leave_type': leave_type,
-                'has_comment': has_comment,
-                'raw_value': str(cell_value)[:100]  # Keep first 100 chars for debugging
-            })
-
-            stats['total_dates_parsed'] += 1
-
-            # Update type-specific counters
-            if leave_type in ('half_am', 'half_pm'):
-                stats['half_day_count'] += 1
-            elif leave_type == 'hourly':
-                stats['hourly_count'] += 1
+        # Read Excel with Pandas
+        # Header is usually row 5 (0-indexed = 4)
+        df = pd.read_excel(file_path, sheet_name=sheet_name, header=4)
+        
+        # Identify Name Column (usually index 4 / '氏名')
+        name_col = None
+        for col in df.columns:
+            if '氏名' in str(col) or '名前' in str(col):
+                name_col = col
+                break
+        
+        if name_col is None:
+            # Fallback to index 4 if column name not found
+            if len(df.columns) > 4:
+                name_col = df.columns[4]
             else:
-                stats['full_day_count'] += 1
+                result['errors'].append("Could not identify Name column")
+                return result
+                
+        # Employee Num Column (usually index 2 or 3)
+        emp_num_col = None
+        for col in df.columns:
+            if '社員' in str(col) and ('番号' in str(col) or 'No' in str(col) or '№' in str(col)):
+                emp_num_col = col
+                break
+        
+        if emp_num_col is None:
+             if len(df.columns) > 2:
+                 emp_num_col = df.columns[2]
 
-    wb.close()
+        result['summary']['total_rows_processed'] = len(df)
 
-    # Log summary
-    logger.info(f"Enhanced parsing complete for {file_path}")
-    logger.info(f"  Rows processed: {stats['total_rows_processed']}")
-    logger.info(f"  Dates parsed: {stats['total_dates_parsed']}")
-    logger.info(f"  Full days: {stats['full_day_count']}")
-    logger.info(f"  Half days: {stats['half_day_count']}")
-    logger.info(f"  Hourly: {stats['hourly_count']}")
-    logger.info(f"  Ignored: {stats['dates_ignored']}")
-    logger.info(f"  Invalid dates: {stats['invalid_dates']}")
-    logger.info(f"  Cells with comments: {stats['cells_with_comments']}")
-    logger.info(f"  Warnings: {len(warnings)}")
+        # Date columns range (R=17 to BE=56 approx)
+        # We'll take slice from 17 to 57
+        date_columns = df.columns[17:57]
 
-    return {
-        'data': usage_details,
-        'warnings': warnings,
-        'errors': errors,
-        'summary': stats
-    }
+        usage_details = []
+
+        for idx, row in df.iterrows():
+            name = row[name_col]
+            emp_num = row[emp_num_col] if emp_num_col else "Unknown"
+
+            if pd.isna(name) or str(name).strip() == "":
+                continue
+
+            name = str(name).strip()
+            emp_num = str(emp_num).strip()
+
+            # Iterate through date columns
+            for col in date_columns:
+                cell_value = row[col]
+                
+                if pd.isna(cell_value) or cell_value == "":
+                    continue
+
+                # Parse Cell Value
+                days_used = 1.0
+                leave_type = 'full'
+                use_date_str = None
+                
+                val_str = str(cell_value).strip()
+                
+                # Detect Half Day / Hourly
+                # Reuse logic from helper or inline simplified
+                if any(x in val_str for x in ['半', '0.5', 'AM', 'PM', '午前', '午後']):
+                    days_used = 0.5
+                    leave_type = 'half'
+                    result['summary']['half_day_count'] += 1
+                elif '2h' in val_str or '2時間' in val_str:
+                    days_used = 0.25
+                    leave_type = 'hourly'
+                    result['summary']['hourly_count'] += 1
+                else:
+                    result['summary']['full_day_count'] += 1
+
+                # Parse Date
+                # If it's a datetime object (Pandas often converts automatically)
+                if isinstance(cell_value, datetime):
+                    use_date_str = cell_value.strftime('%Y-%m-%d')
+                    year = cell_value.year
+                    month = cell_value.month
+                else:
+                    # String parsing
+                    # Clean the string first (remove '終業', '半', etc)
+                    clean_str = re.sub(r'[^\d\/\-\.]', '', val_str)
+                    
+                    try:
+                        # Try common formats
+                        dt = pd.to_datetime(clean_str, errors='coerce')
+                        if not pd.isna(dt):
+                           use_date_str = dt.strftime('%Y-%m-%d')
+                           year = dt.year
+                           month = dt.month
+                    except:
+                        pass
+                
+                if use_date_str:
+                    usage_details.append({
+                        'employee_num': emp_num,
+                        'name': name,
+                        'use_date': use_date_str,
+                        'year': year,
+                        'month': month,
+                        'days_used': days_used
+                    })
+                    result['summary']['total_dates_parsed'] += 1
+                else:
+                    # Could not parse date
+                    pass # unexpected format
+
+        result['data'] = usage_details
+        logger.info(f"Pandas parsing complete. Found {len(usage_details)} usage records.")
+
+    except Exception as e:
+        logger.error(f"Pandas parsing failed: {e}", exc_info=True)
+        result['errors'].append(f"Pandas Parsing Error: {str(e)}")
+
+    return result
+
 
 
 def get_import_report(enhanced_result: Dict[str, Any]) -> str:

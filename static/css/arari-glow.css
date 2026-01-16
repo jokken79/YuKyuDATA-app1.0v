@@ -6,6 +6,7 @@
 
 /* Todas las reglas envueltas en [data-theme="dark"] para permitir light mode */
 [data-theme="dark"] {
+
   /* Ambient Background Glows - SUPER BRIGHT */
   body::before {
     content: '';
@@ -14,7 +15,7 @@
     left: -5%;
     width: 50%;
     height: 50%;
-    background: rgba(6, 182, 212, 0.45);
+    background: transparent;
     border-radius: 50%;
     filter: blur(80px);
     pointer-events: none;
@@ -22,6 +23,7 @@
     animation: float-glow 20s ease-in-out infinite;
   }
 
+  /* DISABLED - This glow was causing the visible cyan line on the right side 
   body::after {
     content: '';
     position: fixed;
@@ -36,6 +38,7 @@
     z-index: 0;
     animation: float-glow 25s ease-in-out infinite reverse;
   }
+  */
 }
 
 /* Pseudo-elementos necesitan selector específico */
@@ -46,7 +49,7 @@
   left: -5%;
   width: 50%;
   height: 50%;
-  background: rgba(6, 182, 212, 0.45);
+  background: transparent;
   border-radius: 50%;
   filter: blur(80px);
   pointer-events: none;
@@ -55,18 +58,9 @@
 }
 
 [data-theme="dark"] body::after {
-  content: '';
-  position: fixed;
-  top: 10%;
-  right: -5%;
-  width: 45%;
-  height: 60%;
-  background: rgba(99, 102, 241, 0.40);
-  border-radius: 50%;
-  filter: blur(80px);
-  pointer-events: none;
-  z-index: 0;
-  animation: float-glow 25s ease-in-out infinite reverse;
+  /* DISABLED - This was causing the visible cyan line on the right side */
+  display: none !important;
+  content: none !important;
 }
 
 /* Third glow at bottom - SUPER BRIGHT */
@@ -102,10 +96,23 @@
 }
 
 @keyframes float-glow {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(5%, 5%) scale(1.05); }
-  50% { transform: translate(0, 10%) scale(1); }
-  75% { transform: translate(-5%, 5%) scale(0.95); }
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  25% {
+    transform: translate(5%, 5%) scale(1.05);
+  }
+
+  50% {
+    transform: translate(0, 10%) scale(1);
+  }
+
+  75% {
+    transform: translate(-5%, 5%) scale(0.95);
+  }
 }
 
 /* Enhanced gradient text */
@@ -178,9 +185,9 @@
 /* Table row glow on hover */
 [data-theme="dark"] .modern-table tbody tr:hover td {
   background: linear-gradient(90deg,
-    rgba(6, 182, 212, 0.08),
-    rgba(59, 130, 246, 0.1),
-    rgba(6, 182, 212, 0.08)) !important;
+      rgba(6, 182, 212, 0.08),
+      rgba(59, 130, 246, 0.1),
+      rgba(6, 182, 212, 0.08)) !important;
 }
 
 [data-theme="dark"] .modern-table tbody tr:hover td:first-child {
@@ -232,9 +239,32 @@
   filter: drop-shadow(0 0 20px rgba(6, 182, 212, 0.1));
 }
 
-/* Scrollbar with theme color */
+/* Scrollbar - DISABLE for main content to avoid cyan line */
+/* Override: Make scrollbar completely invisible in dark mode */
+[data-theme="dark"] ::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+  background: transparent !important;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.0) !important;
+  border-radius: 10px !important;
+}
+
+/* Show scrollbar thumb only on hover */
+[data-theme="dark"] *:hover::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.3) !important;
+}
+
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #06b6d4, #3b82f6) !important;
+  background: rgba(100, 116, 139, 0.5) !important;
 }
 
 /* Toast with glow */
@@ -274,6 +304,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -281,7 +312,7 @@
 }
 
 /* Disabled CSS animations - using GSAP instead to prevent conflicts */
-[data-theme="dark"] .bento-grid > .glass-panel {
+[data-theme="dark"] .bento-grid>.glass-panel {
   opacity: 1 !important;
   transform: none !important;
 }
@@ -315,12 +346,11 @@
    ============================================ */
 
 /* Fondo MUCHO mas claro con gradientes intensos */
+/* MODIFIED: Removed right-side gradients to eliminate cyan line effect */
 [data-theme="dark"] body {
   background-color: #000000 !important;
   background-image:
     radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.15) 0px, transparent 60%),
-    radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.1) 0px, transparent 60%),
-    radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.08) 0px, transparent 60%),
     radial-gradient(at 0% 100%, rgba(6, 182, 212, 0.05) 0px, transparent 60%) !important;
 }
 
@@ -349,7 +379,8 @@
   box-shadow:
     2px 0 30px rgba(6, 182, 212, 0.15),
     inset -1px 0 20px rgba(6, 182, 212, 0.05) !important;
-  z-index: 1200 !important; /* Ensure it stays on top */
+  z-index: 1200 !important;
+  /* Ensure it stays on top */
 }
 
 /* Stat cards VIBRANTES con glow neon */
@@ -475,8 +506,15 @@
 }
 
 @keyframes pulse-danger {
-  0%, 100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
-  50% { box-shadow: 0 0 35px rgba(239, 68, 68, 0.6); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 35px rgba(239, 68, 68, 0.6);
+  }
 }
 
 /* Tab buttons BRILLANTES */
@@ -675,9 +713,12 @@
 
 /* Efecto de resplandor pulsante en elementos importantes */
 @keyframes pulse-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
   }
+
   50% {
     box-shadow: 0 0 25px rgba(6, 182, 212, 0.5);
   }

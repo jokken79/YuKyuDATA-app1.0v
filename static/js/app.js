@@ -869,13 +869,13 @@ const App = {
         async updateAll() {
             const data = App.data.getFiltered();
             console.log(`📊 Updating UI with ${data.length} employees for year ${App.state.year}`);
-            
+
             await this.renderKPIs();
             this.renderTable('', App.state.typeFilter);
             await this.renderCharts();
             this.updateYearFilter();
             this.updateTypeCounts();
-            
+
             const badge = document.getElementById('emp-count-badge');
             if (badge) badge.innerText = `${data.length} Employees`;
         },
@@ -1393,6 +1393,17 @@ const App = {
                 </div>
             `;
             document.getElementById('detail-modal').classList.add('active');
+
+            // FIX: Ensure modal content is visible (reset GSAP opacity)
+            const modalContent = document.querySelector('#detail-modal .modal-content-container');
+            if (modalContent) {
+                if (typeof gsap !== 'undefined') {
+                    gsap.set(modalContent, { opacity: 1, scale: 1, clearProps: 'opacity,transform' });
+                } else {
+                    modalContent.style.opacity = '1';
+                    modalContent.style.transform = 'scale(1)';
+                }
+            }
 
             // Obtener datos completos del empleado
             try {
@@ -3378,14 +3389,14 @@ const App = {
                             </thead>
                             <tbody>
                                 ${json.entries.map(e => {
-                                    // XSS prevention: escape all user data
-                                    const safeEmpNum = App.utils.escapeHtml(e.employee_num);
-                                    const safeName = App.utils.escapeHtml(e.employee_name);
-                                    const safeGrantDate = App.utils.escapeHtml(e.grant_date);
-                                    const safeGranted = App.utils.safeNumber(e.granted_days);
-                                    const safeUsed = App.utils.safeNumber(e.used_days);
-                                    const safeRemaining = App.utils.safeNumber(e.remaining_days);
-                                    return `
+                        // XSS prevention: escape all user data
+                        const safeEmpNum = App.utils.escapeHtml(e.employee_num);
+                        const safeName = App.utils.escapeHtml(e.employee_name);
+                        const safeGrantDate = App.utils.escapeHtml(e.grant_date);
+                        const safeGranted = App.utils.safeNumber(e.granted_days);
+                        const safeUsed = App.utils.safeNumber(e.used_days);
+                        const safeRemaining = App.utils.safeNumber(e.remaining_days);
+                        return `
                                     <tr>
                                         <td>${safeEmpNum}</td>
                                         <td>${safeName}</td>
@@ -4466,7 +4477,8 @@ const App = {
                 opacity: 0,
                 stagger: 0.08,
                 ease: 'power2.out',
-                delay: 0.3
+                delay: 0.3,
+                clearProps: 'all' // Fix: Ensure opacity is reset to 1 after animation
             });
 
             // Animate logo
@@ -4665,7 +4677,7 @@ const App = {
                 const isSelected = App.bulkEdit && App.bulkEdit.selectedEmployees.has(e.employee_num);
 
                 return `
-                <tr class="employee-row" data-employee-num="${empNum}" style="cursor: pointer;">
+                <tr class="employee-row" data-employee-num="${empNum}" style="cursor: pointer;" onclick="App.ui.openModal('${empNum}')">
                     <td class="table-checkbox" onclick="event.stopPropagation();">
                         <input type="checkbox"
                             class="employee-select-checkbox"
@@ -4802,9 +4814,9 @@ App.editYukyu = {
                             <option value="0.25" ${currentDays == 0.25 ? 'selected' : ''}>0.25日 (2時間)</option>
                         </select>
                         ${isDeleted ?
-                            `<button class="btn btn-glass btn-sm" onclick="App.editYukyu.undoDelete(${detail.id})">↩ 戻す</button>` :
-                            `<button class="usage-item-delete" onclick="App.editYukyu.markDelete(${detail.id})">🗑 削除</button>`
-                        }
+                    `<button class="btn btn-glass btn-sm" onclick="App.editYukyu.undoDelete(${detail.id})">↩ 戻す</button>` :
+                    `<button class="usage-item-delete" onclick="App.editYukyu.markDelete(${detail.id})">🗑 削除</button>`
+                }
                     </div>
                 </div>
             `;
@@ -4965,8 +4977,8 @@ App.editYukyu = {
         // Cambiar color si el balance es negativo
         const balanceEl = document.getElementById('edit-new-balance');
         balanceEl.className = newBalance < 0 ? 'font-bold text-danger' :
-                              newBalance < 5 ? 'font-bold text-warning' :
-                              'font-bold text-success';
+            newBalance < 5 ? 'font-bold text-warning' :
+                'font-bold text-success';
     },
 
     /**
@@ -4974,8 +4986,8 @@ App.editYukyu = {
      */
     async saveChanges() {
         const hasChanges = this.pendingChanges.updates.length > 0 ||
-                          this.pendingChanges.deletes.length > 0 ||
-                          this.pendingChanges.adds.length > 0;
+            this.pendingChanges.deletes.length > 0 ||
+            this.pendingChanges.adds.length > 0;
 
         if (!hasChanges) {
             App.ui.showToast('warning', '変更がありません');
@@ -6658,9 +6670,9 @@ App.reports = {
                                         <h4 style="margin: 0; color: var(--text-primary);">月次レポート</h4>
                                         <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
                                             <select id="pdf-month-select" style="flex: 1; padding: 0.5rem; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
-                                                ${Array.from({length: 12}, (_, i) => i + 1).map(m =>
-                                                    `<option value="${m}" ${m === currentMonth ? 'selected' : ''}>${m}月</option>`
-                                                ).join('')}
+                                                ${Array.from({ length: 12 }, (_, i) => i + 1).map(m =>
+            `<option value="${m}" ${m === currentMonth ? 'selected' : ''}>${m}月</option>`
+        ).join('')}
                                             </select>
                                             <button class="btn btn-primary btn-sm" onclick="App.reports.downloadMonthlySummary(${year}, document.getElementById('pdf-month-select').value); App.reports.closeModal();">
                                                 ダウンロード
