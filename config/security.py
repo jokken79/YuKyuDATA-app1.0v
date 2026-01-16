@@ -121,10 +121,13 @@ class SecuritySettings(BaseSettings):
         "X-XSS-Protection": "1; mode=block",
         "Content-Security-Policy": (
             "default-src 'self'; "
-            "script-src 'self' 'strict-dynamic'; "  # Uses strict-dynamic for ES6 modules (safer than unsafe-inline)
-            "style-src 'self' 'unsafe-inline'; "  # Styles still need inline for dynamic theming
+            # Allow CDN scripts for ApexCharts, Chart.js, GSAP, Flatpickr
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+            # Styles need inline for dynamic theming + CDN for Animate.css, Flatpickr
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
             "img-src 'self' data: blob:; "
-            "font-src 'self'; "
+            # Allow Google Fonts
+            "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com; "
             "connect-src 'self'; "
             "frame-ancestors 'none'; "
             "base-uri 'self'; "

@@ -73,6 +73,11 @@ def _load_users_from_env() -> Dict[str, Dict[str, Any]]:
                 "password": "demo123456",  # Min 8 chars
                 "role": "user",
                 "name": "Demo User"
+            },
+            "admin": {
+                "password": "admin123456",  # Min 8 chars - DEV ONLY!
+                "role": "admin",
+                "name": "Admin (Dev)"
             }
         }
 

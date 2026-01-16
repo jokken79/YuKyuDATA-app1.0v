@@ -1215,21 +1215,26 @@ const App = {
         },
 
         // Ensure charts are visible and properly sized
+        _isEnsureChartsRunning: false,
         ensureChartsVisible() {
+            // Prevent infinite loop - this function triggers resize which calls this function again
+            if (this._isEnsureChartsRunning) return;
+            this._isEnsureChartsRunning = true;
+
             const chartContainers = document.querySelectorAll('.chart-container, .chart-container-sm, .chart-container-lg');
-            
+
             chartContainers.forEach(container => {
                 // Force container to be visible and have proper layout
                 container.style.display = 'block';
                 container.style.visibility = 'visible';
                 container.style.opacity = '1';
                 container.style.overflow = 'visible';
-                
+
                 // Ensure a minimum height is set if not already present
                 if (!container.style.minHeight) {
                     container.style.minHeight = '300px';
                 }
-                
+
                 // Force reflow to ensure proper sizing
                 container.offsetHeight;
             });
@@ -1239,6 +1244,8 @@ const App = {
             // This ensures charts are "synchronized" with their container sizes
             setTimeout(() => {
                 window.dispatchEvent(new Event('resize'));
+                // Reset flag after resize event is processed
+                setTimeout(() => { this._isEnsureChartsRunning = false; }, 300);
             }, 100);
         },
 

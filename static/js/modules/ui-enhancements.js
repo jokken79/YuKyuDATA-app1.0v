@@ -617,6 +617,7 @@ export class Tooltip {
 
         // Event delegation for elements with data-tooltip
         document.addEventListener('mouseenter', (e) => {
+            if (!e.target || typeof e.target.closest !== 'function') return;
             const target = e.target.closest('[data-tooltip]');
             if (target) {
                 Tooltip.show(target);
@@ -624,6 +625,7 @@ export class Tooltip {
         }, true);
 
         document.addEventListener('mouseleave', (e) => {
+            if (!e.target || typeof e.target.closest !== 'function') return;
             const target = e.target.closest('[data-tooltip]');
             if (target) {
                 Tooltip.hide();
@@ -632,6 +634,7 @@ export class Tooltip {
 
         // Also handle focus for accessibility
         document.addEventListener('focusin', (e) => {
+            if (!e.target || typeof e.target.closest !== 'function') return;
             const target = e.target.closest('[data-tooltip]');
             if (target) {
                 Tooltip.show(target);
@@ -639,6 +642,7 @@ export class Tooltip {
         });
 
         document.addEventListener('focusout', (e) => {
+            if (!e.target || typeof e.target.closest !== 'function') return;
             const target = e.target.closest('[data-tooltip]');
             if (target) {
                 Tooltip.hide();
