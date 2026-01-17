@@ -51,13 +51,13 @@ export class OfflineStorage {
 
             request.onsuccess = () => {
                 this.db = request.result;
-                console.log('[OfflineStorage] Database opened successfully');
+                // Database opened successfully
                 resolve(this.db);
             };
 
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
-                console.log('[OfflineStorage] Upgrading database...');
+                // Upgrading database schema
 
                 // Create stores
                 Object.entries(STORES).forEach(([storeName, config]) => {
@@ -77,7 +77,7 @@ export class OfflineStorage {
                             });
                         }
 
-                        console.log(`[OfflineStorage] Created store: ${storeName}`);
+                        // Store created
                     }
                 });
             };
@@ -93,14 +93,14 @@ export class OfflineStorage {
     _setupNetworkListeners() {
         window.addEventListener('online', () => {
             this._isOnline = true;
-            console.log('[OfflineStorage] Connection restored');
+            // Connection restored
             this._dispatchNetworkEvent('online');
             this.syncPending();
         });
 
         window.addEventListener('offline', () => {
             this._isOnline = false;
-            console.log('[OfflineStorage] Connection lost');
+            // Connection lost
             this._dispatchNetworkEvent('offline');
         });
     }
@@ -182,7 +182,7 @@ export class OfflineStorage {
         await this.setMetadata('lastSync', Date.now());
         await this.setMetadata('employeesYear', year);
 
-        console.log(`[OfflineStorage] Saved ${employees.length} employees for year ${year}`);
+        // Employees saved for year
     }
 
     /**
@@ -242,7 +242,7 @@ export class OfflineStorage {
         }
 
         await this.setMetadata(`${type}LastSync`, Date.now());
-        console.log(`[OfflineStorage] Saved ${records.length} ${type} records`);
+        // Registry records saved
     }
 
     /**
@@ -292,7 +292,7 @@ export class OfflineStorage {
         }
 
         await this.setMetadata('leaveRequestsLastSync', Date.now());
-        console.log(`[OfflineStorage] Saved ${requests.length} leave requests`);
+        // Leave requests saved
     }
 
     /**
@@ -337,7 +337,7 @@ export class OfflineStorage {
 
             const req = store.add(pendingItem);
             req.onsuccess = () => {
-                console.log('[OfflineStorage] Added pending leave request:', req.result);
+                // Pending leave request added
                 resolve(req.result);
             };
             req.onerror = () => reject(req.error);
@@ -371,7 +371,7 @@ export class OfflineStorage {
             });
         }
 
-        console.log(`[OfflineStorage] Saved ${details.length} usage details`);
+        // Usage details saved
     }
 
     /**
@@ -432,7 +432,7 @@ export class OfflineStorage {
         return new Promise((resolve, reject) => {
             const request = store.delete(id);
             request.onsuccess = () => {
-                console.log('[OfflineStorage] Removed pending item:', id);
+                // Pending item removed
                 resolve();
             };
             request.onerror = () => reject(request.error);
@@ -445,18 +445,18 @@ export class OfflineStorage {
      */
     async syncPending() {
         if (!this._isOnline) {
-            console.log('[OfflineStorage] Cannot sync - offline');
+            // Cannot sync - offline
             return { success: 0, failed: 0 };
         }
 
         const pendingItems = await this.getPendingSync();
 
         if (pendingItems.length === 0) {
-            console.log('[OfflineStorage] No pending items to sync');
+            // No pending items to sync
             return { success: 0, failed: 0 };
         }
 
-        console.log(`[OfflineStorage] Syncing ${pendingItems.length} pending items...`);
+        // Syncing pending items
 
         let success = 0;
         let failed = 0;
@@ -483,7 +483,7 @@ export class OfflineStorage {
             }
         }
 
-        console.log(`[OfflineStorage] Sync complete: ${success} success, ${failed} failed`);
+        // Sync complete
 
         // Dispatch sync complete event
         window.dispatchEvent(new CustomEvent('yukyu-sync-complete', {
@@ -558,7 +558,7 @@ export class OfflineStorage {
             });
         }
 
-        console.log('[OfflineStorage] All data cleared');
+        // All data cleared
     }
 
     /**

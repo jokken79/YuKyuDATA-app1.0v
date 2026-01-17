@@ -21,7 +21,7 @@ export const LeaveRequestsManager = {
      * @param {Object} callbacks - UI callback functions
      */
     init(callbacks = {}) {
-        this.showToast = callbacks.showToast || console.log;
+        this.showToast = callbacks.showToast || (() => {});
         this.showLoading = callbacks.showLoading || (() => {});
         this.hideLoading = callbacks.hideLoading || (() => {});
     },

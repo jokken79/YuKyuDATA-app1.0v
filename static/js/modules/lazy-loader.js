@@ -160,7 +160,7 @@ export class LazyChartLoader {
             container.classList.remove('lazy-chart-loading');
             container.classList.add('lazy-chart-loaded');
 
-            console.log(`[LazyChartLoader] Chart rendered: ${chartId}`);
+            // Chart rendered successfully
         } catch (error) {
             console.error(`[LazyChartLoader] Error rendering chart ${chartId}:`, error);
             container.classList.remove('lazy-chart-loading');
@@ -182,7 +182,7 @@ export class LazyChartLoader {
             const script = document.createElement('script');
             script.src = 'https://cdn.jsdelivr.net/npm/apexcharts@3.44.0/dist/apexcharts.min.js';
             script.onload = () => {
-                console.log('[LazyChartLoader] ApexCharts loaded');
+                // ApexCharts loaded
                 resolve();
             };
             script.onerror = () => reject(new Error('Failed to load ApexCharts'));
@@ -204,7 +204,7 @@ export class LazyChartLoader {
             const script = document.createElement('script');
             script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
             script.onload = () => {
-                console.log('[LazyChartLoader] Chart.js loaded');
+                // Chart.js loaded
                 resolve();
             };
             script.onerror = () => reject(new Error('Failed to load Chart.js'));
@@ -279,14 +279,14 @@ export class LazyModuleLoader {
 
         try {
             this.loading.add(moduleId);
-            console.log(`[LazyModuleLoader] Loading module: ${moduleId}`);
+            // Loading module
 
             const module = await import(modulePath);
 
             this.modules.set(moduleId, module);
             this.loading.delete(moduleId);
 
-            console.log(`[LazyModuleLoader] Module loaded: ${moduleId}`);
+            // Module loaded
             return module;
         } catch (error) {
             this.loading.delete(moduleId);
@@ -413,7 +413,7 @@ export class LazyComponentLoader {
             config.loaded = true;
             element.classList.remove('lazy-component-loading');
             element.classList.add('lazy-component-loaded');
-            console.log(`[LazyComponentLoader] Component loaded: ${componentId}`);
+            // Component loaded
         } catch (error) {
             console.error(`[LazyComponentLoader] Error loading component ${componentId}:`, error);
             element.classList.add('lazy-component-error');

@@ -56,7 +56,7 @@ const App = {
             this.setupLanguageSelector();
 
             this.isInitialized = true;
-            console.log(`i18n initialized with locale: ${this.currentLocale}`);
+            // i18n initialized with selected locale
         },
 
         detectBrowserLocale() {
@@ -90,7 +90,7 @@ const App = {
                 const translations = await response.json();
                 this.translations[locale] = translations;
 
-                console.log(`Loaded translations for: ${locale}`);
+                // Translations loaded for locale
                 return translations;
 
             } catch (error) {
@@ -133,7 +133,7 @@ const App = {
             // Notify listeners
             this.notifyListeners();
 
-            console.log(`Locale changed to: ${locale}`);
+            // Locale changed
 
             // Show toast notification
             const info = this.localeInfo[locale];
@@ -549,7 +549,7 @@ const App = {
     },
 
     async init() {
-        console.log('🚀 Initializing YuKyu Premium Dashboard...');
+        // Initializing YuKyu Premium Dashboard
         this.ui.showLoading();
 
         // Initialize theme
@@ -681,7 +681,7 @@ const App = {
 
                 // Check if this request is still the most recent one
                 if (requestId !== this._fetchRequestId) {
-                    console.log('Ignoring stale response for year:', year);
+                    // Ignoring stale response for year
                     return; // Ignore stale responses
                 }
 
@@ -742,7 +742,7 @@ const App = {
                     return;
                 }
 
-                console.log(`✅ Datos cargados: ${App.state.data.length} registros para el año ${App.state.year}`);
+                // Data loaded successfully for the year
 
                 await App.ui.updateAll();
                 App.ui.showToast('success', 'Data refresh complete');
@@ -868,7 +868,7 @@ const App = {
     ui: {
         async updateAll() {
             const data = App.data.getFiltered();
-            console.log(`📊 Updating UI with ${data.length} employees for year ${App.state.year}`);
+            // Updating UI with employee data for year
 
             await this.renderKPIs();
             this.renderTable('', App.state.typeFilter);
@@ -2154,7 +2154,7 @@ const App = {
                     // Only trigger if we are in a view that has charts
                     const viewsWithCharts = ['dashboard', 'factories', 'analytics'];
                     if (viewsWithCharts.includes(App.state.currentView)) {
-                        console.log('🔄 Resynchronizing charts after resize...');
+                        // Resynchronizing charts after resize
                         App.ui.ensureChartsVisible();
                     }
                 }, 250);
