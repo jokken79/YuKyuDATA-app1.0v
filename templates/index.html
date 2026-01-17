@@ -230,7 +230,7 @@
 
 <body>
     <!-- Skip Navigation for Accessibility -->
-    <a href="#main-content" class="skip-link">Skip to main content</a>
+    <a href="#main-content" class="skip-link">メインコンテンツへ移動</a>
 
     <div class="app-container">
         <!-- Mobile Menu Toggle -->
@@ -1233,7 +1233,7 @@
                             </div>
                             <div class="flex-center gap-sm">
                                 <button class="btn btn-glass" onclick="App.calendar.goToToday()">今日</button>
-                                <button class="btn btn-primary" onclick="App.calendar.loadEvents()">🔄
+                                <button class="btn btn-primary" onclick="App.calendar.loadEvents()" aria-label="カレンダーを更新">🔄
                                     更新</button>
                             </div>
                         </div>
@@ -1347,7 +1347,7 @@
                     <div class="glass-panel col-span-4 p-md">
                         <div class="flex-between mb-lg">
                             <h3 class="stat-label">📈 年末予測・5日義務達成リスク</h3>
-                            <button class="btn btn-glass" onclick="App.analytics.loadPredictions()">🔄
+                            <button class="btn btn-glass" onclick="App.analytics.loadPredictions()" aria-label="予測を更新">🔄
                                 更新</button>
                         </div>
                         <div id="predictions-container">
