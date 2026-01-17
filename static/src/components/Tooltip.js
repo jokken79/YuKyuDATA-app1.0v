@@ -190,13 +190,19 @@ export function Tooltip(target, options = {}) {
     element.removeEventListener('blur', hide);
     element.removeEventListener('click', toggle);
 
-    // Remove tooltip element
-    if (tooltipEl) {
-      tooltipEl.remove();
-      tooltipEl = null;
+    // ✅ AGREGAR: Remover listeners del tooltip si es interactivo
+    if (tooltipEl && interactive) {
+      tooltipEl.removeEventListener('mouseenter', cancelHide);
+      tooltipEl.removeEventListener('mouseleave', hide);
+    }
+
+    // ✅ MEJORAR: Usar parentNode check robusto
+    if (tooltipEl && tooltipEl.parentNode) {
+      tooltipEl.parentNode.removeChild(tooltipEl);
     }
 
     element.removeAttribute('aria-describedby');
+    tooltipEl = null;
     tooltipInstances.delete(element);
   }
 
