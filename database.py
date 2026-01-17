@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from contextlib import contextmanager
 from typing import Optional, Generator, Dict, List, Any
-from crypto_utils import encrypt_field, decrypt_field, get_encryption_manager
+from services.crypto_utils import encrypt_field, decrypt_field, get_encryption_manager
 
 # Import database connection manager
 try:

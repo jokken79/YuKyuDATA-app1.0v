@@ -4,7 +4,6 @@ Endpoints de notificaciones del sistema
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
-from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
@@ -18,41 +17,14 @@ from .dependencies import (
     check_expiring_soon,
 )
 
+# Import centralized Pydantic models
+from models import (
+    MarkAllNotificationsReadRequest,
+    NotificationSettingsUpdate,
+    TestEmailRequest,
+)
+
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
-
-
-# ============================================
-# PYDANTIC MODELS
-# ============================================
-
-class MarkAllNotificationsReadRequest(BaseModel):
-    """Request body for marking multiple notifications as read."""
-    notification_ids: List[str] = Field(..., description="List of notification IDs")
-
-
-class NotificationSettingsUpdate(BaseModel):
-    """Model for updating notification settings."""
-    smtp_host: Optional[str] = None
-    smtp_port: Optional[int] = None
-    smtp_user: Optional[str] = None
-    smtp_password: Optional[str] = None
-    smtp_from: Optional[str] = None
-    smtp_from_name: Optional[str] = None
-    email_enabled: Optional[bool] = None
-    slack_webhook_url: Optional[str] = None
-    slack_channel: Optional[str] = None
-    slack_enabled: Optional[bool] = None
-    notify_on_leave_created: Optional[bool] = None
-    notify_on_leave_approved: Optional[bool] = None
-    notify_on_leave_rejected: Optional[bool] = None
-    notify_on_expiring_days: Optional[bool] = None
-    notify_on_compliance_warning: Optional[bool] = None
-    manager_emails: Optional[str] = None
-
-
-class TestEmailRequest(BaseModel):
-    """Model for sending test email."""
-    to: str = Field(..., description="Recipient email")
 
 
 # ============================================

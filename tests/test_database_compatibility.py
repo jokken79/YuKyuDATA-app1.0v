@@ -16,7 +16,7 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import database
-from crypto_utils import encrypt_field, decrypt_field
+from services.crypto_utils import encrypt_field, decrypt_field
 
 
 class TestDatabaseConnectionInit:

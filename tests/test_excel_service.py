@@ -21,7 +21,7 @@ from openpyxl import Workbook
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from excel_service import (
+from services.excel_service import (
     detect_leave_type,
     clean_date_string,
     parse_date_from_cell,

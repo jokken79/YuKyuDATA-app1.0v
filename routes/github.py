@@ -4,7 +4,6 @@ Endpoints de integracion con GitHub Issues
 """
 
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field
 from typing import Optional
 import os
 
@@ -15,23 +14,10 @@ from .dependencies import (
     logger,
 )
 
+# Import centralized Pydantic models
+from models import CreateIssueRequest, CommentRequest
+
 router = APIRouter(prefix="/api/github", tags=["GitHub"])
-
-
-# ============================================
-# PYDANTIC MODELS
-# ============================================
-
-class CreateIssueRequest(BaseModel):
-    """Model for creating a GitHub issue."""
-    title: str = Field(..., min_length=1, max_length=256)
-    body: str = Field(..., min_length=1)
-    labels: Optional[list] = None
-
-
-class CommentRequest(BaseModel):
-    """Model for adding a comment to an issue."""
-    body: str = Field(..., min_length=1)
 
 
 # ============================================

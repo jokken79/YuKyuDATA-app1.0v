@@ -6,43 +6,21 @@ Sistema de refresh tokens con persistencia en base de datos (v5.17)
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPAuthorizationCredentials
-from pydantic import BaseModel, Field
 from services.auth_service import auth_service, TokenPair
 from middleware.security import security, verify_token, get_current_user
 from middleware.rate_limiter import rate_limiter_strict
 from .responses import success_response, error_response
 
+# Import centralized Pydantic models
+from models import (
+    LoginRequest,
+    RefreshRequest,
+    RevokeRequest,
+    RegisterRequest,
+    ChangePasswordRequest,
+)
+
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
-
-
-class LoginRequest(BaseModel):
-    """Request body para login"""
-    username: str = Field(..., min_length=1, description="Username")
-    password: str = Field(..., min_length=1, description="Password")
-
-
-class RefreshRequest(BaseModel):
-    """Request body para refresh token"""
-    refresh_token: str = Field(..., description="Refresh token")
-
-
-class RevokeRequest(BaseModel):
-    """Request body para revocar un refresh token especifico"""
-    refresh_token: str = Field(..., description="Refresh token a revocar")
-
-
-class RegisterRequest(BaseModel):
-    """Request body para registro de usuario"""
-    username: str = Field(..., min_length=3, max_length=50)
-    password: str = Field(..., min_length=8, description="Minimo 8 caracteres")
-    email: str = Field(..., pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
-    full_name: str = Field(..., min_length=1)
-
-
-class ChangePasswordRequest(BaseModel):
-    """Request body para cambio de contrasena"""
-    current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=8)
 
 
 def _get_client_info(request: Request) -> tuple:

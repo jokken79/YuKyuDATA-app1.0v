@@ -17,10 +17,10 @@ from datetime import datetime, timedelta, date, timezone
 
 # Local modules
 import database
-import excel_service
-from logger import logger, log_api_request, log_db_operation, log_sync_event, log_leave_request
+from services import excel_service
+from utils.logger import logger, log_api_request, log_db_operation, log_sync_event, log_leave_request
 from services.search_service import SearchService
-from auth import (
+from services.auth import (
     create_access_token,
     verify_token,
     get_current_user,
@@ -32,17 +32,17 @@ from auth import (
 )
 from config.security import settings, validate_security_config
 from config.secrets_validation import validate_secrets, print_secrets_status
-from middleware_security import (
+from middleware.security_headers import (
     RateLimitMiddleware,
     SecurityHeadersMiddleware,
     RequestLoggingMiddleware,
     AuthenticationLoggingMiddleware
 )
 from middleware.exception_handler import register_exception_handlers
-from csrf_middleware import CSRFProtectionMiddleware, generate_csrf_token
-from pagination import PaginationParams, PaginatedResponse, paginate_list
-from caching import cached, invalidate_employee_cache, get_cache_stats
-from fiscal_year import (
+from middleware.csrf import CSRFProtectionMiddleware, generate_csrf_token
+from utils.pagination import PaginationParams, PaginatedResponse, paginate_list
+from services.caching import cached, invalidate_employee_cache, get_cache_stats
+from services.fiscal_year import (
     process_year_end_carryover,
     get_employee_balance_breakdown,
     check_expiring_soon,
@@ -55,7 +55,7 @@ from fiscal_year import (
     FISCAL_CONFIG,
     GRANT_TABLE
 )
-from excel_export import (
+from services.excel_export import (
     create_approved_requests_excel,
     create_monthly_report_excel,
     create_annual_ledger_excel,
@@ -64,7 +64,7 @@ from excel_export import (
     cleanup_old_exports,
     EXPORT_DIR
 )
-from reports import (
+from services.reports import (
     ReportGenerator,
     save_report,
     list_reports,

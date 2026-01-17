@@ -24,7 +24,7 @@ import jwt
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from main import app
-from csrf_middleware import generate_csrf_token, validate_csrf_token
+from middleware.csrf import generate_csrf_token, validate_csrf_token
 from config.security import settings
 
 client = TestClient(app)

@@ -14,6 +14,17 @@ from .exception_handler import (
     generate_request_id,
     create_error_response,
 )
+from .csrf import (
+    CSRFProtectionMiddleware,
+    generate_csrf_token,
+    validate_csrf_token,
+)
+from .security_headers import (
+    RateLimitMiddleware,
+    SecurityHeadersMiddleware,
+    RequestLoggingMiddleware,
+    AuthenticationLoggingMiddleware,
+)
 
 __all__ = [
     "RateLimiter",
@@ -27,4 +38,13 @@ __all__ = [
     "register_exception_handlers",
     "generate_request_id",
     "create_error_response",
+    # CSRF
+    "CSRFProtectionMiddleware",
+    "generate_csrf_token",
+    "validate_csrf_token",
+    # Security headers
+    "RateLimitMiddleware",
+    "SecurityHeadersMiddleware",
+    "RequestLoggingMiddleware",
+    "AuthenticationLoggingMiddleware",
 ]

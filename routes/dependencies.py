@@ -9,7 +9,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Import authentication dependencies
-from auth import (
+from services.auth import (
     get_current_user,
     get_admin_user,
     check_rate_limit,
@@ -23,13 +23,13 @@ import database
 from services.search_service import SearchService
 
 # Import logging
-from logger import logger, log_api_request, log_db_operation, log_sync_event, log_leave_request
+from utils.logger import logger, log_api_request, log_db_operation, log_sync_event, log_leave_request
 
 # Import caching
-from caching import cached, invalidate_employee_cache, get_cache_stats
+from services.caching import cached, invalidate_employee_cache, get_cache_stats
 
 # Import fiscal year utilities
-from fiscal_year import (
+from services.fiscal_year import (
     process_year_end_carryover,
     get_employee_balance_breakdown,
     check_expiring_soon,
@@ -44,7 +44,7 @@ from fiscal_year import (
 )
 
 # Import CSRF utilities
-from csrf_middleware import generate_csrf_token
+from middleware.csrf import generate_csrf_token
 
 # Project paths
 PROJECT_DIR = Path(__file__).parent.parent

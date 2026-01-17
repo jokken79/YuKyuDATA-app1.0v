@@ -4,7 +4,6 @@ Endpoints de solicitudes de vacaciones
 """
 
 from fastapi import APIRouter, HTTPException, Request, Depends
-from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -17,39 +16,10 @@ from .dependencies import (
     log_audit_action,
 )
 
+# Import centralized Pydantic models
+from models import LeaveRequestCreate
+
 router = APIRouter(prefix="/api", tags=["Leave Requests"])
-
-
-# ============================================
-# PYDANTIC MODELS
-# ============================================
-
-class LeaveRequestCreate(BaseModel):
-    """Model for creating a leave request."""
-    employee_num: str = Field(..., min_length=1, description="Employee number")
-    employee_name: str = Field(..., min_length=1, description="Employee name")
-    start_date: str = Field(..., description="Start date YYYY-MM-DD")
-    end_date: str = Field(..., description="End date YYYY-MM-DD")
-    days_requested: float = Field(..., ge=0, le=40, description="Days requested")
-    hours_requested: float = Field(0, ge=0, le=320, description="Hours requested")
-    leave_type: str = Field(..., description="Leave type: full, half_am, half_pm, hourly")
-    reason: Optional[str] = None
-
-    @field_validator('leave_type')
-    @classmethod
-    def validate_leave_type(cls, v):
-        valid_types = ['full', 'half_am', 'half_pm', 'hourly']
-        if v not in valid_types:
-            raise ValueError(f'leave_type must be one of: {valid_types}')
-        return v
-
-    @field_validator('end_date')
-    @classmethod
-    def validate_dates(cls, v, info):
-        start_date = info.data.get('start_date')
-        if start_date and v < start_date:
-            raise ValueError('end_date must be after start_date')
-        return v
 
 
 # ============================================
