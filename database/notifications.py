@@ -1,21 +1,17 @@
+"""
+Database operations - Notification read status tracking
+Part of the modularized YuKyuDATA database layer
+"""
+
 import os
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from contextlib import contextmanager
-from typing import Optional, Generator, Dict, List, Any
+from typing import Optional, Dict, List, Any
+
+from database import get_db, USE_POSTGRESQL, _convert_query_placeholders
 from services.crypto_utils import encrypt_field, decrypt_field, get_encryption_manager
 
-# Import database connection manager
-try:
-    from database.connection import ConnectionManager
-    USE_POSTGRESQL = os.getenv('DATABASE_TYPE', 'sqlite').lower() == 'postgresql'
-except ImportError:
-    # Fallback for SQLite if connection manager not available
-    import sqlite3
-    USE_POSTGRESQL = False
-
-# Vercel compatibility: Use /tmp for serverless or custom path via env var
 def get_db_path():
     """Get database path, handling Vercel serverless environment."""
     custom_path = os.getenv('DATABASE_PATH')

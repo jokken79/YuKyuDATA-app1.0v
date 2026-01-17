@@ -14,18 +14,8 @@ from typing import Optional, Dict
 from fastapi import HTTPException, status
 from pydantic import BaseModel
 
-# Import database functions for refresh tokens
-from database import (
-    init_refresh_tokens_table,
-    store_refresh_token,
-    get_refresh_token_by_hash,
-    revoke_refresh_token as db_revoke_refresh_token,
-    revoke_all_user_refresh_tokens,
-    is_refresh_token_valid,
-    cleanup_expired_refresh_tokens,
-    get_user_active_refresh_tokens,
-    get_refresh_token_stats
-)
+# Database imports are lazy to avoid circular import issues
+# They are imported within __init__ and methods as needed
 
 # Configuracion de seguridad
 SECRET_KEY = secrets.token_urlsafe(32)  # Generar key aleatoria
@@ -56,8 +46,9 @@ class AuthService:
     """Servicio de autenticacion con OAuth2 y refresh tokens persistentes en BD"""
 
     def __init__(self):
-        # Inicializar tabla de refresh tokens en BD
+        # Inicializar tabla de refresh tokens en BD (lazy import to avoid circular dependency)
         try:
+            from database import init_refresh_tokens_table
             init_refresh_tokens_table()
         except Exception as e:
             print(f"Warning: Could not initialize refresh_tokens table: {e}")
