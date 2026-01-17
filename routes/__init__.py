@@ -45,6 +45,7 @@ from .yukyu import router as yukyu_router
 
 # Compliance and fiscal routes
 from .compliance import router as compliance_router
+from .compliance_advanced import router as compliance_advanced_router
 from .fiscal import router as fiscal_router
 
 # Analytics and reporting routes
@@ -89,6 +90,7 @@ __all__ = [
     "yukyu_router",
     # Compliance
     "compliance_router",
+    "compliance_advanced_router",
     "fiscal_router",
     # Analytics & Reporting
     "analytics_router",

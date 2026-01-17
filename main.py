@@ -85,6 +85,7 @@ from routes import (
     leave_requests_router,
     yukyu_router,
     compliance_router,
+    compliance_advanced_router,
     fiscal_router,
     analytics_router,
     reports_router,
@@ -718,6 +719,7 @@ app.include_router(staff_router)
 app.include_router(leave_requests_router)
 app.include_router(yukyu_router)
 app.include_router(compliance_router)
+app.include_router(compliance_advanced_router)
 app.include_router(fiscal_router)
 app.include_router(analytics_router)
 app.include_router(reports_router)

@@ -1,0 +1,360 @@
+# Prometheus Alert Rules - YuKyuDATA FASE 3 DevOps Maturity
+# RTO: 15 minutes | RPO: 5 minutes
+
+groups:
+  - name: yukyu_application_alerts
+    interval: 30s
+    rules:
+      # HTTP Request Errors
+      - alert: HighErrorRate
+        expr: >
+          (sum(rate(http_requests_total{status=~"5.."}[5m])) by (instance) /
+           sum(rate(http_requests_total[5m])) by (instance)) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: application
+          slo: false
+        annotations:
+          summary: "High error rate on {{ $labels.instance }}"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+          runbook_url: "https://wiki.example.com/runbooks/high_error_rate"
+
+      # Request Latency
+      - alert: HighLatencyP95
+        expr: >
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, instance)) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: application
+        annotations:
+          summary: "High request latency P95 on {{ $labels.instance }}"
+          description: "P95 latency is {{ $value }}s (threshold: 1s)"
+
+      - alert: HighLatencyP99
+        expr: >
+          histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, instance)) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: application
+        annotations:
+          summary: "High request latency P99 on {{ $labels.instance }}"
+          description: "P99 latency is {{ $value }}s (threshold: 2s)"
+
+      # Endpoint-specific alerts
+      - alert: SlowSyncEndpoint
+        expr: >
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{endpoint="/api/sync"}[5m])) by (le)) > 30
+        for: 5m
+        labels:
+          severity: warning
+          service: application
+          endpoint: sync
+        annotations:
+          summary: "Slow /api/sync endpoint"
+          description: "Sync endpoint P95 latency is {{ $value }}s"
+
+      # Task Queue Alerts
+      - alert: TaskQueueBacklog
+        expr: task_queue_size > 1000
+        for: 10m
+        labels:
+          severity: warning
+          service: application
+        annotations:
+          summary: "Task queue backlog too high"
+          description: "Queue size is {{ $value }} tasks"
+
+      # Cache Hit Rate
+      - alert: LowCacheHitRate
+        expr: >
+          (sum(rate(cache_hits_total[5m])) /
+           (sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m])))) < 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: application
+        annotations:
+          summary: "Low cache hit rate"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} (target: 80%)"
+
+  - name: yukyu_database_alerts
+    interval: 30s
+    rules:
+      # Replication Lag
+      - alert: HighReplicationLag
+        expr: pg_replication_lag_seconds > 1
+        for: 2m
+        labels:
+          severity: critical
+          service: database
+          rto: "15min"
+        annotations:
+          summary: "High database replication lag"
+          description: "Replication lag is {{ $value }}s (threshold: 1s)"
+          runbook_url: "https://wiki.example.com/runbooks/replication_lag"
+
+      - alert: CriticalReplicationLag
+        expr: pg_replication_lag_seconds > 5
+        for: 30s
+        labels:
+          severity: critical
+          service: database
+          rto: "5min"
+        annotations:
+          summary: "CRITICAL: Database replication severely lagged"
+          description: "Replication lag is {{ $value }}s - IMMEDIATE ACTION REQUIRED"
+
+      # Connection Pool
+      - alert: HighDatabaseConnections
+        expr: pg_stat_activity_count > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "High number of database connections"
+          description: "Active connections: {{ $value }} (max pool: 100)"
+
+      - alert: DatabaseConnectionPoolExhausted
+        expr: pg_stat_activity_count > 95
+        for: 2m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Active connections: {{ $value }} (max pool: 100)"
+
+      # Database Size
+      - alert: DatabaseSizeWarning
+        expr: pg_database_size_bytes / (1024^3) > 50
+        for: 1h
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "Database size growing"
+          description: "Database size is {{ $value | humanize }}GB"
+
+      - alert: DatabaseSizeCritical
+        expr: pg_database_size_bytes / (1024^3) > 90
+        for: 30m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "Database approaching storage limit"
+          description: "Database size is {{ $value | humanize }}GB (limit: 100GB)"
+
+      # Query Performance
+      - alert: SlowQueries
+        expr: >
+          sum(rate(pg_slow_queries_total[5m])) by (database) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "High number of slow queries"
+          description: "Slow queries/sec: {{ $value }}"
+
+      # Backup Status
+      - alert: BackupFailed
+        expr: backup_last_success_timestamp_seconds < (time() - 86400)
+        for: 10m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "Database backup failed"
+          description: "Last successful backup more than 24 hours ago"
+
+      # Transaction Rollback
+      - alert: HighRollbackRate
+        expr: >
+          (sum(rate(pg_stat_user_tables_n_tup_del[5m])) /
+           sum(rate(pg_stat_user_tables_n_tup_ins[5m]))) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "High transaction rollback rate"
+          description: "Rollback ratio: {{ $value | humanizePercentage }}"
+
+  - name: yukyu_infrastructure_alerts
+    interval: 30s
+    rules:
+      # CPU Utilization
+      - alert: HighCPUUtilization
+        expr: >
+          (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "High CPU utilization on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value }}% (threshold: 80%)"
+
+      - alert: CriticalCPUUtilization
+        expr: >
+          (100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 95
+        for: 2m
+        labels:
+          severity: critical
+          service: infrastructure
+        annotations:
+          summary: "CRITICAL: CPU utilization extremely high"
+          description: "CPU usage is {{ $value }}%"
+
+      # Memory Utilization
+      - alert: HighMemoryUtilization
+        expr: >
+          ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "High memory utilization on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanizePercentage }} (threshold: 80%)"
+
+      - alert: CriticalMemoryUtilization
+        expr: >
+          ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          service: infrastructure
+        annotations:
+          summary: "CRITICAL: Memory nearly exhausted"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
+
+      # Disk Space
+      - alert: DiskSpaceWarning
+        expr: >
+          ((node_filesystem_size_bytes{fstype=~"ext4|xfs"} - node_filesystem_avail_bytes) /
+           node_filesystem_size_bytes) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "Disk space running low on {{ $labels.instance }}"
+          description: "Disk usage is {{ $value | humanizePercentage }} (threshold: 80%)"
+
+      - alert: DiskSpaceCritical
+        expr: >
+          ((node_filesystem_size_bytes{fstype=~"ext4|xfs"} - node_filesystem_avail_bytes) /
+           node_filesystem_size_bytes) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          service: infrastructure
+        annotations:
+          summary: "CRITICAL: Disk space critical"
+          description: "Disk usage is {{ $value | humanizePercentage }}"
+
+      # Disk I/O
+      - alert: HighDiskIOWait
+        expr: >
+          avg by (instance) (irate(node_cpu_seconds_total{mode="iowait"}[5m])) > 0.20
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "High disk I/O wait on {{ $labels.instance }}"
+          description: "IOWait is {{ $value | humanizePercentage }}"
+
+      # Network
+      - alert: HighNetworkErrors
+        expr: >
+          sum(rate(node_network_receive_errs_total[5m])) by (instance) +
+          sum(rate(node_network_transmit_errs_total[5m])) by (instance) > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "High network errors on {{ $labels.instance }}"
+          description: "Network errors/sec: {{ $value }}"
+
+      # Load Average
+      - alert: HighLoadAverage
+        expr: >
+          node_load5 / count(node_cpu_seconds_total{mode="system"}) by (instance) > 4
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "High load average on {{ $labels.instance }}"
+          description: "Load (5m): {{ $value }}"
+
+  - name: yukyu_service_availability
+    interval: 1m
+    rules:
+      # Instance Down
+      - alert: InstanceDown
+        expr: up{job!="prometheus"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: availability
+        annotations:
+          summary: "{{ $labels.job }} instance down"
+          description: "{{ $labels.instance }} has been down for more than 2 minutes"
+
+      # Endpoint Unreachable
+      - alert: EndpointDown
+        expr: probe_success == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: availability
+        annotations:
+          summary: "Endpoint unreachable: {{ $labels.endpoint }}"
+          description: "Health check failed for {{ $labels.endpoint }}"
+
+      # Certific ate Expiry
+      - alert: CertificateExpiringSoon
+        expr: ssl_cert_not_after_days < 30
+        for: 1h
+        labels:
+          severity: warning
+          service: availability
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "Certificate for {{ $labels.domain }} expires in {{ $value }} days"
+
+  - name: yukyu_compliance
+    interval: 5m
+    rules:
+      # Backup Compliance (RPO)
+      - alert: BackupRPOViolation
+        expr: time() - backup_last_success_timestamp_seconds > 600
+        for: 5m
+        labels:
+          severity: critical
+          service: compliance
+          rpo: "5min"
+        annotations:
+          summary: "BACKUP RPO VIOLATION - Last backup > 5 minutes ago"
+          description: "RPO target: 5 minutes | Current: {{ (time() - $value) | humanizeDuration }}"
+
+      # Recovery Time Objective (RTO) - Failover test
+      - alert: FailoverTestOverdue
+        expr: time() - last_failover_test_timestamp_seconds > 2592000
+        for: 1h
+        labels:
+          severity: warning
+          service: compliance
+          rto: "15min"
+        annotations:
+          summary: "Failover test overdue (> 30 days)"
+          description: "Last failover test was {{ (time() - $value) | humanizeDuration }} ago"
