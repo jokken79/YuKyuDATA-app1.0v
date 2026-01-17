@@ -1,0 +1,408 @@
+# =============================================================================
+# FASE 3: Advanced Security Scanning
+# =============================================================================
+# Comprehensive security scanning with:
+# - Trivy: Container and filesystem vulnerability scanning
+# - Checkov: Infrastructure as Code (Terraform) scanning
+# - CodeQL: GitHub's code analysis engine
+# - Dependency check: OWASP dependency vulnerabilities
+# - Secret scanning: Detecting hardcoded secrets
+# =============================================================================
+
+name: Advanced Security Scanning
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  schedule:
+    # Run daily security scans at 3 AM UTC
+    - cron: '0 3 * * *'
+
+permissions:
+  contents: read
+  security-events: write
+  packages: read
+
+jobs:
+  # ============================================================================
+  # Container Scanning - Trivy
+  # ============================================================================
+  container-scan-trivy:
+    name: Container Scan (Trivy)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image for scanning
+        run: |
+          docker build -t yukyu-app:scan .
+        continue-on-error: true
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'yukyu-app:scan'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+        continue-on-error: true
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'trivy-container'
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-fs-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          skip-dirs: 'node_modules,venv,.git,backups'
+        continue-on-error: true
+
+      - name: Upload Trivy filesystem results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-fs-results.sarif'
+          category: 'trivy-filesystem'
+
+      - name: Generate Trivy HTML report
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'yukyu-app:scan'
+          format: 'template'
+          template: '@/contrib/html.tpl'
+          output: 'trivy-report.html'
+        continue-on-error: true
+
+      - name: Upload Trivy report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-reports
+          path: |
+            trivy-report.html
+            trivy-results.sarif
+          retention-days: 30
+
+  # ============================================================================
+  # Infrastructure as Code Scanning - Checkov
+  # ============================================================================
+  infrastructure-scan-checkov:
+    name: Infrastructure Scan (Checkov)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov scan
+        id: checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform/
+          framework: terraform
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+          skip_check: CKV_GIT_1,CKV_GENERAL_1
+        continue-on-error: true
+
+      - name: Upload Checkov results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'checkov-results.sarif'
+          category: 'checkov-terraform'
+
+      - name: Run Checkov on Dockerfile
+        run: |
+          pip install checkov
+          checkov -f Dockerfile --framework dockerfile --output sarif > checkov-dockerfile.sarif || true
+
+      - name: Upload Dockerfile scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'checkov-dockerfile.sarif'
+          category: 'checkov-dockerfile'
+
+  # ============================================================================
+  # Code Analysis - CodeQL (GitHub's native)
+  # ============================================================================
+  codeql-analysis:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['python', 'javascript']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - name: Set up Python (for Python analysis)
+        if: matrix.language == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        if: matrix.language == 'python'
+        run: |
+          pip install -r requirements.txt
+
+      - name: Set up Node.js (for JavaScript analysis)
+        if: matrix.language == 'javascript'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: codeql-${{ matrix.language }}
+
+  # ============================================================================
+  # OWASP Dependency Check
+  # ============================================================================
+  dependency-check:
+    name: OWASP Dependency Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'YuKyuDATA'
+          path: '.'
+          format: 'JSON'
+          args: >
+            --enableExperimental
+            --exclude node_modules,venv,.git,backups
+        continue-on-error: true
+
+      - name: Upload Dependency Check results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-check-report
+          path: 'reports/'
+          retention-days: 30
+
+  # ============================================================================
+  # Secret Scanning - Detect hardcoded credentials
+  # ============================================================================
+  secret-scanning:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install TruffleHog
+        run: |
+          pip install truffleHog3
+
+      - name: Run TruffleHog scan
+        run: |
+          trufflehog3 -r -j . > trufflehog-report.json || true
+
+      - name: Check for high-entropy strings
+        run: |
+          pip install detect-secrets
+          detect-secrets scan --baseline .secrets.baseline --update .secrets.baseline || true
+
+      - name: Check for common patterns
+        run: |
+          python3 << 'EOF'
+          import re
+          import sys
+          import os
+
+          patterns = {
+              'AWS_ACCESS_KEY': r'AKIA[0-9A-Z]{16}',
+              'AWS_SECRET_KEY': r'aws_secret_access_key\s*=\s*["\']?[A-Za-z0-9/+=]{40}',
+              'PRIVATE_KEY': r'-----BEGIN PRIVATE KEY-----',
+              'JWT_SECRET': r'jwt_secret\s*=\s*["\']([^"\']+)["\']',
+              'DATABASE_PASSWORD': r'password\s*[:=]\s*["\']?([^"\']+)["\']',
+              'API_KEY': r'api[_-]?key\s*[:=]\s*["\']?([^"\']+)["\']'
+          }
+
+          findings = []
+          skip_dirs = {'node_modules', 'venv', '.git', '__pycache__', 'backups', '.pytest_cache'}
+
+          for root, dirs, files in os.walk('.'):
+              # Remove skip directories
+              dirs[:] = [d for d in dirs if d not in skip_dirs]
+
+              for file in files:
+                  if file.startswith('.'):
+                      continue
+
+                  filepath = os.path.join(root, file)
+
+                  try:
+                      with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                          content = f.read()
+
+                          for pattern_name, pattern in patterns.items():
+                              if re.search(pattern, content, re.IGNORECASE):
+                                  findings.append({
+                                      'file': filepath,
+                                      'pattern': pattern_name
+                                  })
+                  except:
+                      pass
+
+          if findings:
+              print(f"::warning::Found {len(findings)} potential secrets")
+              for finding in findings[:10]:  # Show first 10
+                  print(f"  - {finding['file']}: {finding['pattern']}")
+          else:
+              print("No obvious secrets found")
+
+          sys.exit(0)
+          EOF
+
+      - name: Upload secret scanning report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: secret-scanning-report
+          path: trufflehog-report.json
+          retention-days: 30
+
+  # ============================================================================
+  # License Compliance Scanning
+  # ============================================================================
+  license-compliance:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check Python package licenses
+        run: |
+          pip install pip-licenses
+          pip-licenses --format=json --output-file=python-licenses.json
+          pip-licenses --format=markdown --output-file=python-licenses.md
+        continue-on-error: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check NPM package licenses
+        run: |
+          npm install -g license-report
+          license-report --output=json > npm-licenses.json || true
+          npm list --depth=0 > npm-tree.txt || true
+        continue-on-error: true
+
+      - name: Upload license reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: license-reports
+          path: |
+            python-licenses.json
+            python-licenses.md
+            npm-licenses.json
+            npm-tree.txt
+          retention-days: 30
+
+  # ============================================================================
+  # SBOM (Software Bill of Materials) Generation
+  # ============================================================================
+  sbom-generation:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Generate SBOM for Docker image
+        run: |
+          docker build -t yukyu-app:sbom . 2>/dev/null || true
+          syft yukyu-app:sbom -o spdx > sbom.spdx.json || true
+          syft yukyu-app:sbom -o cyclonedx > sbom.cyclonedx.json || true
+        continue-on-error: true
+
+      - name: Generate SBOM for filesystem
+        run: |
+          syft . -o spdx > sbom-fs.spdx.json || true
+          syft . -o cyclonedx > sbom-fs.cyclonedx.json || true
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sbom
+          path: |
+            sbom*.json
+          retention-days: 90
+
+  # ============================================================================
+  # Security Summary & Reporting
+  # ============================================================================
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [container-scan-trivy, infrastructure-scan-checkov, codeql-analysis, secret-scanning]
+    if: always()
+
+    steps:
+      - name: Generate security summary
+        run: |
+          echo "## Security Scanning Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Scans Performed" >> $GITHUB_STEP_SUMMARY
+          echo "| Scanner | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Trivy (Container & Filesystem) | ${{ needs.container-scan-trivy.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Checkov (Infrastructure) | ${{ needs.infrastructure-scan-checkov.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| CodeQL Analysis | ${{ needs.codeql-analysis.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Secret Scanning | ${{ needs.secret-scanning.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Recommendations" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review all SARIF reports in GitHub Security tab" >> $GITHUB_STEP_SUMMARY
+          echo "2. Check artifacts for detailed vulnerability information" >> $GITHUB_STEP_SUMMARY
+          echo "3. Address CRITICAL and HIGH severity issues before merging" >> $GITHUB_STEP_SUMMARY
+          echo "4. Enable branch protection requiring security checks to pass" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
