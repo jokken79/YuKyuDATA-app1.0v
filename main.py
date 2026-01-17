@@ -97,6 +97,12 @@ from routes import (
     github_router,
 )
 
+# Import v1 router
+from routes.v1 import router_v1
+
+# Import middleware for API versioning
+from middleware.deprecation import DeprecationHeaderMiddleware, VersionHeaderMiddleware
+
 # ============================================
 # ASYNC EXECUTOR FOR EXCEL PARSING
 # ============================================
@@ -555,6 +561,12 @@ app.add_middleware(
 # Compresses responses > 500 bytes for faster transfer
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
+# Add API versioning middlewares
+# VersionHeaderMiddleware: Adds API-Version headers to all responses
+# DeprecationHeaderMiddleware: Adds deprecation warnings to v0 endpoints
+app.add_middleware(VersionHeaderMiddleware)
+app.add_middleware(DeprecationHeaderMiddleware)
+
 # ============================================
 # GLOBAL EXCEPTION HANDLERS
 # ============================================
@@ -729,6 +741,9 @@ app.include_router(notifications_router)
 app.include_router(system_router)
 app.include_router(health_router)
 app.include_router(github_router)
+
+# Include v1 API router (all endpoints available at /api/v1/*)
+app.include_router(router_v1)
 
 
 @app.get("/", response_class=HTMLResponse)
