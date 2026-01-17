@@ -521,6 +521,7 @@ export function detectEnvironment() {
 
 /**
  * Inicialización automática con configuración de entorno
+ */
 export async function autoInitialize() {
     const env = detectEnvironment();
     const config = ENV_CONFIG[env] || ENV_CONFIG.production;

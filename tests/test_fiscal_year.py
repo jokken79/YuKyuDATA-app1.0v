@@ -18,8 +18,8 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import fiscal_year
-from fiscal_year import (
+from services import fiscal_year
+from services.fiscal_year import (
     calculate_seniority_years,
     calculate_granted_days,
     get_fiscal_period,

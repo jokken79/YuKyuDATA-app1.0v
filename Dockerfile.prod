@@ -1,0 +1,193 @@
+# =============================================================================
+# Dockerfile.prod - Production Environment with Minified Assets
+# YuKyuDATA FastAPI Application
+# =============================================================================
+#
+# Multi-stage build:
+#   Stage 1: Build minified assets with Node.js
+#   Stage 2: Production Python image with optimizations
+#
+# Usage:
+#   docker build -f Dockerfile.prod -t yukyu-prod .
+#   docker run -p 8000:8000 -e DEBUG=false yukyu-prod
+#
+# =============================================================================
+
+# =============================================================================
+# STAGE 1: Build minified assets
+# =============================================================================
+FROM node:20-alpine AS asset-builder
+
+WORKDIR /build
+
+# Install dependencies first (better caching)
+COPY package.json package-lock.json* ./
+RUN npm ci --production=false
+
+# Copy source assets
+COPY scripts/build-assets.js ./scripts/
+COPY static/js/ ./static/js/
+COPY static/css/ ./static/css/
+
+# Build minified assets
+RUN npm run build
+
+# Generate manifest
+RUN find static/js -name "*.min.js" -exec sha256sum {} \; > static/asset-manifest.txt && \
+    find static/css -name "*.min.css" -exec sha256sum {} \; >> static/asset-manifest.txt
+
+# =============================================================================
+# STAGE 2: Production Python image
+# =============================================================================
+FROM python:3.11-slim AS production
+
+LABEL maintainer="YuKyuDATA Team"
+LABEL version="1.0-prod"
+LABEL description="YuKyuDATA Production Environment with Minified Assets"
+
+# ===========================================
+# SYSTEM DEPENDENCIES
+# ===========================================
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# ===========================================
+# WORKING DIRECTORY
+# ===========================================
+WORKDIR /app
+
+# ===========================================
+# PYTHON DEPENDENCIES
+# ===========================================
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir \
+    fastapi \
+    uvicorn[standard] \
+    openpyxl \
+    python-multipart \
+    pydantic \
+    PyJWT \
+    python-dotenv \
+    XlsxWriter \
+    gunicorn && \
+    pip install --no-cache-dir -r requirements.txt
+
+# ===========================================
+# COPY APPLICATION CODE
+# ===========================================
+COPY main.py .
+COPY database.py .
+COPY excel_service.py .
+COPY fiscal_year.py .
+COPY auth.py .
+COPY notifications.py .
+COPY reports.py .
+COPY excel_export.py .
+
+# Copy optional modules if they exist
+COPY config.py . 2>/dev/null || true
+COPY logger.py . 2>/dev/null || true
+
+# Copy routes
+COPY routes/ ./routes/
+
+# Copy agents
+COPY agents/ ./agents/
+
+# Copy services
+COPY services/ ./services/
+
+# Copy middleware
+COPY middleware/ ./middleware/
+
+# Copy monitoring
+COPY monitoring/ ./monitoring/
+
+# Copy config
+COPY config/ ./config/
+
+# ===========================================
+# COPY TEMPLATES (non-minified)
+# ===========================================
+COPY templates/ ./templates/
+
+# ===========================================
+# COPY MINIFIED ASSETS FROM BUILDER
+# ===========================================
+# Copy minified JS
+COPY --from=asset-builder /build/static/js/*.min.js ./static/js/
+COPY --from=asset-builder /build/static/js/*.min.js.map ./static/js/
+COPY --from=asset-builder /build/static/js/modules/*.min.js ./static/js/modules/
+COPY --from=asset-builder /build/static/js/modules/*.min.js.map ./static/js/modules/
+
+# Copy minified CSS
+COPY --from=asset-builder /build/static/css/*.min.css ./static/css/
+COPY --from=asset-builder /build/static/css/*.min.css.map ./static/css/
+
+# Copy asset manifest
+COPY --from=asset-builder /build/static/asset-manifest.txt ./static/
+
+# Copy original assets (for fallback and sourcemaps)
+COPY static/js/*.js ./static/js/
+COPY static/js/modules/*.js ./static/js/modules/
+COPY static/css/*.css ./static/css/
+
+# Copy other static assets (images, locales, etc.)
+COPY static/locales/ ./static/locales/
+COPY static/css/design-system/ ./static/css/design-system/ 2>/dev/null || true
+
+# ===========================================
+# ENVIRONMENT VARIABLES
+# ===========================================
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    APP_ENV=production \
+    DEBUG=false \
+    USE_MINIFIED_ASSETS=true
+
+# ===========================================
+# CREATE NON-ROOT USER
+# ===========================================
+RUN groupadd --gid 1000 appuser && \
+    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home appuser
+
+# ===========================================
+# CREATE DATA DIRECTORIES
+# ===========================================
+RUN mkdir -p /app/data /app/logs /app/backups /app/exports && \
+    chown -R appuser:appuser /app && \
+    chmod 755 /app/data /app/logs /app/backups /app/exports
+
+# ===========================================
+# SWITCH TO NON-ROOT USER
+# ===========================================
+USER appuser
+
+# ===========================================
+# HEALTHCHECK
+# ===========================================
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/api/health || exit 1
+
+# ===========================================
+# EXPOSE PORT
+# ===========================================
+EXPOSE 8000
+
+# ===========================================
+# PRODUCTION COMMAND (Gunicorn with Uvicorn workers)
+# ===========================================
+CMD ["gunicorn", "main:app", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--workers", "4", \
+     "--bind", "0.0.0.0:8000", \
+     "--timeout", "120", \
+     "--keep-alive", "5", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "--capture-output"]

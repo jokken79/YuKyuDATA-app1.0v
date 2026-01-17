@@ -4,7 +4,6 @@ Endpoints de operaciones del ano fiscal
 """
 
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
@@ -24,24 +23,10 @@ from .dependencies import (
     apply_lifo_deduction,
 )
 
+# Import centralized Pydantic models
+from models import LifoDeductionRequest, CarryoverRequest
+
 router = APIRouter(prefix="/api/fiscal", tags=["Fiscal Year"])
-
-
-# ============================================
-# PYDANTIC MODELS
-# ============================================
-
-class LifoDeductionRequest(BaseModel):
-    """Model for LIFO deduction request (uses newest days first)."""
-    employee_num: str = Field(..., min_length=1)
-    days: float = Field(..., gt=0, le=40)
-    year: int = Field(..., ge=2000, le=2100)
-
-
-class CarryoverRequest(BaseModel):
-    """Model for year-end carryover request."""
-    from_year: int = Field(..., ge=2000, le=2100)
-    to_year: int = Field(..., ge=2000, le=2100)
 
 
 # ============================================

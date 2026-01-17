@@ -304,7 +304,7 @@ class TestApproveLeaveRequest:
         request_id = create_response.json()["data"]["id"]
 
         # Aprobar
-        approve_response = client.post(
+        approve_response = client.patch(
             f"/api/leave-requests/{request_id}/approve",
             headers={**auth_headers, "X-CSRF-Token": csrf_token}
         )
@@ -326,7 +326,7 @@ class TestApproveLeaveRequest:
         request_id = create_response.json()["data"]["id"]
 
         # Aprobar
-        approve_response = client.post(
+        approve_response = client.patch(
             f"/api/leave-requests/{request_id}/approve",
             headers={**auth_headers, "X-CSRF-Token": csrf_token}
         )
@@ -337,7 +337,7 @@ class TestApproveLeaveRequest:
 
     def test_approve_nonexistent_request(self, auth_headers, csrf_token):
         """Aprobar solicitud inexistente retorna error"""
-        response = client.post(
+        response = client.patch(
             "/api/leave-requests/99999999/approve",
             headers={**auth_headers, "X-CSRF-Token": csrf_token}
         )
@@ -354,13 +354,13 @@ class TestApproveLeaveRequest:
         )
         request_id = create_response.json()["data"]["id"]
 
-        client.post(
+        client.patch(
             f"/api/leave-requests/{request_id}/approve",
             headers={**auth_headers, "X-CSRF-Token": csrf_token}
         )
 
         # Intentar aprobar nuevamente
-        second_response = client.post(
+        second_response = client.patch(
             f"/api/leave-requests/{request_id}/approve",
             headers={**auth_headers, "X-CSRF-Token": csrf_token}
         )
@@ -379,7 +379,7 @@ class TestApproveLeaveRequest:
         request_id = create_response.json()["data"]["id"]
 
         # Intentar aprobar sin auth
-        response = client.post(
+        response = client.patch(
             f"/api/leave-requests/{request_id}/approve",
             headers={"X-CSRF-Token": csrf_token}  # Solo CSRF, sin JWT
         )
@@ -405,7 +405,7 @@ class TestRejectLeaveRequest:
         request_id = create_response.json()["data"]["id"]
 
         # Rechazar
-        reject_response = client.post(
+        reject_response = client.patch(
             f"/api/leave-requests/{request_id}/reject",
             headers={**auth_headers, "X-CSRF-Token": csrf_token},
             json={"reason": "Test rejection"}
@@ -428,7 +428,7 @@ class TestRejectLeaveRequest:
 
         # Rechazar con razón
         reject_reason = "Insufficient vacation days"
-        reject_response = client.post(
+        reject_response = client.patch(
             f"/api/leave-requests/{request_id}/reject",
             headers={**auth_headers, "X-CSRF-Token": csrf_token},
             json={"reason": reject_reason}
@@ -441,7 +441,7 @@ class TestRejectLeaveRequest:
 
     def test_reject_nonexistent_request(self, auth_headers, csrf_token):
         """Rechazar solicitud inexistente retorna error"""
-        response = client.post(
+        response = client.patch(
             "/api/leave-requests/99999999/reject",
             headers={**auth_headers, "X-CSRF-Token": csrf_token},
             json={"reason": "Test"}
@@ -467,13 +467,13 @@ class TestRevertLeaveRequest:
         )
         request_id = create_response.json()["data"]["id"]
 
-        client.post(
+        client.patch(
             f"/api/leave-requests/{request_id}/approve",
             headers={**auth_headers, "X-CSRF-Token": csrf_token}
         )
 
         # Revertir
-        revert_response = client.post(
+        revert_response = client.patch(
             f"/api/leave-requests/{request_id}/revert",
             headers={**auth_headers, "X-CSRF-Token": csrf_token}
         )
@@ -495,7 +495,7 @@ class TestRevertLeaveRequest:
         request_id = create_response.json()["data"]["id"]
 
         # Intentar revertir sin aprobar primero
-        revert_response = client.post(
+        revert_response = client.patch(
             f"/api/leave-requests/{request_id}/revert",
             headers={**auth_headers, "X-CSRF-Token": csrf_token}
         )
@@ -540,7 +540,7 @@ class TestCompleteWorkflow:
         assert request_id in pending_ids
 
         # 3. Aprobar
-        approve_response = client.post(
+        approve_response = client.patch(
             f"/api/leave-requests/{request_id}/approve",
             headers={**auth_headers, "X-CSRF-Token": csrf_token}
         )
@@ -580,7 +580,7 @@ class TestCompleteWorkflow:
         request_id = create_response.json()["data"]["id"]
 
         # Rechazar
-        reject_response = client.post(
+        reject_response = client.patch(
             f"/api/leave-requests/{request_id}/reject",
             headers={**auth_headers, "X-CSRF-Token": csrf_token},
             json={"reason": "Not enough coverage"}
@@ -611,13 +611,13 @@ class TestCompleteWorkflow:
         request_id = create_response.json()["data"]["id"]
 
         # Aprobar
-        client.post(
+        client.patch(
             f"/api/leave-requests/{request_id}/approve",
             headers={**auth_headers, "X-CSRF-Token": csrf_token}
         )
 
         # Revertir
-        revert_response = client.post(
+        revert_response = client.patch(
             f"/api/leave-requests/{request_id}/revert",
             headers={**auth_headers, "X-CSRF-Token": csrf_token}
         )

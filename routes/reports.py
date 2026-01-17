@@ -5,7 +5,6 @@ Endpoints de generacion de reportes PDF y Excel
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 from pathlib import Path
@@ -19,7 +18,7 @@ from .dependencies import (
     logger,
     get_active_employee_nums,
 )
-from reports import (
+from services.reports import (
     ReportGenerator,
     save_report,
     list_reports,
@@ -27,22 +26,10 @@ from reports import (
     REPORTS_DIR
 )
 
+# Import centralized Pydantic models
+from models import CustomReportRequest
+
 router = APIRouter(prefix="/api/reports", tags=["Reports"])
-
-
-# ============================================
-# PYDANTIC MODELS
-# ============================================
-
-class CustomReportRequest(BaseModel):
-    """Model for custom report generation."""
-    title: str = Field(..., min_length=1, max_length=200)
-    year: int = Field(..., ge=2000, le=2100)
-    month: Optional[int] = Field(None, ge=1, le=12)
-    employee_nums: Optional[List[str]] = None
-    haken_filter: Optional[str] = None
-    include_charts: bool = True
-    include_compliance: bool = True
 
 
 # ============================================

@@ -17,7 +17,7 @@ from .dependencies import (
     log_sync_event,
     EMPLOYEE_REGISTRY_PATH,
 )
-import excel_service
+from services import excel_service
 
 router = APIRouter(prefix="/api", tags=["Genzai"])
 

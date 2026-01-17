@@ -5,7 +5,6 @@ Endpoints de gestion de empleados y datos de vacaciones
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Query, UploadFile, File
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 import shutil
@@ -25,61 +24,16 @@ from .dependencies import (
     DEFAULT_EXCEL_PATH,
     UPLOAD_DIR,
 )
-import excel_service
+from services import excel_service
 from services.search_service import SearchService
+
+# Import centralized Pydantic models
+from models import EmployeeUpdate, BulkUpdateRequest, BulkUpdatePreview
 
 router = APIRouter(prefix="/api", tags=["Employees"])
 
 # Thread pool for Excel parsing
 _excel_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="excel_parser")
-
-
-# ============================================
-# PYDANTIC MODELS
-# ============================================
-
-class EmployeeUpdate(BaseModel):
-    """Model for updating employee data."""
-    name: Optional[str] = None
-    haken: Optional[str] = None
-    granted: Optional[float] = Field(None, ge=0, le=40)
-    used: Optional[float] = Field(None, ge=0, le=40)
-    validate_limit: bool = True
-
-
-class BulkUpdateRequest(BaseModel):
-    """Model for bulk updating multiple employees."""
-    employee_nums: List[str] = Field(..., min_length=1, max_length=50)
-    year: int = Field(..., ge=2000, le=2100)
-    updates: dict = Field(...)
-    validate_limit: bool = True
-
-    @field_validator('employee_nums')
-    @classmethod
-    def validate_employee_nums(cls, v):
-        if len(v) > 50:
-            raise ValueError('Maximum 50 employees per operation')
-        if len(v) == 0:
-            raise ValueError('At least one employee is required')
-        return v
-
-    @field_validator('updates')
-    @classmethod
-    def validate_updates(cls, v):
-        if not v:
-            raise ValueError('At least one field to update is required')
-        valid_fields = {'add_granted', 'add_used', 'set_haken', 'set_granted', 'set_used'}
-        invalid = set(v.keys()) - valid_fields
-        if invalid:
-            raise ValueError(f'Invalid fields: {invalid}. Valid: {valid_fields}')
-        return v
-
-
-class BulkUpdatePreview(BaseModel):
-    """Model for previewing bulk update changes."""
-    employee_nums: List[str] = Field(..., min_length=1, max_length=50)
-    year: int = Field(..., ge=2000, le=2100)
-    updates: dict
 
 
 # ============================================

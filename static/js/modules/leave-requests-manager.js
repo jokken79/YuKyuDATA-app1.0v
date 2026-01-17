@@ -173,7 +173,7 @@ export const LeaveRequestsManager = {
             this.showLoading();
 
             const response = await fetch(`${API_BASE}/leave-requests/${requestId}/approve`, {
-                method: 'POST',
+                method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json'
                 },
@@ -216,7 +216,7 @@ export const LeaveRequestsManager = {
             }
 
             const response = await fetch(`${API_BASE}/leave-requests/${requestId}/reject`, {
-                method: 'POST',
+                method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json'
                 },
@@ -290,7 +290,7 @@ export const LeaveRequestsManager = {
             this.showLoading();
 
             const response = await fetch(`${API_BASE}/leave-requests/${requestId}/revert`, {
-                method: 'POST'
+                method: 'PATCH'
             });
 
             if (!response.ok) {

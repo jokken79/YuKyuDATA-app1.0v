@@ -4,7 +4,6 @@ Endpoints de notificaciones del sistema
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
-from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
@@ -18,41 +17,14 @@ from .dependencies import (
     check_expiring_soon,
 )
 
+# Import centralized Pydantic models
+from models import (
+    MarkAllNotificationsReadRequest,
+    NotificationSettingsUpdate,
+    TestEmailRequest,
+)
+
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
-
-
-# ============================================
-# PYDANTIC MODELS
-# ============================================
-
-class MarkAllNotificationsReadRequest(BaseModel):
-    """Request body for marking multiple notifications as read."""
-    notification_ids: List[str] = Field(..., description="List of notification IDs")
-
-
-class NotificationSettingsUpdate(BaseModel):
-    """Model for updating notification settings."""
-    smtp_host: Optional[str] = None
-    smtp_port: Optional[int] = None
-    smtp_user: Optional[str] = None
-    smtp_password: Optional[str] = None
-    smtp_from: Optional[str] = None
-    smtp_from_name: Optional[str] = None
-    email_enabled: Optional[bool] = None
-    slack_webhook_url: Optional[str] = None
-    slack_channel: Optional[str] = None
-    slack_enabled: Optional[bool] = None
-    notify_on_leave_created: Optional[bool] = None
-    notify_on_leave_approved: Optional[bool] = None
-    notify_on_leave_rejected: Optional[bool] = None
-    notify_on_expiring_days: Optional[bool] = None
-    notify_on_compliance_warning: Optional[bool] = None
-    manager_emails: Optional[str] = None
-
-
-class TestEmailRequest(BaseModel):
-    """Model for sending test email."""
-    to: str = Field(..., description="Recipient email")
 
 
 # ============================================
@@ -118,7 +90,8 @@ async def get_notifications(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/{notification_id}/mark-read")
+@router.patch("/{notification_id}/read")
+@router.post("/{notification_id}/mark-read")  # Deprecated: Use PATCH /{id}/read instead
 async def mark_notification_as_read(
     notification_id: str,
     user: CurrentUser = Depends(get_current_user)
@@ -126,6 +99,8 @@ async def mark_notification_as_read(
     """
     Mark a specific notification as read for the current user.
     Marca una notificacion especifica como leida.
+
+    Note: PATCH /{id}/read is the preferred method. POST /{id}/mark-read is deprecated.
     """
     try:
         was_unread = database.mark_notification_read(notification_id, user.username)
@@ -140,7 +115,8 @@ async def mark_notification_as_read(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/mark-all-read")
+@router.patch("/read-all")
+@router.post("/mark-all-read")  # Deprecated: Use PATCH /read-all instead
 async def mark_all_notifications_as_read(
     request: MarkAllNotificationsReadRequest,
     user: CurrentUser = Depends(get_current_user)
@@ -148,6 +124,8 @@ async def mark_all_notifications_as_read(
     """
     Mark multiple notifications as read for the current user.
     Marca multiples notificaciones como leidas.
+
+    Note: PATCH /read-all is the preferred method. POST /mark-all-read is deprecated.
     """
     try:
         marked_count = database.mark_all_notifications_read(user.username, request.notification_ids)
@@ -198,7 +176,7 @@ async def get_notification_settings(user: CurrentUser = Depends(get_current_user
     Obtiene la configuracion actual de notificaciones.
     """
     try:
-        from notifications import notification_service
+        from services.notifications import notification_service
         settings = notification_service.get_settings()
         return {
             "status": "success",
@@ -222,7 +200,7 @@ async def update_notification_settings(
     Actualiza la configuracion de notificaciones.
     """
     try:
-        from notifications import notification_service
+        from services.notifications import notification_service
 
         # Convert to dict excluding None
         update_data = {k: v for k, v in settings_update.model_dump().items() if v is not None}
@@ -261,7 +239,7 @@ async def test_email_notification(
     Envia un email de prueba para verificar la configuracion SMTP.
     """
     try:
-        from notifications import notification_service
+        from services.notifications import notification_service
         result = notification_service.test_email(request.to)
 
         if result["status"] == "success":
@@ -291,7 +269,7 @@ async def test_slack_notification(user: CurrentUser = Depends(get_admin_user)):
     Envia un mensaje de prueba a Slack.
     """
     try:
-        from notifications import notification_service
+        from services.notifications import notification_service
         result = notification_service.test_slack()
 
         if result["status"] == "success":
@@ -325,7 +303,7 @@ async def get_notification_logs(
     Obtiene el historial de notificaciones enviadas.
     """
     try:
-        from notifications import notification_service
+        from services.notifications import notification_service
         logs = notification_service.get_notification_logs(
             limit=limit,
             notification_type=notification_type,
@@ -356,7 +334,7 @@ async def send_expiring_days_warnings(
     Envia notificaciones de advertencia a empleados con dias que estan por vencer.
     """
     try:
-        from notifications import notification_service
+        from services.notifications import notification_service
 
         if year is None:
             year = datetime.now().year
@@ -415,7 +393,7 @@ async def send_compliance_warnings(
     Envia notificaciones de advertencia de cumplimiento de 5 dias.
     """
     try:
-        from notifications import notification_service
+        from services.notifications import notification_service
 
         if year is None:
             year = datetime.now().year

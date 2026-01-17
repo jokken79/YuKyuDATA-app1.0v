@@ -46,7 +46,7 @@ def calculate_granted_days(seniority_years: float) -> int:
 
 # Tests generados automáticamente:
 import pytest
-from fiscal_year import calculate_granted_days
+from services.fiscal_year import calculate_granted_days
 
 class TestCalculateGrantedDays:
     """Tests for calculate_granted_days function."""

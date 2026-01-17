@@ -19,12 +19,12 @@ version: '3.9'
 
 services:
   # ============================================
-  # FASTAPI APPLICATION (Production)
+  # FASTAPI APPLICATION (Production with Minified Assets)
   # ============================================
   app:
     build:
       context: .
-      dockerfile: Dockerfile.secure
+      dockerfile: Dockerfile.prod
       args:
         - BUILDKIT_INLINE_CACHE=1
     image: yukyu-app:${VERSION:-latest}
@@ -83,6 +83,9 @@ services:
       # Logging
       - LOG_LEVEL=INFO
       - LOG_FORMAT=json
+
+      # Minified assets (enabled in production)
+      - USE_MINIFIED_ASSETS=true
 
     # ============================================
     # ENV FILE

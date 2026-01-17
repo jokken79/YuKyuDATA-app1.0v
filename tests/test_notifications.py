@@ -189,9 +189,9 @@ class TestMarkAsRead:
         if len(notifications) > 0:
             notification_id = notifications[0]["id"]
 
-            # Marcar como leída
-            mark_response = client.post(
-                f"/api/notifications/{notification_id}/mark-read",
+            # Marcar como leída (usando nuevo endpoint PATCH)
+            mark_response = client.patch(
+                f"/api/notifications/{notification_id}/read",
                 headers={**auth_headers, "X-CSRF-Token": csrf_token}
             )
             assert mark_response.status_code == 200
@@ -205,8 +205,8 @@ class TestMarkAsRead:
 
     def test_mark_nonexistent_notification(self, auth_headers, csrf_token):
         """Marcar notificación inexistente retorna 404"""
-        response = client.post(
-            "/api/notifications/99999999/mark-read",
+        response = client.patch(
+            "/api/notifications/99999999/read",
             headers={**auth_headers, "X-CSRF-Token": csrf_token}
         )
         assert response.status_code in [404, 400]
@@ -221,9 +221,9 @@ class TestMarkAsRead:
         if len(read_notifications) > 0:
             notification_id = read_notifications[0]["id"]
 
-            # Marcar nuevamente
-            mark_response = client.post(
-                f"/api/notifications/{notification_id}/mark-read",
+            # Marcar nuevamente (usando nuevo endpoint PATCH)
+            mark_response = client.patch(
+                f"/api/notifications/{notification_id}/read",
                 headers={**auth_headers, "X-CSRF-Token": csrf_token}
             )
             # Debe ser idempotente
@@ -238,10 +238,11 @@ class TestMarkAllAsRead:
     """Tests para marcar todas las notificaciones como leídas"""
 
     def test_mark_all_as_read(self, auth_headers, csrf_token):
-        """Marcar todas como leídas"""
-        response = client.post(
-            "/api/notifications/mark-all-read",
-            headers={**auth_headers, "X-CSRF-Token": csrf_token}
+        """Marcar todas como leídas (usando nuevo endpoint PATCH)"""
+        response = client.patch(
+            "/api/notifications/read-all",
+            headers={**auth_headers, "X-CSRF-Token": csrf_token},
+            json={"notification_ids": []}  # Empty list marks all
         )
         assert response.status_code == 200
 
@@ -251,16 +252,18 @@ class TestMarkAllAsRead:
 
     def test_mark_all_when_empty(self, auth_headers, csrf_token):
         """Marcar todas cuando no hay no leídas no causa error"""
-        # Primero marcar todas
-        client.post(
-            "/api/notifications/mark-all-read",
-            headers={**auth_headers, "X-CSRF-Token": csrf_token}
+        # Primero marcar todas (usando nuevo endpoint PATCH)
+        client.patch(
+            "/api/notifications/read-all",
+            headers={**auth_headers, "X-CSRF-Token": csrf_token},
+            json={"notification_ids": []}
         )
 
         # Marcar nuevamente
-        response = client.post(
-            "/api/notifications/mark-all-read",
-            headers={**auth_headers, "X-CSRF-Token": csrf_token}
+        response = client.patch(
+            "/api/notifications/read-all",
+            headers={**auth_headers, "X-CSRF-Token": csrf_token},
+            json={"notification_ids": []}
         )
         assert response.status_code == 200
 
@@ -332,8 +335,8 @@ class TestNotificationErrors:
 
     def test_invalid_notification_id_format(self, auth_headers, csrf_token):
         """ID de notificación inválido retorna error"""
-        response = client.post(
-            "/api/notifications/invalid-id/mark-read",
+        response = client.patch(
+            "/api/notifications/invalid-id/read",
             headers={**auth_headers, "X-CSRF-Token": csrf_token}
         )
         assert response.status_code in [400, 404, 422]
@@ -388,8 +391,8 @@ class TestNotificationSecurity:
 
     def test_mark_read_requires_auth_or_csrf(self, csrf_token):
         """Marcar como leída requiere autenticación o CSRF"""
-        # Sin auth y sin CSRF debería fallar
-        response = client.post("/api/notifications/1/mark-read")
+        # Sin auth y sin CSRF debería fallar (usando nuevo endpoint PATCH)
+        response = client.patch("/api/notifications/1/read")
         assert response.status_code in [401, 403]
 
     def test_xss_in_notification_message(self):

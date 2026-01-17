@@ -3074,7 +3074,7 @@ const App = {
             App.ui.showLoading();
             try {
                 const res = await fetch(`${App.config.apiBase}/leave-requests/${requestId}/approve`, {
-                    method: 'POST',
+                    method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ approved_by: 'Manager' })
                 });
@@ -3098,7 +3098,7 @@ const App = {
             App.ui.showLoading();
             try {
                 const res = await fetch(`${App.config.apiBase}/leave-requests/${requestId}/reject`, {
-                    method: 'POST',
+                    method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ rejected_by: 'Manager' })
                 });
@@ -3178,7 +3178,7 @@ const App = {
             App.ui.showLoading();
             try {
                 const res = await fetch(`${App.config.apiBase}/leave-requests/${requestId}/revert`, {
-                    method: 'POST',
+                    method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reverted_by: 'Manager' })
                 });
@@ -4470,42 +4470,174 @@ const App = {
     },
 
     // ========================================
-    // GSAP ANIMATIONS MODULE
+    // GSAP ANIMATIONS MODULE (Lazy Loading)
     // ========================================
     animations: {
-        init() {
-            if (typeof gsap === 'undefined') {
-                console.warn('GSAP not loaded, skipping animations');
+        // CDN URLs for lazy loading
+        _cdnUrls: {
+            gsapCore: 'https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js',
+            scrollTrigger: 'https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js',
+            scrollToPlugin: 'https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollToPlugin.min.js',
+            animateCss: 'https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css'
+        },
+
+        // Loading state
+        _loading: false,
+        _loaded: false,
+
+        /**
+         * Load a script dynamically
+         * @param {string} url - Script URL
+         * @returns {Promise}
+         */
+        _loadScript(url) {
+            return new Promise((resolve, reject) => {
+                const existing = document.querySelector(`script[src="${url}"]`);
+                if (existing) {
+                    resolve();
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = url;
+                script.async = true;
+                script.onload = resolve;
+                script.onerror = () => reject(new Error(`Failed to load: ${url}`));
+                document.head.appendChild(script);
+            });
+        },
+
+        /**
+         * Load a stylesheet dynamically
+         * @param {string} url - Stylesheet URL
+         * @returns {Promise}
+         */
+        _loadStylesheet(url) {
+            return new Promise((resolve, reject) => {
+                const existing = document.querySelector(`link[href="${url}"]`);
+                if (existing) {
+                    resolve();
+                    return;
+                }
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = url;
+                link.onload = resolve;
+                link.onerror = () => reject(new Error(`Failed to load: ${url}`));
+                document.head.appendChild(link);
+            });
+        },
+
+        /**
+         * Load GSAP and plugins on demand
+         * @returns {Promise<gsap>}
+         */
+        async loadGSAP() {
+            if (typeof window.gsap !== 'undefined' && this._loaded) {
+                return window.gsap;
+            }
+
+            if (this._loading) {
+                // Wait for existing load to complete
+                return new Promise((resolve) => {
+                    const check = setInterval(() => {
+                        if (this._loaded && typeof window.gsap !== 'undefined') {
+                            clearInterval(check);
+                            resolve(window.gsap);
+                        }
+                    }, 50);
+                });
+            }
+
+            this._loading = true;
+
+            try {
+                // Load GSAP core first
+                await this._loadScript(this._cdnUrls.gsapCore);
+
+                // Load plugins in parallel
+                await Promise.all([
+                    this._loadScript(this._cdnUrls.scrollTrigger),
+                    this._loadScript(this._cdnUrls.scrollToPlugin)
+                ]);
+
+                // Register plugins
+                if (window.gsap && window.ScrollTrigger && window.ScrollToPlugin) {
+                    window.gsap.registerPlugin(window.ScrollTrigger, window.ScrollToPlugin);
+                }
+
+                this._loaded = true;
+                this._loading = false;
+                return window.gsap;
+            } catch (error) {
+                this._loading = false;
+                console.warn('[Animations] Failed to load GSAP:', error);
+                return null;
+            }
+        },
+
+        /**
+         * Load Animate.css on demand
+         * @returns {Promise}
+         */
+        async loadAnimateCSS() {
+            if (document.querySelector(`link[href*="animate.css"]`)) {
+                return;
+            }
+            await this._loadStylesheet(this._cdnUrls.animateCss);
+        },
+
+        /**
+         * Initialize animations - loads GSAP on demand
+         */
+        async init() {
+            // Respect prefers-reduced-motion (WCAG 2.3.3)
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (prefersReducedMotion) {
+                this._applyReducedMotionFallback();
                 return;
             }
 
-            // Respetar prefers-reduced-motion para accesibilidad (WCAG 2.3.3)
-            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            // Load GSAP on demand
+            const gsap = await this.loadGSAP();
+            if (!gsap) {
+                this._applyReducedMotionFallback();
+                return;
+            }
 
-            // Register ScrollTrigger plugin
+            // Run animations
+            this._runInitialAnimations(gsap);
+        },
+
+        /**
+         * Apply fallback for reduced motion or when GSAP fails to load
+         */
+        _applyReducedMotionFallback() {
+            // Show all elements immediately without animation
+            document.querySelectorAll('.stat-card, .nav-item, .logo, .glass-panel').forEach(el => {
+                el.style.opacity = '1';
+                el.style.transform = 'none';
+            });
+        },
+
+        /**
+         * Run initial page animations
+         * @param {gsap} gsap - GSAP instance
+         */
+        _runInitialAnimations(gsap) {
+            // Animate stat cards on load
+            gsap.from('.stat-card', {
+                duration: 0.8,
+                y: 30,
+                opacity: 0,
+                stagger: 0.1,
+                ease: 'power3.out',
+                delay: 0.2
+            });
+
+            // Animate glass panels on scroll
             if (typeof ScrollTrigger !== 'undefined') {
-                gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
-            }
-
-            // Animate stat cards on load - respetar reduced motion
-            if (!prefersReducedMotion) {
-                gsap.from('.stat-card', {
-                    duration: 0.8,
-                    y: 30,
-                    opacity: 0,
-                    stagger: 0.1,
-                    ease: 'power3.out',
-                    delay: 0.2
-                });
-            } else {
-                // Transición instantánea para usuarios que prefieren reducir movimiento
-                gsap.set('.stat-card', { opacity: 1, y: 0 });
-            }
-
-            // Animate glass panels on scroll - respetar reduced motion
-            if (!prefersReducedMotion) {
                 gsap.utils.toArray('.glass-panel').forEach((panel, index) => {
-                    if (index > 3) { // Skip first 4 stat cards (already animated)
+                    if (index > 3) {
                         gsap.from(panel, {
                             scrollTrigger: {
                                 trigger: panel,
@@ -4520,82 +4652,75 @@ const App = {
                         });
                     }
                 });
-            }
 
-            // Smooth scroll for anchor links
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-                anchor.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    const target = document.querySelector(this.getAttribute('href'));
-                    if (target) {
-                        gsap.to(window, {
-                            duration: 1,
-                            scrollTo: { y: target, offsetY: 20 },
-                            ease: 'power3.inOut'
-                        });
-                    }
-                });
-            });
-
-            // Animate sidebar navigation items - respetar reduced motion
-            if (!prefersReducedMotion) {
-                gsap.from('.nav-item', {
-                    duration: 0.6,
-                    x: -30,
-                    opacity: 0,
-                    stagger: 0.08,
-                    ease: 'power2.out',
-                    delay: 0.3,
-                    clearProps: 'all' // Fix: Ensure opacity is reset to 1 after animation
-                });
-
-                // Animate logo
-                gsap.from('.logo', {
-                    duration: 1,
-                    scale: 0.8,
-                    opacity: 0,
-                    ease: 'elastic.out(1, 0.5)'
-                });
-            } else {
-                gsap.set('.nav-item', { opacity: 1, x: 0 });
-                gsap.set('.logo', { opacity: 1, scale: 1 });
-            }
-
-            // Parallax effect for background orbs
-            if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+                // Parallax effect for background orbs
                 gsap.to('body::before', {
-                    scrollTrigger: {
-                        scrub: true
-                    },
+                    scrollTrigger: { scrub: true },
                     y: (i, target) => -ScrollTrigger.maxScroll(window) * 0.3
                 });
             }
 
-            // Button hover animations - respetar reduced motion
-            if (!prefersReducedMotion) {
-                document.querySelectorAll('.btn').forEach(btn => {
-                    btn.addEventListener('mouseenter', () => {
-                        gsap.to(btn, {
-                            duration: 0.3,
-                            scale: 1.05,
-                            ease: 'power2.out'
-                        });
-                    });
-                    btn.addEventListener('mouseleave', () => {
-                        gsap.to(btn, {
-                            duration: 0.3,
-                            scale: 1,
-                            ease: 'power2.out'
-                        });
+            // Smooth scroll for anchor links
+            if (typeof ScrollToPlugin !== 'undefined') {
+                document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                    anchor.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        const target = document.querySelector(this.getAttribute('href'));
+                        if (target) {
+                            gsap.to(window, {
+                                duration: 1,
+                                scrollTo: { y: target, offsetY: 20 },
+                                ease: 'power3.inOut'
+                            });
+                        }
                     });
                 });
             }
 
+            // Animate sidebar navigation items
+            gsap.from('.nav-item', {
+                duration: 0.6,
+                x: -30,
+                opacity: 0,
+                stagger: 0.08,
+                ease: 'power2.out',
+                delay: 0.3,
+                clearProps: 'all'
+            });
+
+            // Animate logo
+            gsap.from('.logo', {
+                duration: 1,
+                scale: 0.8,
+                opacity: 0,
+                ease: 'elastic.out(1, 0.5)'
+            });
+
+            // Button hover animations
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.addEventListener('mouseenter', () => {
+                    gsap.to(btn, { duration: 0.3, scale: 1.05, ease: 'power2.out' });
+                });
+                btn.addEventListener('mouseleave', () => {
+                    gsap.to(btn, { duration: 0.3, scale: 1, ease: 'power2.out' });
+                });
+            });
+
             // Number counter animation for KPIs
-            this.animateCounters();
+            this.animateCounters(gsap);
         },
 
-        animateCounters() {
+        /**
+         * Animate KPI counters
+         * @param {gsap} gsap - GSAP instance (optional, will use window.gsap if not provided)
+         */
+        animateCounters(gsap) {
+            const g = gsap || window.gsap;
+            if (!g) {
+                // Fallback: just show values without animation
+                return;
+            }
+
             const counters = [
                 { id: 'kpi-used', suffix: '' },
                 { id: 'kpi-balance', suffix: '' },
@@ -4609,7 +4734,7 @@ const App = {
                     const value = parseFloat(element.textContent.replace(/[^\d.-]/g, ''));
                     if (!isNaN(value)) {
                         const obj = { val: 0 };
-                        gsap.to(obj, {
+                        g.to(obj, {
                             val: value,
                             duration: 2,
                             ease: 'power2.out',
@@ -4622,14 +4747,32 @@ const App = {
             });
         },
 
-        // Animate view transitions - FIXED: Use gsap.to instead of gsap.from to prevent opacity issues
-        transitionView(viewElement) {
-            if (typeof gsap === 'undefined') return;
+        /**
+         * Animate view transitions - loads GSAP if needed
+         * @param {HTMLElement} viewElement - Element to animate
+         */
+        async transitionView(viewElement) {
+            // Check reduced motion preference
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                viewElement.style.opacity = '1';
+                return;
+            }
 
-            // First ensure the element is visible
+            // Try to use existing GSAP or load it
+            let gsap = window.gsap;
+            if (!gsap) {
+                gsap = await this.loadGSAP();
+            }
+
+            if (!gsap) {
+                viewElement.style.opacity = '1';
+                return;
+            }
+
+            // Ensure the element is visible
             gsap.set(viewElement, { opacity: 1, y: 0 });
 
-            // Animate children with stagger (only animate transform, not opacity)
+            // Animate children with stagger
             const children = viewElement.querySelectorAll('.glass-panel, .stat-card');
             if (children.length > 0) {
                 gsap.fromTo(children,
@@ -4640,9 +4783,31 @@ const App = {
                         opacity: 1,
                         stagger: 0.05,
                         ease: 'power2.out',
-                        clearProps: 'all' // Clear GSAP props after animation
+                        clearProps: 'all'
                     }
                 );
+            }
+        },
+
+        /**
+         * Preload GSAP in background during idle time
+         * Call this early to have GSAP ready when needed
+         */
+        preloadInBackground() {
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                return;
+            }
+
+            const preload = () => {
+                this.loadGSAP().catch(() => {
+                    // Silently fail preload
+                });
+            };
+
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(preload, { timeout: 3000 });
+            } else {
+                setTimeout(preload, 1500);
             }
         }
     },
@@ -6910,7 +7075,14 @@ App.reports = {
 document.addEventListener('DOMContentLoaded', () => {
     App.init();
 
+    // Start preloading GSAP in background immediately
+    // This uses requestIdleCallback to avoid blocking initial render
+    if (App.animations && App.animations.preloadInBackground) {
+        App.animations.preloadInBackground();
+    }
+
     // Initialize GSAP animations after a short delay
+    // GSAP will be loaded on-demand if not already preloaded
     setTimeout(() => {
         if (App.animations) {
             App.animations.init();

@@ -4,7 +4,6 @@ Endpoints de detalles de uso de vacaciones
 """
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Query
-from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -18,42 +17,10 @@ from .dependencies import (
     get_active_employee_nums,
 )
 
+# Import centralized Pydantic models
+from models import UsageDetailUpdate, UsageDetailCreate
+
 router = APIRouter(prefix="/api/yukyu", tags=["Yukyu Details"])
-
-
-# ============================================
-# PYDANTIC MODELS
-# ============================================
-
-class UsageDetailUpdate(BaseModel):
-    """Model for updating a yukyu usage record."""
-    days_used: Optional[float] = Field(None, ge=0.25, le=1.0, description="Days used (0.25, 0.5, 1.0)")
-    use_date: Optional[str] = Field(None, description="New date YYYY-MM-DD")
-
-    @field_validator('days_used')
-    @classmethod
-    def validate_days(cls, v):
-        if v is not None:
-            valid_values = [0.25, 0.5, 0.75, 1.0]
-            if v not in valid_values:
-                raise ValueError(f'days_used must be: {valid_values} (0.5 = half day)')
-        return v
-
-
-class UsageDetailCreate(BaseModel):
-    """Model for creating a new yukyu usage record."""
-    employee_num: str = Field(..., min_length=1, description="Employee number")
-    name: str = Field(..., min_length=1, description="Employee name")
-    use_date: str = Field(..., description="Usage date YYYY-MM-DD")
-    days_used: float = Field(1.0, ge=0.25, le=1.0, description="Days used")
-
-    @field_validator('days_used')
-    @classmethod
-    def validate_days(cls, v):
-        valid_values = [0.25, 0.5, 0.75, 1.0]
-        if v not in valid_values:
-            raise ValueError(f'days_used must be: {valid_values}')
-        return v
 
 
 # ============================================

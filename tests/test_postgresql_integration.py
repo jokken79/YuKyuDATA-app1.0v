@@ -24,7 +24,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 import database
-from crypto_utils import encrypt_field, decrypt_field
+from services.crypto_utils import encrypt_field, decrypt_field
 
 
 class TestPostgreSQLConnection:

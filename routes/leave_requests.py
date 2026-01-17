@@ -4,7 +4,6 @@ Endpoints de solicitudes de vacaciones
 """
 
 from fastapi import APIRouter, HTTPException, Request, Depends
-from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -17,39 +16,10 @@ from .dependencies import (
     log_audit_action,
 )
 
+# Import centralized Pydantic models
+from models import LeaveRequestCreate
+
 router = APIRouter(prefix="/api", tags=["Leave Requests"])
-
-
-# ============================================
-# PYDANTIC MODELS
-# ============================================
-
-class LeaveRequestCreate(BaseModel):
-    """Model for creating a leave request."""
-    employee_num: str = Field(..., min_length=1, description="Employee number")
-    employee_name: str = Field(..., min_length=1, description="Employee name")
-    start_date: str = Field(..., description="Start date YYYY-MM-DD")
-    end_date: str = Field(..., description="End date YYYY-MM-DD")
-    days_requested: float = Field(..., ge=0, le=40, description="Days requested")
-    hours_requested: float = Field(0, ge=0, le=320, description="Hours requested")
-    leave_type: str = Field(..., description="Leave type: full, half_am, half_pm, hourly")
-    reason: Optional[str] = None
-
-    @field_validator('leave_type')
-    @classmethod
-    def validate_leave_type(cls, v):
-        valid_types = ['full', 'half_am', 'half_pm', 'hourly']
-        if v not in valid_types:
-            raise ValueError(f'leave_type must be one of: {valid_types}')
-        return v
-
-    @field_validator('end_date')
-    @classmethod
-    def validate_dates(cls, v, info):
-        start_date = info.data.get('start_date')
-        if start_date and v < start_date:
-            raise ValueError('end_date must be after start_date')
-        return v
 
 
 # ============================================
@@ -130,7 +100,7 @@ async def create_leave_request(
 
         # Send notification
         try:
-            from notifications import notification_service
+            from services.notifications import notification_service
             notification_service.notify_leave_request_created({
                 'employee_num': request_data['employee_num'],
                 'employee_name': request_data['employee_name'],
@@ -179,7 +149,8 @@ async def get_leave_requests_list(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/leave-requests/{request_id}/approve")
+@router.patch("/leave-requests/{request_id}/approve")
+@router.post("/leave-requests/{request_id}/approve")  # Deprecated: Use PATCH instead
 async def approve_leave_request(
     request: Request,
     request_id: int,
@@ -189,6 +160,8 @@ async def approve_leave_request(
     """
     Approve a leave request and automatically update yukyu balance.
     Aprueba una solicitud y actualiza automaticamente el balance.
+
+    Note: PATCH is the preferred method. POST is deprecated and kept for backwards compatibility.
     """
     try:
         approved_by = approval_data.get('approved_by', user.username if user else 'Manager')
@@ -221,7 +194,7 @@ async def approve_leave_request(
 
         # Send notification
         try:
-            from notifications import notification_service
+            from services.notifications import notification_service
             if old_value:
                 current_year = datetime.now().year
                 history = database.get_employee_yukyu_history(old_value.get('employee_num'), current_year)
@@ -252,7 +225,8 @@ async def approve_leave_request(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/leave-requests/{request_id}/reject")
+@router.patch("/leave-requests/{request_id}/reject")
+@router.post("/leave-requests/{request_id}/reject")  # Deprecated: Use PATCH instead
 async def reject_leave_request(
     request: Request,
     request_id: int,
@@ -262,6 +236,8 @@ async def reject_leave_request(
     """
     Reject a leave request.
     Rechaza una solicitud de vacaciones.
+
+    Note: PATCH is the preferred method. POST is deprecated and kept for backwards compatibility.
     """
     try:
         rejected_by = rejection_data.get('rejected_by', user.username if user else 'Manager')
@@ -285,7 +261,7 @@ async def reject_leave_request(
 
         # Send notification
         try:
-            from notifications import notification_service
+            from services.notifications import notification_service
             if old_value:
                 rejection_reason = rejection_data.get('reason', 'No reason provided')
                 notification_service.notify_leave_request_rejected(
@@ -359,7 +335,8 @@ async def cancel_leave_request(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/leave-requests/{request_id}/revert")
+@router.patch("/leave-requests/{request_id}/revert")
+@router.post("/leave-requests/{request_id}/revert")  # Deprecated: Use PATCH instead
 async def revert_leave_request(
     request: Request,
     request_id: int,
@@ -374,6 +351,8 @@ async def revert_leave_request(
     Revierte una solicitud YA APROBADA.
     Devuelve los dias usados al balance del empleado.
     El status cambia a 'CANCELLED'.
+
+    Note: PATCH is the preferred method. POST is deprecated and kept for backwards compatibility.
     """
     try:
         if revert_data is None:

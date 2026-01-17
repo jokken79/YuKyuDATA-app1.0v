@@ -8,7 +8,7 @@ Protected fields:
 - Staff: birth_date, address, postal_code, visa_type
 
 Usage:
-    from crypto_utils import encrypt_data, decrypt_data
+    from services.crypto_utils import encrypt_data, decrypt_data
 
     encrypted = encrypt_data("1985-05-15")
     decrypted = decrypt_data(encrypted)

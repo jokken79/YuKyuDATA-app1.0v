@@ -30,7 +30,11 @@ module.exports = {
   
   // Module path mapping (for absolute imports)
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/static/js/$1'
+    '^@/(.*)$': '<rootDir>/static/js/$1',
+    '^@components/(.*)$': '<rootDir>/static/src/components/$1',
+    '^@pages/(.*)$': '<rootDir>/static/src/pages/$1',
+    '^@store/(.*)$': '<rootDir>/static/src/store/$1',
+    '^@config/(.*)$': '<rootDir>/static/src/config/$1'
   },
   
   // Setup files
@@ -40,8 +44,12 @@ module.exports = {
   collectCoverage: true,
   collectCoverageFrom: [
     'static/js/modules/**/*.js',
+    'static/src/**/*.js',
     '!static/js/modules/**/*.test.js',
-    '!static/js/modules/**/*.spec.js'
+    '!static/js/modules/**/*.spec.js',
+    '!static/src/**/*.test.js',
+    '!static/src/**/*.spec.js',
+    '!static/src/integration-example.js'
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],

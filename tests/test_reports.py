@@ -158,7 +158,7 @@ class TestReportGeneratorUnit:
     def test_generate_employee_report_success(self, mock_employee_data):
         """Test successful employee report generation."""
         with patch('reports.get_db_connection') as mock_db:
-            from reports import ReportGenerator
+            from services.reports import ReportGenerator
 
             generator = ReportGenerator(company_name="Test Company")
 
@@ -175,7 +175,7 @@ class TestReportGeneratorUnit:
     def test_generate_employee_report_not_found(self):
         """Test employee report raises error when employee not found."""
         with patch('reports.get_db_connection') as mock_db:
-            from reports import ReportGenerator
+            from services.reports import ReportGenerator
 
             generator = ReportGenerator()
 
@@ -187,7 +187,7 @@ class TestReportGeneratorUnit:
     def test_generate_annual_ledger(self, mock_db_employees):
         """Test annual ledger report generation."""
         with patch('reports.get_db_connection') as mock_db:
-            from reports import ReportGenerator
+            from services.reports import ReportGenerator
 
             # Setup mock cursor to return employee data
             mock_cursor = MagicMock()
@@ -209,7 +209,7 @@ class TestReportGeneratorUnit:
     def test_generate_monthly_summary(self):
         """Test monthly summary report generation."""
         with patch('reports.get_db_connection') as mock_db:
-            from reports import ReportGenerator
+            from services.reports import ReportGenerator
 
             mock_cursor = MagicMock()
             mock_cursor.fetchall.side_effect = [
@@ -230,7 +230,7 @@ class TestReportGeneratorUnit:
     def test_generate_compliance_report(self, mock_db_employees):
         """Test compliance report generation."""
         with patch('reports.get_db_connection') as mock_db:
-            from reports import ReportGenerator
+            from services.reports import ReportGenerator
 
             mock_cursor = MagicMock()
             mock_cursor.fetchall.return_value = [dict_to_row(e) for e in mock_db_employees]
@@ -248,7 +248,7 @@ class TestReportGeneratorUnit:
     def test_generate_custom_report(self, mock_db_employees):
         """Test custom report generation with filters."""
         with patch('reports.get_db_connection') as mock_db:
-            from reports import ReportGenerator
+            from services.reports import ReportGenerator
 
             mock_cursor = MagicMock()
             mock_cursor.fetchall.return_value = [dict_to_row(e) for e in mock_db_employees]
@@ -371,7 +371,7 @@ class TestComplianceReportSpecifics:
     def test_compliance_classification_compliant(self):
         """Test employee classified as compliant (5+ days used)."""
         with patch('reports.get_db_connection') as mock_db:
-            from reports import ReportGenerator
+            from services.reports import ReportGenerator
 
             employees = [
                 {'employee_num': 'EMP_001', 'name': 'Test', 'haken': 'A',
@@ -393,7 +393,7 @@ class TestComplianceReportSpecifics:
     def test_compliance_classification_at_risk(self):
         """Test employee classified as at-risk (3-4.9 days used)."""
         with patch('reports.get_db_connection') as mock_db:
-            from reports import ReportGenerator
+            from services.reports import ReportGenerator
 
             employees = [
                 {'employee_num': 'EMP_001', 'name': 'Test', 'haken': 'A',
@@ -414,7 +414,7 @@ class TestComplianceReportSpecifics:
     def test_compliance_classification_non_compliant(self):
         """Test employee classified as non-compliant (<3 days used)."""
         with patch('reports.get_db_connection') as mock_db:
-            from reports import ReportGenerator
+            from services.reports import ReportGenerator
 
             employees = [
                 {'employee_num': 'EMP_001', 'name': 'Test', 'haken': 'A',
@@ -435,7 +435,7 @@ class TestComplianceReportSpecifics:
     def test_compliance_no_obligated_employees(self):
         """Test compliance report when no employees have 10+ granted days."""
         with patch('reports.get_db_connection') as mock_db:
-            from reports import ReportGenerator
+            from services.reports import ReportGenerator
 
             # All employees have less than 10 granted days
             employees = [
@@ -466,7 +466,7 @@ class TestReportGeneratorStyles:
     @pytest.mark.skipif(skip_if_reportlab_unavailable(), reason="reportlab not available")
     def test_report_generator_initialization(self):
         """Test ReportGenerator initializes correctly."""
-        from reports import ReportGenerator
+        from services.reports import ReportGenerator
 
         generator = ReportGenerator(company_name="Test Company")
 
@@ -476,7 +476,7 @@ class TestReportGeneratorStyles:
     @pytest.mark.skipif(skip_if_reportlab_unavailable(), reason="reportlab not available")
     def test_report_generator_default_company(self):
         """Test ReportGenerator uses default company name."""
-        from reports import ReportGenerator
+        from services.reports import ReportGenerator
 
         generator = ReportGenerator()
 
@@ -485,7 +485,7 @@ class TestReportGeneratorStyles:
     @pytest.mark.skipif(skip_if_reportlab_unavailable(), reason="reportlab not available")
     def test_styles_setup(self):
         """Test that all required styles are created."""
-        from reports import ReportGenerator
+        from services.reports import ReportGenerator
 
         generator = ReportGenerator()
         styles = generator.styles
@@ -509,7 +509,7 @@ class TestReportEdgeCases:
     def test_employee_report_no_vacation_data(self):
         """Test employee report with no vacation data."""
         with patch('reports.get_db_connection') as mock_db:
-            from reports import ReportGenerator
+            from services.reports import ReportGenerator
 
             employee = {
                 'employee_num': 'TEST_001',
@@ -533,7 +533,7 @@ class TestReportEdgeCases:
     def test_employee_report_null_values(self):
         """Test employee report handles null values gracefully."""
         with patch('reports.get_db_connection') as mock_db:
-            from reports import ReportGenerator
+            from services.reports import ReportGenerator
 
             employee = {
                 'employee_num': 'TEST_001',
@@ -558,7 +558,7 @@ class TestReportEdgeCases:
     def test_monthly_report_empty_data(self):
         """Test monthly report with no usage data."""
         with patch('reports.get_db_connection') as mock_db:
-            from reports import ReportGenerator
+            from services.reports import ReportGenerator
 
             mock_cursor = MagicMock()
             mock_cursor.fetchall.side_effect = [[], []]  # Empty results
@@ -575,7 +575,7 @@ class TestReportEdgeCases:
     def test_custom_report_no_matching_data(self):
         """Test custom report with filters that match no data."""
         with patch('reports.get_db_connection') as mock_db:
-            from reports import ReportGenerator
+            from services.reports import ReportGenerator
 
             mock_cursor = MagicMock()
             mock_cursor.fetchall.return_value = []  # No results
@@ -597,7 +597,7 @@ class TestReportEdgeCases:
     def test_annual_ledger_large_dataset(self, mock_db_employees):
         """Test annual ledger with larger dataset."""
         with patch('reports.get_db_connection') as mock_db:
-            from reports import ReportGenerator
+            from services.reports import ReportGenerator
 
             # Create a larger dataset
             large_dataset = mock_db_employees * 50  # 150 employees
@@ -709,7 +709,7 @@ class TestReportColors:
     @pytest.mark.skipif(skip_if_reportlab_unavailable(), reason="reportlab not available")
     def test_colors_defined(self):
         """Test that all required colors are defined."""
-        from reports import COLORS
+        from services.reports import COLORS
 
         required_colors = ['primary', 'secondary', 'success', 'warning',
                           'danger', 'dark', 'light', 'white', 'black',
@@ -729,7 +729,7 @@ class TestReportDirectory:
     @pytest.mark.skipif(skip_if_reportlab_unavailable(), reason="reportlab not available")
     def test_reports_dir_exists(self):
         """Test that REPORTS_DIR is created."""
-        from reports import REPORTS_DIR
+        from services.reports import REPORTS_DIR
 
         # The directory should exist (created on module import)
         assert os.path.exists(REPORTS_DIR) or True  # May not exist in test env
@@ -737,7 +737,7 @@ class TestReportDirectory:
     @pytest.mark.skipif(skip_if_reportlab_unavailable(), reason="reportlab not available")
     def test_reports_dir_is_string_or_path(self):
         """Test REPORTS_DIR is valid path."""
-        from reports import REPORTS_DIR
+        from services.reports import REPORTS_DIR
 
         assert isinstance(REPORTS_DIR, (str, os.PathLike))
 
@@ -752,7 +752,7 @@ class TestJapaneseFontHandling:
     @pytest.mark.skipif(skip_if_reportlab_unavailable(), reason="reportlab not available")
     def test_japanese_font_flag(self):
         """Test JAPANESE_FONT_AVAILABLE is defined."""
-        from reports import JAPANESE_FONT_AVAILABLE
+        from services.reports import JAPANESE_FONT_AVAILABLE
 
         assert isinstance(JAPANESE_FONT_AVAILABLE, bool)
 
@@ -761,7 +761,7 @@ class TestJapaneseFontHandling:
         """Test reports still generate even without Japanese fonts."""
         with patch('reports.get_db_connection') as mock_db:
             with patch('reports.JAPANESE_FONT_AVAILABLE', False):
-                from reports import ReportGenerator
+                from services.reports import ReportGenerator
 
                 mock_cursor = MagicMock()
                 mock_cursor.fetchall.return_value = [dict_to_row(e) for e in mock_db_employees]
@@ -784,7 +784,7 @@ class TestTableCreation:
     @pytest.mark.skipif(skip_if_reportlab_unavailable(), reason="reportlab not available")
     def test_create_table_basic(self):
         """Test basic table creation."""
-        from reports import ReportGenerator
+        from services.reports import ReportGenerator
 
         generator = ReportGenerator()
 
@@ -800,7 +800,7 @@ class TestTableCreation:
     @pytest.mark.skipif(skip_if_reportlab_unavailable(), reason="reportlab not available")
     def test_create_table_with_widths(self):
         """Test table creation with column widths."""
-        from reports import ReportGenerator
+        from services.reports import ReportGenerator
         from reportlab.lib.units import mm
 
         generator = ReportGenerator()
@@ -816,7 +816,7 @@ class TestTableCreation:
     @pytest.mark.skipif(skip_if_reportlab_unavailable(), reason="reportlab not available")
     def test_create_table_multiple_header_rows(self):
         """Test table with multiple header rows."""
-        from reports import ReportGenerator
+        from services.reports import ReportGenerator
 
         generator = ReportGenerator()
 
@@ -840,7 +840,7 @@ class TestHeaderCreation:
     @pytest.mark.skipif(skip_if_reportlab_unavailable(), reason="reportlab not available")
     def test_create_header_basic(self):
         """Test basic header creation."""
-        from reports import ReportGenerator
+        from services.reports import ReportGenerator
 
         generator = ReportGenerator()
         elements = generator._create_header("Test Title")
@@ -850,7 +850,7 @@ class TestHeaderCreation:
     @pytest.mark.skipif(skip_if_reportlab_unavailable(), reason="reportlab not available")
     def test_create_header_with_subtitle(self):
         """Test header with subtitle."""
-        from reports import ReportGenerator
+        from services.reports import ReportGenerator
 
         generator = ReportGenerator()
         elements = generator._create_header("Test Title", "Test Subtitle")

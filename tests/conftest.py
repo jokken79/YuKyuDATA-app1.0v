@@ -40,15 +40,46 @@ def _reset_all_rate_limiters():
         pass
 
     try:
-        from middleware.rate_limiter import rate_limiter_strict, rate_limiter_normal, rate_limiter_relaxed
+        # Try direct import to avoid middleware/__init__.py dependency chain
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            'rate_limiter_reset',
+            str(Path(__file__).parent.parent / 'middleware' / 'rate_limiter.py')
+        )
+        rate_limiter_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(rate_limiter_module)
+
+        rate_limiter_strict = rate_limiter_module.rate_limiter_strict
+        rate_limiter_normal = rate_limiter_module.rate_limiter_normal
+        rate_limiter_relaxed = rate_limiter_module.rate_limiter_relaxed
+        user_aware_limiter = rate_limiter_module.user_aware_limiter
+
+        # Reset legacy rate limiters
         for rl in [rate_limiter_strict, rate_limiter_normal, rate_limiter_relaxed]:
             if hasattr(rl, 'reset'):
                 rl.reset()
             elif hasattr(rl, 'requests'):
                 if hasattr(rl.requests, 'clear'):
                     rl.requests.clear()
-    except (ImportError, AttributeError):
-        pass
+        # Reset new user-aware limiter
+        if hasattr(user_aware_limiter, 'reset'):
+            user_aware_limiter.reset()
+    except Exception:
+        # Fallback: try package import
+        try:
+            from middleware.rate_limiter import (
+                rate_limiter_strict,
+                rate_limiter_normal,
+                rate_limiter_relaxed,
+                user_aware_limiter
+            )
+            for rl in [rate_limiter_strict, rate_limiter_normal, rate_limiter_relaxed]:
+                if hasattr(rl, 'reset'):
+                    rl.reset()
+            if hasattr(user_aware_limiter, 'reset'):
+                user_aware_limiter.reset()
+        except (ImportError, AttributeError):
+            pass
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -1,22 +1,40 @@
 """
 Authentication Service
-Servicio mejorado de autenticación con OAuth2, refresh tokens y seguridad robusta
+Servicio mejorado de autenticacion con OAuth2, refresh tokens y seguridad robusta
+Refresh tokens almacenados en base de datos para persistencia y seguridad
 """
 
 import jwt
 import secrets
+import hashlib
+import uuid
 import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional, Dict
 from fastapi import HTTPException, status
 from pydantic import BaseModel
 
-# Configuración de seguridad
+# Import database functions for refresh tokens
+from database import (
+    init_refresh_tokens_table,
+    store_refresh_token,
+    get_refresh_token_by_hash,
+    revoke_refresh_token as db_revoke_refresh_token,
+    revoke_all_user_refresh_tokens,
+    is_refresh_token_valid,
+    cleanup_expired_refresh_tokens,
+    get_user_active_refresh_tokens,
+    get_refresh_token_stats
+)
+
+# Configuracion de seguridad
 SECRET_KEY = secrets.token_urlsafe(32)  # Generar key aleatoria
 REFRESH_SECRET_KEY = secrets.token_urlsafe(32)
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+# Tiempos de expiracion actualizados (v5.17)
+ACCESS_TOKEN_EXPIRE_MINUTES = 15  # 15 minutos para access tokens
+REFRESH_TOKEN_EXPIRE_DAYS = 7     # 7 dias para refresh tokens
 
 
 class TokenData(BaseModel):
@@ -31,20 +49,24 @@ class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
-    expires_in: int  # segundos hasta expiración
+    expires_in: int  # segundos hasta expiracion del access token
 
 
 class AuthService:
-    """Servicio de autenticación con OAuth2 y refresh tokens"""
+    """Servicio de autenticacion con OAuth2 y refresh tokens persistentes en BD"""
 
     def __init__(self):
-        # Almacén de refresh tokens válidos (en producción usar Redis)
-        self.active_refresh_tokens: Dict[str, str] = {}  # token -> username
+        # Inicializar tabla de refresh tokens en BD
+        try:
+            init_refresh_tokens_table()
+        except Exception as e:
+            print(f"Warning: Could not initialize refresh_tokens table: {e}")
 
-        # Almacén de tokens revocados (blacklist)
+        # Almacen de tokens revocados (blacklist para access tokens)
+        # Los access tokens son de corta duracion, se puede mantener en memoria
         self.revoked_tokens: set = set()
 
-        # Base de datos de usuarios (en producción usar BD real)
+        # Base de datos de usuarios (en produccion usar BD real)
         self.users_db = {
             "admin": {
                 "username": "admin",
@@ -64,12 +86,25 @@ class AuthService:
             }
         }
 
+    def _hash_token(self, token: str) -> str:
+        """
+        Genera un hash SHA-256 del token para almacenamiento seguro.
+        Nunca almacenamos el token en texto plano.
+
+        Args:
+            token: Token JWT en texto plano
+
+        Returns:
+            Hash SHA-256 del token en hexadecimal
+        """
+        return hashlib.sha256(token.encode('utf-8')).hexdigest()
+
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """Verificar contraseña contra hash"""
+        """Verificar contrasena contra hash"""
         return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
     def get_password_hash(self, password: str) -> str:
-        """Generar hash de contraseña"""
+        """Generar hash de contrasena"""
         return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     def authenticate_user(self, username: str, password: str) -> Optional[dict]:
@@ -78,10 +113,10 @@ class AuthService:
 
         Args:
             username: Nombre de usuario
-            password: Contraseña en texto plano
+            password: Contrasena en texto plano
 
         Returns:
-            Datos del usuario si autenticación exitosa, None si falla
+            Datos del usuario si autenticacion exitosa, None si falla
         """
         user = self.users_db.get(username)
 
@@ -102,7 +137,7 @@ class AuthService:
 
         Args:
             username: Nombre de usuario
-            expires_delta: Tiempo de expiración personalizado
+            expires_delta: Tiempo de expiracion personalizado
 
         Returns:
             Token JWT codificado
@@ -122,49 +157,76 @@ class AuthService:
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
 
-    def create_refresh_token(self, username: str) -> str:
+    def create_refresh_token(
+        self,
+        username: str,
+        user_agent: str = None,
+        ip_address: str = None
+    ) -> str:
         """
-        Crear refresh token para renovar access tokens
+        Crear refresh token para renovar access tokens.
+        El token se almacena hasheado en la base de datos.
 
         Args:
             username: Nombre de usuario
+            user_agent: User-Agent del cliente (para tracking de sesiones)
+            ip_address: IP del cliente (para tracking de sesiones)
 
         Returns:
             Refresh token JWT
         """
+        # Generar ID unico para el token
+        token_id = str(uuid.uuid4())
+
         expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
 
         to_encode = {
             "sub": username,
             "exp": expire,
             "type": "refresh",
+            "jti": token_id,  # JWT ID para identificacion unica
             "iat": datetime.utcnow()
         }
 
         refresh_token = jwt.encode(to_encode, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
 
-        # Almacenar refresh token activo
-        self.active_refresh_tokens[refresh_token] = username
+        # Almacenar hash del token en la base de datos
+        token_hash = self._hash_token(refresh_token)
+        store_refresh_token(
+            token_id=token_id,
+            user_id=username,
+            token_hash=token_hash,
+            expires_at=expire.isoformat(),
+            user_agent=user_agent,
+            ip_address=ip_address
+        )
 
         return refresh_token
 
-    def create_token_pair(self, username: str) -> TokenPair:
+    def create_token_pair(
+        self,
+        username: str,
+        user_agent: str = None,
+        ip_address: str = None
+    ) -> TokenPair:
         """
         Crear par de tokens (access + refresh)
 
         Args:
             username: Nombre de usuario
+            user_agent: User-Agent del cliente (opcional)
+            ip_address: IP del cliente (opcional)
 
         Returns:
             TokenPair con access_token y refresh_token
         """
         access_token = self.create_access_token(username)
-        refresh_token = self.create_refresh_token(username)
+        refresh_token = self.create_refresh_token(username, user_agent, ip_address)
 
         return TokenPair(
             access_token=access_token,
             refresh_token=refresh_token,
-            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60  # Convertir a segundos
         )
 
     def verify_access_token(self, token: str) -> dict:
@@ -178,9 +240,9 @@ class AuthService:
             Payload decodificado
 
         Raises:
-            HTTPException: Si token inválido o expirado
+            HTTPException: Si token invalido o expirado
         """
-        # Verificar si token está revocado
+        # Verificar si token esta revocado
         if token in self.revoked_tokens:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -195,7 +257,7 @@ class AuthService:
             if payload.get("type") != "access":
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Tipo de token inválido",
+                    detail="Tipo de token invalido",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
 
@@ -203,7 +265,7 @@ class AuthService:
             if username is None:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Token inválido: falta username",
+                    detail="Token invalido: falta username",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
 
@@ -224,7 +286,7 @@ class AuthService:
 
     def verify_refresh_token(self, token: str) -> str:
         """
-        Verificar refresh token
+        Verificar refresh token contra la base de datos
 
         Args:
             token: Refresh token JWT
@@ -233,13 +295,15 @@ class AuthService:
             Username del token
 
         Raises:
-            HTTPException: Si token inválido
+            HTTPException: Si token invalido
         """
-        # Verificar si token está activo
-        if token not in self.active_refresh_tokens:
+        # Verificar primero en la base de datos usando el hash
+        token_hash = self._hash_token(token)
+
+        if not is_refresh_token_valid(token_hash):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Refresh token inválido o expirado"
+                detail="Refresh token invalido o expirado"
             )
 
         try:
@@ -249,22 +313,21 @@ class AuthService:
             if payload.get("type") != "refresh":
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Tipo de token inválido"
+                    detail="Tipo de token invalido"
                 )
 
             username: str = payload.get("sub")
             if username is None:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Token inválido"
+                    detail="Token invalido"
                 )
 
             return username
 
         except jwt.ExpiredSignatureError:
-            # Remover refresh token expirado
-            if token in self.active_refresh_tokens:
-                del self.active_refresh_tokens[token]
+            # El token expiro - revocar en BD
+            db_revoke_refresh_token(token_hash)
 
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -276,24 +339,32 @@ class AuthService:
                 detail="No se pudo validar el refresh token"
             )
 
-    def refresh_access_token(self, refresh_token: str) -> TokenPair:
+    def refresh_access_token(
+        self,
+        refresh_token: str,
+        user_agent: str = None,
+        ip_address: str = None
+    ) -> TokenPair:
         """
-        Generar nuevo access token usando refresh token
+        Generar nuevo access token usando refresh token.
+        Implementa rotacion de refresh tokens por seguridad.
 
         Args:
-            refresh_token: Refresh token válido
+            refresh_token: Refresh token valido
+            user_agent: User-Agent del cliente (opcional)
+            ip_address: IP del cliente (opcional)
 
         Returns:
             Nuevo par de tokens
         """
         username = self.verify_refresh_token(refresh_token)
 
-        # Invalidar refresh token antiguo
-        if refresh_token in self.active_refresh_tokens:
-            del self.active_refresh_tokens[refresh_token]
+        # Revocar el refresh token antiguo (rotacion de tokens)
+        old_token_hash = self._hash_token(refresh_token)
+        db_revoke_refresh_token(old_token_hash)
 
         # Generar nuevo par de tokens
-        return self.create_token_pair(username)
+        return self.create_token_pair(username, user_agent, ip_address)
 
     def revoke_token(self, token: str):
         """
@@ -304,19 +375,80 @@ class AuthService:
         """
         self.revoked_tokens.add(token)
 
-    def revoke_refresh_token(self, refresh_token: str):
+        # Limpiar tokens antiguos de la blacklist para no consumir memoria
+        # Solo mantener los que aun no expirarian naturalmente
+        self._cleanup_revoked_tokens()
+
+    def _cleanup_revoked_tokens(self):
+        """
+        Limpiar tokens revocados que ya expirarian naturalmente.
+        Los access tokens tienen 15 min de vida, mantener blacklist por 20 min max.
+        """
+        # Esta es una limpieza simple - en produccion usar Redis con TTL
+        if len(self.revoked_tokens) > 1000:
+            # Si hay muchos tokens, limpiar los mas antiguos
+            # En produccion, mejor usar Redis con expiracion automatica
+            self.revoked_tokens = set(list(self.revoked_tokens)[-500:])
+
+    def revoke_refresh_token(self, refresh_token: str) -> bool:
         """
         Revocar refresh token
 
         Args:
             refresh_token: Refresh token a revocar
+
+        Returns:
+            True si se revoco correctamente
         """
-        if refresh_token in self.active_refresh_tokens:
-            del self.active_refresh_tokens[refresh_token]
+        token_hash = self._hash_token(refresh_token)
+        return db_revoke_refresh_token(token_hash)
+
+    def revoke_all_user_tokens(self, username: str) -> int:
+        """
+        Revocar todos los refresh tokens de un usuario (logout de todas las sesiones)
+
+        Args:
+            username: Nombre de usuario
+
+        Returns:
+            Numero de tokens revocados
+        """
+        return revoke_all_user_refresh_tokens(username)
+
+    def get_user_sessions(self, username: str) -> list:
+        """
+        Obtener todas las sesiones activas de un usuario
+
+        Args:
+            username: Nombre de usuario
+
+        Returns:
+            Lista de sesiones activas (tokens sin el hash)
+        """
+        return get_user_active_refresh_tokens(username)
+
+    def get_token_stats(self) -> dict:
+        """
+        Obtener estadisticas de tokens
+
+        Returns:
+            Dict con estadisticas
+        """
+        return get_refresh_token_stats()
+
+    def cleanup_tokens(self) -> int:
+        """
+        Limpiar tokens expirados de la base de datos.
+        Debe llamarse periodicamente (ej: cada hora)
+
+        Returns:
+            Numero de tokens eliminados
+        """
+        return cleanup_expired_refresh_tokens()
 
     def get_user(self, username: str) -> Optional[dict]:
         """
-        Obtener información de usuario
+        Obtener informacion de usuario
 
         Args:
             username: Nombre de usuario
@@ -326,7 +458,7 @@ class AuthService:
         """
         user = self.users_db.get(username)
         if user:
-            # No retornar hash de contraseña
+            # No retornar hash de contrasena
             return {
                 "username": user["username"],
                 "email": user["email"],
@@ -342,7 +474,7 @@ class AuthService:
 
         Args:
             username: Nombre de usuario
-            password: Contraseña en texto plano
+            password: Contrasena en texto plano
             email: Email
             full_name: Nombre completo
             role: Rol del usuario (default: "user")
@@ -375,5 +507,5 @@ class AuthService:
         return self.get_user(username)
 
 
-# Instancia global del servicio de autenticación
+# Instancia global del servicio de autenticacion
 auth_service = AuthService()

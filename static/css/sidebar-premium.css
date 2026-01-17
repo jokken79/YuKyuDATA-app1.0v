@@ -1,6 +1,10 @@
 /* ============================================
    SIDEBAR PREMIUM - Professional Japanese UI
    Distinctive design with excellent contrast
+   ============================================
+   NOTA: Este archivo depende de utilities-consolidated.css
+   para variables de spacing, animaciones y utilidades comunes.
+   Asegurese de cargar utilities-consolidated.css ANTES de este archivo.
    ============================================ */
 
 /* ---- SIDEBAR BASE ---- */

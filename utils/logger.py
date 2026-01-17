@@ -12,8 +12,9 @@ from logging.handlers import RotatingFileHandler
 import os
 from datetime import datetime
 
-# Crear directorio de logs si no existe
-LOG_DIR = os.path.join(os.path.dirname(__file__), 'logs')
+# Crear directorio de logs si no existe (en la raiz del proyecto)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
+LOG_DIR = os.path.join(PROJECT_ROOT, 'logs')
 os.makedirs(LOG_DIR, exist_ok=True)
 
 
