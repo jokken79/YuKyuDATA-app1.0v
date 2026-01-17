@@ -100,7 +100,7 @@ async def create_leave_request(
 
         # Send notification
         try:
-            from notifications import notification_service
+            from services.notifications import notification_service
             notification_service.notify_leave_request_created({
                 'employee_num': request_data['employee_num'],
                 'employee_name': request_data['employee_name'],
@@ -194,7 +194,7 @@ async def approve_leave_request(
 
         # Send notification
         try:
-            from notifications import notification_service
+            from services.notifications import notification_service
             if old_value:
                 current_year = datetime.now().year
                 history = database.get_employee_yukyu_history(old_value.get('employee_num'), current_year)
@@ -261,7 +261,7 @@ async def reject_leave_request(
 
         # Send notification
         try:
-            from notifications import notification_service
+            from services.notifications import notification_service
             if old_value:
                 rejection_reason = rejection_data.get('reason', 'No reason provided')
                 notification_service.notify_leave_request_rejected(

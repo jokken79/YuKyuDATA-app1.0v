@@ -98,9 +98,9 @@ npm install
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────────────┐
-│               Service Layer                                 │
-│  excel_service.py | fiscal_year.py | notifications.py      │
-│  reports.py | auth.py | services/*.py                      │
+│               Service Layer (services/)                     │
+│  fiscal_year.py | excel_service.py | notifications.py      │
+│  reports.py | auth.py | caching.py | crypto_utils.py       │
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────────────┐
@@ -125,12 +125,26 @@ npm install
 YuKyuDATA-app1.0v/
 ├── main.py                    # FastAPI app principal (6,073 líneas)
 ├── database.py                # CRUD SQLite/PostgreSQL (2,559 líneas)
-├── fiscal_year.py             # Lógica ley laboral japonesa (517 líneas)
-├── excel_service.py           # Parser Excel inteligente (921 líneas)
-├── auth.py                    # JWT authentication (407 líneas)
-├── notifications.py           # Sistema notificaciones (1,200 líneas)
-├── reports.py                 # PDF generation (1,104 líneas)
-├── excel_export.py            # Excel export (599 líneas)
+│
+├── services/                  # Lógica de negocio
+│   ├── fiscal_year.py         # Lógica ley laboral japonesa (517 líneas)
+│   ├── excel_service.py       # Parser Excel inteligente (921 líneas)
+│   ├── auth.py                # JWT authentication (407 líneas)
+│   ├── notifications.py       # Sistema notificaciones (1,200 líneas)
+│   ├── reports.py             # PDF generation (1,104 líneas)
+│   ├── excel_export.py        # Excel export (599 líneas)
+│   ├── caching.py             # Sistema de cache
+│   └── crypto_utils.py        # Encriptación de campos
+│
+├── middleware/                # HTTP middleware
+│   ├── csrf.py                # CSRF protection
+│   ├── security_headers.py    # Security headers
+│   ├── rate_limiter.py        # Rate limiting
+│   └── exception_handler.py   # Exception handling
+│
+├── utils/                     # Utilidades compartidas
+│   ├── logger.py              # Sistema de logging
+│   └── pagination.py          # Paginación de resultados
 │
 ├── routes/                    # API endpoints modularizados (5,932 líneas)
 │   ├── employees.py           # CRUD empleados (1,004 líneas)
@@ -214,8 +228,9 @@ YuKyuDATA-app1.0v/
 |---------|--------|-----------|
 | `main.py` | 6,073 | FastAPI app con ~50 endpoints |
 | `database.py` | 2,559 | SQLite/PostgreSQL CRUD, backups, audit log |
-| `excel_service.py` | 921 | Parsing inteligente de Excel (medio día, comentarios) |
-| `fiscal_year.py` | 517 | **CRÍTICO** - Lógica de ley laboral japonesa |
+| `services/excel_service.py` | 921 | Parsing inteligente de Excel (medio día, comentarios) |
+| `services/fiscal_year.py` | 517 | **CRÍTICO** - Lógica de ley laboral japonesa |
+| `services/` | ~3,500 | Auth, reports, notifications, caching, crypto |
 | `routes/` | 5,932 | 19 módulos de endpoints modularizados |
 | `agents/` | 11,307 | 13 agentes especializados |
 | `static/js/app.js` | 6,919 | SPA principal con módulos App.* |
@@ -225,7 +240,7 @@ YuKyuDATA-app1.0v/
 
 ## Business Logic - Fiscal Year (CRÍTICO)
 
-El módulo `fiscal_year.py` implementa **労働基準法 第39条** (Artículo 39 de la Ley de Normas Laborales):
+El módulo `services/fiscal_year.py` implementa **労働基準法 第39条** (Artículo 39 de la Ley de Normas Laborales):
 
 ### Configuración
 
@@ -556,7 +571,7 @@ docker-compose logs -f postgres
 
 1. Actualizar schema en `database.py`
 2. Crear migración en `alembic/versions/`
-3. Agregar mapping en `excel_service.py`
+3. Agregar mapping en `services/excel_service.py`
 4. Actualizar respuesta API en `routes/employees.py`
 5. Actualizar frontend en `app.js`
 6. Agregar tests en `tests/`

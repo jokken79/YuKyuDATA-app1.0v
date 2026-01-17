@@ -315,7 +315,7 @@ CACHING_LAYERS = {
 
 # Implementation
 from functools import lru_cache
-from caching import cache
+from services.caching import cache
 
 # L1: In-memory
 @lru_cache(maxsize=100)

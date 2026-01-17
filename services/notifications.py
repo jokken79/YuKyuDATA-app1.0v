@@ -12,7 +12,7 @@ Características:
 - Modo de prueba para desarrollo
 
 Uso:
-    from notifications import notification_service
+    from services.notifications import notification_service
 
     # Enviar email
     notification_service.send_email(

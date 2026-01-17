@@ -218,7 +218,7 @@ async def get_employees_paginated(
     return {"data": results, "total": total, "page": page}
 
 # 2. Cache de datos frecuentes
-from caching import cache
+from services.caching import cache
 
 @cache(ttl=300)  # 5 minutos
 def get_yearly_stats(year: int):

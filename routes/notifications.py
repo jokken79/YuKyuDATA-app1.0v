@@ -176,7 +176,7 @@ async def get_notification_settings(user: CurrentUser = Depends(get_current_user
     Obtiene la configuracion actual de notificaciones.
     """
     try:
-        from notifications import notification_service
+        from services.notifications import notification_service
         settings = notification_service.get_settings()
         return {
             "status": "success",
@@ -200,7 +200,7 @@ async def update_notification_settings(
     Actualiza la configuracion de notificaciones.
     """
     try:
-        from notifications import notification_service
+        from services.notifications import notification_service
 
         # Convert to dict excluding None
         update_data = {k: v for k, v in settings_update.model_dump().items() if v is not None}
@@ -239,7 +239,7 @@ async def test_email_notification(
     Envia un email de prueba para verificar la configuracion SMTP.
     """
     try:
-        from notifications import notification_service
+        from services.notifications import notification_service
         result = notification_service.test_email(request.to)
 
         if result["status"] == "success":
@@ -269,7 +269,7 @@ async def test_slack_notification(user: CurrentUser = Depends(get_admin_user)):
     Envia un mensaje de prueba a Slack.
     """
     try:
-        from notifications import notification_service
+        from services.notifications import notification_service
         result = notification_service.test_slack()
 
         if result["status"] == "success":
@@ -303,7 +303,7 @@ async def get_notification_logs(
     Obtiene el historial de notificaciones enviadas.
     """
     try:
-        from notifications import notification_service
+        from services.notifications import notification_service
         logs = notification_service.get_notification_logs(
             limit=limit,
             notification_type=notification_type,
@@ -334,7 +334,7 @@ async def send_expiring_days_warnings(
     Envia notificaciones de advertencia a empleados con dias que estan por vencer.
     """
     try:
-        from notifications import notification_service
+        from services.notifications import notification_service
 
         if year is None:
             year = datetime.now().year
@@ -393,7 +393,7 @@ async def send_compliance_warnings(
     Envia notificaciones de advertencia de cumplimiento de 5 dias.
     """
     try:
-        from notifications import notification_service
+        from services.notifications import notification_service
 
         if year is None:
             year = datetime.now().year
