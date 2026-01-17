@@ -2061,10 +2061,19 @@ const App = {
                 const action = target.dataset.action;
                 const args = [];
 
+                // Special actions
+                if (action === 'window.reload') {
+                    window.location.reload();
+                    return;
+                }
+
                 // Extract arguments from data attributes
                 if (target.dataset.view) args.push(target.dataset.view);
                 if (target.dataset.type) args.push(target.dataset.type);
                 if (target.dataset.tab) args.push(target.dataset.tab);
+                if (target.dataset.mode) args.push(target.dataset.mode);
+                if (target.dataset.format) args.push(target.dataset.format);
+                if (target.dataset.entity) args.push(target.dataset.entity);
                 if (target.dataset.employeeNum) args.push(target.dataset.employeeNum);
                 if (target.dataset.year) args.push(target.dataset.year);
                 if (target.dataset.id) args.push(target.dataset.id);
@@ -2083,9 +2092,27 @@ const App = {
                 }
             });
 
-            // Close modal when clicking outside
+            // Close modal when clicking outside (backdrop click)
             document.getElementById('detail-modal').addEventListener('click', (e) => {
                 if (e.target.id === 'detail-modal') App.ui.closeModal();
+            });
+
+            // Modal backdrop handlers for all modals
+            const modalBackdropHandlers = [
+                { id: 'confirm-modal', close: () => App.requests?.hideConfirmation?.() },
+                { id: 'edit-yukyu-modal', close: () => App.editYukyu?.closeModal?.() },
+                { id: 'audit-history-modal', close: () => App.auditHistory?.closeModal?.() },
+                { id: 'import-report-modal', close: () => App.importReport?.closeModal?.() },
+                { id: 'bulk-edit-modal', close: () => App.bulkEdit?.closeModal?.() }
+            ];
+
+            modalBackdropHandlers.forEach(({ id, close }) => {
+                const modal = document.getElementById(id);
+                if (modal) {
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) close();
+                    });
+                }
             });
 
             // Event delegation for employee rows (XSS-safe)
