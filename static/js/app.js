@@ -2053,6 +2053,36 @@ const App = {
 
     events: {
         setupListeners() {
+            // Modern event delegation for data-action attributes (WCAG compliant)
+            document.addEventListener('click', (e) => {
+                const target = e.target.closest('[data-action]');
+                if (!target) return;
+
+                const action = target.dataset.action;
+                const args = [];
+
+                // Extract arguments from data attributes
+                if (target.dataset.view) args.push(target.dataset.view);
+                if (target.dataset.type) args.push(target.dataset.type);
+                if (target.dataset.tab) args.push(target.dataset.tab);
+                if (target.dataset.employeeNum) args.push(target.dataset.employeeNum);
+                if (target.dataset.year) args.push(target.dataset.year);
+                if (target.dataset.id) args.push(target.dataset.id);
+
+                // Navigate to method and execute
+                const parts = action.split('.');
+                let context = App;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    context = context[parts[i]];
+                    if (!context) return;
+                }
+                const method = context[parts[parts.length - 1]];
+                if (typeof method === 'function') {
+                    e.preventDefault();
+                    method.apply(context, args);
+                }
+            });
+
             // Close modal when clicking outside
             document.getElementById('detail-modal').addEventListener('click', (e) => {
                 if (e.target.id === 'detail-modal') App.ui.closeModal();
