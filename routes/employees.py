@@ -926,9 +926,14 @@ async def get_employees_by_type(
             active_in_year=filter_by_year
         )
 
-        genzai_nums = {str(emp['employee_num']) for emp in genzai_list if emp.get('employee_num')}
-        ukeoi_nums = {str(emp['employee_num']) for emp in ukeoi_list if emp.get('employee_num')}
-        staff_nums = {str(emp['employee_num']) for emp in staff_list if emp.get('employee_num')}
+        # Pre-index for O(1) lookup instead of O(n) - fixes N+1 query pattern
+        genzai_index = {str(g['employee_num']): g for g in genzai_list if g.get('employee_num')}
+        ukeoi_index = {str(u['employee_num']): u for u in ukeoi_list if u.get('employee_num')}
+        staff_index = {str(s['employee_num']): s for s in staff_list if s.get('employee_num')}
+
+        genzai_nums = set(genzai_index.keys())
+        ukeoi_nums = set(ukeoi_index.keys())
+        staff_nums = set(staff_index.keys())
 
         haken_employees = []
         ukeoi_employees = []
@@ -939,7 +944,7 @@ async def get_employees_by_type(
             emp_enriched = dict(emp)
 
             if emp_num in genzai_nums:
-                genzai_data = next((g for g in genzai_list if str(g.get('employee_num')) == emp_num), {})
+                genzai_data = genzai_index.get(emp_num, {})  # O(1) lookup
                 emp_enriched['type'] = 'haken'
                 emp_enriched['dispatch_name'] = genzai_data.get('dispatch_name', '')
                 emp_enriched['status'] = genzai_data.get('status', '')
@@ -949,7 +954,7 @@ async def get_employees_by_type(
                 haken_employees.append(emp_enriched)
 
             elif emp_num in ukeoi_nums:
-                ukeoi_data = next((u for u in ukeoi_list if str(u.get('employee_num')) == emp_num), {})
+                ukeoi_data = ukeoi_index.get(emp_num, {})  # O(1) lookup
                 emp_enriched['type'] = 'ukeoi'
                 emp_enriched['contract_business'] = ukeoi_data.get('contract_business', '')
                 emp_enriched['status'] = ukeoi_data.get('status', '')
@@ -959,7 +964,7 @@ async def get_employees_by_type(
                 ukeoi_employees.append(emp_enriched)
 
             elif emp_num in staff_nums:
-                staff_data = next((s for s in staff_list if str(s.get('employee_num')) == emp_num), {})
+                staff_data = staff_index.get(emp_num, {})  # O(1) lookup
                 emp_enriched['type'] = 'staff'
                 emp_enriched['office'] = staff_data.get('office', '')
                 emp_enriched['status'] = staff_data.get('status', '')
