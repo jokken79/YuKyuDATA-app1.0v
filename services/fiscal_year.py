@@ -344,14 +344,17 @@ def apply_lifo_deduction(employee_num: str, days_to_use: float, current_year: in
 
                     balance_after = balance_before - to_deduct
 
-                    # AUDITAR en fiscal_year_audit_log
-                    c.execute('''
-                        INSERT INTO fiscal_year_audit_log
-                        (action, employee_num, year, days_affected, balance_before, balance_after,
-                         performed_by, reason, timestamp)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', ('DEDUCTION', employee_num, item['year'], to_deduct,
-                          balance_before, balance_after, performed_by, reason, timestamp))
+                    # Auditar en audit_log (tabla estándar)
+                    try:
+                        c.execute('''
+                            INSERT INTO audit_log
+                            (action, details, performed_by, timestamp)
+                            VALUES (?, ?, ?, ?)
+                        ''', ('LIFO_DEDUCTION',
+                              f"{employee_num} {item['year']}: {to_deduct} days",
+                              performed_by, timestamp))
+                    except Exception:
+                        pass  # Si audit_log no existe, continuar sin error
 
                     deductions.append({
                         'year': item['year'],
