@@ -1,6 +1,6 @@
 /* ============================================
    ARARI-STYLE GLOW EFFECTS
-   Vibrant Cyan/Blue/Purple Theme
+   Vibrant Cyan/Blue/Teal Theme (Corporate Palette)
    SOLO SE APLICA EN MODO OSCURO
    ============================================ */
 
@@ -63,7 +63,7 @@
   content: none !important;
 }
 
-/* Third glow at bottom - SUPER BRIGHT */
+/* Third glow at bottom - Teal (Corporate) */
 [data-theme="dark"] .app-container::before {
   content: '';
   position: fixed;
@@ -71,7 +71,7 @@
   left: 15%;
   width: 50%;
   height: 50%;
-  background: rgba(139, 92, 246, 0.35);
+  background: rgba(20, 184, 166, 0.25);
   border-radius: 50%;
   filter: blur(80px);
   pointer-events: none;
@@ -79,7 +79,7 @@
   animation: float-glow 22s ease-in-out infinite;
 }
 
-/* Fourth glow - center purple */
+/* Fourth glow - center blue (Corporate) */
 [data-theme="dark"] .app-container::after {
   content: '';
   position: fixed;
@@ -115,9 +115,9 @@
   }
 }
 
-/* Enhanced gradient text */
+/* Enhanced gradient text - Corporate Palette */
 [data-theme="dark"] .text-gradient {
-  background: linear-gradient(135deg, #06b6d4, #3b82f6, #8b5cf6) !important;
+  background: linear-gradient(135deg, #06b6d4, #3b82f6, #14b8a6) !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
@@ -281,8 +281,8 @@
 }
 
 [data-theme="dark"] .spinner::before {
-  border-top-color: #8b5cf6 !important;
-  filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.5)) !important;
+  border-top-color: #14b8a6 !important;
+  filter: drop-shadow(0 0 10px rgba(20, 184, 166, 0.5)) !important;
 }
 
 /* Theme toggle glow */

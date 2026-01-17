@@ -5,6 +5,7 @@
  */
 
 import { escapeHtml, escapeAttr, safeNumber } from './utils.js';
+import { FocusTrap } from './ui-enhancements.js';
 
 /**
  * Clase para gestionar la interfaz de usuario
@@ -29,6 +30,12 @@ export class UIManager {
 
         /** @type {Object} Gestor de gráficos */
         this.chartManager = chartManager;
+
+        /** @type {FocusTrap|null} Focus trap para sidebar mobile */
+        this.sidebarFocusTrap = null;
+
+        /** @type {FocusTrap|null} Focus trap para modales */
+        this.modalFocusTrap = null;
     }
 
     /**
@@ -142,7 +149,7 @@ export class UIManager {
     }
 
     /**
-     * Renderiza los KPIs principales
+     * Renderiza los KPIs principales con ARIA labels para accesibilidad
      */
     async renderKPIs() {
         const data = this.state.data.filter(e => !this.state.year || e.year === this.state.year);
@@ -170,16 +177,28 @@ export class UIManager {
             rate = granted > 0 ? Math.round((used / granted) * 100) : 0;
         }
 
-        // Actualizar displays de KPI tradicionales
+        // Actualizar displays de KPI tradicionales con ARIA labels
         const kpiUsed = document.getElementById('kpi-used');
         const kpiBalance = document.getElementById('kpi-balance');
         const kpiRate = document.getElementById('kpi-rate');
         const kpiTotal = document.getElementById('kpi-total');
 
-        if (kpiUsed) kpiUsed.innerText = Math.round(used).toLocaleString();
-        if (kpiBalance) kpiBalance.innerText = Math.round(balance).toLocaleString();
-        if (kpiRate) kpiRate.innerText = rate + '%';
-        if (kpiTotal) kpiTotal.innerText = total;
+        if (kpiUsed) {
+            kpiUsed.innerText = Math.round(used).toLocaleString();
+            kpiUsed.setAttribute('aria-label', `使用済み日数: ${Math.round(used)}日`);
+        }
+        if (kpiBalance) {
+            kpiBalance.innerText = Math.round(balance).toLocaleString();
+            kpiBalance.setAttribute('aria-label', `残日数: ${Math.round(balance)}日`);
+        }
+        if (kpiRate) {
+            kpiRate.innerText = rate + '%';
+            kpiRate.setAttribute('aria-label', `使用率: ${rate}パーセント`);
+        }
+        if (kpiTotal) {
+            kpiTotal.innerText = total;
+            kpiTotal.setAttribute('aria-label', `総従業員数: ${total}名`);
+        }
 
         // Calcular valores máximos para los anillos
         const maxUsage = granted > 0 ? granted : 10000;
@@ -235,10 +254,18 @@ export class UIManager {
             td.colSpan = 7;
             td.style.textAlign = 'center';
             td.style.padding = '2rem';
-            td.textContent = 'No matching records found';
+            td.textContent = 'データが見つかりません / No matching records found';
+            td.setAttribute('role', 'status');
+            td.setAttribute('aria-live', 'polite');
             tr.appendChild(td);
             tbody.appendChild(tr);
             return;
+        }
+
+        // Actualizar contador accesible
+        const tableContainer = tbody.closest('table');
+        if (tableContainer) {
+            tableContainer.setAttribute('aria-label', `従業員一覧: ${data.length}件表示中`);
         }
 
         // Usar data attributes en lugar de onclick inline (prevención de XSS)
@@ -319,7 +346,7 @@ export class UIManager {
     }
 
     /**
-     * Actualiza contadores de tipos de empleados
+     * Actualiza contadores de tipos de empleados con ARIA labels
      * @param {Function} getFiltered - Función para obtener datos filtrados
      */
     updateTypeCounts(getFiltered) {
@@ -331,16 +358,28 @@ export class UIManager {
             staff: data.filter(e => e.employeeType === 'staff').length
         };
 
-        // Actualizar badges de conteo
+        // Actualizar badges de conteo con ARIA labels
         const countAll = document.getElementById('count-all');
         const countGenzai = document.getElementById('count-genzai');
         const countUkeoi = document.getElementById('count-ukeoi');
         const countStaff = document.getElementById('count-staff');
 
-        if (countAll) countAll.textContent = counts.all;
-        if (countGenzai) countGenzai.textContent = counts.genzai;
-        if (countUkeoi) countUkeoi.textContent = counts.ukeoi;
-        if (countStaff) countStaff.textContent = counts.staff;
+        if (countAll) {
+            countAll.textContent = counts.all;
+            countAll.setAttribute('aria-label', `全員: ${counts.all}名`);
+        }
+        if (countGenzai) {
+            countGenzai.textContent = counts.genzai;
+            countGenzai.setAttribute('aria-label', `派遣社員: ${counts.genzai}名`);
+        }
+        if (countUkeoi) {
+            countUkeoi.textContent = counts.ukeoi;
+            countUkeoi.setAttribute('aria-label', `請負社員: ${counts.ukeoi}名`);
+        }
+        if (countStaff) {
+            countStaff.textContent = counts.staff;
+            countStaff.setAttribute('aria-label', `正社員: ${counts.staff}名`);
+        }
     }
 
     /**
@@ -413,7 +452,7 @@ export class UIManager {
     }
 
     /**
-     * Alterna el menú móvil
+     * Alterna el menú móvil con Focus Trap para accesibilidad
      */
     toggleMobileMenu() {
         const toggle = document.getElementById('mobile-menu-toggle');
@@ -428,24 +467,54 @@ export class UIManager {
                 sidebar.classList.add('is-open');
                 toggle.classList.add('is-active');
                 toggle.setAttribute('aria-expanded', 'true');
+                sidebar.setAttribute('aria-hidden', 'false');
+
                 if (overlay) {
                     overlay.classList.add('is-active');
                     overlay.setAttribute('aria-hidden', 'false');
                 }
                 document.body.style.overflow = 'hidden';
+
+                // Activar Focus Trap para accesibilidad
+                if (!this.sidebarFocusTrap) {
+                    this.sidebarFocusTrap = new FocusTrap(sidebar);
+                }
+                this.sidebarFocusTrap.activate();
+
+                // Cerrar con Escape
+                this._handleEscapeKey = (e) => {
+                    if (e.key === 'Escape') {
+                        this.closeMobileMenu();
+                    }
+                };
+                document.addEventListener('keydown', this._handleEscapeKey);
             }
         }
     }
 
     /**
-     * Cierra el menú móvil
+     * Cierra el menú móvil y desactiva Focus Trap
      */
     closeMobileMenu() {
         const toggle = document.getElementById('mobile-menu-toggle');
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebar-overlay');
 
-        if (sidebar) sidebar.classList.remove('is-open');
+        // Desactivar Focus Trap
+        if (this.sidebarFocusTrap) {
+            this.sidebarFocusTrap.deactivate();
+        }
+
+        // Remover listener de Escape
+        if (this._handleEscapeKey) {
+            document.removeEventListener('keydown', this._handleEscapeKey);
+            this._handleEscapeKey = null;
+        }
+
+        if (sidebar) {
+            sidebar.classList.remove('is-open');
+            sidebar.setAttribute('aria-hidden', 'true');
+        }
         if (toggle) {
             toggle.classList.remove('is-active');
             toggle.setAttribute('aria-expanded', 'false');
@@ -548,7 +617,27 @@ export class UIManager {
                 </div>
             `;
         }
-        if (detailModal) detailModal.classList.add('active');
+        if (detailModal) {
+            detailModal.classList.add('active');
+            detailModal.setAttribute('aria-hidden', 'false');
+            detailModal.setAttribute('role', 'dialog');
+            detailModal.setAttribute('aria-modal', 'true');
+            detailModal.setAttribute('aria-labelledby', 'modal-title');
+
+            // Activar Focus Trap para el modal
+            if (!this.modalFocusTrap) {
+                this.modalFocusTrap = new FocusTrap(detailModal);
+            }
+            this.modalFocusTrap.activate();
+
+            // Cerrar con Escape
+            this._handleModalEscape = (e) => {
+                if (e.key === 'Escape') {
+                    this.closeModal();
+                }
+            };
+            document.addEventListener('keydown', this._handleModalEscape);
+        }
 
         // Obtener datos completos del empleado
         try {
@@ -668,13 +757,34 @@ export class UIManager {
     }
 
     /**
-     * Cierra el modal de detalles
+     * Cierra el modal de detalles y desactiva Focus Trap
      */
     closeModal() {
         const detailModal = document.getElementById('detail-modal');
+
+        // Desactivar Focus Trap
+        if (this.modalFocusTrap) {
+            this.modalFocusTrap.deactivate();
+        }
+
+        // Remover listener de Escape
+        if (this._handleModalEscape) {
+            document.removeEventListener('keydown', this._handleModalEscape);
+            this._handleModalEscape = null;
+        }
+
         if (detailModal) {
             detailModal.classList.remove('active');
+            detailModal.setAttribute('aria-hidden', 'true');
         }
+    }
+
+    /**
+     * Verifica si el usuario prefiere movimiento reducido
+     * @returns {boolean}
+     */
+    prefersReducedMotion() {
+        return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     }
 }
 

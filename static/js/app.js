@@ -4422,38 +4422,48 @@ const App = {
                 return;
             }
 
+            // Respetar prefers-reduced-motion para accesibilidad (WCAG 2.3.3)
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
             // Register ScrollTrigger plugin
             if (typeof ScrollTrigger !== 'undefined') {
                 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
             }
 
-            // Animate stat cards on load
-            gsap.from('.stat-card', {
-                duration: 0.8,
-                y: 30,
-                opacity: 0,
-                stagger: 0.1,
-                ease: 'power3.out',
-                delay: 0.2
-            });
+            // Animate stat cards on load - respetar reduced motion
+            if (!prefersReducedMotion) {
+                gsap.from('.stat-card', {
+                    duration: 0.8,
+                    y: 30,
+                    opacity: 0,
+                    stagger: 0.1,
+                    ease: 'power3.out',
+                    delay: 0.2
+                });
+            } else {
+                // Transición instantánea para usuarios que prefieren reducir movimiento
+                gsap.set('.stat-card', { opacity: 1, y: 0 });
+            }
 
-            // Animate glass panels on scroll
-            gsap.utils.toArray('.glass-panel').forEach((panel, index) => {
-                if (index > 3) { // Skip first 4 stat cards (already animated)
-                    gsap.from(panel, {
-                        scrollTrigger: {
-                            trigger: panel,
-                            start: 'top 90%',
-                            end: 'top 70%',
-                            toggleActions: 'play none none reverse'
-                        },
-                        duration: 0.6,
-                        y: 40,
-                        opacity: 0,
-                        ease: 'power2.out'
-                    });
-                }
-            });
+            // Animate glass panels on scroll - respetar reduced motion
+            if (!prefersReducedMotion) {
+                gsap.utils.toArray('.glass-panel').forEach((panel, index) => {
+                    if (index > 3) { // Skip first 4 stat cards (already animated)
+                        gsap.from(panel, {
+                            scrollTrigger: {
+                                trigger: panel,
+                                start: 'top 90%',
+                                end: 'top 70%',
+                                toggleActions: 'play none none reverse'
+                            },
+                            duration: 0.6,
+                            y: 40,
+                            opacity: 0,
+                            ease: 'power2.out'
+                        });
+                    }
+                });
+            }
 
             // Smooth scroll for anchor links
             document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -4470,24 +4480,29 @@ const App = {
                 });
             });
 
-            // Animate sidebar navigation items
-            gsap.from('.nav-item', {
-                duration: 0.6,
-                x: -30,
-                opacity: 0,
-                stagger: 0.08,
-                ease: 'power2.out',
-                delay: 0.3,
-                clearProps: 'all' // Fix: Ensure opacity is reset to 1 after animation
-            });
+            // Animate sidebar navigation items - respetar reduced motion
+            if (!prefersReducedMotion) {
+                gsap.from('.nav-item', {
+                    duration: 0.6,
+                    x: -30,
+                    opacity: 0,
+                    stagger: 0.08,
+                    ease: 'power2.out',
+                    delay: 0.3,
+                    clearProps: 'all' // Fix: Ensure opacity is reset to 1 after animation
+                });
 
-            // Animate logo
-            gsap.from('.logo', {
-                duration: 1,
-                scale: 0.8,
-                opacity: 0,
-                ease: 'elastic.out(1, 0.5)'
-            });
+                // Animate logo
+                gsap.from('.logo', {
+                    duration: 1,
+                    scale: 0.8,
+                    opacity: 0,
+                    ease: 'elastic.out(1, 0.5)'
+                });
+            } else {
+                gsap.set('.nav-item', { opacity: 1, x: 0 });
+                gsap.set('.logo', { opacity: 1, scale: 1 });
+            }
 
             // Parallax effect for background orbs
             if (window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
@@ -4499,23 +4514,25 @@ const App = {
                 });
             }
 
-            // Button hover animations
-            document.querySelectorAll('.btn').forEach(btn => {
-                btn.addEventListener('mouseenter', () => {
-                    gsap.to(btn, {
-                        duration: 0.3,
-                        scale: 1.05,
-                        ease: 'power2.out'
+            // Button hover animations - respetar reduced motion
+            if (!prefersReducedMotion) {
+                document.querySelectorAll('.btn').forEach(btn => {
+                    btn.addEventListener('mouseenter', () => {
+                        gsap.to(btn, {
+                            duration: 0.3,
+                            scale: 1.05,
+                            ease: 'power2.out'
+                        });
+                    });
+                    btn.addEventListener('mouseleave', () => {
+                        gsap.to(btn, {
+                            duration: 0.3,
+                            scale: 1,
+                            ease: 'power2.out'
+                        });
                     });
                 });
-                btn.addEventListener('mouseleave', () => {
-                    gsap.to(btn, {
-                        duration: 0.3,
-                        scale: 1,
-                        ease: 'power2.out'
-                    });
-                });
-            });
+            }
 
             // Number counter animation for KPIs
             this.animateCounters();

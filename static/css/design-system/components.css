@@ -318,10 +318,11 @@ textarea.input-glass {
   transition: all var(--transition-base);
 }
 
+/* Light mode badges - WCAG AA compliant (4.5:1 contrast ratio) */
 .badge-success {
-  background: rgba(52, 211, 153, 0.1);
-  color: var(--color-success);
-  border: 1px solid rgba(52, 211, 153, 0.2);
+  background: rgba(22, 163, 74, 0.15);
+  color: #15803d; /* Green-700: 5.8:1 contrast on white */
+  border: 1px solid rgba(22, 163, 74, 0.3);
 }
 
 [data-theme="dark"] .badge-success {
@@ -333,9 +334,9 @@ textarea.input-glass {
 }
 
 .badge-warning {
-  background: rgba(251, 191, 36, 0.1);
-  color: var(--color-warning);
-  border: 1px solid rgba(251, 191, 36, 0.2);
+  background: rgba(217, 119, 6, 0.12);
+  color: #b45309; /* Amber-700: 5.2:1 contrast on white */
+  border: 1px solid rgba(217, 119, 6, 0.3);
 }
 
 [data-theme="dark"] .badge-warning {
@@ -347,9 +348,9 @@ textarea.input-glass {
 }
 
 .badge-danger {
-  background: rgba(248, 113, 113, 0.1);
-  color: var(--color-danger);
-  border: 1px solid rgba(248, 113, 113, 0.2);
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c; /* Red-700: 5.6:1 contrast on white */
+  border: 1px solid rgba(220, 38, 38, 0.3);
 }
 
 [data-theme="dark"] .badge-danger {
@@ -361,9 +362,15 @@ textarea.input-glass {
 }
 
 .badge-info {
-  background: rgba(56, 189, 248, 0.1);
-  color: var(--color-primary);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: rgba(14, 116, 144, 0.12);
+  color: #0e7490; /* Cyan-700: 4.8:1 contrast on white */
+  border: 1px solid rgba(14, 116, 144, 0.3);
+}
+
+[data-theme="dark"] .badge-info {
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.4);
 }
 
 .badge-critical {
@@ -1059,15 +1066,15 @@ textarea.input-glass {
 }
 
 .badge-type.type-ukeoi {
-  background: rgba(168, 85, 247, 0.2);
-  color: #a855f7;
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
 [data-theme="light"] .badge-type.type-ukeoi {
-  background: rgba(147, 51, 234, 0.15);
-  color: #7c3aed;
-  border: 1px solid rgba(147, 51, 234, 0.3);
+  background: rgba(217, 119, 6, 0.15);
+  color: #b45309;
+  border: 1px solid rgba(217, 119, 6, 0.3);
 }
 
 .badge-type.type-staff {
@@ -1474,6 +1481,77 @@ textarea.input-glass {
   background: rgba(255, 255, 255, 0.02);
   border-radius: 12px;
   margin-bottom: 8px;
+}
+
+/* Skeleton específicos por componente - dimensiones reales */
+.skeleton-stat-value {
+  height: 2.5rem;
+  width: 120px;
+  border-radius: 8px;
+}
+
+.skeleton-stat-label {
+  height: 0.875rem;
+  width: 80px;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+}
+
+.skeleton-stat-card {
+  height: 100px;
+  min-width: 180px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.skeleton-table-row {
+  height: 52px;
+  display: grid;
+  grid-template-columns: 80px 2fr 1fr 80px 80px 80px 100px;
+  gap: 1rem;
+  align-items: center;
+  padding: 0 1rem;
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+
+.skeleton-table-cell {
+  height: 1rem;
+  border-radius: 4px;
+}
+
+.skeleton-badge {
+  height: 1.5rem;
+  width: 60px;
+  border-radius: 9999px;
+}
+
+.skeleton-chart {
+  height: 300px;
+  border-radius: 16px;
+}
+
+.skeleton-kpi-ring {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 8px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Respetar reduced motion en skeleton animations */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  [data-theme="light"] .skeleton::after {
+    background: rgba(0, 0, 0, 0.08);
+  }
 }
 
 [data-theme="light"] .skeleton {
