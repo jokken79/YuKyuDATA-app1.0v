@@ -290,14 +290,17 @@ def get_employee_balance_breakdown(employee_num: str, year: int) -> Dict:
     return breakdown
 
 
-def apply_lifo_deduction(employee_num: str, days_to_use: float, current_year: int) -> Dict:
+def apply_lifo_deduction(employee_num: str, days_to_use: float, current_year: int, performed_by: str = "system", reason: str = "Leave request deduction") -> Dict:
     """
     Aplica deducción de días usando lógica LIFO (primero los más nuevos).
+    REGISTRA TODAS LAS OPERACIONES EN fiscal_year_audit_log para cumplimiento legal.
 
     Args:
         employee_num: Número de empleado
         days_to_use: Días a deducir
         current_year: Año actual
+        performed_by: Usuario que realiza la deducción (default: "system")
+        reason: Razón de la deducción (default: "Leave request deduction")
 
     Returns:
         Dict con detalle de deducción por año
@@ -305,6 +308,7 @@ def apply_lifo_deduction(employee_num: str, days_to_use: float, current_year: in
     breakdown = get_employee_balance_breakdown(employee_num, current_year)
     remaining = days_to_use
     deductions = []
+    timestamp = datetime.now().isoformat()
 
     with get_db() as conn:
         try:
@@ -319,6 +323,15 @@ def apply_lifo_deduction(employee_num: str, days_to_use: float, current_year: in
                 to_deduct = min(available, remaining)
 
                 if to_deduct > 0:
+                    # Obtener balance antes para auditoría
+                    emp_before = c.execute('''
+                        SELECT balance, used FROM employees
+                        WHERE employee_num = ? AND year = ?
+                    ''', (employee_num, item['year'])).fetchone()
+
+                    balance_before = float(emp_before['balance']) if emp_before and emp_before['balance'] else 0
+                    used_before = float(emp_before['used']) if emp_before and emp_before['used'] else 0
+
                     # Actualizar balance de ese año
                     c.execute('''
                         UPDATE employees
@@ -326,12 +339,25 @@ def apply_lifo_deduction(employee_num: str, days_to_use: float, current_year: in
                             balance = balance - ?,
                             last_updated = ?
                         WHERE employee_num = ? AND year = ?
-                    ''', (to_deduct, to_deduct, datetime.now().isoformat(),
+                    ''', (to_deduct, to_deduct, timestamp,
                           employee_num, item['year']))
+
+                    balance_after = balance_before - to_deduct
+
+                    # AUDITAR en fiscal_year_audit_log
+                    c.execute('''
+                        INSERT INTO fiscal_year_audit_log
+                        (action, employee_num, year, days_affected, balance_before, balance_after,
+                         performed_by, reason, timestamp)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', ('DEDUCTION', employee_num, item['year'], to_deduct,
+                          balance_before, balance_after, performed_by, reason, timestamp))
 
                     deductions.append({
                         'year': item['year'],
-                        'days_deducted': to_deduct
+                        'days_deducted': to_deduct,
+                        'balance_before': balance_before,
+                        'balance_after': balance_after
                     })
                     remaining -= to_deduct
 
@@ -346,7 +372,8 @@ def apply_lifo_deduction(employee_num: str, days_to_use: float, current_year: in
         'total_deducted': days_to_use - remaining,
         'remaining_not_deducted': remaining,
         'deductions_by_year': deductions,
-        'success': remaining == 0
+        'success': remaining == 0,
+        'audit_timestamp': timestamp
     }
 
 
@@ -515,3 +542,141 @@ def get_grant_recommendation(employee_num: str) -> Dict:
             None
         )
     }
+
+
+def auto_designate_5_days(employee_num: str, year: int, performed_by: str = "system") -> Dict:
+    """
+    Designa automáticamente 5 días si empleado tiene 10+ días y no los ha usado.
+
+    Requisito legal: 年5日の取得義務 (obligación de 5 días anuales)
+
+    Args:
+        employee_num: Número de empleado
+        year: Año fiscal
+        performed_by: Usuario que realiza la designación
+
+    Returns:
+        Dict con resultado de designación
+    """
+    with get_db() as conn:
+        try:
+            conn.execute("BEGIN TRANSACTION")
+            c = conn.cursor()
+
+            # 1. Obtener balance actual
+            emp = c.execute('''
+                SELECT id, employee_num, name, granted, used, balance, year
+                FROM employees
+                WHERE employee_num = ? AND year = ?
+            ''', (employee_num, year)).fetchone()
+
+            if not emp:
+                conn.rollback()
+                return {
+                    'success': False,
+                    'error': f'Employee {employee_num} not found for year {year}'
+                }
+
+            total_granted = float(emp['granted']) if emp['granted'] else 0
+            used = float(emp['used']) if emp['used'] else 0
+
+            # 2. Verificar elegibilidad
+            if total_granted < FISCAL_CONFIG['minimum_days_for_obligation']:
+                conn.rollback()
+                return {
+                    'success': False,
+                    'reason': 'Employee exempt - less than 10 days granted',
+                    'granted': total_granted
+                }
+
+            # 3. Calcular cuántos días faltan por usar
+            remaining_required = max(0, FISCAL_CONFIG['minimum_annual_use'] - used)
+
+            if remaining_required <= 0:
+                conn.rollback()
+                return {
+                    'success': False,
+                    'reason': 'Employee already compliant',
+                    'used': used
+                }
+
+            # 4. Designar los días (crear registros en official_leave_designation)
+            designation_date = datetime.now().isoformat()
+
+            c.execute('''
+                INSERT INTO official_leave_designation
+                (employee_num, year, designated_date, days, reason, designated_by, designated_at, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (employee_num, year, designation_date, remaining_required,
+                  'Legal 5-day requirement (年5日の取得義務)',
+                  performed_by, designation_date, 'CONFIRMED'))
+
+            # 5. Registrar en audit_log
+            c.execute('''
+                INSERT INTO fiscal_year_audit_log
+                (action, employee_num, year, days_affected, balance_before, balance_after,
+                 performed_by, reason, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', ('DESIGNATE_5DAYS', employee_num, year, remaining_required,
+                  float(emp['balance']) if emp['balance'] else 0,
+                  float(emp['balance']) if emp['balance'] else 0,  # Balance no cambia, es una designación
+                  performed_by,
+                  'Legal 5-day requirement - official designation',
+                  designation_date))
+
+            conn.commit()
+
+            return {
+                'success': True,
+                'employee_num': employee_num,
+                'year': year,
+                'days_designated': remaining_required,
+                'used_so_far': used,
+                'designation_date': designation_date,
+                'reason': 'Legal 5-day requirement (年5日の取得義務)'
+            }
+
+        except Exception as e:
+            conn.rollback()
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+
+def validate_hire_date(hire_date: str) -> Tuple[bool, str]:
+    """
+    Valida que hire_date sea válido.
+
+    Requisitos:
+    - Formato YYYY-MM-DD
+    - No puede ser fecha futura
+    - No puede ser más de 130 años atrás
+    - Debe ser fecha válida
+
+    Args:
+        hire_date: Fecha en formato YYYY-MM-DD
+
+    Returns:
+        Tuple (is_valid, message)
+    """
+    if not hire_date:
+        return False, "Hire date cannot be empty"
+
+    try:
+        hire = datetime.strptime(hire_date, '%Y-%m-%d').date()
+        today = date.today()
+
+        # No puede ser fecha futura
+        if hire > today:
+            return False, f"Hire date cannot be in future: {hire_date}"
+
+        # No puede ser más de 130 años atrás
+        days_since = (today - hire).days
+        if days_since > 130 * 365:
+            return False, f"Hire date too old (> 130 years): {hire_date}"
+
+        return True, "Valid hire date"
+
+    except ValueError:
+        return False, f"Invalid hire date format (must be YYYY-MM-DD): {hire_date}"

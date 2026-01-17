@@ -530,7 +530,8 @@ app.add_middleware(
     RateLimitMiddleware,
     max_requests=settings.rate_limit_requests,
     window_seconds=settings.rate_limit_window_seconds,
-    exclude_paths=["/health", "/docs", "/redoc", "/openapi.json", "/", "/api/auth/login", "/static"]
+    # ✅ FIX 2: /api/auth/login is now rate limited (5/min in RATE_LIMITS config)
+    exclude_paths=["/health", "/docs", "/redoc", "/openapi.json", "/", "/static"]
 )
 
 # Add CSRF protection middleware

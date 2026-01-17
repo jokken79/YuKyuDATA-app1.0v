@@ -342,6 +342,74 @@ def init_db():
         c.execute('CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires ON refresh_tokens(expires_at)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_refresh_tokens_revoked ON refresh_tokens(revoked)')
 
+        # ============================================
+        # FISCAL YEAR COMPLIANCE AUDIT (v5.20 - Legal Compliance)
+        # ============================================
+
+        # Fiscal Year Audit Log - Registro de todas las operaciones fiscales
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS fiscal_year_audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                action TEXT NOT NULL,
+                employee_num TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                days_affected REAL,
+                balance_before REAL,
+                balance_after REAL,
+                performed_by TEXT,
+                reason TEXT,
+                timestamp TEXT NOT NULL,
+                UNIQUE(employee_num, year, action, timestamp)
+            )
+        ''')
+
+        # Indexes for fiscal_year_audit_log
+        c.execute('CREATE INDEX IF NOT EXISTS idx_fiscal_audit_emp_year ON fiscal_year_audit_log(employee_num, year)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_fiscal_audit_action ON fiscal_year_audit_log(action)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_fiscal_audit_timestamp ON fiscal_year_audit_log(timestamp)')
+
+        # Official Leave Designation - 企業による5日の指定
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS official_leave_designation (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_num TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                designated_date TEXT NOT NULL,
+                days REAL DEFAULT 1.0,
+                reason TEXT,
+                designated_by TEXT,
+                designated_at TEXT NOT NULL,
+                status TEXT DEFAULT 'PENDING',
+                UNIQUE(employee_num, year, designated_date)
+            )
+        ''')
+
+        # Indexes for official_leave_designation
+        c.execute('CREATE INDEX IF NOT EXISTS idx_official_leave_emp_year ON official_leave_designation(employee_num, year)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_official_leave_status ON official_leave_designation(status)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_official_leave_date ON official_leave_designation(designated_date)')
+
+        # Carry-Over Audit - Registro de traspasos de año
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS carryover_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                from_year INTEGER NOT NULL,
+                to_year INTEGER NOT NULL,
+                employee_num TEXT NOT NULL,
+                days_carried_over REAL,
+                days_expired REAL,
+                days_capped REAL,
+                executed_at TEXT NOT NULL,
+                executed_by TEXT,
+                executed_reason TEXT,
+                UNIQUE(from_year, to_year, employee_num)
+            )
+        ''')
+
+        # Indexes for carryover_audit
+        c.execute('CREATE INDEX IF NOT EXISTS idx_carryover_years ON carryover_audit(from_year, to_year)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_carryover_emp ON carryover_audit(employee_num)')
+
         conn.commit()
 
 
@@ -987,6 +1055,35 @@ def get_stats_by_factory(year=None):
         return result
 
 # === LEAVE REQUESTS Functions ===
+
+# ✅ FIX 4: Optimized query to get hourly wage - O(1) instead of O(n)
+def get_employee_hourly_wage(employee_num: str) -> float:
+    """
+    Get hourly wage from genzai or ukeoi - O(1) query instead of N+1.
+
+    Returns:
+        float: Hourly wage or 0 if not found
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+
+        # Check genzai first
+        emp = c.execute(
+            "SELECT hourly_wage FROM genzai WHERE employee_num = ? LIMIT 1",
+            (employee_num,)
+        ).fetchone()
+
+        if emp and emp['hourly_wage']:
+            return float(emp['hourly_wage'])
+
+        # Check ukeoi if not found in genzai
+        emp = c.execute(
+            "SELECT hourly_wage FROM ukeoi WHERE employee_num = ? LIMIT 1",
+            (employee_num,)
+        ).fetchone()
+
+        return float(emp['hourly_wage']) if emp and emp['hourly_wage'] else 0.0
+
 
 def create_leave_request(employee_num, employee_name, start_date, end_date, days_requested, reason, year,
                          hours_requested=0, leave_type='full', hourly_wage=0):
