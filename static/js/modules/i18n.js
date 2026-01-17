@@ -59,7 +59,7 @@ class I18n {
         await this.loadTranslations(this.currentLocale);
 
         this.isInitialized = true;
-        console.log(`i18n initialized with locale: ${this.currentLocale}`);
+        // i18n initialized with locale
     }
 
     /**
@@ -106,7 +106,7 @@ class I18n {
             const translations = await response.json();
             this.translations[locale] = translations;
 
-            console.log(`Loaded translations for: ${locale}`);
+            // Translations loaded for locale
             return translations;
 
         } catch (error) {
@@ -150,7 +150,7 @@ class I18n {
         // Notificar a todos los listeners
         this.notifyListeners();
 
-        console.log(`Locale changed to: ${locale}`);
+        // Locale changed
     }
 
     /**

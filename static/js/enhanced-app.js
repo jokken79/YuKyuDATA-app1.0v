@@ -44,8 +44,8 @@ export class EnhancedApp {
      */
     async initialize(options = {}) {
         try {
-            console.log('Enhanced App: Initializing...');
-            
+            // Initializing Enhanced App
+
             // Medir tiempo de inicio
             const startTime = performance.now();
             
@@ -64,8 +64,8 @@ export class EnhancedApp {
             this.performanceMetrics.loadTime = performance.now() - startTime;
             
             this.isInitialized = true;
-            console.log('Enhanced App: Initialized successfully', this.performanceMetrics);
-            
+            // Enhanced App initialized successfully
+
             // Disparar evento de inicialización
             this._dispatchEvent('app:initialized', {
                 metrics: this.performanceMetrics,
@@ -90,8 +90,8 @@ export class EnhancedApp {
         
         // Envolver funciones críticas
         this._wrapCriticalFunctions();
-        
-        console.log('Enhanced App: Error boundary initialized');
+
+        // Error boundary initialized
     }
 
     /**
@@ -107,9 +107,9 @@ export class EnhancedApp {
             const registration = await navigator.serviceWorker.register('/static/sw-enhanced.js', {
                 scope: '/'
             });
-            
-            console.log('Enhanced App: Service Worker registered', registration);
-            
+
+            // Service Worker registered
+
             // Esperar a que el SW esté activo
             if (registration.active) {
                 this._onServiceWorkerReady(registration);
@@ -145,8 +145,8 @@ export class EnhancedApp {
                 ]
             });
         }
-        
-        console.log('Enhanced App: Service Worker ready');
+
+        // Service Worker ready
     }
 
     /**
@@ -168,8 +168,8 @@ export class EnhancedApp {
         ];
         
         await cacheManager.preload(criticalUrls.map(url => ({ url })));
-        
-        console.log('Enhanced App: Caching initialized');
+
+        // Caching initialized
     }
 
     /**
@@ -207,8 +207,8 @@ export class EnhancedApp {
         
         // Precargar todos los módulos después de 3 segundos
         setTimeout(preloadAllModules, 3000);
-        
-        console.log('Enhanced App: Lazy loading initialized');
+
+        // Lazy loading initialized
     }
 
     /**
@@ -226,8 +226,8 @@ export class EnhancedApp {
         
         // Observer para nuevas imágenes
         this._setupImageObserver();
-        
-        console.log('Enhanced App: Image optimization initialized');
+
+        // Image optimization initialized
     }
 
     /**
@@ -319,8 +319,8 @@ export class EnhancedApp {
             
             this._dispatchEvent('app:performance-update', this.performanceMetrics);
         }, 30000); // Cada 30 segundos
-        
-        console.log('Enhanced App: Performance monitoring initialized');
+
+        // Performance monitoring initialized
     }
 
     /**
@@ -414,8 +414,8 @@ export class EnhancedApp {
      * Limpia recursos y cache
      */
     cleanup() {
-        console.log('Enhanced App: Cleaning up...');
-        
+        // Cleaning up resources
+
         // Limpiar lazy loader
         if (lazyLoader) {
             lazyLoader.destroy();
@@ -435,8 +435,8 @@ export class EnhancedApp {
         if (this._originalFetch) {
             window.fetch = this._originalFetch;
         }
-        
-        console.log('Enhanced App: Cleanup completed');
+
+        // Cleanup completed
     }
 
     /**
@@ -444,8 +444,8 @@ export class EnhancedApp {
      * @param {Object} newOptions - Nuevas opciones
      */
     async reload(newOptions = {}) {
-        console.log('Enhanced App: Reloading with new options...');
-        
+        // Reloading with new options
+
         // Limpiar primero
         this.cleanup();
         
@@ -524,9 +524,9 @@ export function detectEnvironment() {
 export async function autoInitialize() {
     const env = detectEnvironment();
     const config = ENV_CONFIG[env] || ENV_CONFIG.production;
-    
-    console.log(`Enhanced App: Auto-initializing for ${env} environment`);
-    
+
+    // Auto-initializing for detected environment
+
     return initializeEnhancedApp(config);
 }
 

@@ -931,7 +931,7 @@ export function initUIEnhancements() {
         new FormValidator(form);
     });
 
-    console.log('UI Enhancements initialized');
+    // UI Enhancements initialized
 }
 
 

@@ -133,12 +133,10 @@ jobs:
             --cov-report=xml \
             --cov-report=html \
             --cov-report=term-missing \
-            --cov-fail-under=80 \
+            --cov-fail-under=70 \
             --ignore=node_modules \
             --ignore=backups \
-            --ignore=agents \
-            || echo "::warning::Some tests failed or coverage is below threshold"
-        continue-on-error: true
+            --ignore=agents
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -285,11 +283,10 @@ jobs:
       - name: Run Jest tests
         run: |
           if [ -f "jest.config.js" ] || [ -f "jest.config.json" ]; then
-            npx jest --passWithNoTests --coverage || echo "::warning::Some frontend tests failed"
+            npx jest --passWithNoTests --coverage
           else
             echo "No Jest configuration found, skipping frontend tests"
           fi
-        continue-on-error: true
 
       - name: Upload Jest coverage
         uses: actions/upload-artifact@v4

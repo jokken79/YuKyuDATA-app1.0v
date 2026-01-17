@@ -295,18 +295,57 @@ jobs:
       #     heroku_app_name: yukyu-data-${{ github.event.inputs.environment }}
       #     heroku_email: ${{ secrets.HEROKU_EMAIL }}
 
-      # Simulation step (remove in production)
-      - name: Simulate deployment
+      # Real deployment via SSH (enable by setting secrets)
+      - name: Deploy to Docker host
+        if: ${{ secrets.DEPLOY_HOST != '' }}
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            # Save current image for rollback
+            CURRENT_IMAGE=$(docker inspect yukyu-app --format='{{.Config.Image}}' 2>/dev/null || echo "none")
+            echo "ROLLBACK_IMAGE=$CURRENT_IMAGE" > /tmp/yukyu-rollback.env
+
+            # Pull and deploy new image
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.preflight.outputs.version }}
+            docker stop yukyu-app || true
+            docker rm yukyu-app || true
+            docker run -d --name yukyu-app \
+              -p 8000:8000 \
+              -v yukyu-data:/app/data \
+              -v yukyu-backups:/app/backups \
+              --restart unless-stopped \
+              --health-cmd="python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/api/health\", timeout=5)'" \
+              --health-interval=30s \
+              --health-timeout=10s \
+              --health-retries=3 \
+              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.preflight.outputs.version }}
+
+            # Wait for health check
+            echo "Waiting for application to be healthy..."
+            for i in {1..30}; do
+              if docker inspect yukyu-app --format='{{.State.Health.Status}}' | grep -q healthy; then
+                echo "Application is healthy!"
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "Health check failed!"
+            exit 1
+
+      # Fallback: Simulation step (when no secrets configured)
+      - name: Simulate deployment (no secrets configured)
+        if: ${{ secrets.DEPLOY_HOST == '' }}
         run: |
-          echo "Simulating deployment to ${{ github.event.inputs.environment }}..."
+          echo "⚠️ No deployment secrets configured - running simulation"
           echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.preflight.outputs.version }}"
-          sleep 5
-          echo "Deployment simulation complete!"
-          echo ""
-          echo "To enable real deployments:"
-          echo "1. Configure your deployment secrets in GitHub"
-          echo "2. Uncomment the appropriate deployment step above"
-          echo "3. Remove this simulation step"
+          sleep 3
+          echo "To enable real deployments, configure these secrets:"
+          echo "  - DEPLOY_HOST: Your server hostname/IP"
+          echo "  - DEPLOY_USER: SSH username"
+          echo "  - DEPLOY_SSH_KEY: SSH private key"
 
   # ===========================================================================
   # Job 5: Post-deployment verification
@@ -337,12 +376,83 @@ jobs:
           echo "Deployment to **${{ github.event.inputs.environment }}** completed successfully!" >> $GITHUB_STEP_SUMMARY
 
   # ===========================================================================
-  # Job 6: Notifications
+  # Job 6: Automatic Rollback on Failure
+  # ===========================================================================
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: [preflight, deploy, verify]
+    if: ${{ failure() && secrets.DEPLOY_HOST != '' }}
+
+    steps:
+      - name: Rollback notification - Start
+        run: |
+          echo "## ⚠️ Rollback Initiated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Deployment verification failed. Initiating automatic rollback..." >> $GITHUB_STEP_SUMMARY
+
+      - name: Execute rollback
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            # Load previous image info
+            if [ -f /tmp/yukyu-rollback.env ]; then
+              source /tmp/yukyu-rollback.env
+              if [ "$ROLLBACK_IMAGE" != "none" ] && [ -n "$ROLLBACK_IMAGE" ]; then
+                echo "Rolling back to: $ROLLBACK_IMAGE"
+                docker stop yukyu-app || true
+                docker rm yukyu-app || true
+                docker run -d --name yukyu-app \
+                  -p 8000:8000 \
+                  -v yukyu-data:/app/data \
+                  -v yukyu-backups:/app/backups \
+                  --restart unless-stopped \
+                  $ROLLBACK_IMAGE
+                echo "Rollback completed!"
+              else
+                echo "No previous image to rollback to"
+              fi
+            else
+              echo "No rollback info found"
+            fi
+
+      - name: Rollback verification
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            # Verify rollback was successful
+            for i in {1..10}; do
+              if docker inspect yukyu-app --format='{{.State.Running}}' | grep -q true; then
+                echo "Rollback verification: Container is running"
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "Rollback verification failed!"
+            exit 1
+
+      - name: Rollback summary
+        if: always()
+        run: |
+          echo "## Rollback Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Automatic rollback was attempted due to deployment/verification failure." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Please investigate the failed deployment before retrying.**" >> $GITHUB_STEP_SUMMARY
+
+  # ===========================================================================
+  # Job 7: Notifications
   # ===========================================================================
   notify:
     name: Send Notifications
     runs-on: ubuntu-latest
-    needs: [preflight, build, deploy, verify]
+    needs: [preflight, build, deploy, verify, rollback]
     if: always()
 
     steps:

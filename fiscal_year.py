@@ -350,11 +350,16 @@ def apply_lifo_deduction(employee_num: str, days_to_use: float, current_year: in
     }
 
 
-# Alias para compatibilidad con código existente
+# Alias DEPRECATED - mantener solo para compatibilidad con código legacy
 def apply_fifo_deduction(employee_num: str, days_to_use: float, current_year: int) -> Dict:
     """
     DEPRECATED: Usar apply_lifo_deduction en su lugar.
-    Esta función ahora usa LIFO internamente.
+
+    NOTA: El nombre 'fifo' es incorrecto. La logica real es LIFO (Last In First Out):
+    - Se consumen primero los dias del ano mas reciente
+    - Luego los dias del ano anterior (carry-over)
+
+    Este alias se mantiene solo para compatibilidad con codigo existente.
     """
     return apply_lifo_deduction(employee_num, days_to_use, current_year)
 

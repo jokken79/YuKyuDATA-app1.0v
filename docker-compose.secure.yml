@@ -79,12 +79,14 @@ services:
       # Database
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
 
-      # Security
+      # Security - REQUIRED: JWT_SECRET_KEY and CSRF_SECRET must be set
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - CSRF_SECRET=${CSRF_SECRET}
       - JWT_ALGORITHM=HS256
       - JWT_EXPIRATION_HOURS=24
       - API_KEY=${API_KEY}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - ENVIRONMENT=production
 
       # CORS
       - CORS_ORIGINS=${CORS_ORIGINS}
@@ -130,8 +132,13 @@ services:
           cpus: '1'
           memory: 256M
 
+    # Validates both application health AND secrets configuration
     healthcheck:
-      test: ["CMD", "curl", "-f", "-s", "http://localhost:8000/health"]
+      test: >
+        sh -c '
+        curl -f -s http://localhost:8000/health > /dev/null &&
+        python -c "from config.secrets_validation import validate_secrets_healthcheck; exit(0 if validate_secrets_healthcheck() else 1)"
+        '
       interval: 30s
       timeout: 10s
       retries: 3
@@ -514,19 +521,49 @@ volumes:
 # ENVIRONMENT VARIABLES REQUERIDAS
 # ============================================
 # Crear .env.production con:
+#
+# CRITICAL SECRETS (app will NOT start without these properly configured):
+# JWT_SECRET_KEY=<min-32-chars-mixed-case-special>
+# CSRF_SECRET=<min-16-chars>
+#
+# DATABASE:
 # DB_USER=yukyu_app
 # DB_PASSWORD=<strong-password>
 # DB_NAME=yukyu_production
-# JWT_SECRET_KEY=<strong-secret>
+#
+# RECOMMENDED SECRETS:
 # API_KEY=<strong-api-key>
-# ENCRYPTION_KEY=<32-byte-hex>
+# ENCRYPTION_KEY=<64-hex-chars>
 # CORS_ORIGINS=https://yukyu-data.example.com
 # REDIS_PASSWORD=<redis-password>
+#
+# MONITORING:
 # ELASTICSEARCH_USER=elastic
 # ELASTICSEARCH_PASSWORD=<elastic-password>
 # GRAFANA_USER=admin
 # GRAFANA_PASSWORD=<grafana-password>
+# SENTRY_DSN=https://...@sentry.io/...
+#
+# BACKUP:
 # AWS_ACCESS_KEY_ID=<aws-key>
 # AWS_SECRET_ACCESS_KEY=<aws-secret>
 # S3_BACKUP_BUCKET=yukyu-backups-prod
-# SENTRY_DSN=https://...@sentry.io/...
+#
+# Generate secure secrets:
+#   python -c "import secrets; print(secrets.token_urlsafe(32))"
+#
+# Verify secrets configuration:
+#   docker exec yukyu-app python -c "from config.secrets_validation import print_secrets_status; print_secrets_status()"
+
+# ============================================
+# SECRETS VALIDATION
+# ============================================
+# The app healthcheck validates:
+#   1. Application is responding to health endpoint
+#   2. JWT_SECRET_KEY and CSRF_SECRET are properly configured
+#   3. Secrets are not using insecure default values
+#
+# If validation fails in production:
+#   - Container will be marked as unhealthy
+#   - Application will exit with code 1 on startup
+#   - Orchestrators (k8s, swarm) will restart/replace the container

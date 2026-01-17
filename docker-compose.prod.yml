@@ -63,12 +63,14 @@ services:
       - DATABASE_TYPE=${DATABASE_TYPE:-sqlite}
       - DATABASE_URL=${DATABASE_URL:-sqlite:///./data/yukyu.db}
 
-      # Security (from .env)
+      # Security (from .env) - REQUIRED: JWT_SECRET_KEY and CSRF_SECRET must be set
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - CSRF_SECRET=${CSRF_SECRET}
       - JWT_ALGORITHM=HS256
       - JWT_EXPIRATION_HOURS=24
       - API_KEY=${API_KEY}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - ENVIRONMENT=production
 
       # CORS
       - CORS_ORIGINS=${CORS_ORIGINS:-https://yukyu.example.com}
@@ -118,8 +120,13 @@ services:
     # ============================================
     # HEALTHCHECK
     # ============================================
+    # Validates both application health AND secrets configuration
     healthcheck:
-      test: ["CMD", "curl", "-f", "-s", "http://localhost:8000/api/db-status"]
+      test: >
+        sh -c '
+        curl -f -s http://localhost:8000/api/db-status > /dev/null &&
+        python -c "from config.secrets_validation import validate_secrets_healthcheck; exit(0 if validate_secrets_healthcheck() else 1)"
+        '
       interval: 30s
       timeout: 10s
       retries: 5
@@ -155,10 +162,27 @@ networks:
 # USAGE INSTRUCTIONS
 # ============================================
 # 1. Create production .env file with strong secrets:
-#    - JWT_SECRET_KEY (min 32 chars)
+#
+#    REQUIRED SECRETS (app will NOT start without these):
+#    - JWT_SECRET_KEY (min 32 chars, mixed case + special chars)
+#    - CSRF_SECRET (min 16 chars)
+#
+#    RECOMMENDED SECRETS:
 #    - API_KEY (for external integrations)
-#    - ENCRYPTION_KEY (64 hex chars)
+#    - ENCRYPTION_KEY (64 hex chars for PII encryption)
 #    - CORS_ORIGINS (your domain)
+#
+#    Example .env file:
+#    ```
+#    JWT_SECRET_KEY=your-super-secret-key-min-32-chars-here!
+#    CSRF_SECRET=another-secret-key-16chars
+#    API_KEY=your-api-key-here
+#    ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+#    CORS_ORIGINS=https://yukyu.example.com
+#    ```
+#
+#    Generate secure secrets:
+#    python -c "import secrets; print(secrets.token_urlsafe(32))"
 #
 # 2. Build and start:
 #    docker-compose -f docker-compose.prod.yml up -d --build
@@ -167,12 +191,26 @@ networks:
 #    docker-compose -f docker-compose.prod.yml ps
 #    docker-compose -f docker-compose.prod.yml logs -f
 #
-# 4. Scale workers (if needed):
+# 4. Verify secrets validation:
+#    docker exec yukyu-prod python -c "from config.secrets_validation import print_secrets_status; print_secrets_status()"
+#
+# 5. Scale workers (if needed):
 #    Edit Dockerfile.secure CMD to increase --workers
 #
-# 5. Stop services:
+# 6. Stop services:
 #    docker-compose -f docker-compose.prod.yml down
 #
-# 6. For full production setup with PostgreSQL, nginx,
+# 7. For full production setup with PostgreSQL, nginx,
 #    monitoring (Prometheus, Grafana), use:
 #    docker-compose -f docker-compose.secure.yml up -d
+#
+# ============================================
+# SECURITY VALIDATION
+# ============================================
+# The healthcheck validates:
+#   1. Application is responding to health endpoint
+#   2. Required secrets (JWT_SECRET_KEY, CSRF_SECRET) are properly configured
+#   3. Secrets are not using insecure default values
+#
+# If validation fails, the container will be marked as unhealthy
+# and orchestrators (k8s, swarm) can restart or replace it.

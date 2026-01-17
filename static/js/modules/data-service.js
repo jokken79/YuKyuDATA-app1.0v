@@ -180,7 +180,7 @@ export class DataService {
 
             // Verificar si este request sigue siendo el más reciente
             if (requestId !== this._fetchRequestId) {
-                console.log('Ignorando respuesta obsoleta para año:', year);
+                // Ignoring stale response for year
                 return;
             }
 

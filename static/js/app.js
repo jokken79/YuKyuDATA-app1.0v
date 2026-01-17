@@ -56,7 +56,7 @@ const App = {
             this.setupLanguageSelector();
 
             this.isInitialized = true;
-            console.log(`i18n initialized with locale: ${this.currentLocale}`);
+            // i18n initialized with selected locale
         },
 
         detectBrowserLocale() {
@@ -90,7 +90,7 @@ const App = {
                 const translations = await response.json();
                 this.translations[locale] = translations;
 
-                console.log(`Loaded translations for: ${locale}`);
+                // Translations loaded for locale
                 return translations;
 
             } catch (error) {
@@ -133,7 +133,7 @@ const App = {
             // Notify listeners
             this.notifyListeners();
 
-            console.log(`Locale changed to: ${locale}`);
+            // Locale changed
 
             // Show toast notification
             const info = this.localeInfo[locale];
@@ -549,7 +549,7 @@ const App = {
     },
 
     async init() {
-        console.log('🚀 Initializing YuKyu Premium Dashboard...');
+        // Initializing YuKyu Premium Dashboard
         this.ui.showLoading();
 
         // Initialize theme
@@ -681,7 +681,7 @@ const App = {
 
                 // Check if this request is still the most recent one
                 if (requestId !== this._fetchRequestId) {
-                    console.log('Ignoring stale response for year:', year);
+                    // Ignoring stale response for year
                     return; // Ignore stale responses
                 }
 
@@ -742,7 +742,7 @@ const App = {
                     return;
                 }
 
-                console.log(`✅ Datos cargados: ${App.state.data.length} registros para el año ${App.state.year}`);
+                // Data loaded successfully for the year
 
                 await App.ui.updateAll();
                 App.ui.showToast('success', 'Data refresh complete');
@@ -868,7 +868,7 @@ const App = {
     ui: {
         async updateAll() {
             const data = App.data.getFiltered();
-            console.log(`📊 Updating UI with ${data.length} employees for year ${App.state.year}`);
+            // Updating UI with employee data for year
 
             await this.renderKPIs();
             this.renderTable('', App.state.typeFilter);
@@ -2053,9 +2053,66 @@ const App = {
 
     events: {
         setupListeners() {
-            // Close modal when clicking outside
+            // Modern event delegation for data-action attributes (WCAG compliant)
+            document.addEventListener('click', (e) => {
+                const target = e.target.closest('[data-action]');
+                if (!target) return;
+
+                const action = target.dataset.action;
+                const args = [];
+
+                // Special actions
+                if (action === 'window.reload') {
+                    window.location.reload();
+                    return;
+                }
+
+                // Extract arguments from data attributes
+                if (target.dataset.view) args.push(target.dataset.view);
+                if (target.dataset.type) args.push(target.dataset.type);
+                if (target.dataset.tab) args.push(target.dataset.tab);
+                if (target.dataset.mode) args.push(target.dataset.mode);
+                if (target.dataset.format) args.push(target.dataset.format);
+                if (target.dataset.entity) args.push(target.dataset.entity);
+                if (target.dataset.employeeNum) args.push(target.dataset.employeeNum);
+                if (target.dataset.year) args.push(target.dataset.year);
+                if (target.dataset.id) args.push(target.dataset.id);
+
+                // Navigate to method and execute
+                const parts = action.split('.');
+                let context = App;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    context = context[parts[i]];
+                    if (!context) return;
+                }
+                const method = context[parts[parts.length - 1]];
+                if (typeof method === 'function') {
+                    e.preventDefault();
+                    method.apply(context, args);
+                }
+            });
+
+            // Close modal when clicking outside (backdrop click)
             document.getElementById('detail-modal').addEventListener('click', (e) => {
                 if (e.target.id === 'detail-modal') App.ui.closeModal();
+            });
+
+            // Modal backdrop handlers for all modals
+            const modalBackdropHandlers = [
+                { id: 'confirm-modal', close: () => App.requests?.hideConfirmation?.() },
+                { id: 'edit-yukyu-modal', close: () => App.editYukyu?.closeModal?.() },
+                { id: 'audit-history-modal', close: () => App.auditHistory?.closeModal?.() },
+                { id: 'import-report-modal', close: () => App.importReport?.closeModal?.() },
+                { id: 'bulk-edit-modal', close: () => App.bulkEdit?.closeModal?.() }
+            ];
+
+            modalBackdropHandlers.forEach(({ id, close }) => {
+                const modal = document.getElementById(id);
+                if (modal) {
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) close();
+                    });
+                }
             });
 
             // Event delegation for employee rows (XSS-safe)
@@ -2154,7 +2211,7 @@ const App = {
                     // Only trigger if we are in a view that has charts
                     const viewsWithCharts = ['dashboard', 'factories', 'analytics'];
                     if (viewsWithCharts.includes(App.state.currentView)) {
-                        console.log('🔄 Resynchronizing charts after resize...');
+                        // Resynchronizing charts after resize
                         App.ui.ensureChartsVisible();
                     }
                 }, 250);
@@ -4616,11 +4673,11 @@ const App = {
                     this.data.staff = json.staff.employees || [];
                     this.data.all = [...this.data.haken, ...this.data.ukeoi, ...this.data.staff];
 
-                    // Update counts
-                    document.getElementById('count-all').innerText = this.data.all.length;
-                    document.getElementById('count-haken').innerText = this.data.haken.length;
-                    document.getElementById('count-ukeoi').innerText = this.data.ukeoi.length;
-                    document.getElementById('count-staff').innerText = this.data.staff.length;
+                    // Update counts (employee type tabs)
+                    document.getElementById('count-type-all').innerText = this.data.all.length;
+                    document.getElementById('count-type-haken').innerText = this.data.haken.length;
+                    document.getElementById('count-type-ukeoi').innerText = this.data.ukeoi.length;
+                    document.getElementById('count-type-staff').innerText = this.data.staff.length;
 
                     // Update summary cards
                     document.getElementById('haken-used').innerText = Math.round(json.haken.total_used);

@@ -58,6 +58,12 @@ module.exports = defineConfig({
 
   /* Configurar proyectos para diferentes navegadores */
   projects: [
+    /* Setup project para autenticación */
+    {
+      name: 'setup',
+      testMatch: /auth\.setup\.js/,
+    },
+
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },

@@ -4,6 +4,8 @@ Handles JWT generation, verification, and role-based access control
 """
 
 import jwt
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from functools import wraps
@@ -13,6 +15,13 @@ from pydantic import BaseModel, Field
 import os
 import logging
 from config.security import settings
+
+# Try to import bcrypt for production, fall back to PBKDF2 if not available
+try:
+    import bcrypt
+    BCRYPT_AVAILABLE = True
+except ImportError:
+    BCRYPT_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
@@ -42,6 +51,79 @@ class CurrentUser(BaseModel):
     role: str
     name: str
     exp: float
+
+
+# ============================================
+# PASSWORD HASHING UTILITIES
+# ============================================
+
+def hash_password(password: str) -> str:
+    """
+    Hash a password using bcrypt (preferred) or PBKDF2 (fallback).
+
+    Args:
+        password: Plain text password
+
+    Returns:
+        Hashed password string with algorithm prefix
+    """
+    if BCRYPT_AVAILABLE:
+        # Use bcrypt with work factor 12
+        salt = bcrypt.gensalt(rounds=12)
+        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return f"bcrypt:{hashed.decode('utf-8')}"
+    else:
+        # Fallback to PBKDF2-SHA256 with 600,000 iterations (OWASP recommendation)
+        salt = secrets.token_hex(16)
+        iterations = 600000
+        hashed = hashlib.pbkdf2_hmac(
+            'sha256',
+            password.encode('utf-8'),
+            salt.encode('utf-8'),
+            iterations
+        ).hex()
+        return f"pbkdf2:{salt}:{iterations}:{hashed}"
+
+
+def verify_password(password: str, hashed_password: str) -> bool:
+    """
+    Verify a password against a hash.
+
+    Args:
+        password: Plain text password to verify
+        hashed_password: Stored hash (with algorithm prefix)
+
+    Returns:
+        True if password matches, False otherwise
+    """
+    # Handle legacy plain text passwords (migration support)
+    if not hashed_password.startswith(('bcrypt:', 'pbkdf2:')):
+        # Plain text comparison for legacy accounts - log warning
+        logger.warning("Legacy plain-text password detected - migration recommended")
+        return secrets.compare_digest(password, hashed_password)
+
+    if hashed_password.startswith('bcrypt:'):
+        if not BCRYPT_AVAILABLE:
+            logger.error("bcrypt hash found but bcrypt not installed")
+            return False
+        stored_hash = hashed_password[7:].encode('utf-8')  # Remove 'bcrypt:' prefix
+        return bcrypt.checkpw(password.encode('utf-8'), stored_hash)
+
+    elif hashed_password.startswith('pbkdf2:'):
+        parts = hashed_password.split(':')
+        if len(parts) != 4:
+            logger.error("Invalid PBKDF2 hash format")
+            return False
+        _, salt, iterations, stored_hash = parts
+        computed_hash = hashlib.pbkdf2_hmac(
+            'sha256',
+            password.encode('utf-8'),
+            salt.encode('utf-8'),
+            int(iterations)
+        ).hex()
+        return secrets.compare_digest(computed_hash, stored_hash)
+
+    return False
 
 
 # ============================================
@@ -239,7 +321,7 @@ def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
 
     Args:
         username: Username
-        password: Password (plain text - should use bcrypt in production)
+        password: Password (plain text input, verified against hash)
 
     Returns:
         User object if valid, None otherwise
@@ -250,9 +332,10 @@ def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
         logger.warning(f"Login attempt with non-existent username: {username}")
         return None
 
-    # SECURITY: In production, use bcrypt.verify() instead!
-    # For now, simple comparison (acceptable for demo only)
-    if user.get("password") != password:
+    stored_password = user.get("password", "")
+
+    # Use secure password verification (supports bcrypt, PBKDF2, and legacy plain text)
+    if not verify_password(password, stored_password):
         logger.warning(f"Login attempt with wrong password for user: {username}")
         return None
 

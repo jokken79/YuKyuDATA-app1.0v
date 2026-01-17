@@ -228,7 +228,7 @@ const App = {
     // INICIALIZACIÓN
     // ========================================
     async init() {
-        console.log('🚀 Initializing YuKyu Premium Dashboard v6.0 (Modular)...');
+        // Initializing YuKyu Premium Dashboard v6.0 (Modular)
 
         // Inicializar módulos
         this.theme = new ThemeManager();

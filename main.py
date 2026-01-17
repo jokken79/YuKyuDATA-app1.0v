@@ -31,6 +31,7 @@ from auth import (
     UserLogin as AuthUserLogin
 )
 from config.security import settings, validate_security_config
+from config.secrets_validation import validate_secrets, print_secrets_status
 from middleware_security import (
     RateLimitMiddleware,
     SecurityHeadersMiddleware,
@@ -606,12 +607,28 @@ def auto_sync_on_startup():
 async def startup_event():
     """
     Initialization on application startup.
+    - Validates production secrets configuration
     - Initializes database connection pool (for PostgreSQL)
     - Runs auto-sync if database is empty
     - Creates backup if database has data
     """
     try:
-        logger.info("🚀 Starting up YuKyuDATA application...")
+        logger.info("Starting up YuKyuDATA application...")
+
+        # Validate secrets configuration (critical for production security)
+        logger.info("Validating secrets configuration...")
+        is_valid, errors, warnings = validate_secrets(exit_on_failure=True)
+
+        if warnings:
+            for warning in warnings:
+                logger.warning(f"Security warning: {warning}")
+
+        if is_valid:
+            logger.info("Secrets validation passed")
+        else:
+            # In development mode, log errors but continue
+            for error in errors:
+                logger.error(f"Security error: {error}")
 
         # Initialize connection pool if using PostgreSQL
         if database.USE_POSTGRESQL:
@@ -4523,7 +4540,7 @@ async def process_carryover(from_year: int, to_year: int):
 @app.get("/api/fiscal/balance-breakdown/{employee_num}")
 async def get_balance_breakdown(employee_num: str, year: int = None):
     """
-    Obtiene desglose de balance por año de origen (para uso FIFO).
+    Obtiene desglose de balance por año de origen (para uso LIFO).
     Muestra qué días son del año actual y cuáles del anterior.
     """
     if not year:
@@ -4580,11 +4597,11 @@ async def get_grant_rec(employee_num: str):
     return {"status": "success", "data": recommendation}
 
 
-@app.post("/api/fiscal/apply-fifo-deduction")
+@app.post("/api/fiscal/apply-lifo-deduction")
 async def apply_deduction(employee_num: str, days: float, year: int = None):
     """
-    Aplica deducción de días usando lógica LIFO.
-    Usa primero los días más nuevos (recientes).
+    Aplica deducción de días usando lógica LIFO (Last In First Out).
+    Usa primero los días más nuevos (del año actual antes que del anterior).
     """
     if not year:
         year = datetime.now().year
@@ -5098,7 +5115,7 @@ async def app_info():
             "Leave request workflow",
             "Monthly reports (21日〜20日 period)",
             "5-day compliance monitoring",
-            "FIFO deduction logic",
+            "LIFO deduction logic",
             "Year-end carry-over processing",
             "Excel bidirectional sync",
             "Annual ledger generation"
