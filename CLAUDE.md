@@ -31,11 +31,13 @@ http://localhost:8000/redoc     # ReDoc
 
 **YuKyuDATA-app** es un sistema de gestión de empleados especializado en cumplimiento de la ley laboral japonesa para vacaciones pagadas (有給休暇).
 
-**Versión actual:** v5.16 (ver `CLAUDE_MEMORY.md` para historial completo)
+**Versión actual:** v5.19 (ver `CLAUDE_MEMORY.md` para historial completo)
 
 **Tech Stack:**
 - **Backend:** FastAPI + SQLite/PostgreSQL + PyJWT (auth) + Alembic (migrations)
 - **Frontend:** Vanilla JavaScript (ES6 modules) + Chart.js + ApexCharts
+  - Legacy: `static/js/app.js` (SPA monolítico)
+  - Modern: `static/src/` (componentes modulares, ~11,500 líneas)
 - **Estilos:** Glassmorphism design system + Design System CSS
 - **Testing:** Pytest (backend) + Jest (frontend) + Playwright (E2E)
 - **DevOps:** Docker + GitHub Actions CI/CD + Prometheus monitoring
@@ -88,7 +90,9 @@ npm install
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Frontend (SPA)                           │
-│  static/js/app.js + modules/ (15 ES6 modules)              │
+│  static/js/app.js (legacy) + static/src/ (modern ~11,500)  │
+│  Components: Modal, Table, Form, Alert, DatePicker, Select │
+│  Pages: Dashboard, Employees, LeaveRequests, Analytics     │
 │  Chart.js + ApexCharts | Glassmorphism + Design System     │
 └─────────────────────┬───────────────────────────────────────┘
                       │ REST API (JSON)
@@ -123,8 +127,8 @@ npm install
 
 ```
 YuKyuDATA-app1.0v/
-├── main.py                    # FastAPI app principal (6,073 líneas)
-├── database.py                # CRUD SQLite/PostgreSQL (2,559 líneas)
+├── main.py                    # FastAPI app principal (784 líneas, refactorizado)
+├── database.py                # CRUD SQLite/PostgreSQL (2,904 líneas)
 │
 ├── services/                  # Lógica de negocio
 │   ├── fiscal_year.py         # Lógica ley laboral japonesa (517 líneas)
@@ -172,9 +176,42 @@ YuKyuDATA-app1.0v/
 │
 ├── static/
 │   ├── js/
-│   │   ├── app.js             # SPA principal (6,919 líneas)
+│   │   ├── app.js             # Legacy SPA (7,091 líneas)
 │   │   ├── app-refactored.js  # Versión refactorizada (16,091 líneas)
 │   │   └── modules/           # 15 módulos ES6 (6,689 líneas)
+│   │
+│   ├── src/                   # Frontend modular moderno (~11,500 líneas)
+│   │   ├── components/        # 14 componentes reutilizables (~7,700 líneas)
+│   │   │   ├── Modal.js       # Modal dialogs (685 líneas)
+│   │   │   ├── Table.js       # DataTable con sort/filter (985 líneas)
+│   │   │   ├── Form.js        # Form builder con validación (1,071 líneas)
+│   │   │   ├── Select.js      # Select con búsqueda (975 líneas)
+│   │   │   ├── DatePicker.js  # Calendario interactivo (935 líneas)
+│   │   │   ├── Alert.js       # Notificaciones toast (883 líneas)
+│   │   │   ├── Card.js        # Card containers (595 líneas)
+│   │   │   ├── Loader.js      # Loading states (591 líneas)
+│   │   │   ├── Pagination.js  # Paginación (576 líneas)
+│   │   │   ├── Button.js      # Botones con variantes (553 líneas)
+│   │   │   ├── Input.js       # Input fields (543 líneas)
+│   │   │   ├── Tooltip.js     # Tooltips (408 líneas)
+│   │   │   ├── Badge.js       # Status badges (389 líneas)
+│   │   │   └── index.js       # Barrel export (110 líneas)
+│   │   │
+│   │   ├── pages/             # 7 páginas separadas (~3,200 líneas)
+│   │   │   ├── LeaveRequests.js  # Solicitudes (579 líneas)
+│   │   │   ├── Analytics.js      # Estadísticas (479 líneas)
+│   │   │   ├── Dashboard.js      # Dashboard (478 líneas)
+│   │   │   ├── Notifications.js  # Notificaciones (445 líneas)
+│   │   │   ├── Settings.js       # Configuración (413 líneas)
+│   │   │   ├── Employees.js      # Empleados (371 líneas)
+│   │   │   ├── Compliance.js     # Cumplimiento (332 líneas)
+│   │   │   └── index.js          # Barrel export (82 líneas)
+│   │   │
+│   │   ├── store/state.js     # Estado global Observer pattern (245 líneas)
+│   │   ├── config/constants.js # Configuración frontend (205 líneas)
+│   │   ├── index.js           # Entry point moderno (206 líneas)
+│   │   └── integration-example.js # Ejemplo integración (128 líneas)
+│   │
 │   ├── css/                   # Estilos (254 KB total)
 │   │   ├── main.css           # Principal (78 KB)
 │   │   └── design-system/     # Sistema de diseño
@@ -226,15 +263,18 @@ YuKyuDATA-app1.0v/
 
 | Archivo | Líneas | Propósito |
 |---------|--------|-----------|
-| `main.py` | 6,073 | FastAPI app con ~50 endpoints |
-| `database.py` | 2,559 | SQLite/PostgreSQL CRUD, backups, audit log |
+| `main.py` | 784 | FastAPI app refactorizado (endpoints en routes/) |
+| `database.py` | 2,904 | SQLite/PostgreSQL CRUD, backups, audit log |
 | `services/excel_service.py` | 921 | Parsing inteligente de Excel (medio día, comentarios) |
-| `services/fiscal_year.py` | 517 | **CRÍTICO** - Lógica de ley laboral japonesa |
+| `services/fiscal_year.py` | 517 | **CRITICO** - Lógica de ley laboral japonesa |
 | `services/` | ~3,500 | Auth, reports, notifications, caching, crypto |
 | `routes/` | 5,932 | 19 módulos de endpoints modularizados |
 | `agents/` | 11,307 | 13 agentes especializados |
-| `static/js/app.js` | 6,919 | SPA principal con módulos App.* |
-| `static/js/modules/` | 6,689 | 15 módulos ES6 |
+| `static/js/app.js` | 7,091 | Legacy SPA (uso actual) |
+| `static/js/modules/` | 6,689 | 15 módulos ES6 legacy |
+| `static/src/` | ~11,500 | **NUEVO** - Frontend modular moderno |
+| `static/src/components/` | ~7,700 | 14 componentes reutilizables |
+| `static/src/pages/` | ~3,200 | 7 páginas modulares |
 
 ---
 
@@ -340,9 +380,24 @@ memory.store_session_context(context)
 
 ## Frontend Architecture
 
-### Patrón Singleton
+### Arquitectura Dual (Legacy + Modern)
+
+El frontend tiene dos sistemas que coexisten:
+
+| Sistema | Ubicación | Estado | Uso |
+|---------|-----------|--------|-----|
+| **Legacy** | `static/js/app.js` | Activo (producción) | SPA actual |
+| **Modern** | `static/src/` | Disponible | Componentes nuevos |
+
+**Plan de migración:**
+1. Fase actual: Componentes modernos disponibles para nuevas features
+2. Siguiente: Integrar componentes gradualmente en app.js
+3. Final: Migrar completamente a arquitectura modular
+
+### Legacy SPA (static/js/app.js)
 
 ```javascript
+// Patrón singleton actual
 App = {
     state: { data, year, charts, currentView, theme },
     init(), render(), destroy(),
@@ -350,7 +405,112 @@ App = {
 }
 ```
 
-### Módulos ES6 (static/js/modules/)
+### Modern Components (static/src/)
+
+**Componentes disponibles:**
+
+| Componente | Líneas | Características |
+|------------|--------|-----------------|
+| `Form.js` | 1,071 | Builder con validación, tipos de campo |
+| `Table.js` | 985 | Sort, filter, paginación, selección |
+| `Select.js` | 975 | Búsqueda, múltiple, async loading |
+| `DatePicker.js` | 935 | Calendario, rango, i18n japonés |
+| `Alert.js` | 883 | Toast notifications, tipos, auto-dismiss |
+| `Modal.js` | 685 | Dialogs, confirm, form modals |
+| `Card.js` | 595 | Containers con header/footer |
+| `Loader.js` | 591 | Skeleton, spinner, progress |
+| `Pagination.js` | 576 | Page navigation, go-to |
+| `Button.js` | 553 | Variantes, loading state, icons |
+| `Input.js` | 543 | Validación, máscaras, estados |
+| `Tooltip.js` | 408 | Hover tips, posicionamiento |
+| `Badge.js` | 389 | Status indicators, colores |
+
+**Páginas modulares:**
+
+| Página | Líneas | Funcionalidad |
+|--------|--------|---------------|
+| `LeaveRequests.js` | 579 | CRUD solicitudes, workflow |
+| `Analytics.js` | 479 | Charts, estadísticas |
+| `Dashboard.js` | 478 | Vista principal, KPIs |
+| `Notifications.js` | 445 | Lista, marcar leído |
+| `Settings.js` | 413 | Configuración usuario |
+| `Employees.js` | 371 | Lista empleados |
+| `Compliance.js` | 332 | Verificación 5 días |
+
+### Usando Componentes Modernos
+
+```javascript
+// Importar desde barrel export
+import {
+    Modal, Alert, DataTable, Form,
+    Button, Select, DatePicker
+} from '/static/src/components/index.js';
+
+// Crear modal
+const modal = new Modal({
+    title: '確認',
+    content: '保存しますか？',
+    buttons: [
+        { text: 'キャンセル', variant: 'secondary', action: 'close' },
+        { text: '保存', variant: 'primary', action: 'confirm' }
+    ]
+});
+modal.open();
+
+// Mostrar alerta toast
+Alert.success('保存しました');
+Alert.error('エラーが発生しました');
+Alert.warning('注意が必要です');
+
+// Crear tabla con datos
+const table = new DataTable({
+    columns: [
+        { key: 'employee_num', label: '社員番号', sortable: true },
+        { key: 'name', label: '氏名', sortable: true },
+        { key: 'balance', label: '残日数', type: 'number' }
+    ],
+    data: employees,
+    pagination: { pageSize: 20 },
+    onRowClick: (row) => console.log('Selected:', row)
+});
+document.getElementById('container').appendChild(table.render());
+
+// Form con validación
+const form = new Form({
+    fields: [
+        { name: 'employee_num', label: '社員番号', required: true },
+        { name: 'start_date', label: '開始日', type: 'date', required: true },
+        { name: 'days', label: '日数', type: 'number', min: 0.5, max: 40 }
+    ],
+    onSubmit: async (data) => {
+        await api.createLeaveRequest(data);
+        Alert.success('申請を作成しました');
+    }
+});
+
+// Estado global (Observer pattern)
+import { state } from '/static/src/store/state.js';
+
+state.subscribe('employees', (newData) => {
+    table.setData(newData);
+});
+
+state.set('employees', await fetchEmployees());
+```
+
+### Integración con Legacy
+
+```javascript
+// En app.js, importar componente moderno
+import { Alert } from '/static/src/components/Alert.js';
+
+// Usar en código legacy
+App.showNotification = function(message, type) {
+    Alert[type](message);  // success, error, warning, info
+};
+```
+
+### Módulos Legacy (static/js/modules/)
 
 | Módulo | Líneas | Propósito |
 |--------|--------|-----------|
@@ -378,7 +538,7 @@ escapeHtml(text)        // Escapar HTML
 element.textContent     // Texto plano (seguro)
 
 // NUNCA usar:
-innerHTML = userInput   // ❌ Vulnerabilidad XSS
+innerHTML = userInput   // Vulnerabilidad XSS
 ```
 
 ---
@@ -594,6 +754,50 @@ docker-compose logs -f postgres
 5. Exportar en `agents/__init__.py`
 6. Agregar tests
 
+### Agregar Nuevo Componente Frontend (static/src/)
+
+1. Crear `static/src/components/NuevoComponente.js`
+2. Seguir patrón de componentes existentes (clase ES6)
+3. Implementar métodos: `constructor()`, `render()`, `destroy()`
+4. Agregar estilos inline o usar clases de design-system
+5. Exportar en `static/src/components/index.js`
+6. Documentar uso en el archivo
+
+```javascript
+// Ejemplo estructura de componente
+export class NuevoComponente {
+    constructor(options = {}) {
+        this.options = { ...this.defaults, ...options };
+        this.element = null;
+    }
+
+    get defaults() {
+        return { /* opciones por defecto */ };
+    }
+
+    render() {
+        this.element = document.createElement('div');
+        // ... construir DOM
+        return this.element;
+    }
+
+    destroy() {
+        if (this.element) {
+            this.element.remove();
+            this.element = null;
+        }
+    }
+}
+```
+
+### Agregar Nueva Página Frontend (static/src/pages/)
+
+1. Crear `static/src/pages/NuevaPagina.js`
+2. Importar componentes necesarios de `components/index.js`
+3. Implementar: `constructor()`, `render()`, `mount()`, `unmount()`
+4. Suscribirse a estado global si es necesario
+5. Exportar en `static/src/pages/index.js`
+
 ### Debugging
 
 ```bash
@@ -788,6 +992,9 @@ Configuración en `monitoring/prometheus.yml` para:
 
 | Versión | Fecha | Highlights |
 |---------|-------|------------|
+| v5.19 | 2026-01-17 | Modular frontend architecture (static/src/) - 14 components, 7 pages |
+| v5.18 | 2026-01-17 | Complete project restructure to standard architecture |
+| v5.17 | 2026-01-17 | Complete optimization plan - 3 phases implemented |
 | v5.16 | 2026-01-16 | Complete test coverage for all routes |
 | v5.15 | 2026-01-15 | UI/UX modernization - 100% onclick + inline styles |
 | v5.14 | 2026-01-15 | Comprehensive E2E tests for accessibility/compliance |

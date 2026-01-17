@@ -1772,6 +1772,59 @@
 
     <script src="/static/js/app.js?v=20251222"></script>
 
+    <!-- Modern UI Bootstrap - Connects static/src/ with legacy app.js -->
+    <script type="module">
+        import { initModernUI, loadComponents, CONFIG, FEATURES } from '/static/src/bootstrap.js';
+
+        // Wait for legacy App to be available
+        function waitForApp(timeout = 5000) {
+            return new Promise((resolve, reject) => {
+                if (window.App) {
+                    resolve(window.App);
+                    return;
+                }
+                const start = Date.now();
+                const check = setInterval(() => {
+                    if (window.App) {
+                        clearInterval(check);
+                        resolve(window.App);
+                    } else if (Date.now() - start > timeout) {
+                        clearInterval(check);
+                        reject(new Error('App not found'));
+                    }
+                }, 50);
+            });
+        }
+
+        // Initialize when App is ready
+        waitForApp().then(async (App) => {
+            // Initialize modern UI and attach to legacy App
+            const result = await initModernUI(App);
+
+            if (result.success) {
+                console.log('[YuKyu] Modern UI components loaded');
+                console.log('[YuKyu] Access via App.components.Modal, App.components.Alert, etc.');
+
+                // Pre-load commonly used components for faster access
+                const components = await loadComponents([
+                    'Modal', 'Alert', 'Badge', 'Loader'
+                ]);
+
+                // Expose helper for quick notifications
+                window.notify = {
+                    success: (msg) => App.components.Alert.success(msg),
+                    error: (msg) => App.components.Alert.error(msg),
+                    warning: (msg) => App.components.Alert.warning(msg),
+                    info: (msg) => App.components.Alert.info(msg)
+                };
+            } else {
+                console.warn('[YuKyu] Modern UI not available:', result.reason);
+            }
+        }).catch(err => {
+            console.warn('[YuKyu] Legacy App not found, modern UI skipped:', err.message);
+        });
+    </script>
+
     <!-- UI Enhancements Module (Sprint 1, 2 & 3) -->
     <script type="module">
         import {

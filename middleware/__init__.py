@@ -3,7 +3,16 @@ Middleware Module
 Contiene middleware personalizado para la aplicacion
 """
 
-from .rate_limiter import RateLimiter
+from .rate_limiter import (
+    RateLimiter,
+    UserAwareRateLimiter,
+    RateLimitMiddleware as RateLimiterMiddleware,
+    RateLimitInfo,
+    user_aware_limiter,
+    check_rate_limit,
+    get_rate_limit_headers,
+    RATE_LIMITS,
+)
 from .security import verify_token, get_current_user
 from .exception_handler import (
     global_exception_handler,
@@ -27,7 +36,16 @@ from .security_headers import (
 )
 
 __all__ = [
+    # Rate Limiter
     "RateLimiter",
+    "UserAwareRateLimiter",
+    "RateLimiterMiddleware",
+    "RateLimitInfo",
+    "user_aware_limiter",
+    "check_rate_limit",
+    "get_rate_limit_headers",
+    "RATE_LIMITS",
+    # Security
     "verify_token",
     "get_current_user",
     # Exception handlers
