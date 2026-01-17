@@ -1,0 +1,62 @@
+# =============================================================================
+# YuKyuDATA Backup Service
+# =============================================================================
+# Automated backup service for SQLite database
+# Supports: Local storage, S3-compatible storage
+# =============================================================================
+
+FROM python:3.11-alpine
+
+LABEL maintainer="YuKyuDATA Team"
+LABEL description="Automated backup service for YuKyuDATA SQLite database"
+LABEL version="1.0"
+
+# Install system dependencies
+RUN apk add --no-cache \
+    bash \
+    curl \
+    sqlite \
+    gzip \
+    aws-cli \
+    tzdata
+
+# Set timezone
+ENV TZ=Asia/Tokyo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Create app user
+RUN adduser -D -u 1000 backupuser
+
+# Create directories
+RUN mkdir -p /app /backups /data && \
+    chown -R backupuser:backupuser /app /backups /data
+
+WORKDIR /app
+
+# Copy backup script
+COPY backup-entrypoint.sh /app/backup.sh
+RUN chmod +x /app/backup.sh && chown backupuser:backupuser /app/backup.sh
+
+# Environment variables with defaults
+ENV BACKUP_INTERVAL=3600 \
+    BACKUP_RETENTION_DAYS=30 \
+    DB_PATH=/data/yukyu.db \
+    BACKUP_DIR=/backups \
+    S3_ENABLED=false \
+    S3_BUCKET="" \
+    S3_PREFIX="backups/" \
+    COMPRESS=true \
+    LOG_LEVEL=INFO
+
+# Switch to non-root user
+USER backupuser
+
+# Health check
+HEALTHCHECK --interval=60s --timeout=10s --start-period=10s --retries=3 \
+    CMD test -f /tmp/backup_last_run && \
+        test $(( $(date +%s) - $(cat /tmp/backup_last_run) )) -lt $((BACKUP_INTERVAL * 2)) || exit 1
+
+# Volumes
+VOLUME ["/data", "/backups"]
+
+ENTRYPOINT ["/app/backup.sh"]
