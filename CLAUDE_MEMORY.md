@@ -7,8 +7,8 @@ Claude debe leer este archivo al inicio de cada sesión para recordar contexto i
 
 ## Última Actualización
 - **Fecha**: 2026-01-17
-- **Sesión**: UI/UX Deep Audit & WCAG Fixes v5.4
-- **Commits**: 10 (v2.1 + v2.2 + v2.3 + v2.4 + v2.5 + v2.6 + v2.7 + v5.4)
+- **Sesión**: Complete Architecture Refactor & Modern Frontend v5.19
+- **Commits**: 15+ (v2.1 → v5.19)
 
 ---
 
@@ -21,19 +21,146 @@ Claude debe leer este archivo al inicio de cada sesión para recordar contexto i
 
 ### 2. Stack Tecnológico
 - Backend: FastAPI + SQLite (con soporte PostgreSQL opcional)
-- Frontend: Vanilla JS con ES6 modules (NO frameworks)
-- Estilos: Glassmorphism design system
-- Containerización: Docker con docker-compose
+- Models: Pydantic v2 con ConfigDict y field_validator
+- Frontend: Dual architecture (legacy app.js + modern static/src/)
+- Estilos: Glassmorphism design system + CSS utilities
+- Containerización: Docker con múltiples compose configs
 
 ### 3. Patrones de Código
 - Usar `INSERT OR REPLACE` para sincronización idempotente
 - Usar `with get_db() as conn:` para conexiones seguras
-- Frontend usa patrón singleton `App.{module}`
+- Frontend legacy usa patrón singleton `App.{module}`
+- Frontend moderno usa ES6 classes con Observer pattern
 - Agentes usan patrón `get_{agent}_agent()` para singleton
+- Services consolidados en `services/` (no root)
+- Models Pydantic en `models/` (schemas separados de lógica)
+
+### 4. Arquitectura Frontend Dual (v5.18+)
+- **Legacy**: `static/js/app.js` + `modules/` - Funcional, estable
+- **Modern**: `static/src/components/` + `pages/` - Componentes reutilizables
+- **Bridge**: `legacy-adapter.js` - Conecta ambos sistemas
+- **Migración gradual**: No breaking changes durante transición
+
+### 5. Security (v5.19)
+- **Rate Limiting**: Por IP + user_id + endpoint
+- **JWT**: Access 15min + Refresh 7 días
+- **CSRF**: Token en headers para mutaciones
+- **CSP**: strict-dynamic, no unsafe-inline
 
 ---
 
 ## Features Implementadas (Historial)
+
+### v5.19 (2026-01-17) - Complete Tests & Security Enhancement
+**Tests completos para nueva arquitectura + Rate limiting avanzado:**
+
+| Categoría | Feature | Archivos | Descripción |
+|-----------|---------|----------|-------------|
+| Tests | Pydantic Models Tests | `tests/test_models_*.py` (6 archivos) | Tests para todos los modelos en `models/` |
+| Tests | Component Tests | `tests/unit/components/*.test.js` | Tests para Modal, Table, Form, Select, DatePicker |
+| Tests | Page Tests | `tests/unit/pages/*.test.js` | Tests para Dashboard page |
+| Security | User-Aware Rate Limiting | `middleware/rate_limiter.py` | Rate limiting por IP + user_id + endpoint |
+| Security | Rate Limit Headers | `middleware/rate_limiter.py` | X-RateLimit-Limit, X-RateLimit-Remaining, Retry-After |
+| Integration | Bootstrap System | `static/src/bootstrap.js` | Inicialización de componentes modernos |
+| Integration | Legacy Adapter | `static/src/legacy-adapter.js` | Puente entre app.js legacy y static/src/ moderno |
+| CI/CD | Frontend Modern Tests | `.github/workflows/ci.yml` | Job `frontend-modern-test` para static/src/ |
+| Docs | CLAUDE.md v5.19 | `CLAUDE.md` | Documentación completa de nueva arquitectura |
+
+**Endpoints con rate limits específicos:**
+```python
+RATE_LIMITS = {
+    'default': {'requests': 100, 'window': 60},
+    'authenticated': {'requests': 200, 'window': 60},
+    'api/auth/login': {'requests': 5, 'window': 60},  # Anti-bruteforce
+    'api/sync': {'requests': 2, 'window': 60},        # Heavy operation
+}
+```
+
+---
+
+### v5.18 (2026-01-17) - Complete Architecture Refactor
+**Reorganización completa para cumplir arquitectura estándar frontend/backend:**
+
+| Categoría | Feature | Archivos | Descripción |
+|-----------|---------|----------|-------------|
+| Models | Pydantic Schemas | `models/` (8 archivos, 2,604 líneas) | common, employee, leave_request, vacation, notification, user, fiscal, report |
+| Frontend | ES6 Components | `static/src/components/` (14 archivos) | Modal, Table, Form, Select, DatePicker, Alert, Card, Loader, etc. |
+| Frontend | Page Modules | `static/src/pages/` (7 archivos) | Dashboard, Employees, LeaveRequests, Analytics, Compliance, Notifications, Settings |
+| Frontend | State Management | `static/src/store/state.js` | Observer pattern para estado global |
+| Services | Consolidation | `services/` (11 módulos) | Movidos: auth, fiscal_year, notifications, reports, excel_service, caching, crypto |
+| Middleware | Consolidation | `middleware/` (5 archivos) | csrf, security_headers, rate_limiter, exception_handler |
+| Utils | Consolidation | `utils/` (2 archivos) | logger, pagination |
+
+**Estructura nueva (95% compliance con arquitectura estándar):**
+```
+├── models/              # Pydantic schemas (NEW)
+├── services/            # Business logic (CONSOLIDATED)
+├── middleware/          # HTTP middleware (CONSOLIDATED)
+├── utils/               # Shared utilities (CONSOLIDATED)
+├── static/src/
+│   ├── components/      # Reusable UI components (NEW)
+│   ├── pages/           # Page modules (NEW)
+│   └── store/           # State management (NEW)
+```
+
+**38 imports rotos corregidos** después de reorganización.
+
+---
+
+### v5.17 (2026-01-17) - Complete Optimization Plan (3 Phases)
+**Plan de optimización ejecutado con recomendaciones de agentes UI/UX, CI/CD y REST API:**
+
+| Fase | Feature | Archivos | Descripción |
+|------|---------|----------|-------------|
+| 1 | Endpoint Deduplication | `main.py` | Reducido de 6,073 a 776 líneas (87% reducción) |
+| 1 | Coverage Threshold | `.github/workflows/ci.yml` | Aumentado de 70% a 80% |
+| 1 | Agents Test Coverage | `.github/workflows/ci.yml` | `--cov=agents` añadido |
+| 2 | API Response Standard | `routes/responses.py` | APIResponse, ErrorResponse, PaginatedResponse |
+| 2 | Refresh Tokens | `services/auth.py` | Access 15min + Refresh 7 días |
+| 2 | CSS Consolidation | `static/css/consolidated.css` | Estilos unificados |
+| 2 | ESLint in CI | `.github/workflows/ci.yml` | Linting automático JavaScript |
+| 3 | Lazy Animations | `static/js/modules/lazy-animations.js` | Intersection Observer para animaciones |
+| 3 | Global Exception Handler | `middleware/exception_handler.py` | Manejo centralizado de errores |
+| 3 | E2E Strict Mode | `.github/workflows/e2e-tests.yml` | Removido `continue-on-error` |
+| 3 | POST→PATCH Migration | `routes/leave_requests.py`, `routes/notifications.py` | REST compliance mejorado |
+| 3 | Storybook Setup | `.storybook/`, `static/stories/` | Component documentation |
+| 3 | Asset Minification | `scripts/minify-assets.js` | CSS/JS minification |
+
+**main.py refactored:**
+- ~50 endpoints movidos a `routes/` (19 archivos)
+- Solo queda: imports, helpers, middleware config, router registration, entry point
+
+---
+
+### v5.16 (2026-01-16) - Complete Test Coverage for All Routes
+**Cobertura de tests completa para módulos de rutas:**
+
+| Test File | Routes Covered | Tests |
+|-----------|----------------|-------|
+| `test_employees.py` | employees.py | CRUD, search, bulk |
+| `test_leave_workflow.py` | leave_requests.py | Full workflow |
+| `test_yukyu_routes.py` | yukyu.py | Usage details CRUD |
+| `test_compliance_routes.py` | compliance.py | 5-day check |
+| `test_fiscal_routes.py` | fiscal.py | Carryover, LIFO |
+| `test_reports.py` | reports.py | PDF, Excel export |
+
+---
+
+### v5.5-v5.15 (2026-01-10 - 2026-01-15)
+**Mejoras incrementales documentadas en commits:**
+- v5.15: UI/UX modernization - 100% onclick + inline styles elimination
+- v5.14: Comprehensive E2E tests for accessibility/compliance
+- v5.13: Extract inline styles to CSS utilities
+- v5.12: Event delegation system for modern UI
+- v5.11: Real deployment, rollback, backup service
+- v5.10: N+1 query fix and comprehensive tests
+- v5.9: Phase 1 security, compliance, accessibility
+- v5.8: Critical audit fixes, E2E tests, healthcheck, CI/CD
+- v5.7: Route modularization, console.log removal
+- v5.6: Critical security and accessibility fixes
+- v5.5: Specialized agents, skills, startup scripts
+
+---
 
 ### v5.4 (2026-01-17) - UI/UX Deep Audit & WCAG AA Compliance
 **Análisis exhaustivo del agente elite-ui-architect + implementación de mejoras críticas:**
@@ -248,52 +375,119 @@ python scripts/sync-issues.py     # Sincronizar TODOs a Issues
 ### Core Application
 | Archivo | Líneas | Propósito |
 |---------|--------|-----------|
-| `main.py` | 5,500+ | FastAPI endpoints |
-| `database.py` | 1,400+ | SQLite CRUD |
-| `excel_service.py` | 800+ | Parser Excel mejorado |
-| `fiscal_year.py` | 513 | Lógica fiscal japonesa |
+| `main.py` | ~780 | FastAPI app (refactored - solo entry point) |
+| `database.py` | 2,559 | SQLite/PostgreSQL CRUD, backups, audit |
+| `services/excel_service.py` | 921 | Parser Excel inteligente |
+| `services/fiscal_year.py` | 517 | **CRÍTICO** - Lógica ley laboral japonesa |
 
-### Frontend
+### Models (NEW v5.18)
+| Archivo | Líneas | Propósito |
+|---------|--------|-----------|
+| `models/common.py` | ~150 | APIResponse, ErrorResponse, PaginatedResponse |
+| `models/employee.py` | ~400 | EmployeeUpdate, BulkUpdateRequest |
+| `models/leave_request.py` | ~350 | LeaveRequestCreate, Status enum |
+| `models/vacation.py` | ~300 | UsageDetailCreate, YukyuSummary |
+| `models/user.py` | ~350 | LoginRequest, TokenResponse, TokenPair |
+| `models/fiscal.py` | ~250 | CarryoverRequest, LifoDeductionRequest |
+| `models/notification.py` | ~400 | NotificationSettings |
+| `models/report.py` | ~400 | CustomReportRequest |
+
+### Frontend Legacy
 | Archivo | Propósito |
 |---------|-----------|
-| `app.js` | 4,800+ líneas, módulos App.* |
-| `index.html` | SPA principal + modales |
-| `status.html` | Dashboard de estado |
+| `static/js/app.js` | 6,919 líneas, módulos App.* |
+| `static/js/modules/` | 15 módulos ES6 (6,689 líneas) |
+| `templates/index.html` | SPA principal + modales |
 
-### Agentes
+### Frontend Modern (NEW v5.18)
 | Archivo | Propósito |
 |---------|-----------|
-| `agents/memory.py` | Sistema de memoria |
+| `static/src/components/` | 14 componentes reutilizables |
+| `static/src/pages/` | 7 módulos de página |
+| `static/src/store/state.js` | Estado global con Observer |
+| `static/src/bootstrap.js` | Inicialización moderna |
+| `static/src/legacy-adapter.js` | Puente con app.js |
+
+### Services (Consolidated v5.18)
+| Archivo | Líneas | Propósito |
+|---------|--------|-----------|
+| `services/auth.py` | 407 | JWT + Refresh tokens |
+| `services/notifications.py` | 1,200 | Email/Slack/Sistema |
+| `services/reports.py` | 1,104 | PDF generation |
+| `services/excel_export.py` | 599 | Excel export |
+| `services/caching.py` | ~200 | Sistema de cache |
+| `services/crypto_utils.py` | ~150 | Encriptación campos |
+
+### Middleware (Consolidated v5.18)
+| Archivo | Propósito |
+|---------|-----------|
+| `middleware/csrf.py` | CSRF protection |
+| `middleware/security_headers.py` | Security headers |
+| `middleware/rate_limiter.py` | User-aware rate limiting |
+| `middleware/exception_handler.py` | Global error handler |
+
+### Routes (19 files, 5,932 lines)
+| Archivo | Líneas | Propósito |
+|---------|--------|-----------|
+| `routes/employees.py` | 1,004 | CRUD empleados |
+| `routes/leave_requests.py` | 416 | Workflow solicitudes |
+| `routes/notifications.py` | 454 | Notificaciones API |
+| `routes/yukyu.py` | 438 | Gestión vacaciones |
+| `routes/reports.py` | 403 | Reportes |
+| `routes/responses.py` | ~100 | Response models standard |
+
+### Agentes (13 agents, 11,307 lines)
+| Archivo | Propósito |
+|---------|-----------|
+| `agents/orchestrator.py` | Coordinación multi-agente |
+| `agents/memory.py` | Memoria persistente |
 | `agents/compliance.py` | Verificación 5-días |
-| `agents/orchestrator.py` | Coordinación |
+| `agents/performance.py` | Análisis rendimiento |
+| `agents/security.py` | Auditoría seguridad |
+| `agents/testing.py` | Generación tests |
+| `agents/ui_designer.py` | Diseño UI |
+| `agents/ux_analyst.py` | Análisis UX |
 
 ### DevOps
 | Archivo | Propósito |
 |---------|-----------|
-| `Dockerfile` | Build de imagen |
-| `docker-compose.dev.yml` | Desarrollo |
-| `.github/workflows/ci.yml` | CI pipeline |
+| `Dockerfile` / `Dockerfile.secure` | Build de imágenes |
+| `docker-compose.*.yml` | Dev/Prod/Secure configs |
+| `.github/workflows/ci.yml` | CI pipeline + frontend-modern-test |
+| `.github/workflows/e2e-tests.yml` | Playwright tests |
 
 ---
 
 ## Próximas Mejoras Sugeridas
 
+### Completadas hasta v5.19:
 1. [x] **Fix GZIPMiddleware** - Resolver import error (v2.3)
 2. [x] **Tests E2E** - Playwright para tests de UI (v2.3)
 3. [x] **Notificaciones** - Email/Slack para leave requests (v2.3)
 4. [x] **Multi-idioma** - i18n para interfaz (v2.3)
 5. [x] **Modo offline** - PWA con service worker (v2.3)
 6. [x] **Reportes PDF** - Generación automática (v2.3)
+7. [x] **LIFO Deduction Tests** - Tests críticos (v2.5)
+8. [x] **Sanitizer Tests** - Tests XSS (v2.5)
+9. [x] **E2E Tests Playwright** - Flujos automatizados (v2.5)
+10. [x] **Coverage 80%** - Threshold CI aumentado (v5.17)
+11. [x] **Dockerfile.secure** - Imagen segura producción (v5.8)
+12. [x] **API Documentation** - Swagger/OpenAPI (v5.6)
+13. [x] **Route Modularization** - 19 archivos en routes/ (v5.7)
+14. [x] **main.py Refactor** - 87% reducción (v5.17)
+15. [x] **Refresh Tokens** - 15min access + 7d refresh (v5.17)
+16. [x] **REST Compliance** - POST→PATCH migration (v5.17)
+17. [x] **Architecture Refactor** - models/, static/src/ (v5.18)
+18. [x] **User-aware Rate Limiting** - Por IP+user+endpoint (v5.19)
+19. [x] **Frontend Integration** - bootstrap.js + legacy-adapter.js (v5.19)
 
-### Nuevas sugerencias (v2.5):
-7. [x] **LIFO Deduction Tests** - Tests críticos para deducción de días (COMPLETADO: `tests/test_lifo_deduction.py`)
-8. [x] **Sanitizer Tests** - Tests de prevención XSS para seguridad (COMPLETADO: `tests/unit/test-sanitizer.test.js`)
-9. [x] **E2E Tests Playwright** - Flujos críticos automatizados (COMPLETADO: `tests/e2e/*.spec.js`)
-10. [x] **GitHub Actions E2E** - Workflow para e2e-tests.yml (COMPLETADO: `.github/workflows/e2e-tests.yml`)
-11. [x] **Coverage 80%** - Aumentar threshold en ci.yml (COMPLETADO: `--cov-fail-under=80`)
-12. [x] **Dockerfile.secure** - Crear imagen segura para producción (COMPLETADO: `Dockerfile.secure`)
-13. [ ] **Mobile-first refactor** - Mejor experiencia móvil
-14. [x] **API Documentation** - Swagger/OpenAPI docs (COMPLETADO: `/docs`, `/redoc`)
+### Pendientes para futuras versiones:
+20. [ ] **Mobile-first refactor** - Mejor experiencia móvil
+21. [ ] **GraphQL API** - Alternativa a REST
+22. [ ] **WebSocket notifications** - Real-time updates
+23. [ ] **Two-factor authentication** - 2FA para seguridad
+24. [ ] **Full migration to static/src/** - Eliminar app.js legacy
+25. [ ] **SSR/SSG** - Server-side rendering para SEO
 
 ---
 
@@ -351,8 +545,10 @@ python scripts/sync-issues.py     # Sincronizar TODOs a Issues
 
 | Date | Hash | Message |
 |------|------|---------|
-| 2026-01-14 | TBD | feat: Fix 5 TODOs, improve testing & CI/CD analysis (v2.5) |
-| 2026-01-11 | 8023305 | feat: Security, performance & testing improvements (v2.4) |
-| 2026-01-10 | c07a85e | chore: Mark audit log and bulk edit TODOs as completed |
-| 2026-01-10 | 3167930 | docs: Update CLAUDE_MEMORY.md with v2.3 session summary |
-| 2026-01-10 | 7fb8bfe | feat: Add notifications, i18n, PWA offline, PDF reports, E2E tests |
+| 2026-01-17 | 7983cd8 | feat: Complete improvements - models tests, rate limiting, frontend integration (v5.19) |
+| 2026-01-17 | e7f85ab | fix: Update imports after services reorganization (v5.18) |
+| 2026-01-17 | d3a2bc1 | refactor: Complete architecture reorganization (v5.18) |
+| 2026-01-17 | 8410019 | refactor: Complete project restructure to standard architecture (v5.18) |
+| 2026-01-16 | 2c60c9c | feat: Complete optimization plan v5.17 - 3 phases implemented |
+| 2026-01-16 | f7a93c4 | docs: Comprehensive CLAUDE.md update to v5.16 |
+| 2026-01-16 | 28faa0f | feat: Complete test coverage for all routes (v5.16) |
