@@ -104,7 +104,8 @@ async def get_employees(year: int = None, enhanced: bool = False, active_only: b
         years = database.get_available_years()
         return {"status": "success", "data": data, "years": years}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get employees: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/v1/employees")
@@ -146,7 +147,8 @@ async def get_employees_v1(
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get employees v1: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/v1/genzai")
@@ -178,7 +180,8 @@ async def get_genzai_v1(
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get genzai v1: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/v1/ukeoi")
@@ -210,7 +213,8 @@ async def get_ukeoi_v1(
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get ukeoi v1: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/sync")
@@ -221,9 +225,10 @@ async def sync_employees(request: Request, user: CurrentUser = Depends(get_curre
     """
     try:
         if not DEFAULT_EXCEL_PATH.exists():
+            logger.error(f"Excel file not found: {DEFAULT_EXCEL_PATH}")
             raise HTTPException(
                 status_code=404,
-                detail=f"Excel file not found: {DEFAULT_EXCEL_PATH}"
+                detail="Excel file not found"
             )
 
         # Run Excel parsing in thread pool
@@ -265,8 +270,8 @@ async def sync_employees(request: Request, user: CurrentUser = Depends(get_curre
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Sync error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Sync error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/upload")
@@ -324,8 +329,8 @@ async def upload_excel(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Upload error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Upload error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/reset")
@@ -340,7 +345,8 @@ async def reset_employees(user: CurrentUser = Depends(get_admin_user)):
         logger.info(f"Employee data reset by {user.username}")
         return {"status": "success", "message": "All employee data has been cleared"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to reset employees: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ============================================
@@ -368,7 +374,8 @@ async def search_employees(
             "data": results
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to search employees: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/search/full-text")
@@ -398,7 +405,8 @@ async def full_text_search(
             "results": results
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to full text search: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/search/employees")
@@ -423,7 +431,8 @@ async def search_employees_detailed(
             "data": results
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to search employees detailed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/search/genzai")
@@ -444,7 +453,8 @@ async def search_genzai(
             "data": results
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to search genzai: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/search/ukeoi")
@@ -465,7 +475,8 @@ async def search_ukeoi(
             "data": results
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to search ukeoi: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/search/staff")
@@ -486,7 +497,8 @@ async def search_staff(
             "data": results
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to search staff: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ============================================
@@ -508,7 +520,7 @@ async def get_employee_leave_info(employee_num: str, year: Optional[int] = None)
         if not history:
             raise HTTPException(
                 status_code=404,
-                detail=f"No data found for employee {employee_num} in year {year}"
+                detail="Employee data not found"
             )
 
         # Calculate totals
@@ -573,7 +585,8 @@ async def get_employee_leave_info(employee_num: str, year: Optional[int] = None)
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get employee leave info: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/employees/{employee_num}/{year}")
@@ -594,7 +607,7 @@ async def update_employee(
         if not old_data:
             raise HTTPException(
                 status_code=404,
-                detail=f"Employee {employee_num} not found for year {year}"
+                detail="Employee not found"
             )
 
         # Validate balance limit if enabled
@@ -646,8 +659,8 @@ async def update_employee(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Update employee error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Update employee error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ============================================
@@ -689,9 +702,11 @@ async def bulk_update_employees(
             "warnings": results.get("warnings", [])
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning(f"Bulk update validation error: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid bulk update request")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Bulk update error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/employees/bulk-update/preview")
@@ -765,7 +780,8 @@ async def preview_bulk_update(bulk_data: BulkUpdatePreview):
             "preview": preview_results
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Bulk update preview error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/employees/bulk-update/history")
@@ -807,7 +823,8 @@ async def get_bulk_update_history(
             "operations": list(operations.values())
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get bulk update history: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/employees/bulk-update/revert/{operation_id}")
@@ -839,9 +856,11 @@ async def revert_bulk_update(request: Request, operation_id: str):
             "reverted_at": results["reverted_at"]
         }
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        logger.warning(f"Bulk update revert not found: {str(e)}")
+        raise HTTPException(status_code=404, detail="Operation not found")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Bulk update revert error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ============================================
@@ -874,7 +893,8 @@ async def get_active_employees(year: int = None):
             "available_years": years
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get active employees: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/employees/by-type")
@@ -975,4 +995,5 @@ async def get_employees_by_type(
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get employees by type: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")

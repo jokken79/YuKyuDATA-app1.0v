@@ -31,8 +31,8 @@ router = APIRouter(prefix="/api/fiscal", tags=["Fiscal Year"])
 # PYDANTIC MODELS
 # ============================================
 
-class FifoDeductionRequest(BaseModel):
-    """Model for FIFO deduction request."""
+class LifoDeductionRequest(BaseModel):
+    """Model for LIFO deduction request (uses newest days first)."""
     employee_num: str = Field(..., min_length=1)
     days: float = Field(..., gt=0, le=40)
     year: int = Field(..., ge=2000, le=2100)
@@ -83,8 +83,8 @@ async def process_carryover(
             "result": result
         }
     except Exception as e:
-        logger.error(f"Carryover error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Carryover error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/balance-breakdown/{employee_num}")
@@ -108,7 +108,8 @@ async def get_balance_breakdown(employee_num: str, year: Optional[int] = None):
             "breakdown": breakdown
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get balance breakdown: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/expiring-soon")
@@ -134,7 +135,8 @@ async def get_expiring_soon(
             "employees": expiring
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get expiring soon: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/5day-compliance/{year}")
@@ -151,7 +153,8 @@ async def get_5day_compliance(year: int):
             "compliance": compliance
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to check 5-day compliance: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/grant-recommendation/{employee_num}")
@@ -168,19 +171,21 @@ async def get_grant_recommendation_endpoint(employee_num: str):
             "recommendation": recommendation
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get grant recommendation: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/apply-fifo-deduction")
-async def apply_fifo_deduction_endpoint(
-    request: FifoDeductionRequest,
+@router.post("/apply-lifo-deduction")
+async def apply_lifo_deduction_endpoint(
+    request: LifoDeductionRequest,
     user: CurrentUser = Depends(get_current_user)
 ):
     """
-    Apply FIFO (actually LIFO) deduction to an employee's balance.
-    Deducts from newest grant periods first.
+    Apply LIFO (Last In First Out) deduction to an employee's balance.
+    Deducts from newest grant periods first (days from current year before previous year).
 
-    Aplica deduccion FIFO (en realidad LIFO) al balance de un empleado.
+    Aplica deduccion LIFO al balance de un empleado.
+    Los dias mas nuevos se consumen primero.
     """
     try:
         result = apply_lifo_deduction(
@@ -202,7 +207,8 @@ async def apply_fifo_deduction_endpoint(
             "result": result
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning(f"LIFO deduction validation error: {str(e)}")
+        raise HTTPException(status_code=400, detail="Invalid deduction request")
     except Exception as e:
-        logger.error(f"LIFO deduction error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"LIFO deduction error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")

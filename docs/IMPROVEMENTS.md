@@ -222,7 +222,7 @@ FISCAL_CONFIG = {
 | `/api/fiscal/expiring-soon` | GET | Días por expirar |
 | `/api/fiscal/5day-compliance/{year}` | GET | Cumplimiento 5日 |
 | `/api/fiscal/grant-recommendation/{emp}` | GET | Recomendación de otorgamiento |
-| `/api/fiscal/apply-fifo-deduction` | POST | Aplicar deducción LIFO (nuevos primero) |
+| `/api/fiscal/apply-lifo-deduction` | POST | Aplicar deducción LIFO (nuevos primero) |
 
 ---
 

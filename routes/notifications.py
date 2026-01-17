@@ -114,7 +114,8 @@ async def get_notifications(
             "notifications": notifications
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get notifications: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{notification_id}/mark-read")
@@ -136,7 +137,7 @@ async def mark_notification_as_read(
         }
     except Exception as e:
         logger.error(f"Error marking notification as read: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/mark-all-read")
@@ -158,7 +159,7 @@ async def mark_all_notifications_as_read(
         }
     except Exception as e:
         logger.error(f"Error marking all notifications as read: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/unread-count")
@@ -184,7 +185,8 @@ async def get_unread_notification_count(
             "total_count": len(all_ids)
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get unread notification count: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/settings")
@@ -204,7 +206,7 @@ async def get_notification_settings(user: CurrentUser = Depends(get_current_user
         }
     except Exception as e:
         logger.error(f"Error getting notification settings: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/settings")
@@ -244,7 +246,7 @@ async def update_notification_settings(
         raise
     except Exception as e:
         logger.error(f"Error updating notification settings: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/test-email")
@@ -277,7 +279,7 @@ async def test_email_notification(
 
     except Exception as e:
         logger.error(f"Error sending test email: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/test-slack")
@@ -307,7 +309,7 @@ async def test_slack_notification(user: CurrentUser = Depends(get_admin_user)):
 
     except Exception as e:
         logger.error(f"Error sending test Slack: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/logs")
@@ -338,7 +340,7 @@ async def get_notification_logs(
 
     except Exception as e:
         logger.error(f"Error getting notification logs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/send-expiring-warnings")
@@ -397,7 +399,7 @@ async def send_expiring_days_warnings(
 
     except Exception as e:
         logger.error(f"Error sending expiring warnings: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/send-compliance-warning")
@@ -449,4 +451,4 @@ async def send_compliance_warnings(
 
     except Exception as e:
         logger.error(f"Error sending compliance warning: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

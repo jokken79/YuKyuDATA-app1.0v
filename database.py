@@ -271,7 +271,7 @@ def init_db():
         c.execute('CREATE INDEX IF NOT EXISTS idx_staff_visa_expiry ON staff(visa_expiry)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_staff_visa_type ON staff(visa_type)')
 
-        # Add grant_year to employees for FIFO tracking
+        # Add grant_year to employees for LIFO tracking
         try:
             c.execute("ALTER TABLE employees ADD COLUMN grant_year INTEGER")
         except sqlite3.OperationalError:

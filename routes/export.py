@@ -110,7 +110,7 @@ async def export_to_excel(
                 ws.cell(row=row, column=9, value=req.get('approver', '')).border = thin_border
 
         else:
-            raise HTTPException(status_code=400, detail=f"Unknown export type: {export_type}")
+            raise HTTPException(status_code=400, detail="Unknown export type")
 
         # Auto-adjust column widths
         for column in ws.columns:
@@ -141,7 +141,7 @@ async def export_to_excel(
         raise
     except Exception as e:
         logger.error(f"Export error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/approved-requests")
@@ -170,7 +170,7 @@ async def export_approved_requests(
         )
     except Exception as e:
         logger.error(f"Export approved requests error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/monthly-report")
@@ -196,7 +196,7 @@ async def export_monthly_report(
         )
     except Exception as e:
         logger.error(f"Export monthly report error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/annual-ledger")
@@ -221,7 +221,7 @@ async def export_annual_ledger(
         )
     except Exception as e:
         logger.error(f"Export annual ledger error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/download/{filename}")
@@ -257,7 +257,8 @@ async def download_export_file(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to download export file: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/files")
@@ -274,7 +275,8 @@ async def list_export_files(user: CurrentUser = Depends(get_current_user)):
             "files": files
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to list export files: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/cleanup")
@@ -295,4 +297,5 @@ async def cleanup_export_files(
             "days_threshold": days_to_keep
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to cleanup export files: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")

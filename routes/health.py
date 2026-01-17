@@ -249,7 +249,7 @@ async def app_info():
             "Leave request workflow",
             "Monthly reports (21日〜20日 period)",
             "5-day compliance monitoring",
-            "FIFO deduction logic",
+            "LIFO deduction logic",
             "Year-end carry-over processing",
             "Excel bidirectional sync",
             "Annual ledger generation"

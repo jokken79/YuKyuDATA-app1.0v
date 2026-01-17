@@ -35,7 +35,8 @@ async def get_ukeoi(status: str = None):
         data = database.get_ukeoi(status=status)
         return {"status": "success", "data": data, "count": len(data)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get ukeoi: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/sync-ukeoi")
@@ -46,9 +47,10 @@ async def sync_ukeoi(user: CurrentUser = Depends(get_current_user)):
     """
     try:
         if not EMPLOYEE_REGISTRY_PATH.exists():
+            logger.error(f"Employee registry not found: {EMPLOYEE_REGISTRY_PATH}")
             raise HTTPException(
                 status_code=404,
-                detail=f"Employee registry not found: {EMPLOYEE_REGISTRY_PATH}"
+                detail="Employee registry file not found"
             )
 
         loop = asyncio.get_event_loop()
@@ -76,7 +78,7 @@ async def sync_ukeoi(user: CurrentUser = Depends(get_current_user)):
         raise
     except Exception as e:
         logger.error(f"Sync ukeoi error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/reset-ukeoi")
@@ -92,4 +94,5 @@ async def reset_ukeoi(user: CurrentUser = Depends(get_admin_user)):
         logger.info(f"Ukeoi data reset by {user.username}")
         return {"status": "success", "message": "All ukeoi data has been cleared"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to reset ukeoi: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")

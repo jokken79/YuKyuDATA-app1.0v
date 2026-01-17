@@ -115,7 +115,7 @@ class ComplianceAgent:
 
     2. 繰越 (Carry-over):
        - Máximo 2 años de validez
-       - Uso FIFO (días más antiguos primero)
+       - Uso LIFO (días más nuevos primero)
        - Max acumulación ~40 días
 
     3. 年次有給休暇管理簿:

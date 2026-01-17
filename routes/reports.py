@@ -98,7 +98,8 @@ async def get_custom_report_data(
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get custom report data: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/monthly/{year}/{month}")
@@ -136,7 +137,8 @@ async def get_monthly_report_data(year: int, month: int):
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get monthly report data: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/monthly-list/{year}")
@@ -171,7 +173,8 @@ async def get_monthly_reports_list(year: int):
             "months": monthly_data
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get monthly reports list: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ============================================
@@ -205,7 +208,7 @@ async def get_employee_pdf_report(
         )
     except Exception as e:
         logger.error(f"Error generating employee PDF: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/annual/{year}/pdf")
@@ -231,7 +234,7 @@ async def get_annual_pdf_report(
         )
     except Exception as e:
         logger.error(f"Error generating annual PDF: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/monthly/{year}/{month}/pdf")
@@ -258,7 +261,7 @@ async def get_monthly_pdf_report(
         )
     except Exception as e:
         logger.error(f"Error generating monthly PDF: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/compliance/{year}/pdf")
@@ -284,7 +287,7 @@ async def get_compliance_pdf_report(
         )
     except Exception as e:
         logger.error(f"Error generating compliance PDF: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/custom/pdf")
@@ -319,7 +322,7 @@ async def generate_custom_pdf_report(
         )
     except Exception as e:
         logger.error(f"Error generating custom PDF: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ============================================
@@ -340,7 +343,8 @@ async def list_report_files(user: CurrentUser = Depends(get_current_user)):
             "reports": reports
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to list report files: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/download/{filename}")
@@ -373,7 +377,8 @@ async def download_report(filename: str, user: CurrentUser = Depends(get_current
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to download report: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/cleanup")
@@ -395,4 +400,4 @@ async def cleanup_pdf_reports(
         }
     except Exception as e:
         logger.error(f"Error cleaning up reports: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

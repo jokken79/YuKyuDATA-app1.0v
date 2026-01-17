@@ -71,7 +71,7 @@ async def create_leave_request(
         required = ['employee_num', 'employee_name', 'start_date', 'end_date', 'days_requested']
         for field in required:
             if field not in request_data:
-                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+                raise HTTPException(status_code=400, detail="Missing required field")
 
         current_year = datetime.now().year
 
@@ -86,7 +86,7 @@ async def create_leave_request(
         if total_days_equivalent > total_available:
             raise HTTPException(
                 status_code=400,
-                detail=f"残日数が不足しています。残り: {total_available}日, 申請: {total_days_equivalent}日相当"
+                detail="残日数が不足しています"
             )
 
         # Get hourly wage from genzai or ukeoi
@@ -153,7 +153,8 @@ async def create_leave_request(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to create leave request: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/leave-requests")
@@ -174,7 +175,8 @@ async def get_leave_requests_list(
         )
         return {"status": "success", "data": requests, "count": len(requests)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get leave requests: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/leave-requests/{request_id}/approve")
@@ -243,9 +245,11 @@ async def approve_leave_request(
             "message": "Request approved and yukyu balance updated"
         }
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        logger.warning(f"Approve request validation error: {str(ve)}")
+        raise HTTPException(status_code=400, detail="Invalid approval request")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to approve leave request: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/leave-requests/{request_id}/reject")
@@ -304,9 +308,11 @@ async def reject_leave_request(
             "message": "Request rejected"
         }
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        logger.warning(f"Reject request validation error: {str(ve)}")
+        raise HTTPException(status_code=400, detail="Invalid rejection request")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to reject leave request: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/leave-requests/{request_id}")
@@ -346,10 +352,11 @@ async def cancel_leave_request(
             "cancelled": result
         }
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        logger.warning(f"Cancel request validation error: {str(ve)}")
+        raise HTTPException(status_code=400, detail="Invalid cancellation request")
     except Exception as e:
-        logger.error(f"Cancel request error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Cancel request error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/leave-requests/{request_id}/revert")
@@ -402,7 +409,8 @@ async def revert_leave_request(
             "reverted": result
         }
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        logger.warning(f"Revert request validation error: {str(ve)}")
+        raise HTTPException(status_code=400, detail="Invalid revert request")
     except Exception as e:
-        logger.error(f"Revert request error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Revert request error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")

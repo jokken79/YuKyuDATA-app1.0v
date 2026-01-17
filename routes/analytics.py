@@ -64,7 +64,8 @@ async def get_stats_by_factory(year: int = None):
             "factories": factory_stats
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Analytics operation failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/factories")
@@ -88,7 +89,8 @@ async def get_factories():
             "factories": factories
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Analytics operation failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/analytics/top10-active/{year}")
@@ -134,7 +136,8 @@ async def get_top10_active_users(year: int):
             ]
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Analytics operation failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/analytics/high-balance-active/{year}")
@@ -176,7 +179,8 @@ async def get_high_balance_active(year: int, min_balance: float = 20):
             ]
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Analytics operation failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/analytics/dashboard/{year}")
@@ -245,7 +249,8 @@ async def get_dashboard_analytics(year: int):
             "by_factory": factory_stats
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Analytics operation failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/analytics/monthly-trend/{year}")
@@ -271,7 +276,8 @@ async def get_monthly_trend(year: int):
             "monthly_trend": list(monthly_data.values())
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Analytics operation failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/analytics/predictions/{year}")
@@ -338,4 +344,5 @@ async def get_usage_predictions(year: int):
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Analytics operation failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")

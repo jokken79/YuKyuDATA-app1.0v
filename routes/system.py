@@ -40,7 +40,8 @@ async def get_cache_statistics():
         stats = get_cache_stats()
         return {"status": "success", "cache_stats": stats}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get cache stats: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/cache/clear")
@@ -51,7 +52,8 @@ async def clear_cache(user: CurrentUser = Depends(get_current_user)):
         logger.info(f"Cache cleared by {user.username}")
         return {"status": "success", "message": "Cache cleared"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to clear cache: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ============================================
@@ -79,7 +81,7 @@ async def create_backup(user: CurrentUser = Depends(get_admin_user)):
         }
     except Exception as e:
         logger.error(f"Backup error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/backups")
@@ -93,7 +95,8 @@ async def list_backups(user: CurrentUser = Depends(get_current_user)):
             "backups": backups
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to list backups: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/backup/restore")
@@ -119,10 +122,11 @@ async def restore_backup(restore_data: dict, user: CurrentUser = Depends(get_adm
             "restore": result
         }
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        logger.warning(f"Restore validation error: {str(ve)}")
+        raise HTTPException(status_code=400, detail="Invalid restore request")
     except Exception as e:
-        logger.error(f"Restore error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Restore error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ============================================
@@ -165,7 +169,8 @@ async def get_audit_log_list(
             "logs": logs
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get audit log: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/audit-log/{entity_type}/{entity_id}")
@@ -186,7 +191,8 @@ async def get_entity_audit_history(entity_type: str, entity_id: str):
             "history": logs
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get entity audit history: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/audit-log/user/{user_id}")
@@ -202,7 +208,8 @@ async def get_user_audit_history(user_id: str, limit: int = 50):
             "history": logs
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get user audit history: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/audit-log/stats")
@@ -215,7 +222,8 @@ async def get_audit_log_stats():
             "stats": stats
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get audit log stats: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/audit-log/cleanup")
@@ -239,7 +247,8 @@ async def cleanup_audit_log(
             "days_threshold": days_to_keep
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to cleanup audit log: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ============================================
@@ -255,7 +264,8 @@ async def get_orchestrator_status():
         status = orchestrator.get_status()
         return {"status": "success", "orchestrator": status}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get orchestrator status: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/orchestrator/history")
@@ -271,7 +281,8 @@ async def get_orchestrator_history(limit: int = 20):
             "history": history
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get orchestrator history: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/orchestrator/run-compliance-check/{year}")
@@ -290,7 +301,8 @@ async def run_orchestrator_compliance_check(year: int):
             "result": result
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to run orchestrator compliance check: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ============================================
@@ -306,7 +318,8 @@ async def get_system_snapshot():
         snapshot = documentor.create_snapshot()
         return {"status": "success", "snapshot": snapshot.to_dict()}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get system snapshot: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/system/audit-log")
@@ -322,7 +335,8 @@ async def get_system_audit_log(limit: int = 50):
             "entries": [e.to_dict() for e in entries]
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get system audit log: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/system/activity-report")
@@ -344,7 +358,8 @@ async def get_activity_report(days: int = 7):
         )
         return {"status": "success", "report": report.to_dict()}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get activity report: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ============================================
@@ -362,9 +377,10 @@ async def update_master_excel_endpoint(user: CurrentUser = Depends(get_admin_use
     """
     try:
         if not DEFAULT_EXCEL_PATH.exists():
+            logger.error(f"Master Excel not found: {DEFAULT_EXCEL_PATH}")
             raise HTTPException(
                 status_code=404,
-                detail=f"Master Excel not found: {DEFAULT_EXCEL_PATH}"
+                detail="Master Excel file not found"
             )
 
         loop = asyncio.get_event_loop()
@@ -385,4 +401,4 @@ async def update_master_excel_endpoint(user: CurrentUser = Depends(get_admin_use
         raise
     except Exception as e:
         logger.error(f"Error updating master Excel: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

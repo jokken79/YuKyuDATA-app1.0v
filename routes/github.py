@@ -87,7 +87,7 @@ async def list_github_issues(
         )
     except Exception as e:
         logger.error(f"Unexpected error listing GitHub issues: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/issues")
@@ -135,7 +135,7 @@ async def create_github_issue(
         )
     except Exception as e:
         logger.error(f"Unexpected error creating GitHub issue: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/issues/{issue_number}")
@@ -175,7 +175,8 @@ async def get_github_issue(
             }
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Unexpected error getting GitHub issue: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/issues/{issue_number}/close")
@@ -218,7 +219,8 @@ async def close_github_issue(
             }
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Unexpected error closing GitHub issue: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/issues/{issue_number}/comments")
@@ -262,7 +264,8 @@ async def add_github_comment(
             }
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Unexpected error adding GitHub comment: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/sync-todos")
@@ -354,7 +357,7 @@ async def sync_todos_to_github(user: CurrentUser = Depends(get_admin_user)):
         )
     except Exception as e:
         logger.error(f"Unexpected error during GitHub sync: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/status")

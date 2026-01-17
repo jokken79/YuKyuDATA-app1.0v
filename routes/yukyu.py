@@ -82,7 +82,8 @@ async def get_usage_details(
             "data": details
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get usage details: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/monthly-summary/{year}")
@@ -99,7 +100,8 @@ async def get_monthly_summary(year: int):
             "summary": summary
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get monthly summary: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/kpi-stats/{year}")
@@ -131,7 +133,8 @@ async def get_kpi_stats(year: int):
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get KPI stats: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/by-employee-type/{year}")
@@ -191,7 +194,8 @@ async def get_usage_by_employee_type(year: int, active_only: bool = True):
             "by_type": stats
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get usage by employee type: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/employee-summary/{employee_num}/{year}")
@@ -211,7 +215,7 @@ async def get_employee_summary(employee_num: str, year: int):
         if not employee:
             raise HTTPException(
                 status_code=404,
-                detail=f"Employee {employee_num} not found for year {year}"
+                detail="Employee not found"
             )
 
         # Get usage details
@@ -238,7 +242,8 @@ async def get_employee_summary(employee_num: str, year: int):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get employee summary: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/usage-details/{detail_id}")
@@ -258,7 +263,7 @@ async def update_usage_detail(
         if not old_detail:
             raise HTTPException(
                 status_code=404,
-                detail=f"Usage detail {detail_id} not found"
+                detail="Usage detail not found"
             )
 
         updates = {}
@@ -294,7 +299,8 @@ async def update_usage_detail(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to update usage detail: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/usage-details/{detail_id}")
@@ -313,7 +319,7 @@ async def delete_usage_detail(
         if not old_detail:
             raise HTTPException(
                 status_code=404,
-                detail=f"Usage detail {detail_id} not found"
+                detail="Usage detail not found"
             )
 
         database.delete_yukyu_usage_detail(detail_id)
@@ -339,7 +345,8 @@ async def delete_usage_detail(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to delete usage detail: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/usage-details")
@@ -385,7 +392,8 @@ async def create_usage_detail(
             "detail_id": new_id
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to create usage detail: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/recalculate/{employee_num}/{year}")
@@ -426,4 +434,5 @@ async def recalculate_employee_totals(
             "result": result
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to recalculate employee totals: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -120,7 +120,8 @@ async def get_calendar_events(
             "events": events
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get calendar events: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/summary/{year}/{month}")
@@ -183,4 +184,5 @@ async def get_calendar_month_summary(year: int, month: int, source: str = 'reque
             "daily_summary": dict(daily_counts)
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to get calendar month summary: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -56,7 +56,8 @@ async def check_5day_compliance_endpoint(year: int):
             ]
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Compliance operation failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/expiring/{year}")
@@ -88,7 +89,8 @@ async def check_expiring_balances(year: int, warning_days: int = 30):
             ]
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Compliance operation failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/report/{year}")
@@ -103,7 +105,8 @@ async def get_compliance_report(year: int):
         report = compliance.get_compliance_report(year)
         return {"status": "success", "report": report}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Compliance operation failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/alerts")
@@ -137,7 +140,8 @@ async def get_compliance_alerts():
             ]
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Compliance operation failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/annual-ledger/{year}")
@@ -173,7 +177,8 @@ async def get_annual_ledger(year: int):
             ]
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Compliance operation failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/export-ledger/{year}")
@@ -204,4 +209,5 @@ async def export_annual_ledger(year: int, format: str = "csv"):
         else:
             raise HTTPException(status_code=500, detail="Export failed")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Compliance operation failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
