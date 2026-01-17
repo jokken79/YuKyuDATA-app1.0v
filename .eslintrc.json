@@ -1,74 +1,57 @@
 {
   "env": {
     "browser": true,
-    "es2021": true
+    "es2021": true,
+    "node": true,
+    "jest": true
   },
   "extends": "eslint:recommended",
   "parserOptions": {
     "ecmaVersion": "latest",
     "sourceType": "module"
   },
-  "globals": {
-    "App": "writable",
-    "Chart": "readonly",
-    "ApexCharts": "readonly"
-  },
   "rules": {
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
     "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
-    "no-console": "warn",
-    "no-debugger": "error",
-    "eqeqeq": ["error", "always", { "null": "ignore" }],
-    "curly": ["error", "multi-line"],
     "no-var": "error",
-    "prefer-const": "warn",
-    "no-undef": "error",
+    "prefer-const": "error",
+    "prefer-arrow-callback": "warn",
+    "no-function-assign": "error",
+    "eqeqeq": ["error", "always"],
     "semi": ["error", "always"],
-    "quotes": ["warn", "single", { "avoidEscape": true }],
-    "indent": ["warn", 2, { "SwitchCase": 1 }],
-    "no-trailing-spaces": "warn",
-    "comma-dangle": ["warn", "never"],
-    "object-curly-spacing": ["warn", "always"],
-    "array-bracket-spacing": ["warn", "never"],
-    "max-len": ["warn", { "code": 120, "ignoreStrings": true, "ignoreTemplateLiterals": true }]
+    "quotes": ["error", "single", { "avoidEscape": true }],
+    "indent": ["error", 2, { "SwitchCase": 1 }],
+    "comma-dangle": ["error", "always-multiline"],
+    "no-trailing-spaces": "error",
+    "no-multiple-empty-lines": ["error", { "max": 2 }],
+    "space-before-function-paren": ["error", {
+      "anonymous": "always",
+      "named": "never",
+      "asyncArrow": "always"
+    }],
+    "object-curly-spacing": ["error", "always"],
+    "array-bracket-spacing": ["error", "never"],
+    "keyword-spacing": "error",
+    "space-infix-ops": "error",
+    "space-before-blocks": "error",
+    "arrow-spacing": "error",
+    "no-else-return": "warn",
+    "no-eval": "error",
+    "no-implied-eval": "error",
+    "no-new-func": "error",
+    "no-script-url": "error",
+    "no-with": "error",
+    "no-delete-var": "error",
+    "no-label-var": "error",
+    "no-shadow": "warn",
+    "no-shadow-restricted-names": "error",
+    "no-undef": "error"
   },
-  "overrides": [
-    {
-      "files": ["static/src/**/*.js"],
-      "rules": {
-        "no-console": ["error", { "allow": ["warn", "error", "info"] }],
-        "prefer-const": "error",
-        "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
-        "consistent-return": "warn",
-        "no-param-reassign": "warn",
-        "no-shadow": "warn",
-        "default-case": "warn",
-        "no-fallthrough": "error"
-      }
-    },
-    {
-      "files": ["static/src/components/**/*.js"],
-      "rules": {
-        "max-lines-per-function": ["warn", { "max": 150, "skipBlankLines": true, "skipComments": true }],
-        "complexity": ["warn", 15]
-      }
-    },
-    {
-      "files": ["tests/**/*.js", "tests/**/*.test.js"],
-      "env": {
-        "jest": true,
-        "node": true
-      },
-      "rules": {
-        "no-console": "off"
-      }
-    }
-  ],
-  "ignorePatterns": [
-    "node_modules/",
-    "*.min.js",
-    "vendor/",
-    "coverage/",
-    "dist/",
-    "build/"
-  ]
+  "globals": {
+    "window": "readonly",
+    "document": "readonly",
+    "navigator": "readonly",
+    "console": "readonly",
+    "fetch": "readonly"
+  }
 }
