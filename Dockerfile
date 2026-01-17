@@ -78,10 +78,22 @@ ENV PYTHONUNBUFFERED=1 \
     DEBUG=true
 
 # ============================================
+# CREATE NON-ROOT USER (Security Best Practice)
+# ============================================
+RUN groupadd --gid 1000 appuser && \
+    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home appuser
+
+# ============================================
 # CREATE DATA DIRECTORIES
 # ============================================
 RUN mkdir -p /app/data /app/logs /app/backups && \
+    chown -R appuser:appuser /app && \
     chmod 755 /app/data /app/logs /app/backups
+
+# ============================================
+# SWITCH TO NON-ROOT USER
+# ============================================
+USER appuser
 
 # ============================================
 # HEALTHCHECK

@@ -4616,11 +4616,11 @@ const App = {
                     this.data.staff = json.staff.employees || [];
                     this.data.all = [...this.data.haken, ...this.data.ukeoi, ...this.data.staff];
 
-                    // Update counts
-                    document.getElementById('count-all').innerText = this.data.all.length;
-                    document.getElementById('count-haken').innerText = this.data.haken.length;
-                    document.getElementById('count-ukeoi').innerText = this.data.ukeoi.length;
-                    document.getElementById('count-staff').innerText = this.data.staff.length;
+                    // Update counts (employee type tabs)
+                    document.getElementById('count-type-all').innerText = this.data.all.length;
+                    document.getElementById('count-type-haken').innerText = this.data.haken.length;
+                    document.getElementById('count-type-ukeoi').innerText = this.data.ukeoi.length;
+                    document.getElementById('count-type-staff').innerText = this.data.staff.length;
 
                     // Update summary cards
                     document.getElementById('haken-used').innerText = Math.round(json.haken.total_used);

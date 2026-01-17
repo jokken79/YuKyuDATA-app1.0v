@@ -3,8 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
+    <!-- WCAG 1.4.4: Allow user zoom for accessibility -->
     <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>YuKyu Premium Dashboard</title>
 
     <!-- PWA Meta Tags -->
@@ -684,19 +685,19 @@
                     <div class="employee-tabs flex gap-sm mb-lg">
                         <button class="btn btn-glass active" id="tab-all" onclick="App.employeeTypes.switchTab('all')">
                             すべて (All)
-                            <span class="badge badge-primary ml-sm" id="count-all">0</span>
+                            <span class="badge badge-primary ml-sm" id="count-type-all">0</span>
                         </button>
                         <button class="btn btn-glass" id="tab-haken" onclick="App.employeeTypes.switchTab('haken')">
                             🏭 派遣 (Haken)
-                            <span class="badge badge-info ml-sm" id="count-haken">0</span>
+                            <span class="badge badge-info ml-sm" id="count-type-haken">0</span>
                         </button>
                         <button class="btn btn-glass" id="tab-ukeoi" onclick="App.employeeTypes.switchTab('ukeoi')">
                             📋 請負 (Ukeoi)
-                            <span class="badge badge-success ml-sm" id="count-ukeoi">0</span>
+                            <span class="badge badge-success ml-sm" id="count-type-ukeoi">0</span>
                         </button>
                         <button class="btn btn-glass" id="tab-staff" onclick="App.employeeTypes.switchTab('staff')">
                             👔 スタッフ (Staff)
-                            <span class="badge badge-warning ml-sm" id="count-staff">0</span>
+                            <span class="badge badge-warning ml-sm" id="count-type-staff">0</span>
                         </button>
                     </div>
 
