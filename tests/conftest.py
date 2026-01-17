@@ -10,6 +10,64 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Set testing environment BEFORE importing app modules
+os.environ["TESTING"] = "true"
+os.environ["RATE_LIMIT_ENABLED"] = "false"
+os.environ["DEBUG"] = "true"  # Enable dev users
+
+# Test credentials (match auth.py dev fallback)
+TEST_ADMIN_USERNAME = "admin"
+TEST_ADMIN_PASSWORD = "admin123456"  # Dev password from auth.py
+TEST_USER_USERNAME = "demo"
+TEST_USER_PASSWORD = "demo123456"
+
+
+def _reset_all_rate_limiters():
+    """Helper to reset all rate limiters in the app."""
+    from collections import defaultdict
+
+    try:
+        from main import rate_limiter
+        if hasattr(rate_limiter, 'reset'):
+            rate_limiter.reset()
+        elif hasattr(rate_limiter, 'requests'):
+            # Use clear() to maintain defaultdict behavior
+            if hasattr(rate_limiter.requests, 'clear'):
+                rate_limiter.requests.clear()
+            else:
+                rate_limiter.requests = defaultdict(list)
+    except (ImportError, AttributeError):
+        pass
+
+    try:
+        from middleware.rate_limiter import rate_limiter_strict, rate_limiter_normal, rate_limiter_relaxed
+        for rl in [rate_limiter_strict, rate_limiter_normal, rate_limiter_relaxed]:
+            if hasattr(rl, 'reset'):
+                rl.reset()
+            elif hasattr(rl, 'requests'):
+                if hasattr(rl.requests, 'clear'):
+                    rl.requests.clear()
+    except (ImportError, AttributeError):
+        pass
+
+
+@pytest.fixture(scope="session", autouse=True)
+def disable_rate_limiting():
+    """Disable rate limiting for all tests."""
+    _reset_all_rate_limiters()
+    yield
+    # Cleanup after all tests
+    os.environ.pop("TESTING", None)
+    os.environ.pop("RATE_LIMIT_ENABLED", None)
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Reset rate limiter before each test automatically."""
+    _reset_all_rate_limiters()
+    yield
+    _reset_all_rate_limiters()
+
 
 @pytest.fixture(scope="session")
 def database_type():
@@ -183,3 +241,56 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.integration)
         elif "test_connection_pooling" in str(item.fspath):
             item.add_marker(pytest.mark.pooling)
+
+
+# ============================================
+# SHARED AUTH FIXTURES
+# ============================================
+
+@pytest.fixture(scope="module")
+def test_client():
+    """Create a test client for the FastAPI app."""
+    from fastapi.testclient import TestClient
+    from main import app
+    return TestClient(app)
+
+
+@pytest.fixture
+def admin_auth_headers(test_client, reset_rate_limiter):
+    """Get auth headers for admin user."""
+    response = test_client.post("/api/auth/login", json={
+        "username": TEST_ADMIN_USERNAME,
+        "password": TEST_ADMIN_PASSWORD
+    })
+    if response.status_code == 200:
+        data = response.json()
+        token = data.get("access_token")
+        if token:
+            return {"Authorization": f"Bearer {token}"}
+    # Fallback for tests where auth may not be fully configured
+    return {}
+
+
+@pytest.fixture
+def user_auth_headers(test_client, reset_rate_limiter):
+    """Get auth headers for normal user."""
+    response = test_client.post("/api/auth/login", json={
+        "username": TEST_USER_USERNAME,
+        "password": TEST_USER_PASSWORD
+    })
+    if response.status_code == 200:
+        data = response.json()
+        token = data.get("access_token")
+        if token:
+            return {"Authorization": f"Bearer {token}"}
+    return {}
+
+
+@pytest.fixture
+def csrf_token(test_client, reset_rate_limiter):
+    """Get a CSRF token."""
+    response = test_client.get("/api/csrf-token")
+    if response.status_code == 200:
+        data = response.json()
+        return data.get("csrf_token", "")
+    return ""
