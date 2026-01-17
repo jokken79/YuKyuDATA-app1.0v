@@ -1,0 +1,356 @@
+/**
+ * Layout Utilities CSS
+ * Extracted from inline styles for better maintainability
+ * and WCAG/Lighthouse compliance
+ */
+
+/* ==========================================================================
+   Display Utilities
+   ========================================================================== */
+
+.hidden {
+    display: none !important;
+}
+
+.visible {
+    display: block !important;
+}
+
+.d-flex {
+    display: flex;
+}
+
+.d-grid {
+    display: grid;
+}
+
+.d-inline {
+    display: inline;
+}
+
+.d-inline-block {
+    display: inline-block;
+}
+
+/* ==========================================================================
+   Height Utilities
+   ========================================================================== */
+
+.h-400 {
+    height: 400px;
+}
+
+.h-350 {
+    height: 350px;
+}
+
+.h-300 {
+    height: 300px;
+}
+
+.h-200 {
+    height: 200px;
+}
+
+.max-h-400 {
+    max-height: 400px;
+}
+
+.max-h-300 {
+    max-height: 300px;
+}
+
+.max-h-200 {
+    max-height: 200px;
+}
+
+.min-h-80 {
+    min-height: 80px;
+}
+
+/* Chart containers */
+.chart-container-lg {
+    height: 400px;
+}
+
+.chart-container-md {
+    height: 350px;
+}
+
+.chart-container-sm {
+    height: 300px;
+}
+
+/* ==========================================================================
+   Width Utilities
+   ========================================================================== */
+
+.w-100 {
+    width: 100%;
+}
+
+.w-300 {
+    width: 300px;
+}
+
+.w-200 {
+    width: 200px;
+}
+
+.w-160 {
+    width: 160px;
+}
+
+.w-120 {
+    width: 120px;
+}
+
+.w-100px {
+    width: 100px;
+}
+
+.min-w-200 {
+    min-width: 200px;
+}
+
+/* ==========================================================================
+   Grid Layouts
+   ========================================================================== */
+
+.grid-4-cols {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.grid-3-cols {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-2-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+/* Responsive grid */
+@media (max-width: 768px) {
+    .grid-4-cols {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .grid-3-cols {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ==========================================================================
+   Modal Sizes
+   ========================================================================== */
+
+.modal-lg {
+    max-width: 800px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.modal-md {
+    max-width: 700px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.modal-sm {
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+/* ==========================================================================
+   Skeleton Loaders
+   ========================================================================== */
+
+/* Base skeleton animation */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--glass-bg) 25%,
+        rgba(255, 255, 255, 0.1) 50%,
+        var(--glass-bg) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes skeleton-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Skeleton text sizes */
+.skeleton-text-xs {
+    width: 35px;
+    height: 16px;
+}
+
+.skeleton-text-sm {
+    width: 40px;
+    height: 16px;
+}
+
+.skeleton-text-md {
+    width: 50px;
+    height: 16px;
+}
+
+.skeleton-text-lg {
+    width: 60px;
+    height: 16px;
+}
+
+.skeleton-text-xl {
+    width: 80px;
+    height: 16px;
+}
+
+.skeleton-text-xxl {
+    width: 100px;
+    height: 16px;
+}
+
+.skeleton-text-wide {
+    width: 120px;
+    height: 16px;
+}
+
+.skeleton-text-full {
+    width: 160px;
+    height: 16px;
+}
+
+/* ==========================================================================
+   Overflow Utilities
+   ========================================================================== */
+
+.overflow-auto {
+    overflow: auto;
+}
+
+.overflow-hidden {
+    overflow: hidden;
+}
+
+.overflow-y-auto {
+    overflow-y: auto;
+}
+
+.overflow-x-auto {
+    overflow-x: auto;
+}
+
+/* ==========================================================================
+   Border Utilities
+   ========================================================================== */
+
+.border-danger {
+    border-color: var(--danger) !important;
+}
+
+.border-success {
+    border-color: var(--success) !important;
+}
+
+.border-warning {
+    border-color: var(--warning) !important;
+}
+
+.border-primary {
+    border-color: var(--primary) !important;
+}
+
+/* ==========================================================================
+   Form Elements
+   ========================================================================== */
+
+.textarea-resizable {
+    resize: vertical;
+}
+
+.input-inline {
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 4px;
+}
+
+/* ==========================================================================
+   Scrollable Containers
+   ========================================================================== */
+
+.scroll-container {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.scroll-container-lg {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.scroll-container-sm {
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+/* ==========================================================================
+   Table Scroll Container
+   ========================================================================== */
+
+.table-scroll {
+    max-height: 60vh;
+    overflow: auto;
+}
+
+/* ==========================================================================
+   Spacing Utilities
+   ========================================================================== */
+
+.gap-sm {
+    gap: 0.5rem;
+}
+
+.gap-md {
+    gap: 1rem;
+}
+
+.gap-lg {
+    gap: 1.5rem;
+}
+
+/* ==========================================================================
+   Font Size Utilities
+   ========================================================================== */
+
+.text-2xl {
+    font-size: 2rem;
+}
+
+.text-xl {
+    font-size: 1.5rem;
+}
+
+.text-lg {
+    font-size: 1.25rem;
+}
+
+.text-sm {
+    font-size: 0.875rem;
+}
+
+.text-xs {
+    font-size: 0.75rem;
+}

@@ -46,6 +46,8 @@
     <link rel="stylesheet" href="/static/css/ui-enhancements.css">
     <!-- UI Fixes v2.8 - Sidebar, theme toggle, card layout fixes -->
     <link rel="stylesheet" href="/static/css/ui-fixes-v2.8.css">
+    <!-- Layout Utilities - Extracted from inline styles for maintainability -->
+    <link rel="stylesheet" href="/static/css/layout-utilities.css">
 
     <!-- Libraries -->
     <!-- ApexCharts - Modern charting library -->
@@ -2307,29 +2309,29 @@
             </div>
 
             <!-- Warnings List (Expandable) -->
-            <div class="import-warnings-section" id="import-warnings-section" style="display: none;">
+            <div class="import-warnings-section" id="import-warnings-section" class="hidden">
                 <div class="import-warnings-header" onclick="App.importReport.toggleWarnings()">
                     <span class="form-section-title">⚠️ 警告一覧</span>
                     <span class="import-warnings-toggle" id="import-warnings-toggle">▼</span>
                 </div>
-                <div class="import-warnings-list" id="import-warnings-list" style="display: none;">
+                <div class="import-warnings-list" id="import-warnings-list" class="hidden">
                     <!-- Warning items will be added dynamically -->
                 </div>
             </div>
 
             <!-- Errors List (Expandable) -->
-            <div class="import-errors-section" id="import-errors-section" style="display: none;">
+            <div class="import-errors-section" id="import-errors-section" class="hidden">
                 <div class="import-errors-header" onclick="App.importReport.toggleErrors()">
                     <span class="form-section-title">❌ エラー一覧</span>
                     <span class="import-errors-toggle" id="import-errors-toggle">▼</span>
                 </div>
-                <div class="import-errors-list" id="import-errors-list" style="display: none;">
+                <div class="import-errors-list" id="import-errors-list" class="hidden">
                     <!-- Error items will be added dynamically -->
                 </div>
             </div>
 
             <!-- Problematic Employees (Optional) -->
-            <div class="import-problems-section" id="import-problems-section" style="display: none;">
+            <div class="import-problems-section" id="import-problems-section" class="hidden">
                 <div class="form-section-title">👤 要確認従業員</div>
                 <div class="import-problems-list" id="import-problems-list">
                     <!-- Problem employee items -->
@@ -2389,7 +2391,7 @@
                             onchange="App.bulkEdit.toggleField('add_granted')">
                         <span>付与日数を追加</span>
                     </label>
-                    <div class="bulk-edit-input-group" id="bulk-edit-add-granted-group" style="display: none;">
+                    <div class="bulk-edit-input-group" id="bulk-edit-add-granted-group" class="hidden">
                         <span class="bulk-edit-prefix">+</span>
                         <input type="number" id="bulk-edit-add-granted" class="input-glass" min="0" max="20" step="0.5"
                             placeholder="0">
@@ -2404,7 +2406,7 @@
                             onchange="App.bulkEdit.toggleField('add_used')">
                         <span>使用日数を追加</span>
                     </label>
-                    <div class="bulk-edit-input-group" id="bulk-edit-add-used-group" style="display: none;">
+                    <div class="bulk-edit-input-group" id="bulk-edit-add-used-group" class="hidden">
                         <span class="bulk-edit-prefix">+</span>
                         <input type="number" id="bulk-edit-add-used" class="input-glass" min="0" max="40" step="0.5"
                             placeholder="0">
@@ -2419,7 +2421,7 @@
                             onchange="App.bulkEdit.toggleField('set_haken')">
                         <span>派遣先を変更</span>
                     </label>
-                    <div class="bulk-edit-input-group" id="bulk-edit-set-haken-group" style="display: none;">
+                    <div class="bulk-edit-input-group" id="bulk-edit-set-haken-group" class="hidden">
                         <select id="bulk-edit-set-haken" class="input-glass">
                             <option value="">派遣先を選択...</option>
                         </select>
@@ -2428,7 +2430,7 @@
             </div>
 
             <!-- Preview Section -->
-            <div class="bulk-edit-preview-section" id="bulk-edit-preview-section" style="display: none;">
+            <div class="bulk-edit-preview-section" id="bulk-edit-preview-section" class="hidden">
                 <div class="form-section-title">🔍 変更プレビュー</div>
                 <div class="bulk-edit-preview-list" id="bulk-edit-preview-list">
                     <!-- Preview items will be added dynamically -->
@@ -2436,7 +2438,7 @@
             </div>
 
             <!-- Warnings Section -->
-            <div class="bulk-edit-warnings-section" id="bulk-edit-warnings-section" style="display: none;">
+            <div class="bulk-edit-warnings-section" id="bulk-edit-warnings-section" class="hidden">
                 <div class="form-section-title text-warning">⚠️ 警告</div>
                 <div class="bulk-edit-warnings-list" id="bulk-edit-warnings-list">
                     <!-- Warning items -->
