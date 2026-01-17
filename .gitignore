@@ -31,3 +31,6 @@ result2.txt
 # Generated directories
 logs/
 exports/
+coverage/
+node_modules/
+package-lock.json
