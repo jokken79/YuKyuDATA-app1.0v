@@ -1,0 +1,59 @@
+def validate_balance_limit(employee_num: str, year: int, additional_days: float = 0) -> bool:
+    """
+    Verifica que el balance total no exceda 40 días.
+    Lanza ValueError si se excede el límite.
+
+    Args:
+        employee_num: Número de empleado
+        year: Año fiscal actual
+        additional_days: Días adicionales a agregar (para validar antes de operaciones)
+
+    Returns:
+        True si el balance está dentro del límite
+
+    Raises:
+        ValueError: Si el balance excede el límite de 40 días
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+        # Sumar balance de año actual y año anterior (máximo 2 años carry-over)
+        c.execute('''
+            SELECT COALESCE(SUM(balance), 0) as total_balance
+            FROM employees
+            WHERE employee_num = ? AND year >= ?
+        ''', (employee_num, year - 1))
+        result = c.fetchone()
+        current_balance = result['total_balance'] if result else 0
+        total = current_balance + additional_days
+
+        if total > MAX_ACCUMULATED_DAYS:
+            raise ValueError(
+                f"Balance excede límite de {MAX_ACCUMULATED_DAYS} días: {total:.1f} días. "
+                f"Balance actual: {current_balance:.1f}, adicional: {additional_days:.1f}"
+            )
+        return True
+
+
+def get_employee_total_balance(employee_num: str, year: int) -> float:
+    """
+    Obtiene el balance total de un empleado (año actual + anterior).
+    Útil para validaciones antes de operaciones.
+
+    Args:
+        employee_num: Número de empleado
+        year: Año fiscal actual
+
+    Returns:
+        Balance total acumulado
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute('''
+            SELECT COALESCE(SUM(balance), 0) as total_balance
+            FROM employees
+            WHERE employee_num = ? AND year >= ?
+        ''', (employee_num, year - 1))
+        result = c.fetchone()
+        return result['total_balance'] if result else 0.0
+
+

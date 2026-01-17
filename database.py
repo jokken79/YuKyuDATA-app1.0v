@@ -192,6 +192,8 @@ def init_db():
         c.execute('CREATE INDEX IF NOT EXISTS idx_emp_num ON employees(employee_num)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_emp_year ON employees(year)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_emp_num_year ON employees(employee_num, year)')
+        # ✅ FIX 5/6: Add index for 5-day compliance queries
+        c.execute('CREATE INDEX IF NOT EXISTS idx_employees_granted ON employees(year, granted)')
 
         # Indexes for leave_requests table
         c.execute('CREATE INDEX IF NOT EXISTS idx_lr_emp_num ON leave_requests(employee_num)')
