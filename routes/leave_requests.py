@@ -179,7 +179,8 @@ async def get_leave_requests_list(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/leave-requests/{request_id}/approve")
+@router.patch("/leave-requests/{request_id}/approve")
+@router.post("/leave-requests/{request_id}/approve")  # Deprecated: Use PATCH instead
 async def approve_leave_request(
     request: Request,
     request_id: int,
@@ -189,6 +190,8 @@ async def approve_leave_request(
     """
     Approve a leave request and automatically update yukyu balance.
     Aprueba una solicitud y actualiza automaticamente el balance.
+
+    Note: PATCH is the preferred method. POST is deprecated and kept for backwards compatibility.
     """
     try:
         approved_by = approval_data.get('approved_by', user.username if user else 'Manager')
@@ -252,7 +255,8 @@ async def approve_leave_request(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/leave-requests/{request_id}/reject")
+@router.patch("/leave-requests/{request_id}/reject")
+@router.post("/leave-requests/{request_id}/reject")  # Deprecated: Use PATCH instead
 async def reject_leave_request(
     request: Request,
     request_id: int,
@@ -262,6 +266,8 @@ async def reject_leave_request(
     """
     Reject a leave request.
     Rechaza una solicitud de vacaciones.
+
+    Note: PATCH is the preferred method. POST is deprecated and kept for backwards compatibility.
     """
     try:
         rejected_by = rejection_data.get('rejected_by', user.username if user else 'Manager')
@@ -359,7 +365,8 @@ async def cancel_leave_request(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/leave-requests/{request_id}/revert")
+@router.patch("/leave-requests/{request_id}/revert")
+@router.post("/leave-requests/{request_id}/revert")  # Deprecated: Use PATCH instead
 async def revert_leave_request(
     request: Request,
     request_id: int,
@@ -374,6 +381,8 @@ async def revert_leave_request(
     Revierte una solicitud YA APROBADA.
     Devuelve los dias usados al balance del empleado.
     El status cambia a 'CANCELLED'.
+
+    Note: PATCH is the preferred method. POST is deprecated and kept for backwards compatibility.
     """
     try:
         if revert_data is None:

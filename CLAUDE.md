@@ -390,21 +390,23 @@ PUT  /api/employees/{emp}/{year}   # Actualizar
 POST /api/employees/search         # Búsqueda full-text
 
 # Leave requests workflow
-POST /api/leave-requests                    # Crear solicitud
-GET  /api/leave-requests?status=PENDING     # Listar
-POST /api/leave-requests/{id}/approve       # Aprobar (deduce días)
-POST /api/leave-requests/{id}/reject        # Rechazar
-POST /api/leave-requests/{id}/revert        # Revertir (restaura días)
+POST  /api/leave-requests                    # Crear solicitud
+GET   /api/leave-requests?status=PENDING     # Listar
+PATCH /api/leave-requests/{id}/approve       # Aprobar (deduce días)
+PATCH /api/leave-requests/{id}/reject        # Rechazar
+PATCH /api/leave-requests/{id}/revert        # Revertir (restaura días)
+# Note: POST también funciona (deprecated, compatibilidad)
 
 # Compliance
 GET  /api/compliance/5day?year=2025
 GET  /api/expiring-soon?year=2025&threshold_months=3
 
 # Notificaciones
-GET  /api/notifications                     # Lista con is_read
-POST /api/notifications/{id}/mark-read      # Marcar como leída
-POST /api/notifications/mark-all-read       # Marcar todas
-GET  /api/notifications/unread-count        # Conteo no leídas
+GET   /api/notifications                     # Lista con is_read
+PATCH /api/notifications/{id}/read           # Marcar como leída
+PATCH /api/notifications/read-all            # Marcar todas
+GET   /api/notifications/unread-count        # Conteo no leídas
+# Note: POST con rutas antiguas también funciona (deprecated)
 
 # Yukyu Details (edición individual)
 GET  /api/yukyu/usage-details/{emp}/{year}  # Obtener detalles

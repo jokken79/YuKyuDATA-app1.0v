@@ -1,3 +1,11 @@
+/* ============================================
+   MAIN.CSS - YuKyu Design System
+   ============================================
+   NOTA: Este archivo depende de utilities-consolidated.css
+   para variables de spacing, animaciones y utilidades comunes.
+   Asegurese de cargar utilities-consolidated.css ANTES de este archivo.
+   ============================================ */
+
 /* Modern Design System - Theme Support */
 :root {
   /* Core Colors - Dark Theme (Default) - PURE BLACK */
@@ -193,41 +201,9 @@ body::after {
 /* ========================================
    ADVANCED ANIMATIONS - 2025 Edition
    ======================================== */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
+/* NOTA: Las animaciones base (fadeIn, fadeInUp, fadeInScale, slideInLeft,
+   shimmer, float, spin, shake, pulse, glow) estan definidas en
+   utilities-consolidated.css. Las siguientes son especificas de este tema. */
 
 @keyframes pulseGlow {
   0% {
@@ -240,52 +216,6 @@ body::after {
 
   100% {
     box-shadow: 0 0 5px var(--primary-glow);
-  }
-}
-
-@keyframes slideInLeft {
-  from {
-    transform: translateX(-20px);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-
-  100% {
-    background-position: 1000px 0;
-  }
-}
-
-@keyframes float {
-
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes glow {
-
-  0%,
-  100% {
-    filter: drop-shadow(0 0 5px var(--primary));
-  }
-
-  50% {
-    filter: drop-shadow(0 0 20px var(--primary));
   }
 }
 
@@ -374,17 +304,7 @@ body::after {
   font-weight: 800;
 }
 
-.flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.flex-between {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+/* NOTA: .flex-center y .flex-between movidos a utilities-consolidated.css */
 
 /* Layout Structure */
 .app-container {
@@ -944,66 +864,16 @@ select.input-glass {
   font-weight: 700;
   animation: pulse 1.5s ease-in-out infinite;
 }
-
-@keyframes pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.6;
-  }
-}
+/* NOTA: @keyframes pulse movido a utilities-consolidated.css */
 
 /* ========================================
    ACCESSIBILITY UTILITIES
    ======================================== */
-
-/* Screen reader only - visually hidden but accessible */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-/* Focus visible for keyboard navigation */
-:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-/* Skip link for keyboard users */
-.skip-link {
-  position: absolute;
-  top: -40px;
-  left: 0;
-  background: var(--primary);
-  color: white;
-  padding: 8px 16px;
-  z-index: 10000;
-  transition: top 0.3s;
-}
-
-.skip-link:focus {
-  top: 0;
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  :root {
-    --text-primary: #ffffff;
-    --text-secondary: #e0e0e0;
-    --bg-card: rgba(30, 41, 59, 0.95);
-  }
-}
+/* NOTA: Las siguientes clases se movieron a utilities-consolidated.css:
+   - .sr-only
+   - :focus-visible (base)
+   - .skip-link
+   - @media (prefers-contrast: high) */
 
 /* ========================================
    PERFORMANCE OPTIMIZATIONS
@@ -1055,38 +925,7 @@ select.input-glass {
 }
 
 /* Reduced motion support - MEJORADO */
-@media (prefers-reduced-motion: reduce) {
-
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-
-  /* Desactivar animaciones de background */
-  body::before,
-  body::after {
-    animation: none !important;
-  }
-
-  /* Desactivar hover effects complejos */
-  .glass-panel:hover,
-  .btn:hover,
-  .modern-table tbody tr:hover {
-    transform: none !important;
-    will-change: auto !important;
-  }
-
-  /* Mantener transiciones esenciales pero muy rápidas */
-  .btn,
-  .input-glass,
-  .nav-item {
-    transition-duration: 0.05s !important;
-  }
-}
+/* NOTA: @media (prefers-reduced-motion: reduce) movido a utilities-consolidated.css */
 
 /* ========================================
    LOADING - Modern Spinner
@@ -1159,35 +998,13 @@ select.input-glass {
   animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite reverse;
   filter: drop-shadow(0 0 15px rgba(6, 182, 212, 0.5));
 }
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
+/* NOTA: @keyframes spin movido a utilities-consolidated.css */
 
 /* Loading text animation */
 .loader-overlay>div {
   animation: pulse 1.5s ease-in-out infinite;
 }
-
-@keyframes pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: 0.7;
-    transform: scale(0.98);
-  }
-}
+/* NOTA: @keyframes pulse movido a utilities-consolidated.css */
 
 /* Toast */
 .toast-container {
@@ -1879,22 +1696,7 @@ select.input-glass {
   box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15);
   animation: shake 0.3s ease-in-out;
 }
-
-@keyframes shake {
-
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  25% {
-    transform: translateX(-5px);
-  }
-
-  75% {
-    transform: translateX(5px);
-  }
-}
+/* NOTA: @keyframes shake movido a utilities-consolidated.css */
 
 /* Validation Messages */
 .validation-message {

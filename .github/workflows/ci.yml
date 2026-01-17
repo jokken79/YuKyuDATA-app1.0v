@@ -85,6 +85,15 @@ jobs:
           fi
         continue-on-error: true
 
+      - name: Run ESLint on JavaScript
+        run: |
+          if [ -f ".eslintrc.json" ]; then
+            npx eslint static/js/ --ext .js --max-warnings 50 --format stylish || echo "::warning::ESLint issues found"
+          else
+            echo "No ESLint configuration found, skipping..."
+          fi
+        continue-on-error: true
+
   # ===========================================================================
   # Job 2: TEST - Ejecutar pytest con cobertura
   # ===========================================================================
@@ -133,10 +142,9 @@ jobs:
             --cov-report=xml \
             --cov-report=html \
             --cov-report=term-missing \
-            --cov-fail-under=70 \
+            --cov-fail-under=80 \
             --ignore=node_modules \
-            --ignore=backups \
-            --ignore=agents
+            --ignore=backups
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4

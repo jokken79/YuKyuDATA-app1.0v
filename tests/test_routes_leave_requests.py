@@ -74,17 +74,17 @@ class TestLeaveRequestWorkflow:
 
     def test_approve_nonexistent_request(self):
         """Should handle non-existent request gracefully"""
-        response = client.post("/api/leave-requests/99999/approve")
+        response = client.patch("/api/leave-requests/99999/approve")
         assert response.status_code in [400, 404]
 
     def test_reject_nonexistent_request(self):
         """Should handle non-existent request gracefully"""
-        response = client.post("/api/leave-requests/99999/reject")
+        response = client.patch("/api/leave-requests/99999/reject")
         assert response.status_code in [400, 404]
 
     def test_revert_nonexistent_request(self):
         """Should handle non-existent request gracefully"""
-        response = client.post("/api/leave-requests/99999/revert")
+        response = client.patch("/api/leave-requests/99999/revert")
         assert response.status_code in [400, 404]
 
 
@@ -113,7 +113,7 @@ class TestLeaveRequestErrorHandling:
 
     def test_error_no_internal_details(self):
         """Errors should not expose internal details"""
-        response = client.post("/api/leave-requests/99999/approve")
+        response = client.patch("/api/leave-requests/99999/approve")
         if response.status_code >= 400:
             data = response.json()
             detail = str(data.get("detail", ""))

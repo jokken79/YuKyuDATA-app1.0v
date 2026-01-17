@@ -152,7 +152,6 @@ jobs:
       - name: Run Playwright E2E tests
         run: |
           npx playwright test --reporter=html,list
-        continue-on-error: true
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
@@ -213,7 +212,6 @@ jobs:
           else
             echo "No visual regression tests found, skipping..."
           fi
-        continue-on-error: true
 
       - name: Upload visual diff artifacts
         uses: actions/upload-artifact@v4
