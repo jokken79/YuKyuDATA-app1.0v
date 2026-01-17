@@ -462,10 +462,17 @@ class TestYearFilter:
             YearFilter(year=2101)
 
     def test_year_must_be_integer(self):
-        """Test que year debe ser entero."""
-        with pytest.raises(ValidationError):
-            YearFilter(year="2025")
+        """Test que year debe ser entero (acepta coerción de string a int en Pydantic v2)."""
+        # Pydantic v2 coerciona string numérico a int - esto es válido
+        yf = YearFilter(year="2025")
+        assert yf.year == 2025
+        assert isinstance(yf.year, int)
 
+        # Pero string no numérico debe fallar
+        with pytest.raises(ValidationError):
+            YearFilter(year="not_a_number")
+
+        # Float tampoco es válido
         with pytest.raises(ValidationError):
             YearFilter(year=2025.5)
 
