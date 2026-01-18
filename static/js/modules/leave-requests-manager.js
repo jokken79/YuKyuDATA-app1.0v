@@ -5,7 +5,7 @@
 
 import { escapeHtml } from './utils.js';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = '/api';
 
 /**
  * LeaveRequestsManager - Singleton for managing leave requests

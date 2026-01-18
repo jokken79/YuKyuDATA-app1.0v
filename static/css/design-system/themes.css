@@ -27,18 +27,8 @@
 }
 
 [data-theme="dark"] body::after {
-  content: '';
-  position: fixed;
-  top: 10%;
-  right: -5%;
-  width: 45%;
-  height: 60%;
-  background: rgba(99, 102, 241, 0.40);
-  border-radius: 50%;
-  filter: blur(80px);
-  pointer-events: none;
-  z-index: 0;
-  animation: float-glow 25s ease-in-out infinite reverse;
+  display: none;
+  content: none;
 }
 
 @keyframes float-glow {

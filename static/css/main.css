@@ -198,6 +198,17 @@ body::after {
   opacity: 0.06;
 }
 
+/* Dark mode: avoid right-edge cyan line by moving the top glow to the left */
+[data-theme="dark"] body::before {
+  right: auto;
+  left: -300px;
+}
+
+/* Dark mode: remove right glow that looks like a cyan line */
+[data-theme="dark"] body::after {
+  display: none;
+}
+
 /* ========================================
    ADVANCED ANIMATIONS - 2025 Edition
    ======================================== */
@@ -332,6 +343,96 @@ body::after {
   min-height: 100vh;
   max-width: 1600px;
   position: relative;
+}
+
+/* Header layout refinements */
+.page-header {
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.page-title-block {
+  max-width: 520px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .page-header {
+    flex-wrap: nowrap;
+  }
+
+  .header-actions {
+    width: auto;
+  }
+}
+
+.header-actions__group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.header-actions__group--years {
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.header-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-right: 0.25rem;
+}
+
+.header-actions .btn,
+.header-actions .language-selector-btn,
+.header-actions .theme-toggle {
+  height: 36px;
+  padding: 0.35rem 0.75rem;
+  border-radius: 10px;
+}
+
+#year-filter {
+  gap: 0.4rem;
+}
+
+#year-filter .btn,
+#year-filter .year-btn {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.78rem;
+  min-width: 56px;
+}
+
+/* Reduce header control noise: keep text only on primary sync */
+#header-controls .btn-text {
+  display: none;
+}
+
+#btn-sync-main .btn-text {
+  display: inline;
+}
+
+/* Prevent the cyan right-edge line (dark mode scrollbar) */
+[data-theme="dark"] body {
+  scrollbar-width: none;
+}
+
+[data-theme="dark"] body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 /* Components */
@@ -949,6 +1050,21 @@ select.input-glass {
 .loader-overlay.active {
   opacity: 1;
   pointer-events: all;
+}
+
+/* Fail-safe: never let the initial loader blank the page */
+#loader {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+#loader.active {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.app-container {
+  visibility: visible;
 }
 
 /* Modal content animation */

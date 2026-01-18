@@ -196,7 +196,10 @@ export class DataService {
                     employmentStatus: emp.employment_status || '在職中',
                     isActive: emp.is_active === 1 || emp.is_active === true
                 }));
-                state.availableYears = json.available_years;
+                const apiYears = Array.isArray(json?.available_years)
+                    ? json.available_years
+                    : (Array.isArray(json?.years) ? json.years : []);
+                state.availableYears = apiYears;
 
                 // Selección inteligente de año
                 if (state.availableYears.length > 0 && !state.year) {
@@ -227,9 +230,7 @@ export class DataService {
             }
 
             // Mostrar notificación si se proporciona
-            if (showToast && typeof showToast === 'function') {
-                showToast('success', 'Data refresh complete');
-            }
+            // No success toast on simple year refresh to reduce noise
 
         } catch (err) {
             // Solo mostrar error si este sigue siendo el request actual

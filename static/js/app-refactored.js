@@ -6,13 +6,13 @@
 // ========================================
 // IMPORTS - Módulos ES6
 // ========================================
-import * as Utils from './modules/utils.js';
-import { ThemeManager } from './modules/theme-manager.js';
+import { ChartManager, Visualizations } from './modules/chart-manager.js';
 import { DataService } from './modules/data-service.js';
-import { Visualizations, ChartManager } from './modules/chart-manager.js';
-import UIManager from './modules/ui-manager.js';
 import { ExportService } from './modules/export-service.js';
 import { LeaveRequestsManager } from './modules/leave-requests-manager.js';
+import { ThemeManager } from './modules/theme-manager.js';
+import UIManager from './modules/ui-manager.js';
+import * as Utils from './modules/utils.js';
 
 // ========================================
 // APLICACIÓN PRINCIPAL
@@ -30,7 +30,7 @@ const App = {
 
     // Configuración
     config: {
-        apiBase: 'http://localhost:8000/api'
+        apiBase: '/api'
     },
 
     // ========================================

@@ -188,9 +188,9 @@ echo ═════════════════════════
 echo.
 echo   Configuracion lista!
 echo.
-echo   Puerto:    8000
-echo   URL:       http://localhost:8000
-echo   API Docs:  http://localhost:8000/docs
+echo   Puerto:    8765
+echo   URL:       http://localhost:8765
+echo   API Docs:  http://localhost:8765/docs
 echo.
 echo   Credenciales de desarrollo:
 echo   Usuario:   admin
@@ -203,14 +203,14 @@ set /p START_NOW="Iniciar servidor ahora? (S/n): "
 if /i "%START_NOW%"=="n" (
     echo.
     echo Para iniciar manualmente:
-    echo   python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+    echo   python -m uvicorn main:app --reload --host 0.0.0.0 --port 8765
     echo.
     pause
     exit /b 0
 )
 
 :: Open browser after delay
-start /min cmd /c "timeout /t 3 /nobreak > nul && start http://localhost:8000"
+start /min cmd /c "timeout /t 3 /nobreak > nul && start http://localhost:8765"
 
 :: Start server
 echo.
@@ -218,7 +218,7 @@ echo Iniciando servidor...
 echo Presiona Ctrl+C para detener
 echo.
 
-python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn main:app --reload --host 0.0.0.0 --port 8765
 
 :: If server stops
 echo.

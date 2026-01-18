@@ -7,8 +7,8 @@ echo ========================================
 echo.
 
 :AskPort
-set /p PORT="Ingrese el puerto para la APP (backend) [default=8000]: "
-if "%PORT%"=="" set PORT=8000
+set /p PORT="Ingrese el puerto para la APP (backend) [default=8765]: "
+if "%PORT%"=="" set PORT=8765
 
 REM Calculate Frontend Port (Simple arithmetic not directly supported in basic set for all versions without /a, but /a works in std Windows CMD)
 set /a FRONTEND_PORT=%PORT%-5000

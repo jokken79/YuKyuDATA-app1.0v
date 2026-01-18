@@ -411,80 +411,85 @@
         <main class="main-content" id="main-content">
 
             <!-- Header -->
-            <header class="flex-between mb-lg">
-                <div>
-                    <h1 class="text-gradient" class="title-2xl" id="page-title">Dashboard Overview</h1>
+            <header class="flex-between mb-lg page-header">
+                <div class="page-title-block">
+                    <h1 class="text-gradient title-2xl" id="page-title">Dashboard Overview</h1>
                     <p class="text-muted" id="page-subtitle">Real-time vacation data analytics</p>
                 </div>
 
-                <div class="flex-center gap-md">
-                    <div class="flex-center gap-sm mr-md" id="year-filter"></div>
-
-                    <!-- Language Selector -->
-                    <div class="language-selector" id="language-selector">
-                        <button class="language-selector-btn" id="language-selector-btn" type="button"
-                            aria-label="Select language" aria-haspopup="listbox" aria-expanded="false">
-                            <span class="language-selector-flag" id="current-lang-flag">JP</span>
-                            <span class="language-selector-code" id="current-lang-code">JA</span>
-                            <span class="language-selector-arrow" aria-hidden="true">&#9660;</span>
-                        </button>
-                        <div class="language-dropdown" id="language-dropdown" role="listbox"
-                            aria-label="Available languages">
-                            <button class="language-option active" data-locale="ja" role="option" aria-selected="true"
-                                type="button">
-                                <span class="language-option-flag">JP</span>
-                                <span class="language-option-name">Japanese</span>
-                            </button>
-                            <button class="language-option" data-locale="es" role="option" aria-selected="false"
-                                type="button">
-                                <span class="language-option-flag">ES</span>
-                                <span class="language-option-name">Castellano</span>
-                            </button>
-                            <button class="language-option" data-locale="en" role="option" aria-selected="false"
-                                type="button">
-                                <span class="language-option-flag">EN</span>
-                                <span class="language-option-name">English</span>
-                            </button>
-                        </div>
+                <div class="header-actions">
+                    <div class="header-actions__group header-actions__group--years">
+                        <span class="header-label">Año</span>
+                        <div class="flex-center gap-sm" id="year-filter"></div>
                     </div>
 
-                    <!-- Theme Toggle -->
-                    <button class="theme-toggle" data-action="theme.toggle" title="テーマ切替" aria-label="Toggle theme"
-                        type="button">
-                        <div class="theme-toggle-track">
-                            <div class="theme-toggle-thumb">
-                                <span id="theme-icon">🌙</span>
+                    <div class="header-actions__group" id="header-controls">
+                        <!-- Language Selector -->
+                        <div class="language-selector" id="language-selector">
+                            <button class="language-selector-btn" id="language-selector-btn" type="button"
+                                aria-label="Select language" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="language-selector-flag" id="current-lang-flag">JP</span>
+                                <span class="language-selector-code" id="current-lang-code">JA</span>
+                                <span class="language-selector-arrow" aria-hidden="true">&#9660;</span>
+                            </button>
+                            <div class="language-dropdown" id="language-dropdown" role="listbox"
+                                aria-label="Available languages">
+                                <button class="language-option active" data-locale="ja" role="option" aria-selected="true"
+                                    type="button">
+                                    <span class="language-option-flag">JP</span>
+                                    <span class="language-option-name">Japanese</span>
+                                </button>
+                                <button class="language-option" data-locale="es" role="option" aria-selected="false"
+                                    type="button">
+                                    <span class="language-option-flag">ES</span>
+                                    <span class="language-option-name">Castellano</span>
+                                </button>
+                                <button class="language-option" data-locale="en" role="option" aria-selected="false"
+                                    type="button">
+                                    <span class="language-option-flag">EN</span>
+                                    <span class="language-option-name">English</span>
+                                </button>
                             </div>
                         </div>
-                        <span class="theme-toggle-label" id="theme-label">Dark</span>
-                    </button>
 
-                    <button class="btn btn-primary" id="btn-sync-main" data-action="data.sync"
-                        aria-label="Sync vacation data" type="button"
-                        data-tooltip="有給データをExcelから同期 / Sincronizar datos de vacaciones" data-loading="同期中...">
-                        <span class="btn-icon" aria-hidden="true">⚡</span>
-                        <span class="btn-text">Sync</span>
-                        <span class="btn-spinner d-none"></span>
-                    </button>
-                    <button class="btn btn-glass" id="btn-sync-genzai" data-action="data.syncGenzai"
-                        aria-label="Sync dispatch employees" type="button"
-                        data-tooltip="派遣社員データを同期 / Sincronizar empleados dispatch" data-loading="同期中...">
-                        <span class="btn-icon" aria-hidden="true">🏢</span>
-                        <span class="btn-text d-md-inline d-none">Genzai</span>
-                        <span class="btn-spinner d-none"></span>
-                    </button>
-                    <button class="btn btn-glass" id="btn-sync-ukeoi" data-action="data.syncUkeoi"
-                        aria-label="Sync contract employees" type="button"
-                        data-tooltip="請負社員データを同期 / Sincronizar empleados contrato" data-loading="同期中...">
-                        <span class="btn-icon" aria-hidden="true">🔧</span>
-                        <span class="btn-text d-md-inline d-none">Ukeoi</span>
-                        <span class="btn-spinner d-none"></span>
-                    </button>
-                    <button class="btn btn-glass" id="btn-export-pdf" data-action="reports.showExportModal"
-                        title="Export PDF Reports" aria-label="Export PDF reports" type="button">
-                        <span class="btn-icon" aria-hidden="true">📄</span>
-                        <span class="btn-text">PDF</span>
-                    </button>
+                        <!-- Theme Toggle -->
+                        <button class="theme-toggle" data-action="theme.toggle" title="テーマ切替" aria-label="Toggle theme"
+                            type="button">
+                            <div class="theme-toggle-track">
+                                <div class="theme-toggle-thumb">
+                                    <span id="theme-icon">🌙</span>
+                                </div>
+                            </div>
+                            <span class="theme-toggle-label" id="theme-label">Dark</span>
+                        </button>
+
+                        <button class="btn btn-primary" id="btn-sync-main" data-action="data.sync"
+                            aria-label="Sync vacation data" type="button"
+                            data-tooltip="有給データをExcelから同期 / Sincronizar datos de vacaciones" data-loading="同期中...">
+                            <span class="btn-icon" aria-hidden="true">⚡</span>
+                            <span class="btn-text">Sync</span>
+                            <span class="btn-spinner d-none"></span>
+                        </button>
+                        <button class="btn btn-glass" id="btn-sync-genzai" data-action="data.syncGenzai"
+                            aria-label="Sync dispatch employees" type="button"
+                            data-tooltip="派遣社員データを同期 / Sincronizar empleados dispatch" data-loading="同期中...">
+                            <span class="btn-icon" aria-hidden="true">🏢</span>
+                            <span class="btn-text d-md-inline d-none">Genzai</span>
+                            <span class="btn-spinner d-none"></span>
+                        </button>
+                        <button class="btn btn-glass" id="btn-sync-ukeoi" data-action="data.syncUkeoi"
+                            aria-label="Sync contract employees" type="button"
+                            data-tooltip="請負社員データを同期 / Sincronizar empleados contrato" data-loading="同期中...">
+                            <span class="btn-icon" aria-hidden="true">🔧</span>
+                            <span class="btn-text d-md-inline d-none">Ukeoi</span>
+                            <span class="btn-spinner d-none"></span>
+                        </button>
+                        <button class="btn btn-glass" id="btn-export-pdf" data-action="reports.showExportModal"
+                            title="Export PDF Reports" aria-label="Export PDF reports" type="button">
+                            <span class="btn-icon" aria-hidden="true">📄</span>
+                            <span class="btn-text">PDF</span>
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -1618,9 +1623,9 @@
                             <div class="p-md rounded text-sm"
                                 class="bg-code">
                                 <div class="text-muted">Base URL:</div>
-                                <div class="text-cyan">http://localhost:8000/api</div>
+                                <div class="text-cyan">/api</div>
                                 <div class="text-muted mt-sm">Documentation:</div>
-                                <div><a href="/docs" target="_blank" class="text-cyan">http://localhost:8000/docs</a>
+                                <div><a href="/docs" target="_blank" class="text-cyan">/docs</a>
                                 </div>
                             </div>
                         </div>

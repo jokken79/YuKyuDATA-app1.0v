@@ -56,7 +56,12 @@ async def get_employees(year: int = None, enhanced: bool = False, active_only: b
         else:
             data = database.get_employees(year)
         years = database.get_available_years()
-        return {"status": "success", "data": data, "years": years}
+        return {
+            "status": "success",
+            "data": data,
+            "years": years,
+            "available_years": years
+        }
     except Exception as e:
         logger.error(f"Failed to get employees: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")

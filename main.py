@@ -793,8 +793,10 @@ async def get_csrf_token():
 
 
 if __name__ == "__main__":
-    logger.info("Starting YuKyuDATA-app server...")
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    import os
+    port = int(os.getenv("PORT", 8765))
+    logger.info(f"Starting YuKyuDATA-app server on port {port}...")
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
 
 
 # === END OF FILE ===

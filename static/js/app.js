@@ -707,8 +707,12 @@ const App = {
                     isActive: emp.is_active === 1 || emp.is_active === true
                 }));
 
-                App.state.availableYears = Array.isArray(json?.available_years)
-                    ? json.available_years.map(y => parseInt(y)).filter(Number.isFinite).sort((a, b) => b - a)
+                const apiYears = Array.isArray(json?.available_years)
+                    ? json.available_years
+                    : (Array.isArray(json?.years) ? json.years : null);
+
+                App.state.availableYears = Array.isArray(apiYears)
+                    ? apiYears.map(y => parseInt(y)).filter(Number.isFinite).sort((a, b) => b - a)
                     : derivedYears;
 
                 // Smart Year Selection
@@ -745,7 +749,6 @@ const App = {
                 // Data loaded successfully for the year
 
                 await App.ui.updateAll();
-                App.ui.showToast('success', 'Data refresh complete');
 
             } catch (err) {
                 // Only show error if this is still the current request
