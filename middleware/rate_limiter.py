@@ -429,11 +429,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.rate_limiter = rate_limiter
 
     async def dispatch(self, request: Request, call_next):
+        import os
+
         # Paths excluidos del rate limiting
         excluded_paths = ['/docs', '/redoc', '/openapi.json', '/favicon.ico']
 
         if any(request.url.path.startswith(p) for p in excluded_paths):
             return await call_next(request)
+
+        # Skip rate limiting in testing mode
+        if os.environ.get("TESTING") == "true":
+            response = await call_next(request)
+            return response
 
         # Verificar rate limit
         is_allowed, info = self.rate_limiter.check_limit(request)
