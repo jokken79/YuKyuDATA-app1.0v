@@ -25,8 +25,15 @@ pytestmark = pytest.mark.skipif(
     reason="PostgreSQL not configured"
 )
 
-import database
-from database.connection import PostgreSQLConnectionPool
+# Only import PostgreSQL-specific modules if PostgreSQL is configured
+if os.getenv('DATABASE_TYPE', 'sqlite').lower() == 'postgresql':
+    try:
+        from database.connection import PostgreSQLConnectionPool
+    except ImportError:
+        # Fallback for testing when module not available
+        PostgreSQLConnectionPool = None
+else:
+    PostgreSQLConnectionPool = None
 
 
 class TestConnectionPoolBasics:

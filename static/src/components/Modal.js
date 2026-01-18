@@ -583,9 +583,30 @@ export class Modal {
    * Destroy modal instance
    */
   destroy() {
-    this.close();
-    this.element = null;
-    this.backdrop = null;
+    if (this.isOpen) {
+      this.close();
+    }
+
+    // ✅ AGREGAR: Remover todos los event listeners
+    document.removeEventListener('keydown', this._handleKeyDown);
+
+    if (this.element) {
+      this.element.removeEventListener('click', this._handleBackdropClick);
+      this.element.remove();
+      this.element = null;
+    }
+
+    if (this.backdrop) {
+      this.backdrop.remove();
+      this.backdrop = null;
+    }
+
+    // Limpiar referencias
+    this.previousActiveElement = null;
+    this.focusableElements = [];
+
+    // Remover del registry
+    Modal.activeModals.delete(this.id);
   }
 
   // Static factory methods

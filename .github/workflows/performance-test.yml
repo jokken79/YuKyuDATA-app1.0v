@@ -1,0 +1,359 @@
+# =============================================================================
+# FASE 3: Performance Testing & Load Testing
+# =============================================================================
+# Runs comprehensive performance tests:
+# - Load testing with Locust
+# - API response time benchmarks
+# - Database query performance
+# - Frontend performance metrics
+# - Results tracking and regression detection
+# =============================================================================
+
+name: Performance Testing
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+  schedule:
+    # Run performance tests daily at 4 AM UTC
+    - cron: '0 4 * * *'
+
+concurrency:
+  group: performance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # Backend Performance - Load Testing with Locust
+  # ============================================================================
+  load-testing:
+    name: Load Testing (Locust)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install locust
+
+      - name: Start application
+        run: |
+          mkdir -p backups
+          python -m uvicorn main:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+        timeout-minutes: 2
+
+      - name: Create Locust test script
+        run: |
+          cat > locustfile.py << 'EOF'
+          from locust import HttpUser, task, between
+          import random
+
+          class YuKyuUser(HttpUser):
+              wait_time = between(1, 3)
+
+              @task(3)
+              def get_employees(self):
+                  self.client.get("/api/employees?year=2025")
+
+              @task(2)
+              def get_health(self):
+                  self.client.get("/api/health")
+
+              @task(1)
+              def search_employees(self):
+                  self.client.post("/api/employees/search", json={"query": "test"})
+
+          EOF
+
+      - name: Run load test
+        run: |
+          locust -f locustfile.py \
+            --host=http://localhost:8000 \
+            --headless \
+            --users 100 \
+            --spawn-rate 10 \
+            --run-time 5m \
+            --csv=reports/load-test
+
+      - name: Generate performance report
+        run: |
+          python3 << 'EOF'
+          import csv
+          import json
+
+          try:
+              with open('reports/load_test_stats.csv', 'r') as f:
+                  stats = csv.DictReader(f)
+                  rows = list(stats)
+
+              print("## Load Test Results")
+              print("")
+              print("| Metric | Value |")
+              print("|--------|-------|")
+
+              if rows:
+                  for row in rows:
+                      if row.get('Name') and row.get('Name') != 'Aggregated':
+                          print(f"| {row.get('Name')} | {row.get('Average Response Time')} ms |")
+
+          except FileNotFoundError:
+              print("Load test output files not found")
+
+          EOF
+
+      - name: Upload load test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-test-results
+          path: reports/
+          retention-days: 30
+
+  # ============================================================================
+  # Backend Benchmarks - pytest-benchmark
+  # ============================================================================
+  backend-benchmarks:
+    name: Backend Benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-bench-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest-benchmark
+
+      - name: Run backend benchmarks
+        run: |
+          mkdir -p backups
+          pytest tests/ \
+            --benchmark-only \
+            --benchmark-json=benchmark-backend.json \
+            --benchmark-histogram=reports/backend-bench \
+            -v \
+            --tb=short \
+            || true
+
+      - name: Store benchmark results
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Backend Performance
+          tool: 'customJson'
+          output-file-path: benchmark-backend.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+        continue-on-error: true
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-benchmarks
+          path: |
+            benchmark-backend.json
+            reports/backend-bench/
+          retention-days: 30
+
+  # ============================================================================
+  # Frontend Performance - Lighthouse CI
+  # ============================================================================
+  frontend-performance:
+    name: Frontend Performance (Lighthouse)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Start application
+        run: |
+          mkdir -p backups
+          python -m uvicorn main:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+        timeout-minutes: 2
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          configPath: './lighthouse-config.json'
+          temporaryPublicStorage: true
+          runs: 3
+          uploadArtifacts: true
+          saveDetailedResults: true
+        continue-on-error: true
+
+      - name: Upload Lighthouse results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-results
+          path: |
+            .lighthouseci/
+            lighthouse-results/
+          retention-days: 30
+
+  # ============================================================================
+  # Database Query Performance
+  # ============================================================================
+  database-performance:
+    name: Database Performance Analysis
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: yukyu_test
+          POSTGRES_USER: yukyu_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest-benchmark psycopg2-binary
+
+      - name: Run database performance tests
+        env:
+          DATABASE_URL: postgresql://yukyu_user:test_password@localhost:5432/yukyu_test
+        run: |
+          mkdir -p backups
+          pytest tests/ \
+            -m "database or performance" \
+            --benchmark-only \
+            --benchmark-json=benchmark-database.json \
+            -v \
+            --tb=short \
+            || true
+
+      - name: Analyze query performance
+        run: |
+          python3 << 'EOF'
+          import json
+
+          try:
+              with open('benchmark-database.json', 'r') as f:
+                  data = json.load(f)
+
+              print("## Database Performance Summary")
+              print("")
+              print("| Query | Avg Time (ms) | Iterations |")
+              print("|-------|---------------|------------|")
+
+              for bench in data.get('benchmarks', []):
+                  name = bench.get('name', 'Unknown')
+                  stats = bench.get('stats', {})
+                  avg = stats.get('mean', 0) * 1000  # Convert to ms
+                  rounds = bench.get('warmup') + bench.get('rounds', 0)
+
+                  print(f"| {name} | {avg:.2f} | {rounds} |")
+
+          except FileNotFoundError:
+              print("Database benchmark results not found")
+
+          EOF
+
+      - name: Upload database benchmark results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: database-benchmarks
+          path: benchmark-database.json
+          retention-days: 30
+
+  # ============================================================================
+  # Performance Summary & Regression Detection
+  # ============================================================================
+  performance-summary:
+    name: Performance Summary
+    runs-on: ubuntu-latest
+    needs: [load-testing, backend-benchmarks, frontend-performance, database-performance]
+    if: always()
+
+    steps:
+      - name: Generate performance summary
+        run: |
+          echo "## Performance Testing Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Tests Executed" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Load Testing (Locust) | ${{ needs.load-testing.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend Benchmarks | ${{ needs.backend-benchmarks.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Performance | ${{ needs.frontend-performance.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Database Performance | ${{ needs.database-performance.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Key Metrics to Monitor" >> $GITHUB_STEP_SUMMARY
+          echo "- API response times (p95, p99)" >> $GITHUB_STEP_SUMMARY
+          echo "- Database query latency" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend Core Web Vitals" >> $GITHUB_STEP_SUMMARY
+          echo "- System throughput (requests/second)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Performance Standards" >> $GITHUB_STEP_SUMMARY
+          echo "- API Response Time: < 200ms (p95)" >> $GITHUB_STEP_SUMMARY
+          echo "- Database Query: < 100ms (p95)" >> $GITHUB_STEP_SUMMARY
+          echo "- Lighthouse Score: > 80" >> $GITHUB_STEP_SUMMARY
+          echo "- Load Test Throughput: > 100 req/s" >> $GITHUB_STEP_SUMMARY

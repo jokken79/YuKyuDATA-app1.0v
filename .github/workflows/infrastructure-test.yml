@@ -1,0 +1,361 @@
+# =============================================================================
+# FASE 3: Infrastructure Testing - Terraform & IaC Validation
+# =============================================================================
+# Validates Terraform configurations:
+# - terraform fmt: Code formatting
+# - terraform validate: Syntax validation
+# - tflint: Linting with best practices
+# - checkov: Security & compliance scanning (integrated)
+# - terraform plan: Dry-run preview of changes
+# - cost estimation: Estimated infrastructure costs
+# =============================================================================
+
+name: Infrastructure Testing
+
+on:
+  push:
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/infrastructure-test.yml'
+    branches: [main, master, develop]
+  pull_request:
+    paths:
+      - 'terraform/**'
+    branches: [main, master, develop]
+
+env:
+  TF_VERSION: '1.7.0'
+  AWS_REGION: us-east-1
+
+jobs:
+  # ============================================================================
+  # Terraform Formatting & Validation
+  # ============================================================================
+  terraform-validation:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Format Check
+        run: |
+          terraform fmt -check -recursive terraform/
+        continue-on-error: true
+
+      - name: Terraform Format (show differences)
+        if: failure()
+        run: |
+          terraform fmt -diff -recursive terraform/ || true
+
+      - name: Terraform Init (for validation)
+        run: |
+          cd terraform/
+          terraform init -backend=false -upgrade
+
+      - name: Terraform Validate
+        run: |
+          cd terraform/
+          terraform validate
+
+      - name: Upload validation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-validation
+          path: terraform/
+          retention-days: 7
+
+  # ============================================================================
+  # TFLint - Terraform Linting
+  # ============================================================================
+  tflint:
+    name: TFLint Analysis
+    runs-on: ubuntu-latest
+    needs: terraform-validation
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache TFLint
+        uses: actions/cache@v4
+        with:
+          path: ~/.tflint.d/plugins
+          key: ${{ runner.os }}-tflint-${{ hashFiles('.tflint.hcl') }}
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v3
+        with:
+          tflint_version: latest
+
+      - name: Initialize TFLint
+        run: |
+          cd terraform/
+          tflint --init
+
+      - name: Run TFLint
+        run: |
+          cd terraform/
+          tflint -f json > /tmp/tflint-report.json || true
+          tflint
+
+      - name: Upload TFLint report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tflint-report
+          path: /tmp/tflint-report.json
+          retention-days: 7
+
+  # ============================================================================
+  # Checkov - Security & Compliance
+  # ============================================================================
+  checkov-infrastructure:
+    name: Checkov Infrastructure Scan
+    runs-on: ubuntu-latest
+    needs: terraform-validation
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov on Terraform
+        id: checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform/
+          framework: terraform
+          output_format: cli
+          compact: true
+          skip_check: CKV_AWS_3,CKV_AWS_21
+        continue-on-error: true
+
+      - name: Run Checkov with SARIF output
+        run: |
+          pip install checkov
+          checkov -d terraform/ --framework terraform --output sarif > checkov-tf.sarif || true
+
+      - name: Upload Checkov results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'checkov-tf.sarif'
+          category: 'checkov-terraform'
+
+  # ============================================================================
+  # Terraform Plan - Dry Run with Cost Estimation
+  # ============================================================================
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: [terraform-validation, tflint]
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS credentials (dummy for dry-run)
+        run: |
+          mkdir -p ~/.aws
+          echo "[default]" > ~/.aws/credentials
+          echo "aws_access_key_id = ASIATEMP000000000000" >> ~/.aws/credentials
+          echo "aws_secret_access_key = temporary" >> ~/.aws/credentials
+
+      - name: Terraform Init
+        run: |
+          cd terraform/
+          terraform init -backend=false -upgrade
+
+      - name: Terraform Plan (dry-run)
+        run: |
+          cd terraform/
+          terraform plan -out=tfplan -json > tfplan.json || true
+          terraform show -json tfplan > tfplan-detailed.json || true
+        continue-on-error: true
+
+      - name: Analyze Terraform Plan
+        run: |
+          python3 << 'EOF'
+          import json
+          import sys
+
+          try:
+              with open('terraform/tfplan.json', 'r') as f:
+                  plan = json.load(f)
+
+              print("## Terraform Plan Analysis")
+              print("")
+              print("### Resources to be created/modified/destroyed:")
+              print("| Action | Count |")
+              print("|--------|-------|")
+
+              create_count = sum(1 for x in plan.get('resource_changes', []) if x.get('change', {}).get('actions') == ['create'])
+              update_count = sum(1 for x in plan.get('resource_changes', []) if 'update' in x.get('change', {}).get('actions', []))
+              delete_count = sum(1 for x in plan.get('resource_changes', []) if x.get('change', {}).get('actions') == ['delete'])
+
+              print(f"| Create | {create_count} |")
+              print(f"| Update | {update_count} |")
+              print(f"| Delete | {delete_count} |")
+              print("")
+
+          except Exception as e:
+              print(f"Note: Could not parse terraform plan ({e})")
+
+          EOF
+        continue-on-error: true
+
+      - name: Install Infracost
+        run: |
+          curl https://raw.githubusercontent.com/infracost/infracost/master/scripts/install.sh | bash
+        continue-on-error: true
+
+      - name: Estimate infrastructure costs
+        run: |
+          cd terraform/
+          infracost breakdown --path . --format json > infracost.json || true
+          infracost breakdown --path . --format table >> $GITHUB_STEP_SUMMARY || true
+        env:
+          INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+        continue-on-error: true
+
+      - name: Upload plan artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: terraform-plan
+          path: |
+            terraform/tfplan
+            terraform/tfplan.json
+            terraform/tfplan-detailed.json
+            terraform/infracost.json
+          retention-days: 7
+
+  # ============================================================================
+  # Terraform Modules Verification
+  # ============================================================================
+  terraform-modules:
+    name: Terraform Modules Check
+    runs-on: ubuntu-latest
+    needs: terraform-validation
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Verify module structure
+        run: |
+          python3 << 'EOF'
+          import os
+          import sys
+
+          modules_dir = 'terraform/modules'
+          required_files = ['main.tf', 'variables.tf', 'outputs.tf']
+          errors = []
+
+          if os.path.isdir(modules_dir):
+              for module_name in os.listdir(modules_dir):
+                  module_path = os.path.join(modules_dir, module_name)
+                  if os.path.isdir(module_path):
+                      print(f"Checking module: {module_name}")
+
+                      missing = []
+                      for req_file in required_files:
+                          file_path = os.path.join(module_path, req_file)
+                          if not os.path.exists(file_path):
+                              missing.append(req_file)
+
+                      if missing:
+                          errors.append(f"Module '{module_name}' missing: {', '.join(missing)}")
+                      else:
+                          print(f"  ✓ {module_name} is properly structured")
+
+          if errors:
+              print("\n::error::Module structure issues found:")
+              for error in errors:
+                  print(f"  - {error}")
+              sys.exit(1)
+          else:
+              print("\nAll modules are properly structured!")
+
+          EOF
+
+      - name: Validate module compatibility
+        run: |
+          cd terraform/
+          terraform init -backend=false 2>&1 | grep -i "error" || echo "Module init successful"
+
+  # ============================================================================
+  # Documentation Generation
+  # ============================================================================
+  terraform-docs:
+    name: Generate Terraform Docs
+    runs-on: ubuntu-latest
+    needs: terraform-validation
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate Terraform documentation
+        uses: terraform-docs/gh-actions@v1.0.0
+        with:
+          working-dir: terraform/
+          output-file: README.md
+          output-method: replace
+          indentation: 2
+        continue-on-error: true
+
+      - name: Upload generated docs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: terraform-docs
+          path: terraform/README.md
+          retention-days: 7
+
+  # ============================================================================
+  # Infrastructure Summary
+  # ============================================================================
+  infrastructure-summary:
+    name: Infrastructure Summary
+    runs-on: ubuntu-latest
+    needs: [terraform-validation, tflint, checkov-infrastructure, terraform-plan, terraform-modules]
+    if: always()
+
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## Infrastructure Testing Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Checks Performed" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Terraform Validation | ${{ needs.terraform-validation.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| TFLint | ${{ needs.tflint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Checkov | ${{ needs.checkov-infrastructure.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Plan & Cost Analysis | ${{ needs.terraform-plan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Module Verification | ${{ needs.terraform-modules.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review terraform plan output" >> $GITHUB_STEP_SUMMARY
+          echo "2. Check cost estimation from Infracost" >> $GITHUB_STEP_SUMMARY
+          echo "3. Address any Checkov security findings" >> $GITHUB_STEP_SUMMARY
+          echo "4. Verify module compatibility" >> $GITHUB_STEP_SUMMARY

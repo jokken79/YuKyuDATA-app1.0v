@@ -1,0 +1,571 @@
+# =============================================================================
+# FASE 3: Advanced CI/CD Pipeline - Multi-stage, Matrix Testing, Optimization
+# =============================================================================
+# This workflow implements advanced CI/CD practices:
+# - Multi-stage pipeline with dependency orchestration
+# - Matrix testing across Python versions (3.10, 3.11, 3.12)
+# - Matrix testing across PostgreSQL versions (12, 13, 14, 15)
+# - Comprehensive caching strategy
+# - Artifact management
+# - Container image optimization
+# - Performance regression detection
+# =============================================================================
+
+name: Advanced CI Pipeline
+
+on:
+  push:
+    branches: [main, master, develop, 'claude/**']
+  pull_request:
+    branches: [main, master, develop]
+  schedule:
+    # Run daily at 2 AM UTC to catch dependency issues
+    - cron: '0 2 * * *'
+
+concurrency:
+  group: advanced-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  PYTHONDONTWRITEBYTECODE: 1
+  PYTHONUNBUFFERED: 1
+  NODE_ENV: ci
+
+jobs:
+  # ============================================================================
+  # STAGE 1: CODE QUALITY - Lint, Format, Type Checking
+  # ============================================================================
+  code-quality:
+    name: Code Quality (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-quality-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-quality-${{ matrix.python-version }}-
+            ${{ runner.os }}-pip-quality-
+
+      - name: Install lint dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install flake8 black isort mypy pylint
+
+      - name: Lint with flake8 (critical errors)
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics \
+            --exclude=node_modules,venv,.git,__pycache__,backups,terraform \
+            --max-line-length=120
+
+      - name: Lint with flake8 (warnings)
+        run: |
+          flake8 . --count --exit-zero --max-complexity=15 --max-line-length=120 \
+            --exclude=node_modules,venv,.git,__pycache__,backups,terraform \
+            --format=json > flake8-report.json || true
+
+      - name: Check code formatting with black
+        run: |
+          black --check --diff . --line-length=120 \
+            --exclude='/(node_modules|venv|\.git|__pycache__|backups|terraform)/' || true
+
+      - name: Check import sorting with isort
+        run: |
+          isort --check-only --diff . --profile=black --line-length=120 \
+            --skip node_modules --skip venv --skip backups --skip terraform || true
+
+      - name: Type checking with mypy
+        run: |
+          mypy . --ignore-missing-imports --no-implicit-optional \
+            --exclude='venv|node_modules|backups|terraform' || true
+
+      - name: Upload code quality reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: code-quality-reports-py${{ matrix.python-version }}
+          path: |
+            flake8-report.json
+          retention-days: 7
+
+  # ============================================================================
+  # STAGE 2: UNIT TESTS - Python (Matrix: 3.10, 3.11, 3.12)
+  # ============================================================================
+  unit-tests-python:
+    name: Unit Tests - Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    needs: code-quality
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-test-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-test-${{ matrix.python-version }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio pytest-xdist httpx
+
+      - name: Run pytest with coverage
+        run: |
+          mkdir -p backups
+          pytest tests/ -v \
+            --cov=. \
+            --cov-report=xml \
+            --cov-report=html:htmlcov-py${{ matrix.python-version }} \
+            --cov-report=term-missing \
+            --cov-fail-under=80 \
+            --junitxml=test-results-py${{ matrix.python-version }}.xml \
+            --ignore=node_modules \
+            --ignore=backups \
+            --ignore=terraform \
+            -n auto \
+            --dist loadfile
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests-py${{ matrix.python-version }}
+          name: codecov-py${{ matrix.python-version }}
+        continue-on-error: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-py${{ matrix.python-version }}
+          path: |
+            test-results-py${{ matrix.python-version }}.xml
+            htmlcov-py${{ matrix.python-version }}/
+          retention-days: 7
+
+  # ============================================================================
+  # STAGE 3: INTEGRATION TESTS - PostgreSQL Matrix (12, 13, 14, 15)
+  # ============================================================================
+  integration-tests-db:
+    name: Integration Tests - PostgreSQL ${{ matrix.postgres-version }}
+    runs-on: ubuntu-latest
+    needs: code-quality
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11']
+        postgres-version: ['12', '13', '14', '15']
+
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres-version }}-alpine
+        env:
+          POSTGRES_DB: yukyu_test
+          POSTGRES_USER: yukyu_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-integration-pg${{ matrix.postgres-version }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio psycopg2-binary
+
+      - name: Run integration tests
+        env:
+          DATABASE_URL: postgresql://yukyu_user:test_password@localhost:5432/yukyu_test
+        run: |
+          mkdir -p backups
+          pytest tests/ -v \
+            --cov=. \
+            --cov-report=xml \
+            --junitxml=test-results-pg${{ matrix.postgres-version }}.xml \
+            -m "integration or not slow" \
+            --ignore=node_modules \
+            --ignore=backups \
+            --ignore=terraform
+
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-pg${{ matrix.postgres-version }}
+          path: test-results-pg${{ matrix.postgres-version }}.xml
+          retention-days: 7
+
+  # ============================================================================
+  # STAGE 4: FRONTEND TESTS - JavaScript/Node
+  # ============================================================================
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Lint JavaScript
+        run: |
+          if [ -f ".eslintrc.json" ]; then
+            npx eslint static/src/ --ext .js --max-warnings 20 --format json > eslint-report.json || true
+          fi
+
+      - name: Run Jest tests
+        run: |
+          npx jest tests/unit/ \
+            --passWithNoTests \
+            --coverage \
+            --coverageDirectory=coverage/frontend \
+            --collectCoverageFrom='static/src/**/*.js' \
+            --junitxml=test-results-frontend.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/frontend/lcov.info
+          flags: frontend
+          name: codecov-frontend
+        continue-on-error: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-frontend
+          path: |
+            test-results-frontend.xml
+            coverage/frontend/
+            eslint-report.json
+          retention-days: 7
+
+  # ============================================================================
+  # STAGE 5: E2E TESTS - Playwright
+  # ============================================================================
+  e2e-tests:
+    name: E2E Tests - Playwright
+    runs-on: ubuntu-latest
+    needs: [code-quality, unit-tests-python]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio
+
+      - name: Install Node dependencies
+        run: npm ci || npm install
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Start test server
+        run: |
+          mkdir -p backups
+          python -m uvicorn main:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+        timeout-minutes: 2
+
+      - name: Run Playwright tests
+        run: |
+          npx playwright test \
+            --reporter=junit \
+            --reporter=html
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # ============================================================================
+  # STAGE 6: SECURITY SCANNING
+  # ============================================================================
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: code-quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-security-${{ hashFiles('requirements.txt') }}
+
+      - name: Install security tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit safety pip-audit
+
+      - name: Run Bandit (Python security)
+        run: |
+          bandit -r . -ll -f json -o bandit-report.json \
+            --exclude ./node_modules,./venv,./backups,./tests,./.git,./terraform \
+            || echo "Bandit scan complete"
+
+      - name: Run Safety check (dependency vulnerabilities)
+        run: |
+          safety check --json > safety-report.json 2>&1 || true
+
+      - name: Run pip-audit (additional dependency check)
+        run: |
+          pip-audit --desc > pip-audit-report.txt || true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+            pip-audit-report.txt
+          retention-days: 30
+
+  # ============================================================================
+  # STAGE 7: DOCKER BUILD & OPTIMIZE
+  # ============================================================================
+  docker-build:
+    name: Docker Build & Optimize
+    runs-on: ubuntu-latest
+    needs: [unit-tests-python, frontend-tests, security-scan]
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+      image_digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix={{branch}}-
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=oci,dest=/tmp/image.tar
+
+      - name: Analyze image size
+        run: |
+          ls -lh /tmp/image.tar
+          echo "## Docker Image Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Size**: $(du -h /tmp/image.tar | cut -f1)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp/image.tar
+          retention-days: 1
+
+  # ============================================================================
+  # STAGE 8: PERFORMANCE ANALYSIS
+  # ============================================================================
+  performance-analysis:
+    name: Performance Analysis
+    runs-on: ubuntu-latest
+    needs: unit-tests-python
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest-benchmark
+
+      - name: Run performance tests
+        run: |
+          mkdir -p backups
+          pytest tests/ -v \
+            --benchmark-only \
+            --benchmark-json=benchmark.json \
+            -m "performance" \
+            --ignore=node_modules \
+            --ignore=backups \
+            --ignore=terraform \
+            || true
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        if: always()
+        with:
+          name: Python Benchmark
+          tool: 'customJson'
+          output-file-path: benchmark.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+        continue-on-error: true
+
+  # ============================================================================
+  # STAGE 9: SUMMARY & REPORTING
+  # ============================================================================
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [code-quality, unit-tests-python, integration-tests-db, frontend-tests, e2e-tests, security-scan, docker-build]
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate summary report
+        run: |
+          echo "## Advanced CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Pipeline Status" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Code Quality | ${{ needs.code-quality.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests (Python) | ${{ needs.unit-tests-python.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests (DB) | ${{ needs.integration-tests-db.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Tests | ${{ needs.frontend-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| E2E Tests | ${{ needs.e2e-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Scan | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Build | ${{ needs.docker-build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Coverage & Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "- **Python Versions Tested**: 3.10, 3.11, 3.12" >> $GITHUB_STEP_SUMMARY
+          echo "- **PostgreSQL Versions Tested**: 12, 13, 14, 15" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Parallelization**: Enabled (pytest-xdist)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Docker Image**: Optimized multi-stage build with layer caching" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Determine final status
+        run: |
+          if [ "${{ needs.code-quality.result }}" == "failure" ] || \
+             [ "${{ needs.unit-tests-python.result }}" == "failure" ] || \
+             [ "${{ needs.security-scan.result }}" == "failure" ] || \
+             [ "${{ needs.docker-build.result }}" == "failure" ]; then
+            echo "::error::One or more critical CI checks failed"
+            exit 1
+          fi
+          echo "Advanced CI pipeline completed successfully!"

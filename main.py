@@ -85,6 +85,7 @@ from routes import (
     leave_requests_router,
     yukyu_router,
     compliance_router,
+    compliance_advanced_router,
     fiscal_router,
     analytics_router,
     reports_router,
@@ -95,6 +96,12 @@ from routes import (
     health_router,
     github_router,
 )
+
+# Import v1 router
+from routes.v1 import router_v1
+
+# Import middleware for API versioning
+from middleware.deprecation import DeprecationHeaderMiddleware, VersionHeaderMiddleware
 
 # ============================================
 # ASYNC EXECUTOR FOR EXCEL PARSING
@@ -530,7 +537,8 @@ app.add_middleware(
     RateLimitMiddleware,
     max_requests=settings.rate_limit_requests,
     window_seconds=settings.rate_limit_window_seconds,
-    exclude_paths=["/health", "/docs", "/redoc", "/openapi.json", "/", "/api/auth/login", "/static"]
+    # ✅ FIX 2: /api/auth/login is now rate limited (5/min in RATE_LIMITS config)
+    exclude_paths=["/health", "/docs", "/redoc", "/openapi.json", "/", "/static"]
 )
 
 # Add CSRF protection middleware
@@ -552,6 +560,12 @@ app.add_middleware(
 # Add GZIP compression middleware for performance
 # Compresses responses > 500 bytes for faster transfer
 app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# Add API versioning middlewares
+# VersionHeaderMiddleware: Adds API-Version headers to all responses
+# DeprecationHeaderMiddleware: Adds deprecation warnings to v0 endpoints
+app.add_middleware(VersionHeaderMiddleware)
+app.add_middleware(DeprecationHeaderMiddleware)
 
 # ============================================
 # GLOBAL EXCEPTION HANDLERS
@@ -717,6 +731,7 @@ app.include_router(staff_router)
 app.include_router(leave_requests_router)
 app.include_router(yukyu_router)
 app.include_router(compliance_router)
+app.include_router(compliance_advanced_router)
 app.include_router(fiscal_router)
 app.include_router(analytics_router)
 app.include_router(reports_router)
@@ -726,6 +741,9 @@ app.include_router(notifications_router)
 app.include_router(system_router)
 app.include_router(health_router)
 app.include_router(github_router)
+
+# Include v1 API router (all endpoints available at /api/v1/*)
+app.include_router(router_v1)
 
 
 @app.get("/", response_class=HTMLResponse)

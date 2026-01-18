@@ -1,0 +1,193 @@
+# AlertManager Configuration - YuKyuDATA Multi-Region
+# FASE 3: DevOps Maturity - Alert Routing & Notifications
+
+global:
+  resolve_timeout: 5m
+  slack_api_url: '${SLACK_WEBHOOK_URL}'
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+  opsgenie_api_key: '${OPSGENIE_API_KEY}'
+
+# Inhibition rules prevent alerts from being sent
+inhibit_rules:
+  # If primary is down, inhibit secondary alerts
+  - source_match:
+      alertname: 'InstanceDown'
+      instance: 'db-primary'
+    target_match:
+      alertname: 'HighReplicationLag'
+    equal: ['severity']
+
+  # Inhibit warning if critical already exists
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'service']
+
+# Templates for custom alert messages
+templates:
+  - '/etc/alertmanager/notification_templates.tmpl'
+
+# Main routing tree
+route:
+  # Root receiver
+  receiver: 'default'
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+
+  # Route for critical production alerts
+  routes:
+    - match:
+        severity: critical
+      receiver: 'critical'
+      group_wait: 0s
+      group_interval: 30s
+      repeat_interval: 4h
+      continue: true
+
+    # Database-specific routing
+    - match:
+        service: database
+      receiver: 'database-team'
+      group_wait: 5s
+      group_interval: 10s
+
+    # Application-specific routing
+    - match:
+        service: application
+      receiver: 'app-team'
+      group_wait: 10s
+
+    # Infrastructure alerts
+    - match:
+        service: infrastructure
+      receiver: 'ops-team'
+      group_wait: 10s
+
+    # Compliance alerts
+    - match:
+        service: compliance
+      receiver: 'compliance'
+      group_wait: 0s  # Immediate for compliance
+
+    # Failover/Availability alerts
+    - match:
+        service: availability
+      receiver: 'critical'
+      group_wait: 0s  # Immediate
+      repeat_interval: 2h
+
+    # SLO violations
+    - match:
+        slo: 'true'
+      receiver: 'sre-team'
+
+################################################################################
+# RECEIVERS
+################################################################################
+
+receivers:
+  # Default receiver
+  - name: 'default'
+    slack_configs:
+      - channel: '#alerts'
+        title: 'Alert: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        send_resolved: true
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+        actions:
+          - type: button
+            text: 'View Runbook'
+            url: '{{ .Annotations.runbook_url }}'
+
+  # Critical alerts - phone + Slack
+  - name: 'critical'
+    slack_configs:
+      - channel: '#critical-alerts'
+        title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}\n{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+        color: 'danger'
+        mention_channel: true
+        mention_users:
+          - '@oncall-sre'
+
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+        description: '{{ .GroupLabels.alertname }}: {{ .Alerts.Firing | len }} firing'
+        client: 'Prometheus'
+        details:
+          firing: '{{ template "pagerduty.default.instances" .Alerts.Firing }}'
+        severity: 'critical'
+
+    opsgenie_configs:
+      - api_key: '${OPSGENIE_API_KEY}'
+        actions: 'create'
+        priority: 'P1'
+        tags:
+          - 'yukyu'
+          - 'critical'
+        details:
+          firing: '{{ template "opsgenie.default.instances" .Alerts.Firing }}'
+
+  # Database team
+  - name: 'database-team'
+    slack_configs:
+      - channel: '#database-team'
+        title: '[DB] {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}\nDetails: {{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+        color: '{{ if eq .Status "firing" }}warning{{ else }}good{{ end }}'
+
+    email_configs:
+      - to: 'database-team@example.com'
+        headers:
+          Subject: '[ALERT] {{ .GroupLabels.alertname }}'
+        smarthost: 'smtp.gmail.com:587'
+        auth_username: 'alerts@example.com'
+        auth_password: '${SMTP_PASSWORD}'
+        from: 'alerts@example.com'
+
+  # Application team
+  - name: 'app-team'
+    slack_configs:
+      - channel: '#app-team'
+        title: '[APP] {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        send_resolved: true
+
+  # Ops team
+  - name: 'ops-team'
+    slack_configs:
+      - channel: '#infrastructure'
+        title: '[OPS] {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        send_resolved: true
+
+  # Compliance alerts
+  - name: 'compliance'
+    slack_configs:
+      - channel: '#compliance'
+        title: '⚠️ COMPLIANCE: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}\n{{ .Annotations.description }}{{ end }}'
+        mention_channel: true
+    email_configs:
+      - to: 'compliance-officer@example.com'
+        smarthost: 'smtp.gmail.com:587'
+        auth_username: 'alerts@example.com'
+        auth_password: '${SMTP_PASSWORD}'
+        from: 'alerts@example.com'
+
+  # SRE team
+  - name: 'sre-team'
+    slack_configs:
+      - channel: '#sre'
+        title: '[SLO] {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        send_resolved: true
+
+################################################################################
+# NOTIFICATION TEMPLATES
+################################################################################

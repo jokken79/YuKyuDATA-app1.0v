@@ -1,0 +1,133 @@
+{
+  "audit_log": {
+    "count": 0,
+    "samples": []
+  },
+  "carryover_audit": {
+    "count": 0,
+    "samples": []
+  },
+  "compliance_audit_trail": {
+    "count": 0,
+    "samples": []
+  },
+  "employees": {
+    "count": 2,
+    "samples": [
+      {
+        "id": "TEST001_2025",
+        "employee_num": "TEST001",
+        "name": "Test User",
+        "haken": null,
+        "granted": 10.0,
+        "used": 0.0,
+        "balance": 10.0,
+        "expired": null,
+        "usage_rate": null,
+        "year": 2025,
+        "last_updated": "2026-01-17T15:46:04.116533",
+        "grant_year": null
+      },
+      {
+        "id": "TEST002_2025",
+        "employee_num": "TEST002",
+        "name": "Test User 2",
+        "haken": null,
+        "granted": 10.0,
+        "used": 2.0,
+        "balance": 8.0,
+        "expired": null,
+        "usage_rate": null,
+        "year": 2025,
+        "last_updated": "2026-01-17T15:46:04.171699",
+        "grant_year": null
+      }
+    ]
+  },
+  "fiscal_year_audit_log": {
+    "count": 2,
+    "samples": [
+      {
+        "id": 1,
+        "action": "DESIGNATE_5DAYS",
+        "employee_num": "TEST001",
+        "year": 2025,
+        "days_affected": 5.0,
+        "balance_before": 10.0,
+        "balance_after": 10.0,
+        "performed_by": "admin",
+        "reason": "Legal 5-day requirement - official designation",
+        "timestamp": "2026-01-17T15:46:04.129356"
+      },
+      {
+        "id": 2,
+        "action": "DEDUCTION",
+        "employee_num": "TEST002",
+        "year": 2025,
+        "days_affected": 2.0,
+        "balance_before": 10.0,
+        "balance_after": 8.0,
+        "performed_by": "admin",
+        "reason": "Test deduction",
+        "timestamp": "2026-01-17T15:46:04.171699"
+      }
+    ]
+  },
+  "genzai": {
+    "count": 0,
+    "samples": []
+  },
+  "leave_requests": {
+    "count": 0,
+    "samples": []
+  },
+  "notification_reads": {
+    "count": 0,
+    "samples": []
+  },
+  "official_leave_designation": {
+    "count": 1,
+    "samples": [
+      {
+        "id": 1,
+        "employee_num": "TEST001",
+        "year": 2025,
+        "designated_date": "2026-01-17T15:46:04.129356",
+        "days": 5.0,
+        "reason": "Legal 5-day requirement (\u5e745\u65e5\u306e\u53d6\u5f97\u7fa9\u52d9)",
+        "designated_by": "admin",
+        "designated_at": "2026-01-17T15:46:04.129356",
+        "status": "CONFIRMED"
+      }
+    ]
+  },
+  "refresh_tokens": {
+    "count": 0,
+    "samples": []
+  },
+  "sqlite_sequence": {
+    "count": 2,
+    "samples": [
+      {
+        "name": "official_leave_designation",
+        "seq": 1
+      },
+      {
+        "name": "fiscal_year_audit_log",
+        "seq": 2
+      }
+    ]
+  },
+  "staff": {
+    "count": 0,
+    "samples": []
+  },
+  "ukeoi": {
+    "count": 0,
+    "samples": []
+  },
+  "yukyu_usage_details": {
+    "count": 0,
+    "samples": []
+  }
+}

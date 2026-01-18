@@ -28,10 +28,8 @@ class SecuritySettings(BaseSettings):
     # ============================================
     # JWT & AUTHENTICATION
     # ============================================
-    jwt_secret_key: str = os.getenv(
-        "JWT_SECRET_KEY",
-        "change-me-in-production"
-    )
+    # Note: jwt_secret_key is validated in __init__
+    jwt_secret_key: str = ""
 
     jwt_algorithm: str = "HS256"
     jwt_expiration_minutes: int = 15  # Access token: 15 minutos (v5.17)
@@ -76,6 +74,36 @@ class SecuritySettings(BaseSettings):
     # Parse from env if provided
     def __init__(self, **data):
         super().__init__(**data)
+
+        # ✅ FIX 1: Validate JWT Secret is strong
+        secret = os.getenv("JWT_SECRET_KEY")
+        if not secret:
+            if self.debug:
+                # Development mode - generate random but warn
+                import secrets
+                generated = "dev-secret-" + secrets.token_hex(16)
+                print(
+                    "⚠️  WARNING: Generated development JWT secret - "
+                    "DO NOT USE IN PRODUCTION"
+                )
+                self.jwt_secret_key = generated
+            else:
+                # Production mode - FAIL HARD
+                raise RuntimeError(
+                    "JWT_SECRET_KEY environment variable is required in production. "
+                    "Generate one with: python -c \"import secrets; "
+                    "print(secrets.token_urlsafe(32))\""
+                )
+        elif len(secret) < 32:
+            raise ValueError(
+                f"JWT_SECRET_KEY must be at least 32 characters (got {len(secret)}). "
+                "Generate with: python -c \"import secrets; "
+                "print(secrets.token_urlsafe(32))\""
+            )
+        else:
+            self.jwt_secret_key = secret
+
+        # Parse CORS origins from env if provided
         if os.getenv("CORS_ORIGINS"):
             self.cors_origins = os.getenv("CORS_ORIGINS").split(",")
 

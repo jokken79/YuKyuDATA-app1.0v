@@ -94,7 +94,10 @@ from .crypto_utils import (
 from .search_service import SearchService
 
 # Asset Service
-from .asset_service import AssetService
+try:
+    from .asset_service import AssetService
+except ImportError:
+    AssetService = None  # AssetService not available
 
 __all__ = [
     # Auth

@@ -1,0 +1,344 @@
+def init_db():
+    with get_db() as conn:
+        c = conn.cursor()
+
+        # Create Employees table (vacation data)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS employees (
+                id TEXT PRIMARY KEY,
+                employee_num TEXT,
+                name TEXT,
+                haken TEXT,
+                granted REAL,
+                used REAL,
+                balance REAL,
+                expired REAL,
+                usage_rate REAL,
+                year INTEGER,
+                last_updated TEXT
+            )
+        ''')
+
+        # Create Yukyu Usage Details table (individual usage dates - like v2.0)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS yukyu_usage_details (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_num TEXT,
+                name TEXT,
+                use_date TEXT,
+                year INTEGER,
+                month INTEGER,
+                days_used REAL DEFAULT 1.0,
+                last_updated TEXT,
+                UNIQUE(employee_num, use_date)
+            )
+        ''')
+
+        # Create index for fast lookups
+        c.execute('''
+            CREATE INDEX IF NOT EXISTS idx_usage_employee_year
+            ON yukyu_usage_details(employee_num, year)
+        ''')
+
+        # Create Genzai table (current dispatch employees - DBGenzaiX)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS genzai (
+                id TEXT PRIMARY KEY,
+                status TEXT,
+                employee_num TEXT,
+                dispatch_id TEXT,
+                dispatch_name TEXT,
+                department TEXT,
+                line TEXT,
+                job_content TEXT,
+                name TEXT,
+                kana TEXT,
+                gender TEXT,
+                nationality TEXT,
+                birth_date TEXT,
+                age INTEGER,
+                hourly_wage INTEGER,
+                wage_revision TEXT,
+                last_updated TEXT
+            )
+        ''')
+
+        # Create Ukeoi table (contract employees - DBUkeoiX)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS ukeoi (
+                id TEXT PRIMARY KEY,
+                status TEXT,
+                employee_num TEXT,
+                contract_business TEXT,
+                name TEXT,
+                kana TEXT,
+                gender TEXT,
+                nationality TEXT,
+                birth_date TEXT,
+                age INTEGER,
+                hourly_wage INTEGER,
+                wage_revision TEXT,
+                last_updated TEXT
+            )
+        ''')
+
+        # Create Leave Requests table (yukyu solicitudes)
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS leave_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_num TEXT NOT NULL,
+                employee_name TEXT NOT NULL,
+                start_date TEXT NOT NULL,
+                end_date TEXT NOT NULL,
+                days_requested REAL NOT NULL,
+                hours_requested REAL DEFAULT 0,
+                leave_type TEXT DEFAULT 'full',
+                reason TEXT,
+                status TEXT DEFAULT 'PENDING',
+                requested_at TEXT NOT NULL,
+                approved_by TEXT,
+                approved_at TEXT,
+                year INTEGER NOT NULL,
+                hourly_wage INTEGER DEFAULT 0,
+                cost_estimate REAL DEFAULT 0,
+                created_at TEXT NOT NULL
+            )
+        ''')
+
+        # ============================================
+        # STRATEGIC INDEXES FOR PERFORMANCE
+        # ============================================
+
+        # Indexes for employees table
+        c.execute('CREATE INDEX IF NOT EXISTS idx_emp_num ON employees(employee_num)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_emp_year ON employees(year)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_emp_num_year ON employees(employee_num, year)')
+
+        # Indexes for leave_requests table
+        c.execute('CREATE INDEX IF NOT EXISTS idx_lr_emp_num ON leave_requests(employee_num)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_lr_status ON leave_requests(status)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_lr_year ON leave_requests(year)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_lr_dates ON leave_requests(start_date, end_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_lr_employee_date ON leave_requests(employee_num, start_date)')
+
+        # Indexes for genzai/ukeoi tables (basic - columns always exist)
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_emp ON genzai(employee_num)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_status ON genzai(status)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_emp ON ukeoi(employee_num)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_status ON ukeoi(status)')
+
+        # ============================================
+        # SCHEMA MIGRATIONS (add columns if not exist)
+        # ============================================
+
+        # Add hire_date to genzai if not exists
+        try:
+            c.execute("ALTER TABLE genzai ADD COLUMN hire_date TEXT")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
+        # Add leave_date to genzai if not exists
+        try:
+            c.execute("ALTER TABLE genzai ADD COLUMN leave_date TEXT")
+        except sqlite3.OperationalError:
+            pass
+
+        # Add hire_date to ukeoi if not exists
+        try:
+            c.execute("ALTER TABLE ukeoi ADD COLUMN hire_date TEXT")
+        except sqlite3.OperationalError:
+            pass
+
+        # Add leave_date to ukeoi if not exists
+        try:
+            c.execute("ALTER TABLE ukeoi ADD COLUMN leave_date TEXT")
+        except sqlite3.OperationalError:
+            pass
+
+        # Create indexes on hire_date/leave_date (after columns are added)
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_hire_date ON genzai(hire_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_leave_date ON genzai(leave_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_hire_leave ON genzai(hire_date, leave_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_genzai_status_hire ON genzai(status, hire_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_hire_date ON ukeoi(hire_date)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_ukeoi_leave_date ON ukeoi(leave_date)')
+
+        # Create Staff table if not exists
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS staff (
+                id TEXT PRIMARY KEY,
+                status TEXT,
+                employee_num TEXT,
+                office TEXT,
+                name TEXT,
+                kana TEXT,
+                gender TEXT,
+                nationality TEXT,
+                birth_date TEXT,
+                age INTEGER,
+                visa_expiry TEXT,
+                visa_type TEXT,
+                spouse TEXT,
+                postal_code TEXT,
+                address TEXT,
+                building TEXT,
+                hire_date TEXT,
+                leave_date TEXT,
+                last_updated TEXT
+            )
+        ''')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_staff_emp ON staff(employee_num)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_staff_status ON staff(status)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_staff_visa_expiry ON staff(visa_expiry)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_staff_visa_type ON staff(visa_type)')
+
+        # Add grant_year to employees for LIFO tracking
+        try:
+            c.execute("ALTER TABLE employees ADD COLUMN grant_year INTEGER")
+        except sqlite3.OperationalError:
+            pass
+
+        # ============================================
+        # AUDIT LOG TABLE (v2.3 - Complete Audit Trail)
+        # ============================================
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                user_id TEXT,
+                action TEXT NOT NULL,
+                entity_type TEXT NOT NULL,
+                entity_id TEXT,
+                old_value TEXT,
+                new_value TEXT,
+                ip_address TEXT,
+                user_agent TEXT,
+                additional_info TEXT
+            )
+        ''')
+
+        # Indexes for fast audit log queries
+        c.execute('CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity_type, entity_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action)')
+
+        # ============================================
+        # NOTIFICATION READS TABLE (v2.6 - Track Read Status)
+        # ============================================
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS notification_reads (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                notification_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                read_at TEXT NOT NULL,
+                UNIQUE(notification_id, user_id)
+            )
+        ''')
+
+        # Index for fast lookup
+        c.execute('CREATE INDEX IF NOT EXISTS idx_notif_reads_user ON notification_reads(user_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_notif_reads_notif ON notification_reads(notification_id)')
+
+        # ============================================
+        # REFRESH TOKENS TABLE (v5.17 - Secure Token Storage)
+        # ============================================
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS refresh_tokens (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                token_hash TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                revoked INTEGER DEFAULT 0,
+                revoked_at TEXT,
+                user_agent TEXT,
+                ip_address TEXT
+            )
+        ''')
+
+        # Indices para refresh_tokens
+        c.execute('CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_refresh_tokens_hash ON refresh_tokens(token_hash)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires ON refresh_tokens(expires_at)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_refresh_tokens_revoked ON refresh_tokens(revoked)')
+
+        # ============================================
+        # FISCAL YEAR COMPLIANCE AUDIT (v5.20 - Legal Compliance)
+        # ============================================
+
+        # Fiscal Year Audit Log - Registro de todas las operaciones fiscales
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS fiscal_year_audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                action TEXT NOT NULL,
+                employee_num TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                days_affected REAL,
+                balance_before REAL,
+                balance_after REAL,
+                performed_by TEXT,
+                reason TEXT,
+                timestamp TEXT NOT NULL,
+                UNIQUE(employee_num, year, action, timestamp)
+            )
+        ''')
+
+        # Indexes for fiscal_year_audit_log
+        c.execute('CREATE INDEX IF NOT EXISTS idx_fiscal_audit_emp_year ON fiscal_year_audit_log(employee_num, year)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_fiscal_audit_action ON fiscal_year_audit_log(action)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_fiscal_audit_timestamp ON fiscal_year_audit_log(timestamp)')
+
+        # Official Leave Designation - 企業による5日の指定
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS official_leave_designation (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_num TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                designated_date TEXT NOT NULL,
+                days REAL DEFAULT 1.0,
+                reason TEXT,
+                designated_by TEXT,
+                designated_at TEXT NOT NULL,
+                status TEXT DEFAULT 'PENDING',
+                UNIQUE(employee_num, year, designated_date)
+            )
+        ''')
+
+        # Indexes for official_leave_designation
+        c.execute('CREATE INDEX IF NOT EXISTS idx_official_leave_emp_year ON official_leave_designation(employee_num, year)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_official_leave_status ON official_leave_designation(status)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_official_leave_date ON official_leave_designation(designated_date)')
+
+        # Carry-Over Audit - Registro de traspasos de año
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS carryover_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                from_year INTEGER NOT NULL,
+                to_year INTEGER NOT NULL,
+                employee_num TEXT NOT NULL,
+                days_carried_over REAL,
+                days_expired REAL,
+                days_capped REAL,
+                executed_at TEXT NOT NULL,
+                executed_by TEXT,
+                executed_reason TEXT,
+                UNIQUE(from_year, to_year, employee_num)
+            )
+        ''')
+
+        # Indexes for carryover_audit
+        c.execute('CREATE INDEX IF NOT EXISTS idx_carryover_years ON carryover_audit(from_year, to_year)')
+        c.execute('CREATE INDEX IF NOT EXISTS idx_carryover_emp ON carryover_audit(employee_num)')
+
+        conn.commit()
+
+
+# ============================================
+# BALANCE LIMIT VALIDATION (Japanese Labor Law)
+# Maximum accumulated days: 40 (2 years carry-over max)
+# ============================================
+
+MAX_ACCUMULATED_DAYS = 40
+
+

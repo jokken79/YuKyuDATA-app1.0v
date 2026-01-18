@@ -1,0 +1,30 @@
+{
+  "extends": "stylelint-config-standard",
+  "rules": {
+    "indentation": 2,
+    "max-line-length": 100,
+    "declaration-colon-space-after": "always",
+    "selector-pseudo-class-no-unknown": [
+      true,
+      {
+        "ignorePseudoClasses": ["global"]
+      }
+    ],
+    "no-unknown-animations": true,
+    "font-family-no-missing-generic-family-keyword": true,
+    "unit-allowed-list": [
+      "px",
+      "em",
+      "rem",
+      "ms",
+      "s",
+      "%",
+      "deg",
+      "vh",
+      "vw",
+      "vmin",
+      "vmax",
+      "ch"
+    ]
+  }
+}

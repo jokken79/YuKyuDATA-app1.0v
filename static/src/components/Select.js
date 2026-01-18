@@ -967,8 +967,31 @@ export class Select {
    * Destroy component
    */
   destroy() {
+    // ✅ AGREGAR: Remover listeners de document
     document.removeEventListener('click', this._handleDocumentClick);
-    this.wrapper.remove();
+
+    // ✅ AGREGAR: Remover listeners del trigger
+    if (this.trigger) {
+      this.trigger.removeEventListener('keydown', this._handleKeyDown);
+    }
+
+    // ✅ AGREGAR: Remover elementos del DOM
+    if (this.dropdown) {
+      this.dropdown.remove();
+      this.dropdown = null;
+    }
+
+    if (this.wrapper) {
+      this.wrapper.remove();
+      this.wrapper = null;
+    }
+
+    // Limpiar referencias
+    this.filteredOptions = [];
+    this.selectedOptions = new Set();
+    this.searchInput = null;
+    this.trigger = null;
+    this.hiddenInput = null;
   }
 }
 

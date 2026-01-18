@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Integration Test - FASE 4.2</title>
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: #f8fafc;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1, h2 {
+            color: #1e293b;
+        }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 1px solid #e2e8f0;
+        }
+        .test-result {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 4px;
+            background: #f1f5f9;
+        }
+        .test-result.success {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+        }
+        .test-result.error {
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+        }
+        .test-result.warning {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .status-badge.success {
+            background: #10b981;
+            color: white;
+        }
+        .status-badge.error {
+            background: #ef4444;
+            color: white;
+        }
+        .status-badge.warning {
+            background: #f59e0b;
+            color: white;
+        }
+        .status-badge.pending {
+            background: #6b7280;
+            color: white;
+        }
+        code {
+            background: #f1f5f9;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        .instructions {
+            background: #e0f2fe;
+            border: 1px solid #0284c7;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>FASE 4.2 - Modern Component Integration Test</h1>
+
+        <div class="instructions">
+            <strong>Instrucciones:</strong>
+            <ol>
+                <li>Abre la consola del navegador (F12 → Console)</li>
+                <li>Ejecuta: <code>debugModernIntegration()</code></li>
+                <li>Verifica que todos los componentes estén disponibles</li>
+                <li>Prueba cada componente según las instrucciones abajo</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h2>1. Integration Status</h2>
+            <div id="integration-status">
+                <div class="test-result warning">
+                    <span class="status-badge pending">CHECKING</span>
+                    <span>Verificando estado de integración...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Component Availability</h2>
+            <div id="component-status">
+                <p>Esperando carga de componentes...</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Legacy App Methods Override</h2>
+            <div id="methods-status">
+                <p>Esperando verificación de métodos...</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Test Notifications</h2>
+            <button onclick="testNotification('success')">Test Success</button>
+            <button onclick="testNotification('error')">Test Error</button>
+            <button onclick="testNotification('warning')">Test Warning</button>
+            <button onclick="testNotification('info')">Test Info</button>
+            <div id="notification-results" style="margin-top: 1rem;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>5. Test Modal</h2>
+            <button onclick="testModal()">Open Modern Modal</button>
+            <div id="modal-results" style="margin-top: 1rem;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>6. Test Confirm Dialog</h2>
+            <button onclick="testConfirm()">Test Confirm</button>
+            <div id="confirm-results" style="margin-top: 1rem;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>7. Commands Reference</h2>
+            <pre>
+// Check integration status
+debugModernIntegration()
+
+// Manually test notifications
+App.ui.showNotification('Test message', 'success')
+App.ui.showToast('warning', 'Warning message')
+
+// Test modal
+App.showModal({
+    title: 'Test Modal',
+    content: 'This is a test modal',
+    buttons: [
+        { text: 'Close', variant: 'secondary', action: 'close' },
+        { text: 'Confirm', variant: 'primary', action: 'confirm' }
+    ]
+})
+
+// Test confirm
+App.confirm({
+    message: 'Are you sure?',
+    title: 'Confirmation',
+    type: 'warning'
+}).then(result => console.log('Confirmed:', result))
+            </pre>
+        </div>
+
+        <div class="test-section">
+            <h2>8. Expected Results</h2>
+            <ul>
+                <li>✓ All components loaded without errors</li>
+                <li>✓ App.ui.showNotification works with modern Alert</li>
+                <li>✓ App.showModal works with modern Modal</li>
+                <li>✓ App.confirm shows modern confirm dialog</li>
+                <li>✓ No console errors</li>
+                <li>✓ Backward compatibility maintained</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Auto-check status every 2 seconds until integration is ready
+        let checkCount = 0;
+        const checkIntegration = setInterval(() => {
+            checkCount++;
+            updateStatus();
+
+            if (window.ModernIntegration?.ready || checkCount > 10) {
+                clearInterval(checkIntegration);
+            }
+        }, 500);
+
+        function updateStatus() {
+            const integrationStatus = document.getElementById('integration-status');
+            const componentStatus = document.getElementById('component-status');
+            const methodsStatus = document.getElementById('methods-status');
+
+            // Check integration
+            if (window.ModernIntegration?.ready) {
+                integrationStatus.innerHTML = `
+                    <div class="test-result success">
+                        <span class="status-badge success">READY</span>
+                        <span>Modern component integration is active</span>
+                    </div>
+                `;
+            } else if (window.ModernIntegration) {
+                integrationStatus.innerHTML = `
+                    <div class="test-result warning">
+                        <span class="status-badge pending">LOADING</span>
+                        <span>Modern components are being loaded...</span>
+                    </div>
+                `;
+            } else {
+                integrationStatus.innerHTML = `
+                    <div class="test-result warning">
+                        <span class="status-badge pending">WAITING</span>
+                        <span>Waiting for integration to initialize...</span>
+                    </div>
+                `;
+            }
+
+            // Check components
+            if (window.ModernIntegration?.ready) {
+                const components = window.ModernIntegration;
+                componentStatus.innerHTML = `
+                    <div class="test-result ${components.Alert ? 'success' : 'error'}">
+                        <span class="status-badge ${components.Alert ? 'success' : 'error'}">
+                            ${components.Alert ? '✓' : '✗'}
+                        </span>
+                        <span>Alert Component: ${components.Alert ? 'Available' : 'Not loaded'}</span>
+                    </div>
+                    <div class="test-result ${components.Modal ? 'success' : 'error'}">
+                        <span class="status-badge ${components.Modal ? 'success' : 'error'}">
+                            ${components.Modal ? '✓' : '✗'}
+                        </span>
+                        <span>Modal Component: ${components.Modal ? 'Available' : 'Not loaded'}</span>
+                    </div>
+                    <div class="test-result ${components.Form ? 'success' : 'error'}">
+                        <span class="status-badge ${components.Form ? 'success' : 'error'}">
+                            ${components.Form ? '✓' : '✗'}
+                        </span>
+                        <span>Form Component: ${components.Form ? 'Available' : 'Not loaded'}</span>
+                    </div>
+                    <div class="test-result ${components.Table ? 'success' : 'error'}">
+                        <span class="status-badge ${components.Table ? 'success' : 'error'}">
+                            ${components.Table ? '✓' : '✗'}
+                        </span>
+                        <span>Table Component: ${components.Table ? 'Available' : 'Not loaded'}</span>
+                    </div>
+                `;
+            } else {
+                componentStatus.innerHTML = `
+                    <div class="test-result warning">
+                        <span class="status-badge pending">CHECKING</span>
+                        <span>Waiting for components to load...</span>
+                    </div>
+                `;
+            }
+
+            // Check methods
+            if (window.App) {
+                methodsStatus.innerHTML = `
+                    <div class="test-result ${typeof App.ui?.showNotification === 'function' ? 'success' : 'error'}">
+                        <span class="status-badge ${typeof App.ui?.showNotification === 'function' ? 'success' : 'error'}">
+                            ${typeof App.ui?.showNotification === 'function' ? '✓' : '✗'}
+                        </span>
+                        <span>App.ui.showNotification: ${typeof App.ui?.showNotification}</span>
+                    </div>
+                    <div class="test-result ${typeof App.showModal === 'function' ? 'success' : 'error'}">
+                        <span class="status-badge ${typeof App.showModal === 'function' ? 'success' : 'error'}">
+                            ${typeof App.showModal === 'function' ? '✓' : '✗'}
+                        </span>
+                        <span>App.showModal: ${typeof App.showModal}</span>
+                    </div>
+                    <div class="test-result ${typeof App.confirm === 'function' ? 'success' : 'error'}">
+                        <span class="status-badge ${typeof App.confirm === 'function' ? 'success' : 'error'}">
+                            ${typeof App.confirm === 'function' ? '✓' : '✗'}
+                        </span>
+                        <span>App.confirm: ${typeof App.confirm}</span>
+                    </div>
+                `;
+            } else {
+                methodsStatus.innerHTML = `
+                    <div class="test-result warning">
+                        <span class="status-badge pending">WAITING</span>
+                        <span>Waiting for App to load...</span>
+                    </div>
+                `;
+            }
+        }
+
+        function testNotification(type) {
+            const results = document.getElementById('notification-results');
+            try {
+                App.ui.showNotification(`Test ${type} notification`, type, 3000);
+                results.innerHTML += `
+                    <div class="test-result success">
+                        <span class="status-badge success">✓</span>
+                        <span>Showed <strong>${type}</strong> notification</span>
+                    </div>
+                `;
+            } catch (error) {
+                results.innerHTML += `
+                    <div class="test-result error">
+                        <span class="status-badge error">✗</span>
+                        <span>Error: ${error.message}</span>
+                    </div>
+                `;
+            }
+        }
+
+        function testModal() {
+            const results = document.getElementById('modal-results');
+            try {
+                const modal = App.showModal({
+                    title: 'Test Modal',
+                    content: 'This is a test modal from modern components',
+                    buttons: [
+                        { text: 'Cancel', variant: 'secondary', action: 'close' },
+                        { text: 'OK', variant: 'primary', action: 'confirm' }
+                    ],
+                    onConfirm: () => {
+                        results.innerHTML += `
+                            <div class="test-result success">
+                                <span class="status-badge success">✓</span>
+                                <span>Modal confirmed</span>
+                            </div>
+                        `;
+                    }
+                });
+                results.innerHTML += `
+                    <div class="test-result success">
+                        <span class="status-badge success">✓</span>
+                        <span>Modern modal opened</span>
+                    </div>
+                `;
+            } catch (error) {
+                results.innerHTML += `
+                    <div class="test-result error">
+                        <span class="status-badge error">✗</span>
+                        <span>Error: ${error.message}</span>
+                    </div>
+                `;
+            }
+        }
+
+        function testConfirm() {
+            const results = document.getElementById('confirm-results');
+            try {
+                App.confirm({
+                    message: 'Do you want to proceed?',
+                    title: 'Confirmation',
+                    type: 'warning'
+                }).then(result => {
+                    results.innerHTML += `
+                        <div class="test-result success">
+                            <span class="status-badge success">✓</span>
+                            <span>Confirm dialog responded: <strong>${result ? 'Confirmed' : 'Cancelled'}</strong></span>
+                        </div>
+                    `;
+                });
+                results.innerHTML += `
+                    <div class="test-result success">
+                        <span class="status-badge success">✓</span>
+                        <span>Confirm dialog opened</span>
+                    </div>
+                `;
+            } catch (error) {
+                results.innerHTML += `
+                    <div class="test-result error">
+                        <span class="status-badge error">✗</span>
+                        <span>Error: ${error.message}</span>
+                    </div>
+                `;
+            }
+        }
+
+        // Initial update
+        updateStatus();
+    </script>
+</body>
+</html>

@@ -26,65 +26,49 @@ router = APIRouter(prefix="/api", tags=["Leave Requests"])
 # LEAVE REQUEST ENDPOINTS
 # ============================================
 
+# ✅ FIX 3: Added Pydantic validation for leave requests
 @router.post("/leave-requests")
 async def create_leave_request(
     request: Request,
-    request_data: dict,
+    request_data: LeaveRequestCreate,  # ✅ Pydantic model instead of dict
     user: CurrentUser = Depends(get_current_user)
 ):
     """
     Create a new leave request with support for hourly leave (時間単位有給).
     Crea una nueva solicitud de vacaciones con soporte para tiempo parcial.
+
+    Validation is performed automatically by Pydantic model.
     """
     try:
-        # Validate required fields
-        required = ['employee_num', 'employee_name', 'start_date', 'end_date', 'days_requested']
-        for field in required:
-            if field not in request_data:
-                raise HTTPException(status_code=400, detail="Missing required field")
-
         current_year = datetime.now().year
 
         # Validate employee has sufficient balance
-        history = database.get_employee_yukyu_history(request_data['employee_num'], current_year)
+        history = database.get_employee_yukyu_history(request_data.employee_num, current_year)
         total_available = sum(record.get('balance', 0) for record in history)
 
         # Convert hours to days for validation (8 hours = 1 day)
-        hours_requested = request_data.get('hours_requested', 0)
-        total_days_equivalent = request_data['days_requested'] + (hours_requested / 8)
+        total_days_equivalent = request_data.days_requested + (request_data.hours_requested / 8)
 
         if total_days_equivalent > total_available:
             raise HTTPException(
-                status_code=400,
+                status_code=422,  # ✅ FIX: Use 422 for validation errors
                 detail="残日数が不足しています"
             )
 
-        # Get hourly wage from genzai or ukeoi
-        hourly_wage = 0
-        genzai_list = database.get_genzai()
-        for emp in genzai_list:
-            if emp.get('employee_num') == request_data['employee_num']:
-                hourly_wage = emp.get('hourly_wage', 0)
-                break
-
-        if hourly_wage == 0:
-            ukeoi_list = database.get_ukeoi()
-            for emp in ukeoi_list:
-                if emp.get('employee_num') == request_data['employee_num']:
-                    hourly_wage = emp.get('hourly_wage', 0)
-                    break
+        # ✅ FIX 4: Use optimized query instead of N+1
+        hourly_wage = database.get_employee_hourly_wage(request_data.employee_num)
 
         # Create request with new fields
         new_request_id = database.create_leave_request(
-            employee_num=request_data['employee_num'],
-            employee_name=request_data['employee_name'],
-            start_date=request_data['start_date'],
-            end_date=request_data['end_date'],
-            days_requested=request_data['days_requested'],
-            reason=request_data.get('reason', ''),
+            employee_num=request_data.employee_num,
+            employee_name=request_data.employee_name,
+            start_date=request_data.start_date,
+            end_date=request_data.end_date,
+            days_requested=request_data.days_requested,
+            reason=request_data.reason or '',
             year=current_year,
-            hours_requested=hours_requested,
-            leave_type=request_data.get('leave_type', 'full'),
+            hours_requested=request_data.hours_requested,
+            leave_type=request_data.leave_type,
             hourly_wage=hourly_wage
         )
 
@@ -94,7 +78,7 @@ async def create_leave_request(
             action="CREATE",
             entity_type="leave_request",
             entity_id=str(new_request_id),
-            new_value=request_data,
+            new_value=request_data.dict(),
             user=user
         )
 
@@ -102,13 +86,13 @@ async def create_leave_request(
         try:
             from services.notifications import notification_service
             notification_service.notify_leave_request_created({
-                'employee_num': request_data['employee_num'],
-                'employee_name': request_data['employee_name'],
-                'start_date': request_data['start_date'],
-                'end_date': request_data['end_date'],
-                'days_requested': request_data['days_requested'],
-                'leave_type': request_data.get('leave_type', 'full'),
-                'reason': request_data.get('reason', '')
+                'employee_num': request_data.employee_num,
+                'employee_name': request_data.employee_name,
+                'start_date': request_data.start_date,
+                'end_date': request_data.end_date,
+                'days_requested': request_data.days_requested,
+                'leave_type': request_data.leave_type,
+                'reason': request_data.reason or ''
             })
         except Exception as notif_error:
             logger.warning(f"Failed to send leave request notification: {notif_error}")
@@ -118,7 +102,7 @@ async def create_leave_request(
             "message": "申請が作成されました",
             "request_id": new_request_id,
             "hourly_wage": hourly_wage,
-            "cost_estimate": ((request_data['days_requested'] * 8) + hours_requested) * hourly_wage
+            "cost_estimate": ((request_data.days_requested * 8) + request_data.hours_requested) * hourly_wage
         }
     except HTTPException:
         raise

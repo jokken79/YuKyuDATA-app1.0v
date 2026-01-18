@@ -14,18 +14,8 @@ from typing import Optional, Dict
 from fastapi import HTTPException, status
 from pydantic import BaseModel
 
-# Import database functions for refresh tokens
-from database import (
-    init_refresh_tokens_table,
-    store_refresh_token,
-    get_refresh_token_by_hash,
-    revoke_refresh_token as db_revoke_refresh_token,
-    revoke_all_user_refresh_tokens,
-    is_refresh_token_valid,
-    cleanup_expired_refresh_tokens,
-    get_user_active_refresh_tokens,
-    get_refresh_token_stats
-)
+# Database imports are lazy to avoid circular import issues
+# They are imported within __init__ and methods as needed
 
 # Configuracion de seguridad
 SECRET_KEY = secrets.token_urlsafe(32)  # Generar key aleatoria
@@ -55,10 +45,41 @@ class TokenPair(BaseModel):
 class AuthService:
     """Servicio de autenticacion con OAuth2 y refresh tokens persistentes en BD"""
 
+    # Cache para las funciones de database importadas (lazy)
+    _db_functions = None
+
+    def _get_db_functions(self):
+        """Get database functions lazily to avoid circular imports."""
+        if AuthService._db_functions is None:
+            from database import (
+                init_refresh_tokens_table,
+                store_refresh_token,
+                get_refresh_token_by_hash,
+                revoke_refresh_token as db_revoke_refresh_token,
+                revoke_all_user_refresh_tokens,
+                is_refresh_token_valid,
+                cleanup_expired_refresh_tokens,
+                get_user_active_refresh_tokens,
+                get_refresh_token_stats
+            )
+            AuthService._db_functions = {
+                'init_refresh_tokens_table': init_refresh_tokens_table,
+                'store_refresh_token': store_refresh_token,
+                'get_refresh_token_by_hash': get_refresh_token_by_hash,
+                'db_revoke_refresh_token': db_revoke_refresh_token,
+                'revoke_all_user_refresh_tokens': revoke_all_user_refresh_tokens,
+                'is_refresh_token_valid': is_refresh_token_valid,
+                'cleanup_expired_refresh_tokens': cleanup_expired_refresh_tokens,
+                'get_user_active_refresh_tokens': get_user_active_refresh_tokens,
+                'get_refresh_token_stats': get_refresh_token_stats,
+            }
+        return AuthService._db_functions
+
     def __init__(self):
         # Inicializar tabla de refresh tokens en BD
         try:
-            init_refresh_tokens_table()
+            db_funcs = self._get_db_functions()
+            db_funcs['init_refresh_tokens_table']()
         except Exception as e:
             print(f"Warning: Could not initialize refresh_tokens table: {e}")
 
@@ -192,7 +213,8 @@ class AuthService:
 
         # Almacenar hash del token en la base de datos
         token_hash = self._hash_token(refresh_token)
-        store_refresh_token(
+        db_funcs = self._get_db_functions()
+        db_funcs['store_refresh_token'](
             token_id=token_id,
             user_id=username,
             token_hash=token_hash,
