@@ -6,9 +6,31 @@
 
 // Store
 import * as State from './store/state.js';
+import { UnifiedState, getUnifiedState } from './store/unified-state.js';
 
 // Config
 import * as Constants from './config/constants.js';
+
+// Managers (TAREA 3-4)
+import { PageCoordinator } from './managers/PageCoordinator.js';
+import {
+    DashboardManager,
+    EmployeesManager,
+    LeaveRequestsManager,
+    AnalyticsManager,
+    ComplianceManager
+} from './managers/index.js';
+
+// Legacy Bridge (TAREA 4)
+import {
+    initUnifiedStateBridge,
+    switchPageModern,
+    subscribeToState,
+    getPageCoordinator
+} from './legacy-bridge/unified-state-bridge.js';
+
+// Consolidated Utils (TAREA 5)
+import * as Utils from './utils/consolidated.js';
 
 // Pages
 import {
@@ -40,7 +62,26 @@ const YuKyuApp = {
     State,
     Constants,
 
-    // Pages
+    // Modern Managers (TAREA 3)
+    managers: {
+        Dashboard: DashboardManager,
+        Employees: EmployeesManager,
+        LeaveRequests: LeaveRequestsManager,
+        Analytics: AnalyticsManager,
+        Compliance: ComplianceManager,
+        PageCoordinator
+    },
+
+    // State Management (TAREA 4)
+    UnifiedState,
+    getUnifiedState,
+    initUnifiedStateBridge,
+    switchPageModern,
+
+    // Utilities (TAREA 5)
+    Utils,
+
+    // Pages (Legacy)
     pages: {
         Dashboard,
         Employees,
@@ -171,8 +212,27 @@ export function integrateWithLegacyApp(App) {
 
 // Named exports
 export {
+    // State Management
     State,
+    UnifiedState,
+    getUnifiedState,
+    initUnifiedStateBridge,
+
+    // Managers (TAREA 3-4)
+    PageCoordinator,
+    DashboardManager,
+    EmployeesManager,
+    LeaveRequestsManager,
+    AnalyticsManager,
+    ComplianceManager,
+
+    // Config
     Constants,
+
+    // Utils (TAREA 5)
+    Utils,
+
+    // Pages (Legacy)
     Dashboard,
     Employees,
     LeaveRequests,

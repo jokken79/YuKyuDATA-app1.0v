@@ -14,11 +14,11 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 module.exports = {
   mode: isDevelopment ? 'development' : 'production',
   entry: {
-    // Main app bundle
+    // Main app bundle (includes legacy SPA app.js via HTML)
     app: './static/src/index.js',
 
-    // Legacy adapter for backwards compatibility
-    legacy: './static/src/legacy-adapter.js',
+    // Optional: Separate entry for managers if used as standalone
+    // managers: './static/src/managers/index.js',
   },
 
   output: {
@@ -122,31 +122,46 @@ module.exports = {
           compress: {
             drop_console: true,
             drop_debugger: true,
-            pure_funcs: ['console.log'],
+            pure_funcs: ['console.log', 'console.info'],
+            passes: 2,  // Multiple passes for better compression
+            unsafe: true,  // Allow unsafe optimizations
+            unsafe_methods: true,
+          },
+          mangle: {
+            properties: {
+              regex: /^_/,  // Only mangle private properties (starting with _)
+            },
           },
           output: {
             comments: false,
+            beautify: false,
           },
         },
         extractComments: false,
       }),
     ],
-    // Code splitting strategy
+    // Code splitting strategy - Optimized for TAREA 6
     splitChunks: {
       chunks: 'all',
+      minSize: 20000,  // Only split if chunk is 20KB+
+      maxAsyncRequests: 30,
+      maxInitialRequests: 30,
       cacheGroups: {
-        // Vendor libraries
+        // Vendor libraries - highest priority
         vendor: {
           test: /[\\/]node_modules[\\/]/,
           name: 'vendors',
-          priority: 10,
+          priority: 20,
           reuseExistingChunk: true,
+          enforce: true,
         },
-        // Common chunks used by multiple entry points
-        common: {
-          minChunks: 2,
-          priority: 5,
+        // Page managers - split into separate chunk
+        managers: {
+          test: /[\\/]static[\\/]src[\\/]managers[\\/]/,
+          name: 'managers',
+          priority: 16,
           reuseExistingChunk: true,
+          minChunks: 1,
         },
         // Page-specific chunks
         pages: {
@@ -160,6 +175,19 @@ module.exports = {
           test: /[\\/]static[\\/]src[\\/]components[\\/]/,
           name: 'components',
           priority: 14,
+          reuseExistingChunk: true,
+        },
+        // Unified state management
+        state: {
+          test: /[\\/]static[\\/]src[\\/]store[\\/]/,
+          name: 'state',
+          priority: 13,
+          reuseExistingChunk: true,
+        },
+        // Common chunks used by multiple entry points
+        common: {
+          minChunks: 2,
+          priority: 10,
           reuseExistingChunk: true,
         },
       },
@@ -240,10 +268,14 @@ module.exports = {
     },
   },
 
-  // Performance
+  // Performance - Updated after TAREA 6 consolidation
   performance: {
-    maxEntrypointSize: 512000,
-    maxAssetSize: 512000,
+    maxEntrypointSize: 300000,  // Reduced from 512KB (target: 176KB minified)
+    maxAssetSize: 300000,        // Reduced from 512KB (target: 54KB gzip)
     hints: isDevelopment ? false : 'warning',
+    assetFilter: function(assetFilename) {
+      // Exclude source maps and manifest files from size calculation
+      return !/(\.map|manifest\.json)$/.test(assetFilename);
+    },
   },
 };
