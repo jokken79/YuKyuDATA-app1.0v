@@ -1,0 +1,108 @@
+:root {
+    /* 
+     * NEXUS THEME - HYPER MODERN GLASS
+     * Design System Tokens
+     */
+
+    /* --- CHROMATIC PALETTE (HSL) --- */
+    /* Primary: Electric Cyan */
+    --primary-h: 186;
+    --primary-s: 100%;
+    --primary-l: 50%;
+    --primary: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
+    --primary-glow: hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.6);
+
+    /* Secondary: Deep Violet */
+    --secondary-h: 270;
+    --secondary-s: 100%;
+    --secondary-l: 60%;
+    --secondary: hsl(var(--secondary-h), var(--secondary-s), var(--secondary-l));
+
+    /* Accent: Hot Pink */
+    --accent-h: 330;
+    --accent-s: 100%;
+    --accent-l: 60%;
+    --accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
+
+    /* Success: Neon Green */
+    --success-h: 150;
+    --success-s: 100%;
+    --success-l: 45%;
+    --success: hsl(var(--success-h), var(--success-s), var(--success-l));
+
+    /* Warning: Amber Legacy */
+    --warning-h: 35;
+    --warning-s: 100%;
+    --warning-l: 55%;
+    --warning: hsl(var(--warning-h), var(--warning-s), var(--warning-l));
+
+    /* Danger: Red Alert */
+    --danger-h: 0;
+    --danger-s: 100%;
+    --danger-l: 60%;
+    --danger: hsl(var(--danger-h), var(--danger-s), var(--danger-l));
+
+    /* --- NEUTRAL SCALES (Pure Black base) --- */
+    --bg-depth: #030305;
+    /* Deepest Void */
+    --bg-base: #0a0a0f;
+    /* App Background */
+    --bg-surface: #13131f;
+    /* Card Surface */
+
+    --text-primary: #ffffff;
+    --text-secondary: #94a3b8;
+    --text-tertiary: #64748b;
+    --text-disabled: #475569;
+
+    /* --- GLASSMORPHISM --- */
+    /* The core of the Nexus aesthetic */
+    --glass-bg: rgba(20, 20, 30, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-highlight: rgba(255, 255, 255, 0.05);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    --glass-blur: 20px;
+    --glass-saturate: 180%;
+
+    --glass-panel: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.05),
+            rgba(255, 255, 255, 0.01));
+
+    /* --- GRADIENTS --- */
+    --grad-primary: linear-gradient(135deg, var(--primary), var(--secondary));
+    --grad-glow: radial-gradient(circle at top left, rgba(6, 182, 212, 0.15), transparent 40%);
+    --grad-dark: linear-gradient(180deg, rgba(10, 10, 15, 0) 0%, rgba(10, 10, 15, 0.8) 100%);
+
+    /* --- PADDINGS & SPACING --- */
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    --space-xl: 2rem;
+    --space-2xl: 3rem;
+
+    /* --- BORDERS & RADIUS --- */
+    --radius-sm: 8px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    --radius-full: 9999px;
+
+    --border-thin: 1px solid var(--glass-border);
+    --border-glow: 1px solid rgba(6, 182, 212, 0.3);
+    /* Primary colored border */
+
+    /* --- ANIMATIONS --- */
+    --ease-elastic: cubic-bezier(0.68, -0.6, 0.32, 1.6);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --duration-fast: 200ms;
+    --duration-normal: 300ms;
+    --duration-slow: 500ms;
+
+    /* --- Z-INDEX --- */
+    --z-background: -1;
+    --z-card: 10;
+    --z-sticky: 50;
+    --z-dropdown: 100;
+    --z-modal: 1000;
+    --z-tooltip: 1100;
+}

@@ -209,6 +209,47 @@ async def sync_employees(request: Request, user: CurrentUser = Depends(get_curre
         )
         database.save_yukyu_usage_details(usage_details)
 
+        # Sync Genzai (Dispatch) data
+        try:
+            genzai_data = await loop.run_in_executor(
+                _excel_executor,
+                excel_service.parse_genzai_sheet,
+                DEFAULT_EXCEL_PATH
+            )
+            database.save_genzai(genzai_data)
+            logger.info(f"Synced {len(genzai_data)} genzai records")
+        except Exception as e:
+            logger.warning(f"Could not sync Genzai data: {e}")
+            # Don't fail the whole sync, just log warning
+
+        # Sync Ukeoi (Contract) data
+        try:
+            ukeoi_data = await loop.run_in_executor(
+                _excel_executor,
+                excel_service.parse_ukeoi_sheet,
+                DEFAULT_EXCEL_PATH
+            )
+            database.save_ukeoi(ukeoi_data)
+            logger.info(f"Synced {len(ukeoi_data)} ukeoi records")
+        except Exception as e:
+            logger.warning(f"Could not sync Ukeoi data: {e}")
+
+        # Sync Staff data
+        try:
+            staff_data = await loop.run_in_executor(
+                _excel_executor,
+                excel_service.parse_staff_sheet,
+                DEFAULT_EXCEL_PATH
+            )
+            # Find save_staff function or implement it
+            if hasattr(database, 'save_staff'):
+                database.save_staff(staff_data)
+                logger.info(f"Synced {len(staff_data)} staff records")
+            else:
+                logger.warning("database.save_staff function not found")
+        except Exception as e:
+            logger.warning(f"Could not sync Staff data: {e}")
+
         log_sync_event("SYNC_EMPLOYEES", {
             "count": len(data),
             "usage_details": len(usage_details),

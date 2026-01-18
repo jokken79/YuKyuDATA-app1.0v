@@ -1392,7 +1392,7 @@ const App = {
             document.getElementById('modal-content').innerHTML = `
                 <div style="text-align: center; padding: 2rem;">
                     <div class="spinner" style="margin: 0 auto;"></div>
-                    <p style="margin-top: 1rem; color: #94a3b8;">Cargando datos...</p>
+                    <p style="margin-top: 1rem; color: #94a3b8;">Loading data...</p>
                 </div>
             `;
             document.getElementById('detail-modal').classList.add('active');

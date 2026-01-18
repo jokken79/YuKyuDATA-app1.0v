@@ -4,8 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <!-- WCAG 1.4.4: Allow user zoom for accessibility -->
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>YuKyu Premium Dashboard</title>
 
     <!-- PWA Meta Tags -->
@@ -37,20 +36,8 @@
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap"
         rel="stylesheet">
 
-    <!-- Design System - Consolidated (Tokens → Themes → Components → Utilities → Accessibility) -->
-    <link rel="stylesheet" href="/static/css/design-system/tokens.css">
-    <link rel="stylesheet" href="/static/css/design-system/themes.css">
-    <link rel="stylesheet" href="/static/css/design-system/components.css">
-    <link rel="stylesheet" href="/static/css/design-system/utilities.css">
-    <link rel="stylesheet" href="/static/css/design-system/accessibility.css">
-    <!-- Utilities Consolidated - Variables, animations, utilities compartidas -->
-    <link rel="stylesheet" href="/static/css/utilities-consolidated.css">
-    <!-- Main Application Styles -->
-    <link rel="stylesheet" href="/static/css/main.css">
-    <!-- UI Enhancements - Form validation, tooltips, loading states -->
-    <link rel="stylesheet" href="/static/css/ui-enhancements.css">
-    <!-- Layout Utilities - Extracted from inline styles for maintainability -->
-    <link rel="stylesheet" href="/static/css/layout-utilities.css">
+    <!-- NEXUS THEME - Hyper Modern Glass UI -->
+    <link rel="stylesheet" href="/static/css/nexus-theme/main.css">
 
     <!-- Libraries -->
     <!-- ApexCharts - Modern charting library -->
@@ -261,8 +248,8 @@
                 <div class="nav-group">
                     <div class="nav-group-label">Main</div>
 
-                    <button class="nav-item active" data-view="dashboard" data-action="ui.switchView" data-view="dashboard"
-                        aria-label="Dashboard" aria-current="page" type="button">
+                    <button class="nav-item active" data-view="dashboard" data-action="ui.switchView"
+                        data-view="dashboard" aria-label="Dashboard" aria-current="page" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -392,8 +379,8 @@
 
             <!-- Settings at bottom -->
             <div class="sidebar-footer">
-                <button class="nav-item nav-item-settings" data-view="settings" data-action="ui.switchView" data-view="settings"
-                    aria-label="Settings" type="button">
+                <button class="nav-item nav-item-settings" data-view="settings" data-action="ui.switchView"
+                    data-view="settings" aria-label="Settings" type="button">
                     <span class="nav-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                             stroke-linecap="round" stroke-linejoin="round">
@@ -425,31 +412,11 @@
 
                     <div class="header-actions__group" id="header-controls">
                         <!-- Language Selector -->
-                        <div class="language-selector" id="language-selector">
-                            <button class="language-selector-btn" id="language-selector-btn" type="button"
-                                aria-label="Select language" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="language-selector-flag" id="current-lang-flag">JP</span>
-                                <span class="language-selector-code" id="current-lang-code">JA</span>
-                                <span class="language-selector-arrow" aria-hidden="true">&#9660;</span>
-                            </button>
-                            <div class="language-dropdown" id="language-dropdown" role="listbox"
-                                aria-label="Available languages">
-                                <button class="language-option active" data-locale="ja" role="option" aria-selected="true"
-                                    type="button">
-                                    <span class="language-option-flag">JP</span>
-                                    <span class="language-option-name">Japanese</span>
-                                </button>
-                                <button class="language-option" data-locale="es" role="option" aria-selected="false"
-                                    type="button">
-                                    <span class="language-option-flag">ES</span>
-                                    <span class="language-option-name">Castellano</span>
-                                </button>
-                                <button class="language-option" data-locale="en" role="option" aria-selected="false"
-                                    type="button">
-                                    <span class="language-option-flag">EN</span>
-                                    <span class="language-option-name">English</span>
-                                </button>
-                            </div>
+                        <!-- Language Selector (Removed: Japanese Only) -->
+                        <div class="language-indicator"
+                            style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 0.9rem;">
+                            <span class="language-flag">JP</span>
+                            <span class="language-text">日本語</span>
                         </div>
 
                         <!-- Theme Toggle -->
@@ -547,9 +514,8 @@
                     </div>
 
                     <!-- Employees Card -->
-                    <div class="glass-panel stat-card col-span-1"
-                        class="kpi-card-highlight"
-                        data-action="ui.switchView" data-view="employees">
+                    <div class="glass-panel stat-card col-span-1" class="kpi-card-highlight" data-action="ui.switchView"
+                        data-view="employees">
                         <div class="stat-label">Employees</div>
                         <div class="stat-value count-up" id="kpi-total">-</div>
                         <div class="quick-stats">
@@ -667,21 +633,23 @@
                     </div>
                     <!-- Type Filter Tabs -->
                     <div class="type-filter-tabs mb-lg flex gap-sm flex-wrap" id="type-filter-tabs">
-                        <button class="btn btn-glass type-tab active" data-type="all"
-                            data-action="ui.filterByType" data-type="all">
+                        <button class="btn btn-glass type-tab active" data-type="all" data-action="ui.filterByType"
+                            data-type="all">
                             <span class="tab-label">全員</span>
                             <span class="tab-count" id="count-all">0</span>
                         </button>
-                        <button class="btn btn-glass type-tab" data-type="genzai"
-                            data-action="ui.filterByType" data-type="genzai">
+                        <button class="btn btn-glass type-tab" data-type="genzai" data-action="ui.filterByType"
+                            data-type="genzai">
                             <span class="tab-label">派遣 Dispatch</span>
                             <span class="tab-count" id="count-genzai">0</span>
                         </button>
-                        <button class="btn btn-glass type-tab" data-type="ukeoi" data-action="ui.filterByType" data-type="ukeoi">
+                        <button class="btn btn-glass type-tab" data-type="ukeoi" data-action="ui.filterByType"
+                            data-type="ukeoi">
                             <span class="tab-label">請負 Contract</span>
                             <span class="tab-count" id="count-ukeoi">0</span>
                         </button>
-                        <button class="btn btn-glass type-tab" data-type="staff" data-action="ui.filterByType" data-type="staff">
+                        <button class="btn btn-glass type-tab" data-type="staff" data-action="ui.filterByType"
+                            data-type="staff">
                             <span class="tab-label">社員 Staff</span>
                             <span class="tab-count" id="count-staff">0</span>
                         </button>
@@ -689,19 +657,23 @@
 
                     <!-- Employee Type Tabs -->
                     <div class="employee-tabs flex gap-sm mb-lg">
-                        <button class="btn btn-glass active" id="tab-all" data-action="employeeTypes.switchTab" data-tab="all">
+                        <button class="btn btn-glass active" id="tab-all" data-action="employeeTypes.switchTab"
+                            data-tab="all">
                             すべて (All)
                             <span class="badge badge-primary ml-sm" id="count-type-all">0</span>
                         </button>
-                        <button class="btn btn-glass" id="tab-haken" data-action="employeeTypes.switchTab" data-tab="haken">
+                        <button class="btn btn-glass" id="tab-haken" data-action="employeeTypes.switchTab"
+                            data-tab="haken">
                             🏭 派遣 (Haken)
                             <span class="badge badge-info ml-sm" id="count-type-haken">0</span>
                         </button>
-                        <button class="btn btn-glass" id="tab-ukeoi" data-action="employeeTypes.switchTab" data-tab="ukeoi">
+                        <button class="btn btn-glass" id="tab-ukeoi" data-action="employeeTypes.switchTab"
+                            data-tab="ukeoi">
                             📋 請負 (Ukeoi)
                             <span class="badge badge-success ml-sm" id="count-type-ukeoi">0</span>
                         </button>
-                        <button class="btn btn-glass" id="tab-staff" data-action="employeeTypes.switchTab" data-tab="staff">
+                        <button class="btn btn-glass" id="tab-staff" data-action="employeeTypes.switchTab"
+                            data-tab="staff">
                             👔 スタッフ (Staff)
                             <span class="badge badge-warning ml-sm" id="count-type-staff">0</span>
                         </button>
@@ -740,9 +712,10 @@
                         </button>
                     </div>
 
-                    <div class="overflow-auto" class="max-h-60vh">
+                    <div class="overflow-auto max-h-60vh">
                         <table class="modern-table" aria-labelledby="employees-table-caption">
-                            <caption id="employees-table-caption" class="sr-only">従業員有給休暇データ表 - Employee paid leave data table</caption>
+                            <caption id="employees-table-caption" class="sr-only">従業員有給休暇データ表 - Employee paid leave data
+                                table</caption>
                             <thead>
                                 <tr>
                                     <th scope="col" class="table-checkbox">
@@ -962,8 +935,10 @@
                                     <div class="mb-md">
                                         <span class="stat-label">📊 年度別有給履歴 (2年分)</span>
                                     </div>
-                                    <table class="w-full text-sm" class="border-collapse" aria-labelledby="yukyu-history-caption">
-                                        <caption id="yukyu-history-caption" class="sr-only">年度別有給履歴表 - Annual paid leave history table (2 years)</caption>
+                                    <table class="w-full text-sm" class="border-collapse"
+                                        aria-labelledby="yukyu-history-caption">
+                                        <caption id="yukyu-history-caption" class="sr-only">年度別有給履歴表 - Annual paid leave
+                                            history table (2 years)</caption>
                                         <thead>
                                             <tr class="table-header-highlight">
                                                 <th scope="col" class="p-sm text-left rounded-tl">
@@ -989,8 +964,7 @@
                                     <div class="mb-sm">
                                         <span class="stat-label">📅 使用履歴 (Usage History)</span>
                                         <button type="button" data-action="requests.toggleUsageHistory"
-                                            class="ml-sm text-xs text-muted cursor-pointer"
-                                            class="input-compact">
+                                            class="ml-sm text-xs text-muted cursor-pointer" class="input-compact">
                                             詳細を表示
                                         </button>
                                     </div>
@@ -1067,8 +1041,8 @@
                                 <div class="form-group">
                                     <label for="leave-reason">理由 (Reason) - 任意</label>
                                     <textarea class="input-glass w-full" id="leave-reason"
-                                        class="min-h-80 textarea-resizable" placeholder="私用、通院、旅行など..."
-                                        maxlength="200" oninput="App.requests.updateCharCounter()"
+                                        class="min-h-80 textarea-resizable" placeholder="私用、通院、旅行など..." maxlength="200"
+                                        oninput="App.requests.updateCharCounter()"
                                         aria-describedby="reason-char-counter"></textarea>
                                     <div class="char-counter" id="reason-char-counter">0 / 200</div>
                                 </div>
@@ -1112,7 +1086,8 @@
                     </h3>
                     <div class="overflow-auto">
                         <table class="modern-table" aria-labelledby="requests-history-caption">
-                            <caption id="requests-history-caption" class="sr-only">休暇申請履歴表 - Leave request history table</caption>
+                            <caption id="requests-history-caption" class="sr-only">休暇申請履歴表 - Leave request history table
+                            </caption>
                             <thead>
                                 <tr>
                                     <th scope="col">ID</th>
@@ -1151,8 +1126,7 @@
                             </button>
                         </div>
 
-                        <div id="compliance-summary" class="d-grid gap-md mb-2xl"
-                            class="grid-4-cols">
+                        <div id="compliance-summary" class="d-grid gap-md mb-2xl" class="grid-4-cols">
                             <div class="stat-card text-center">
                                 <div class="stat-label">対象者</div>
                                 <div class="stat-value" id="comp-total">-</div>
@@ -1242,7 +1216,8 @@
                             </div>
                             <div class="flex-center gap-sm">
                                 <button class="btn btn-glass" data-action="calendar.goToToday">今日</button>
-                                <button class="btn btn-primary" data-action="calendar.loadEvents" aria-label="カレンダーを更新">🔄
+                                <button class="btn btn-primary" data-action="calendar.loadEvents"
+                                    aria-label="カレンダーを更新">🔄
                                     更新</button>
                             </div>
                         </div>
@@ -1417,7 +1392,8 @@
 
                         <!-- Tab Selector -->
                         <div class="tab-container mb-xl">
-                            <button class="tab-btn active" id="tab-monthly" data-action="reports.setMode" data-mode="monthly">
+                            <button class="tab-btn active" id="tab-monthly" data-action="reports.setMode"
+                                data-mode="monthly">
                                 📅 月次 (21日〜20日)
                             </button>
                             <button class="tab-btn" id="tab-custom" data-action="reports.setMode" data-mode="custom">
@@ -1523,8 +1499,7 @@
                     <!-- Daily Breakdown -->
                     <div class="glass-panel col-span-4 p-md">
                         <h3 class="stat-label mb-lg">📅 日別取得状況</h3>
-                        <div id="report-daily-grid" class="d-grid gap-sm overflow-y-auto"
-                            class="grid-auto-fill">
+                        <div id="report-daily-grid" class="d-grid gap-sm overflow-y-auto" class="grid-auto-fill">
                             <div class="empty-state col-span-full">
                                 月を選択してレポートを表示
                             </div>
@@ -1537,7 +1512,8 @@
                     <h3 class="stat-label mb-lg">📊 年間月別サマリー</h3>
                     <div class="overflow-auto">
                         <table class="modern-table" aria-labelledby="year-summary-caption">
-                            <caption id="year-summary-caption" class="sr-only">年間月別サマリー表 - Annual monthly summary table</caption>
+                            <caption id="year-summary-caption" class="sr-only">年間月別サマリー表 - Annual monthly summary table
+                            </caption>
                             <thead>
                                 <tr>
                                     <th scope="col">月度</th>
@@ -1566,8 +1542,7 @@
                         <!-- System Status -->
                         <div>
                             <h4 class="stat-label mb-lg">システム状態</h4>
-                            <div id="system-status" class="d-grid gap-md"
-                                class="grid-3-cols-fixed">
+                            <div id="system-status" class="d-grid gap-md" class="grid-3-cols-fixed">
                                 <div class="stat-card text-center">
                                     <div class="stat-label">Database Size</div>
                                     <div class="stat-value" id="sys-db-size">-</div>
@@ -1594,8 +1569,7 @@
                                 <button class="btn btn-glass" data-action="settings.viewAuditLog">
                                     📜 監査ログ
                                 </button>
-                                <button class="btn btn-glass" data-action="data.sync"
-                                    class="bg-primary-light">
+                                <button class="btn btn-glass" data-action="data.sync" class="bg-primary-light">
                                     ⚡ データ同期
                                 </button>
                             </div>
@@ -1620,8 +1594,7 @@
                         <!-- API Info -->
                         <div>
                             <h4 class="stat-label mb-lg">API情報</h4>
-                            <div class="p-md rounded text-sm"
-                                class="bg-code">
+                            <div class="p-md rounded text-sm" class="bg-code">
                                 <div class="text-muted">Base URL:</div>
                                 <div class="text-cyan">/api</div>
                                 <div class="text-muted mt-sm">Documentation:</div>
@@ -1645,8 +1618,8 @@
     <div class="toast-container" role="status" aria-live="polite" aria-atomic="true" id="toast-container"></div>
 
     <!-- Simple Modal for Details -->
-    <div class="loader-overlay" id="detail-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"
-        class="bg-overlay-dark">
+    <div class="loader-overlay bg-overlay-dark" id="detail-modal" role="dialog" aria-modal="true"
+        aria-labelledby="modal-title">
         <div class="glass-panel modal-content-container">
             <button class="btn modal-close-btn" data-action="ui.closeModal" aria-label="Close modal">✕</button>
             <div class="p-xl">
@@ -2222,7 +2195,7 @@
             <!-- Usage Details List -->
             <div class="form-section mb-lg">
                 <div class="form-section-title">📅 使用日一覧</div>
-                <div id="edit-usage-list" class="usage-list-container" class="max-h-300 overflow-y-auto">
+                <div id="edit-usage-list" class="usage-list-container max-h-300 overflow-y-auto">
                     <div class="text-center text-muted p-lg">
                         従業員を選択してください...
                     </div>
@@ -2269,8 +2242,7 @@
                 <button class="btn btn-glass" data-action="editYukyu.closeModal">
                     キャンセル
                 </button>
-                <button class="btn btn-secondary"
-                    data-action="auditHistory.showEntityHistory" data-entity="employee">
+                <button class="btn btn-secondary" data-action="auditHistory.showEntityHistory" data-entity="employee">
                     📜 履歴を見る
                 </button>
                 <button class="btn btn-primary" id="edit-save-btn" data-action="editYukyu.saveChanges">
@@ -2281,8 +2253,7 @@
     </div>
 
     <!-- Audit History Modal (v2.3 - NEW) -->
-    <div id="audit-history-modal" class="confirm-modal"
-       >
+    <div id="audit-history-modal" class="confirm-modal">
         <div class="confirm-modal-content" class="modal-lg">
             <div class="confirm-modal-title">
                 📜 変更履歴
@@ -2307,7 +2278,7 @@
                 </div>
             </div>
 
-            <div id="audit-history-list" class="usage-list-container" class="max-h-500">
+            <div id="audit-history-list" class="usage-list-container max-h-500">
                 <div class="text-center text-muted p-lg">
                     <div class="spinner" class="margin-auto"></div>
                     <p class="mt-md">履歴を読み込み中...</p>
@@ -2323,10 +2294,8 @@
     </div>
 
     <!-- Import Result Modal (v2.2 - NEW) -->
-    <div id="import-result-modal" class="confirm-modal"
-       >
-        <div class="confirm-modal-content import-result-content"
-            class="modal-md">
+    <div id="import-result-modal" class="confirm-modal">
+        <div class="confirm-modal-content import-result-content" class="modal-md">
             <div class="confirm-modal-title" id="import-result-title">
                 <span id="import-result-icon">📊</span> インポート結果
             </div>
@@ -2434,8 +2403,7 @@
                     <span class="form-section-title">👥 選択された従業員</span>
                     <span class="bulk-edit-toggle" id="bulk-edit-employees-toggle">▼</span>
                 </div>
-                <div class="bulk-edit-employees-list" id="bulk-edit-employees-list"
-                    class="max-h-150">
+                <div class="bulk-edit-employees-list" id="bulk-edit-employees-list" class="max-h-150">
                     <!-- Employee chips will be added dynamically -->
                 </div>
             </div>
@@ -3104,6 +3072,8 @@
     </style>
 
     </style>
+
+
 </body>
 
 </html>
