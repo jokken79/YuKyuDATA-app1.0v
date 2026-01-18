@@ -115,7 +115,7 @@ class TestLIFODeductionBasic:
 
     def test_lifo_deduction_from_current_year_only(self, db_with_employees):
         """Test that deduction comes from current year first (LIFO)."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             result = apply_lifo_deduction('001', 5.0, 2025)
 
             assert result['success'] is True
@@ -130,7 +130,7 @@ class TestLIFODeductionBasic:
 
     def test_lifo_deduction_spanning_multiple_years(self, db_with_employees):
         """Test deduction that spans current and previous year."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             # Deduct 25 days (20 from 2025 + 5 from 2024)
             result = apply_lifo_deduction('001', 25.0, 2025)
 
@@ -151,7 +151,7 @@ class TestLIFODeductionBasic:
 
     def test_lifo_deduction_exact_balance(self, db_with_employees):
         """Test deduction that exactly matches available balance."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             # Employee 001 has exactly 30 days total (20 + 10)
             result = apply_lifo_deduction('001', 30.0, 2025)
 
@@ -165,7 +165,7 @@ class TestLIFODeductionEdgeCases:
 
     def test_lifo_deduction_insufficient_balance(self, db_with_employees):
         """Test deduction when balance is insufficient."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             # Try to deduct more than available (30 available, request 35)
             result = apply_lifo_deduction('001', 35.0, 2025)
 
@@ -175,7 +175,7 @@ class TestLIFODeductionEdgeCases:
 
     def test_lifo_deduction_zero_balance(self, db_with_employees):
         """Test deduction when employee has zero balance."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             result = apply_lifo_deduction('003', 5.0, 2025)
 
             assert result['success'] is False
@@ -184,7 +184,7 @@ class TestLIFODeductionEdgeCases:
 
     def test_lifo_deduction_zero_days_requested(self, db_with_employees):
         """Test deduction of zero days."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             result = apply_lifo_deduction('001', 0.0, 2025)
 
             assert result['success'] is True
@@ -194,7 +194,7 @@ class TestLIFODeductionEdgeCases:
 
     def test_lifo_deduction_half_day(self, db_with_employees):
         """Test deduction of half day (0.5)."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             result = apply_lifo_deduction('001', 0.5, 2025)
 
             assert result['success'] is True
@@ -204,7 +204,7 @@ class TestLIFODeductionEdgeCases:
 
     def test_lifo_deduction_exhausts_small_balance(self, db_with_employees):
         """Test deduction that exhausts a small balance completely."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             # Employee 004 has only 2 days
             result = apply_lifo_deduction('004', 3.0, 2025)
 
@@ -218,7 +218,7 @@ class TestLIFODeductionFloatingPoint:
 
     def test_lifo_deduction_preserves_decimal_precision(self, db_with_employees):
         """Test that decimal precision is preserved."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             result = apply_lifo_deduction('001', 2.5, 2025)
 
             assert result['total_deducted'] == 2.5
@@ -227,7 +227,7 @@ class TestLIFODeductionFloatingPoint:
 
     def test_lifo_deduction_quarter_day(self, db_with_employees):
         """Test deduction of quarter day (hourly leave)."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             result = apply_lifo_deduction('001', 0.25, 2025)
 
             assert result['success'] is True
@@ -239,7 +239,7 @@ class TestBalanceBreakdown:
 
     def test_balance_breakdown_multiple_years(self, db_with_employees):
         """Test balance breakdown shows all years correctly."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             breakdown = get_employee_balance_breakdown('001', 2025)
 
             assert breakdown['employee_num'] == '001'
@@ -256,7 +256,7 @@ class TestBalanceBreakdown:
 
     def test_balance_breakdown_single_year(self, db_with_employees):
         """Test balance breakdown with only one year."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             breakdown = get_employee_balance_breakdown('002', 2025)
 
             assert breakdown['total_available'] == 12.0
@@ -264,7 +264,7 @@ class TestBalanceBreakdown:
 
     def test_balance_breakdown_zero_balance(self, db_with_employees):
         """Test balance breakdown when employee has zero balance."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             breakdown = get_employee_balance_breakdown('003', 2025)
 
             assert breakdown['total_available'] == 0
@@ -345,7 +345,7 @@ class TestDatabaseIntegrity:
 
     def test_balance_updated_after_deduction(self, db_with_employees):
         """Test that database balance is correctly updated after deduction."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             # Deduct 5 days
             apply_lifo_deduction('001', 5.0, 2025)
 
@@ -362,7 +362,7 @@ class TestDatabaseIntegrity:
 
     def test_used_days_updated_after_deduction(self, db_with_employees):
         """Test that used days counter is updated after deduction."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             # Deduct 5 days
             apply_lifo_deduction('001', 5.0, 2025)
 
@@ -379,7 +379,7 @@ class TestDatabaseIntegrity:
 
     def test_multiple_deductions_accumulate(self, db_with_employees):
         """Test that multiple deductions accumulate correctly."""
-        with patch('fiscal_year.DB_NAME', db_with_employees):
+        with patch('services.fiscal_year.DB_NAME', db_with_employees):
             # First deduction
             apply_lifo_deduction('001', 3.0, 2025)
             # Second deduction
