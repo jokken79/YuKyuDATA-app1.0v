@@ -550,18 +550,25 @@ def save_employees(employees_data):
         conn.commit()
 
 def get_employees(year=None):
-    """Retrieves employees, optionally filtered by year."""
+    """Retrieves employees, optionally filtered by year, with Kana names."""
     with get_db() as conn:
         c = conn.cursor()
 
-        query = "SELECT * FROM employees"
+        query = '''
+            SELECT
+                e.*,
+                COALESCE(g.kana, u.kana, '') as kana
+            FROM employees e
+            LEFT JOIN genzai g ON e.employee_num = g.employee_num
+            LEFT JOIN ukeoi u ON e.employee_num = u.employee_num
+        '''
         params = []
 
         if year:
-            query += " WHERE year = ?"
+            query += " WHERE e.year = ?"
             params.append(year)
 
-        query += " ORDER BY usage_rate DESC"
+        query += " ORDER BY e.usage_rate DESC"
 
         rows = c.execute(query, params).fetchall()
 
@@ -587,6 +594,7 @@ def get_employees_enhanced(year=None, active_only=False):
     query = '''
         SELECT
             e.*,
+            COALESCE(g.kana, u.kana, '') as kana,
             CASE
                 WHEN g.id IS NOT NULL THEN 'genzai'
                 WHEN u.id IS NOT NULL THEN 'ukeoi'
@@ -697,6 +705,196 @@ def save_genzai(genzai_data):
                 ''', params)
 
         conn.commit()
+
+def get_ukeoi(status=None, year=None, active_in_year=False):
+    """
+    Retrieves contract employees with optional filters.
+    """
+    with get_db() as conn:
+        c = conn.cursor()
+
+        query = "SELECT * FROM ukeoi WHERE 1=1"
+        params = []
+
+        if status:
+            query += " AND status = ?"
+            params.append(status)
+
+        if year and active_in_year:
+            year_start = f"{year}-01-01"
+            year_end = f"{year}-12-31"
+            query += """ AND (
+                (hire_date IS NULL OR hire_date <= ?)
+                AND (leave_date IS NULL OR leave_date >= ?)
+            )"""
+            params.extend([year_end, year_start])
+
+        query += " ORDER BY name"
+        rows = c.execute(query, params).fetchall()
+
+        # Decrypt sensitive fields
+        result = []
+        for row in rows:
+            emp = dict(row)
+            if emp.get('birth_date'):
+                emp['birth_date'] = decrypt_field(emp['birth_date']) or emp['birth_date']
+            if emp.get('hourly_wage'):
+                try:
+                    decrypted = decrypt_field(emp['hourly_wage'])
+                    if decrypted:
+                        emp['hourly_wage'] = int(float(decrypted))
+                except (ValueError, TypeError):
+                    pass
+            result.append(emp)
+
+        return result
+
+def clear_ukeoi():
+    """Clears ukeoi table."""
+    with get_db() as conn:
+        conn.execute("DELETE FROM ukeoi")
+        conn.commit()
+
+
+# ============================================
+# REFRESH TOKENS FUNCTIONS (Auth Service)
+# ============================================
+
+def init_refresh_tokens_table():
+    """Initializes the refresh_tokens table. Wrapper for init_db part."""
+    # This logic is already in init_db, but we expose it here for auth_service
+    init_db()
+
+def store_refresh_token(token_id, user_id, token_hash, expires_at, user_agent=None, ip_address=None):
+    """Stores a new refresh token hash."""
+    with get_db() as conn:
+        c = conn.cursor()
+        if USE_POSTGRESQL:
+            c.execute('''
+                INSERT INTO refresh_tokens
+                (id, user_id, token_hash, expires_at, user_agent, ip_address)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            ''', (token_id, user_id, token_hash, expires_at, user_agent, ip_address))
+        else:
+            c.execute('''
+                INSERT INTO refresh_tokens
+                (id, user_id, token_hash, expires_at, user_agent, ip_address)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (token_id, user_id, token_hash, expires_at, user_agent, ip_address))
+        conn.commit()
+
+def get_refresh_token_by_hash(token_hash):
+    """Retrieves a refresh token by its hash."""
+    with get_db() as conn:
+        c = conn.cursor()
+        query = "SELECT * FROM refresh_tokens WHERE token_hash = ?"
+        if USE_POSTGRESQL:
+            query = query.replace('?', '%s')
+        
+        row = c.execute(query, (token_hash,)).fetchone()
+        return dict(row) if row else None
+
+def revoke_refresh_token(token_hash):
+    """Revokes a refresh token (soft delete or flag)."""
+    with get_db() as conn:
+        c = conn.cursor()
+        query = """
+            UPDATE refresh_tokens 
+            SET revoked = 1, revoked_at = ? 
+            WHERE token_hash = ?
+        """
+        timestamp = datetime.now().isoformat()
+        if USE_POSTGRESQL:
+            query = query.replace('?', '%s')
+            
+        c.execute(query, (timestamp, token_hash))
+        conn.commit()
+        return c.rowcount > 0
+
+def revoke_all_user_refresh_tokens(user_id):
+    """Revokes all refresh tokens for a user."""
+    with get_db() as conn:
+        c = conn.cursor()
+        query = """
+            UPDATE refresh_tokens 
+            SET revoked = 1, revoked_at = ? 
+            WHERE user_id = ? AND revoked = 0
+        """
+        timestamp = datetime.now().isoformat()
+        if USE_POSTGRESQL:
+            query = query.replace('?', '%s')
+            
+        c.execute(query, (timestamp, user_id))
+        conn.commit()
+        return c.rowcount
+
+def is_refresh_token_valid(token_hash):
+    """Checks if a token is valid (exists, not revoked, not expired)."""
+    token = get_refresh_token_by_hash(token_hash)
+    if not token:
+        return False
+    
+    if token.get('revoked', 0) == 1:
+        return False
+        
+    expires_at = token.get('expires_at')
+    if expires_at:
+        try:
+            # Handle potential ISO format variations
+            exp_date = datetime.fromisoformat(expires_at)
+            if datetime.now() > exp_date:
+                return False
+        except ValueError:
+            pass # Fail safe structure
+            
+    return True
+
+def cleanup_expired_refresh_tokens():
+    """Permanently deletes expired or revoked tokens older than 30 days."""
+    with get_db() as conn:
+        c = conn.cursor()
+        cutoff_date = (datetime.now() - timedelta(days=30)).isoformat()
+        current_date = datetime.now().isoformat()
+        
+        query = """
+            DELETE FROM refresh_tokens 
+            WHERE (expires_at < ?) OR (revoked = 1 AND revoked_at < ?)
+        """
+        if USE_POSTGRESQL:
+            query = query.replace('?', '%s')
+            
+        c.execute(query, (current_date, cutoff_date))
+        conn.commit()
+        return c.rowcount
+
+def get_user_active_refresh_tokens(user_id):
+    """Returns active tokens for a user (session management)."""
+    with get_db() as conn:
+        c = conn.cursor()
+        current_date = datetime.now().isoformat()
+        query = """
+            SELECT * FROM refresh_tokens 
+            WHERE user_id = ? AND revoked = 0 AND expires_at > ?
+            ORDER BY created_at DESC
+        """
+        if USE_POSTGRESQL:
+            query = query.replace('?', '%s')
+            
+        rows = c.execute(query, (user_id, current_date)).fetchall()
+        return [dict(row) for row in rows]
+
+def get_refresh_token_stats():
+    """Returns statistics about refresh tokens."""
+    with get_db() as conn:
+        c = conn.cursor()
+        
+        c.execute("SELECT COUNT(*) as total FROM refresh_tokens")
+        total = c.fetchone()['total']
+        
+        c.execute("SELECT COUNT(*) as active FROM refresh_tokens WHERE revoked = 0")
+        active = c.fetchone()['active']
+        
+        return {"total": total, "active": active, "revoked": total - active}
 
 def get_genzai(status=None, year=None, active_in_year=False):
     """

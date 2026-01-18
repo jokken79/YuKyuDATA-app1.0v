@@ -542,10 +542,23 @@ async def get_employee_leave_info(employee_num: str, year: Optional[int] = None)
                     hourly_wage = emp.get('hourly_wage', 0)
                     break
 
+        # Fetch Kana name from genzai/ukeoi if not available in history
+        kana_name = ''
+        if not kana_name:
+             genzai_emp = next((e for e in database.get_genzai() if e['employee_num'] == employee_num), None)
+             if genzai_emp:
+                 kana_name = genzai_emp.get('kana', '')
+        
+        if not kana_name:
+             ukeoi_emp = next((e for e in database.get_ukeoi() if e['employee_num'] == employee_num), None)
+             if ukeoi_emp:
+                 kana_name = ukeoi_emp.get('kana', '')
+
         # Get employee basic data
         employee_data = {
             'employee_num': employee_num,
             'name': history[0].get('name', '') if history else '',
+            'kana': kana_name,
             'haken': history[0].get('haken', '') if history else ''
         }
 
@@ -556,10 +569,10 @@ async def get_employee_leave_info(employee_num: str, year: Optional[int] = None)
             year=year
         )
 
-        # Get usage history
+        # Get usage history - Fetch ALL history regardless of year to show complete timeline
         usage_details = database.get_yukyu_usage_details(
             employee_num=employee_num,
-            year=year
+            year=None 
         )
         usage_history = []
         for detail in usage_details:

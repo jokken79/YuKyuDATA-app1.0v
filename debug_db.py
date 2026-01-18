@@ -1,54 +1,40 @@
-import sqlite3
-import pandas as pd
+from database import get_db, get_employees, get_genzai, get_yukyu_usage_details
 
-def inspect_data():
-    conn = sqlite3.connect('yukyu.db')
-    cursor = conn.cursor()
-
-    print("--- COUNTS ---")
-    rows = cursor.execute("SELECT COUNT(*) FROM employees").fetchone()
-    print(f"Employees Table (Yukyu Data): {rows[0]}")
-
-    rows = cursor.execute("SELECT COUNT(*) FROM genzai").fetchone()
-    print(f"Genzai Table (Haken): {rows[0]}")
-
-    rows = cursor.execute("SELECT COUNT(*) FROM ukeoi").fetchone()
-    print(f"Ukeoi Table (Contract): {rows[0]}")
+def debug():
+    print("--- DEBUG START ---")
     
-    rows = cursor.execute("SELECT COUNT(*) FROM staff").fetchone()
-    print(f"Staff Table: {rows[0]}")
+    try:
+        print("Calling get_genzai()...")
+        genzai_list = get_genzai()
+        print(f"get_genzai success. Count: {len(genzai_list)}")
+        
+        target = next((g for g in genzai_list if g['employee_num'] == '220108'), None)
+        if target:
+             print(f"Genzai 220108: Name='{target.get('name')}', Kana='{target.get('kana')}'")
+        else:
+             print("Genzai 220108 not found in list")
+             
+    except Exception as e:
+        print(f"!!! get_genzai FAILED: {e}")
+        import traceback
+        traceback.print_exc()
 
-    print("\n--- SAMPLE ENHANCED DATA ---")
-    # Simulate the query used in get_employees_enhanced
-    query = '''
-        SELECT 
-            e.employee_num, 
-            e.name,
-            CASE 
-                WHEN g.id IS NOT NULL THEN 'genzai'
-                WHEN u.id IS NOT NULL THEN 'ukeoi'
-                ELSE 'staff'
-            END as calculated_type,
-            g.id as genzai_id,
-            u.id as ukeoi_id
-        FROM employees e
-        LEFT JOIN genzai g ON e.employee_num = g.employee_num
-        LEFT JOIN ukeoi u ON e.employee_num = u.employee_num
-        LIMIT 10
-    '''
-    df = pd.read_sql_query(query, conn)
-    print(df)
-    
-    print("\n--- DATA SAMPLES ---")
-    print("Genzai Sample:")
-    df_genzai = pd.read_sql_query("SELECT employee_num, name FROM genzai LIMIT 5", conn)
-    print(df_genzai)
-    
-    print("Ukeoi Sample:")
-    df_ukeoi = pd.read_sql_query("SELECT employee_num, name FROM ukeoi LIMIT 5", conn)
-    print(df_ukeoi)
+    try:
+        print("\nCalling get_employees()...")
+        emps = get_employees(year=2026)
+        print(f"get_employees success. Count: {len(emps)}")
+        
+        target_emp = next((e for e in emps if e['employee_num'] == '220108'), None)
+        if target_emp:
+            print(f"get_employees 220108: Name='{target_emp.get('name')}', Kana='{target_emp.get('kana')}'")
+        else:
+            print("get_employees 220108: NOT FOUND in 2026 filtered list")
+            
+    except Exception as e:
+         print(f"!!! get_employees FAILED: {e}")
+         traceback.print_exc()
 
-    conn.close()
+    print("--- DEBUG END ---")
 
 if __name__ == "__main__":
-    inspect_data()
+    debug()

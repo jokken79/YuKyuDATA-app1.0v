@@ -103,6 +103,7 @@ class EmployeeResponse(BaseModel):
     id: str = Field(..., description="ID compuesto (employee_num_year)")
     employee_num: str = Field(..., description="Numero de empleado")
     name: Optional[str] = Field(None, description="Nombre")
+    kana: Optional[str] = Field(None, description="Nombre en Katakana")
     haken: Optional[str] = Field(None, description="Lugar de trabajo")
     granted: float = Field(0, description="Dias otorgados")
     used: float = Field(0, description="Dias usados")

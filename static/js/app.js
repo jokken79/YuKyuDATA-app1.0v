@@ -330,6 +330,114 @@ const App = {
     },
 
     // ========================================
+    // AUTH MODUlE (JWT Handling)
+    // ========================================
+    auth: {
+        token: null,
+        user: null,
+
+        init() {
+            // Check for saved token
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                this.token = token;
+                this.updateUI(true);
+            } else {
+                this.updateUI(false);
+            }
+
+            // Bind login form
+            const loginForm = document.getElementById('login-form');
+            if (loginForm) {
+                loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+            }
+        },
+
+        async handleLogin(e) {
+            e.preventDefault();
+            const form = e.target;
+            const username = form.username.value;
+            const password = form.password.value;
+            const btn = form.querySelector('button[type="submit"]');
+            const errorEl = document.getElementById('login-error');
+
+            App.ui.setBtnLoading(btn, true);
+            errorEl.style.display = 'none';
+
+            try {
+                const res = await fetch(`${App.config.apiBase}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (!res.ok) throw new Error('Invalid credentials');
+
+                const data = await res.json();
+                this.token = data.access_token;
+                localStorage.setItem('access_token', this.token);
+
+                this.updateUI(true);
+                document.getElementById('login-modal').classList.remove('active');
+                form.reset();
+                App.ui.showToast('success', 'Logged in successfully');
+
+            } catch (err) {
+                console.error(err);
+                errorEl.style.display = 'block';
+                errorEl.textContent = 'Invalid username or password';
+            } finally {
+                App.ui.setBtnLoading(btn, false);
+            }
+        },
+
+        logout() {
+            this.token = null;
+            this.user = null;
+            localStorage.removeItem('access_token');
+            this.updateUI(false);
+            App.ui.showToast('info', 'Logged out');
+            // Optionally call API logout endpoint
+        },
+
+        showLogin() {
+            document.getElementById('login-modal').classList.add('active');
+            document.getElementById('login-username').focus();
+        },
+
+        updateUI(isLoggedIn) {
+            const loginBtn = document.getElementById('btn-login');
+            const logoutBtn = document.getElementById('btn-logout');
+
+            if (loginBtn) loginBtn.classList.toggle('d-none', isLoggedIn);
+            if (logoutBtn) logoutBtn.classList.toggle('d-none', !isLoggedIn);
+        },
+
+        // Wrapper for fetch calls requiring auth
+        async fetchWithAuth(url, options = {}) {
+            if (!this.token) {
+                this.showLogin();
+                throw new Error('Authentication required');
+            }
+
+            const headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${this.token}`
+            };
+
+            const res = await fetch(url, { ...options, headers });
+
+            if (res.status === 401) {
+                this.logout();
+                this.showLogin();
+                throw new Error('Session expired');
+            }
+
+            return res;
+        }
+    },
+
+    // ========================================
     // SECURITY UTILITIES (XSS Prevention)
     // ========================================
     utils: {
@@ -555,6 +663,9 @@ const App = {
         // Initialize theme
         this.theme.init();
 
+        // Initialize auth
+        this.auth.init();
+
         // Initialize internationalization (i18n)
         await this.i18n.init();
 
@@ -761,10 +872,14 @@ const App = {
         },
 
         async sync() {
+            if (!App.auth.token) {
+                App.auth.showLogin();
+                return;
+            }
             const btn = document.getElementById('btn-sync-main');
             App.ui.setBtnLoading(btn, true);
             try {
-                const res = await fetch(`${App.config.apiBase}/sync`, { method: 'POST' });
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/sync`, { method: 'POST' });
                 if (!res.ok) {
                     const errorText = await res.text();
                     throw new Error(errorText || `Server error: ${res.status}`);
@@ -793,7 +908,9 @@ const App = {
 
             } catch (err) {
                 console.error('Sync error:', err);
-                if (err.message.includes('fetch') || err.name === 'TypeError') {
+                if (err.message.includes('Authentication') || err.message === 'Session expired') {
+                    // Handled by fetchWithAuth
+                } else if (err.message.includes('fetch') || err.name === 'TypeError') {
                     App.ui.showToast('error', '🌐 ネットワークエラー: サーバーに接続できません', 6000);
                 } else {
                     App.ui.showToast('error', `❌ 同期失敗: ${err.message}`, 6000);
@@ -804,32 +921,44 @@ const App = {
         },
 
         async syncGenzai() {
+            if (!App.auth.token) {
+                App.auth.showLogin();
+                return;
+            }
             const btn = document.getElementById('btn-sync-genzai');
             App.ui.setBtnLoading(btn, true);
             try {
-                const res = await fetch(`${App.config.apiBase}/sync-genzai`, { method: 'POST' });
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/sync-genzai`, { method: 'POST' });
                 if (!res.ok) throw new Error(`Server error: ${res.status}`);
                 const json = await res.json();
                 App.ui.showToast('success', `✅ 派遣社員データを同期しました (${json.count || 0}件)`, 5000);
             } catch (err) {
                 console.error('Genzai sync error:', err);
-                App.ui.showToast('error', '❌ 派遣社員の同期に失敗しました', 6000);
+                if (err.message !== 'Authentication required' && err.message !== 'Session expired') {
+                    App.ui.showToast('error', '❌ 派遣社員の同期に失敗しました', 6000);
+                }
             } finally {
                 App.ui.setBtnLoading(btn, false);
             }
         },
 
         async syncUkeoi() {
+            if (!App.auth.token) {
+                App.auth.showLogin();
+                return;
+            }
             const btn = document.getElementById('btn-sync-ukeoi');
             App.ui.setBtnLoading(btn, true);
             try {
-                const res = await fetch(`${App.config.apiBase}/sync-ukeoi`, { method: 'POST' });
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/sync-ukeoi`, { method: 'POST' });
                 if (!res.ok) throw new Error(`Server error: ${res.status}`);
                 const json = await res.json();
                 App.ui.showToast('success', `✅ 請負社員データを同期しました (${json.count || 0}件)`, 5000);
             } catch (err) {
                 console.error('Ukeoi sync error:', err);
-                App.ui.showToast('error', '❌ 請負社員の同期に失敗しました', 6000);
+                if (err.message !== 'Authentication required' && err.message !== 'Session expired') {
+                    App.ui.showToast('error', '❌ 請負社員の同期に失敗しました', 6000);
+                }
             } finally {
                 App.ui.setBtnLoading(btn, false);
             }
@@ -1077,7 +1206,18 @@ const App = {
             // Using data attributes instead of inline onclick (XSS prevention)
             tbody.innerHTML = data.map(e => {
                 const empNum = App.utils.escapeAttr(e.employeeNum);
-                const name = App.utils.escapeHtml(e.name);
+
+                // Name display logic: Show Kana if name is Romaji and Kana is available
+                let displayName = App.utils.escapeHtml(e.name);
+                let subName = '';
+
+                // Simple check for Romaji attributes (ASCII-only mostly)
+                const isRomaji = /^[A-Za-z0-9\s.,]+$/.test(e.name);
+                if (isRomaji && e.kana) {
+                    displayName = App.utils.escapeHtml(e.kana);
+                    subName = `<div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">${App.utils.escapeHtml(e.name)}</div>`;
+                }
+
                 const haken = App.utils.escapeHtml(e.haken || '-');
                 const granted = App.utils.safeNumber(e.granted).toFixed(1);
                 const used = App.utils.safeNumber(e.used).toFixed(1);
@@ -1112,8 +1252,11 @@ const App = {
                     <td><div class="font-bold">${empNum}</div></td>
                     <td>
                         <div class="employee-name-cell">
-                            <span class="font-bold text-white">${name}</span>
-                            <span class="badge-type ${typeClass}">${typeLabel}</span>
+                            <div>
+                                <span class="font-bold text-white">${displayName}</span>
+                                ${subName}
+                            </div>
+                            <span class="badge-type ${typeClass}" style="margin-left: 8px;">${typeLabel}</span>
                         </div>
                     </td>
                     <td><div class="text-sm text-gray-400">${haken}</div></td>
@@ -1467,11 +1610,47 @@ const App = {
                             </div>
                         </div>
                     `;
+                } else {
+                    // Fallback logic
+                    const totalUsed = yukyuHistory.reduce((acc, h) => acc + (h.used || 0), 0);
+                    if (totalUsed > 0) {
+                        usageDatesHtml = `
+                             <div style="margin-top: 1rem;">
+                                <h4 style="color: #94a3b8; margin-bottom: 0.5rem;">📋 使用履歴</h4>
+                                <div style="padding: 1rem; text-align: center; border: 1px dashed rgba(255,255,255,0.2); border-radius: 8px;">
+                                    <p style="color: #eab308; font-size: 0.9rem;">⚠️ 詳細な使用履歴が見つかりません</p>
+                                    <p style="color: #94a3b8; font-size: 0.8rem; margin-top: 0.3rem;">合計 ${totalUsed.toFixed(1)}日 使用されていますが、日付データがありません。</p>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        usageDatesHtml = `
+                             <div style="margin-top: 1rem;">
+                                <h4 style="color: #94a3b8; margin-bottom: 0.5rem;">📋 使用履歴</h4>
+                                <div style="padding: 0.5rem; text-align: center; color: #64748b; font-size: 0.9rem;">
+                                    使用履歴はありません
+                                </div>
+                            </div>
+                        `;
+                    }
                 }
 
                 // XSS prevention: escape all user data
                 const safeEmpNum = App.utils.escapeHtml(emp.employeeNum);
                 const safeEmpNumAttr = App.utils.escapeAttr(emp.employeeNum);
+                const safeName = App.utils.escapeHtml(emp.name);
+
+                // Name display logic
+                const isRomaji = /^[A-Za-z0-9\s.,]+$/.test(emp.name);
+                let displayName = safeName;
+                if (isRomaji && emp.kana) {
+                    displayName = `${App.utils.escapeHtml(emp.kana)} <span style="font-size: 0.7em; opacity: 0.7;">(${safeName})</span>`;
+                }
+
+                // Update title with Katakana if applicable
+                const modalTitle = document.getElementById('modal-title');
+                if (modalTitle) modalTitle.innerHTML = displayName;
+
                 const safeHaken = App.utils.escapeHtml(emp.haken || employee.factory || '-');
                 const safeType = App.utils.escapeHtml(employee.type || (emp.type === 'haken' ? '派遣' : emp.type === 'ukeoi' ? '請負' : 'スタッフ'));
                 const safeStatus = App.utils.escapeHtml(employee.status || '在職中');
@@ -1559,7 +1738,10 @@ const App = {
                         <div><span class="text-gray-400">Balance:</span> ${safeBalance}</div>
                         <div><span class="text-gray-400">Rate:</span> ${safeUsageRate}%</div>
                     </div>
-                    <p style="color: #f59e0b; font-size: 0.9rem;">⚠️ 詳細データの取得に失敗しました</p>
+                    <div style="text-align: center; color: #ef4444;">
+                        <p style="font-weight: bold; margin-bottom: 0.5rem;">⚠️ 詳細データの取得に失敗しました</p>
+                        <p style="font-family: monospace; font-size: 0.8rem; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 4px;">${error.message}</p>
+                    </div>
                 `;
             }
         },

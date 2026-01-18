@@ -430,6 +430,17 @@
                             <span class="theme-toggle-label" id="theme-label">Dark</span>
                         </button>
 
+                        <!-- Auth Controls -->
+                        <button class="btn btn-glass" id="btn-login" data-action="auth.showLogin" aria-label="Login">
+                            <span class="btn-icon">🔒</span>
+                            <span class="btn-text">Login</span>
+                        </button>
+                        <button class="btn btn-glass d-none" id="btn-logout" data-action="auth.logout"
+                            aria-label="Logout">
+                            <span class="btn-icon">🔓</span>
+                            <span class="btn-text">Logout</span>
+                        </button>
+
                         <button class="btn btn-primary" id="btn-sync-main" data-action="data.sync"
                             aria-label="Sync vacation data" type="button"
                             data-tooltip="有給データをExcelから同期 / Sincronizar datos de vacaciones" data-loading="同期中...">
@@ -1746,7 +1757,7 @@
         });
     </script>
 
-    <script src="/static/js/app.js?v=20251222"></script>
+    <script src="/static/js/app.js?v=20260119-2"></script>
 
     <!-- FASE 4.2: Modern Component Integration Bridge (Non-Breaking) -->
     <script src="/static/js/modern-integration.js?v=20260117" defer></script>
@@ -3074,6 +3085,40 @@
     </style>
 
 
+    <!-- Login Modal -->
+    <div class="loader-overlay bg-overlay-dark" id="login-modal" role="dialog" aria-modal="true"
+        aria-labelledby="login-modal-title">
+        <div class="glass-panel modal-content-container" style="max-width: 400px;">
+            <button class="btn modal-close-btn"
+                onclick="document.getElementById('login-modal').classList.remove('active')"
+                aria-label="Close modal">✕</button>
+            <div class="p-xl">
+                <h2 id="login-modal-title" class="mb-lg text-center text-gradient title-xl">Login</h2>
+                <form id="login-form">
+                    <div class="mb-lg">
+                        <label for="login-username" class="form-label">Username</label>
+                        <input type="text" id="login-username" name="username" class="input-glass w-full" required
+                            autocomplete="username">
+                    </div>
+                    <div class="mb-lg">
+                        <label for="login-password" class="form-label">Password</label>
+                        <input type="password" id="login-password" name="password" class="input-glass w-full" required
+                            autocomplete="current-password">
+                    </div>
+                    <div class="mb-lg" id="login-error" style="color: var(--danger); display: none; font-size: 0.9rem;">
+                        Invalid credentials
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full shadow-glow">
+                        <span class="btn-text">Log In</span>
+                        <span class="btn-spinner d-none"></span>
+                    </button>
+                    <p class="mt-lg text-center text-muted text-sm">
+                        Development: admin / admin123456
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
