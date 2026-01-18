@@ -1,0 +1,279 @@
+# AlertManager Configuration for YuKyuDATA Production
+#
+# Routes alerts to appropriate channels based on severity and type
+# Supports Slack, Email, PagerDuty, Webhooks, etc.
+
+global:
+  # Default from address for email notifications
+  from: 'alerts@yukyu.example.com'
+
+  # SMTP configuration for email
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_auth_username: 'alerts@example.com'
+  smtp_auth_password: '${SMTP_PASSWORD}'  # Use environment variable
+  smtp_require_tls: true
+
+  # Slack API endpoint (use environment variable)
+  slack_api_url: '${SLACK_WEBHOOK_URL}'
+
+  # PagerDuty integration key (optional)
+  # pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+# Global templates for all notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# The root route with all parameters, which are inherited by the child routes if they are not overwritten.
+route:
+  # The default receiver to use if an alert does not match any child route
+  receiver: 'default'
+
+  # How long to wait before sending a notification about partial lack of alerts
+  group_wait: 10s
+
+  # How long to wait before sending a notification about new alerts that are added to a group of alerts for which an initial notification has already been sent
+  group_interval: 10s
+
+  # How long an alert will continue to be repeated within a group, even if no new alerts are added to the group
+  repeat_interval: 12h
+
+  # Optional field names to define the grouping of alerts
+  group_by: ['alertname', 'cluster', 'service']
+
+  # Child routes (nested routing rules)
+  routes:
+    # Critical Alerts - Immediate escalation
+    - match:
+        severity: critical
+      receiver: 'critical-escalation'
+      group_wait: 0s        # Send immediately
+      group_interval: 5m
+      repeat_interval: 1h
+      continue: true        # Continue to other routes
+
+    # Warning Alerts - Standard routing
+    - match:
+        severity: warning
+      receiver: 'warnings'
+      group_wait: 30s
+      group_interval: 30m
+      repeat_interval: 24h
+
+    # API Service Alerts
+    - match:
+        service: api
+      receiver: 'api-team'
+      group_by: ['service', 'instance']
+      continue: true
+
+    # Database Alerts
+    - match:
+        service: database
+      receiver: 'database-team'
+      group_by: ['service', 'instance']
+      continue: true
+
+    # Deployment Alerts
+    - match:
+        service: deployment
+      receiver: 'devops-team'
+      group_by: ['service']
+      continue: true
+
+    # Infrastructure Alerts
+    - match:
+        service: infrastructure
+      receiver: 'ops-team'
+      group_by: ['service']
+      continue: true
+
+# Receivers (notification targets)
+receivers:
+  # Default receiver (catch-all)
+  - name: 'default'
+    slack_configs:
+      - channel: '#alerts-general'
+        title: '{{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+
+  # Critical alerts - escalate immediately
+  - name: 'critical-escalation'
+    # Slack notification
+    slack_configs:
+      - channel: '#critical-alerts'
+        api_url: '${SLACK_WEBHOOK_URL_CRITICAL}'
+        title: 'CRITICAL: {{ .GroupLabels.alertname }}'
+        text: |
+          Service: {{ .GroupLabels.service }}
+          Instance: {{ .GroupLabels.instance }}
+          {{ range .Alerts }}{{ .Annotations.summary }}
+          {{ .Annotations.description }}{{ end }}
+        send_resolved: false
+        actions:
+          - type: button
+            text: 'View Dashboard'
+            url: '{{ range .Alerts }}{{ .Annotations.dashboard }}{{ end }}'
+
+    # Email notification
+    email_configs:
+      - to: 'oncall@example.com'
+        from: 'alerts@yukyu.example.com'
+        smarthost: 'smtp.example.com:587'
+        auth_username: 'alerts@example.com'
+        auth_password: '${SMTP_PASSWORD}'
+        headers:
+          Subject: 'CRITICAL: {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>CRITICAL ALERT</h2>
+          <p><b>Alert:</b> {{ .GroupLabels.alertname }}</p>
+          <p><b>Service:</b> {{ .GroupLabels.service }}</p>
+          <p><b>Time:</b> {{ .GroupLabels.alerttime }}</p>
+          {{ range .Alerts }}
+          <p>{{ .Annotations.description }}</p>
+          {{ end }}
+
+    # PagerDuty integration (optional)
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+        description: '{{ .GroupLabels.alertname }}'
+
+  # Warning alerts
+  - name: 'warnings'
+    slack_configs:
+      - channel: '#alerts-warnings'
+        title: '{{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+        color: 'warning'
+
+  # API team notifications
+  - name: 'api-team'
+    slack_configs:
+      - channel: '#api-alerts'
+        title: 'API Alert: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}Instance: {{ .GroupLabels.instance }}\n{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+
+  # Database team notifications
+  - name: 'database-team'
+    slack_configs:
+      - channel: '#database-alerts'
+        title: 'Database Alert: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+    email_configs:
+      - to: 'database-team@example.com'
+        headers:
+          Subject: 'Database Alert: {{ .GroupLabels.alertname }}'
+
+  # DevOps team notifications
+  - name: 'devops-team'
+    slack_configs:
+      - channel: '#devops-alerts'
+        title: 'Deployment Alert: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+
+  # Operations team notifications
+  - name: 'ops-team'
+    slack_configs:
+      - channel: '#ops-alerts'
+        title: 'Infrastructure Alert: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+
+# Inhibition rules (suppress certain alerts)
+inhibit_rules:
+  # Suppress warning alerts if critical alert exists for same alertname
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'service']
+
+  # Suppress info alerts if warning alert exists
+  - source_match:
+      severity: 'warning'
+    target_match:
+      severity: 'info'
+    equal: ['alertname', 'service']
+
+  # Suppress resolved alerts
+  - source_match:
+      status: 'resolved'
+    target_match_re:
+      status: 'firing|resolved'
+    equal: ['alertname', 'instance', 'service']
+
+---
+
+# Notification Templates
+# Save this as /etc/alertmanager/templates/notify.tmpl
+
+{{ define "slack.default.title" -}}
+  [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{end}}] {{ .CommonLabels.alertname }}
+{{- end }}
+
+{{ define "slack.default.text" -}}
+  {{ range .Alerts -}}
+    *Alert:* {{ .Labels.alertname }} - `{{ .Labels.severity }}`
+    *Service:* {{ .Labels.service }}
+    *Instance:* {{ .Labels.instance }}
+    *Summary:* {{ .Annotations.summary }}
+    *Description:* {{ .Annotations.description }}
+  {{ end }}
+{{- end }}
+
+{{ define "email.default.subject" -}}
+  [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}
+{{- end }}
+
+{{ define "email.default.html" -}}
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <style>
+      body { font-family: Arial, sans-serif; }
+      .alert { margin: 10px 0; padding: 10px; border-left: 4px solid #ff6b6b; background: #ffe0e0; }
+      .critical { border-color: #ff0000; background: #ffcccc; }
+      .warning { border-color: #ffaa00; background: #ffe5cc; }
+      .info { border-color: #0066ff; background: #ccddff; }
+      .resolved { border-color: #00cc00; background: #ccffcc; }
+    </style>
+  </head>
+  <body>
+    <h2>Alert Notification</h2>
+    <p><strong>Status:</strong> {{ .Status }}</p>
+    <p><strong>Alert:</strong> {{ .CommonLabels.alertname }}</p>
+    <p><strong>Service:</strong> {{ .CommonLabels.service }}</p>
+
+    {{ if .Alerts.Firing }}
+    <h3>Firing Alerts:</h3>
+    {{ range .Alerts.Firing }}
+    <div class="alert {{ .Labels.severity }}">
+      <strong>{{ .Labels.alertname }}</strong>
+      <p>{{ .Annotations.summary }}</p>
+      <p>{{ .Annotations.description }}</p>
+      <small>Fired at: {{ .StartsAt }}</small>
+    </div>
+    {{ end }}
+    {{ end }}
+
+    {{ if .Alerts.Resolved }}
+    <h3>Resolved Alerts:</h3>
+    {{ range .Alerts.Resolved }}
+    <div class="alert resolved">
+      <strong>{{ .Labels.alertname }}</strong>
+      <p>{{ .Annotations.summary }}</p>
+      <small>Resolved at: {{ .EndsAt }}</small>
+    </div>
+    {{ end }}
+    {{ end }}
+
+    <hr>
+    <p><small>Alert Manager | YuKyuDATA Monitoring</small></p>
+  </body>
+  </html>
+{{- end }}

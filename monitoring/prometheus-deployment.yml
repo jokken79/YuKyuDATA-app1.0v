@@ -1,0 +1,289 @@
+# Prometheus Configuration for YuKyuDATA Production Deployment
+#
+# Scrapes metrics from application and infrastructure
+# Generates alerts based on defined rules
+
+global:
+  # How often to scrape targets by default
+  scrape_interval: 15s
+
+  # How long until a scrape request times out
+  scrape_timeout: 10s
+
+  # How often to evaluate rules
+  evaluation_interval: 15s
+
+  # External labels
+  external_labels:
+    monitor: 'YuKyuDATA-Prod'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Load alert rules
+rule_files:
+  - '/etc/prometheus/rules/*.yml'
+  - '/etc/prometheus/alerts.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 5s
+
+  # YuKyuDATA API Server
+  - job_name: 'yukyu-api'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ['localhost:8000']
+        labels:
+          service: 'api'
+          instance: 'primary'
+    relabel_configs:
+      # Add environment label
+      - source_labels: [__address__]
+        target_label: instance
+      # Override job label
+      - target_label: job
+        replacement: 'yukyu-api'
+
+  # Health check endpoint
+  - job_name: 'yukyu-health'
+    metrics_path: '/api/health'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['localhost:8000']
+    relabel_configs:
+      - target_label: job
+        replacement: 'health-check'
+
+  # Docker Daemon (if available)
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['localhost:9323']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Node Exporter (System metrics)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+    scrape_interval: 15s
+    metric_relabel_configs:
+      # Only keep relevant metrics
+      - source_labels: [__name__]
+        regex: 'node_(cpu|memory|disk|network|filesystem).*'
+        action: keep
+
+  # PostgreSQL Exporter (if using PostgreSQL)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['localhost:9187']
+    scrape_interval: 30s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'pg_(stat|statio|database|table|index|connections).*'
+        action: keep
+
+  # Redis Exporter (if using Redis for caching)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['localhost:9121']
+    scrape_interval: 30s
+
+  # Blackbox Exporter (External HTTP/HTTPS checks)
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - 'http://localhost:8000/api/health'
+          - 'http://localhost:8000/docs'
+          - 'http://localhost:8000'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 'localhost:9115'
+
+  # Custom application metrics endpoint
+  - job_name: 'yukyu-custom'
+    static_configs:
+      - targets: ['localhost:8000/metrics/custom']
+    scrape_interval: 30s
+
+---
+
+# Prometheus Alert Rules (alerts.yml)
+# This section defines alerts based on thresholds
+
+groups:
+  - name: YuKyuDATA
+    interval: 30s
+    rules:
+      # API Response Time Alert
+      - alert: HighAPIResponseTime
+        expr: histogram_quantile(0.95, rate(api_request_duration_seconds_bucket[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "High API response time detected"
+          description: "P95 API response time is {{ $value }}s (threshold: 0.2s)"
+          dashboard: "http://grafana:3000/d/api-dashboard"
+
+      # Error Rate Alert
+      - alert: HighErrorRate
+        expr: rate(api_errors_total[5m]) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} (threshold: 1%)"
+
+      # Database Connection Pool Alert
+      - alert: LowDatabaseConnections
+        expr: database_connections_available < 5
+        for: 2m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "Low database connection availability"
+          description: "Only {{ $value }} connections available in pool"
+
+      # Memory Usage Alert
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes / 1024 / 1024 > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "High memory usage detected"
+          description: "Process using {{ $value | humanize }}MB of memory"
+
+      # CPU Usage Alert
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value | humanizePercentage }}"
+
+      # Disk Space Alert
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+          service: infrastructure
+        annotations:
+          summary: "Low disk space"
+          description: "Only {{ $value | humanizePercentage }} disk space available"
+
+      # Service Down Alert
+      - alert: ServiceDown
+        expr: up{job="yukyu-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "YuKyuDATA API service is down"
+          description: "API service has been unreachable for more than 1 minute"
+
+      # Database Down Alert
+      - alert: DatabaseDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "Database service has been unreachable for more than 1 minute"
+
+      # Request Rate Alert (too high)
+      - alert: UnusuallyHighRequestRate
+        expr: rate(api_requests_total[5m]) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "Unusually high request rate"
+          description: "Request rate is {{ $value | humanize }} req/s"
+
+      # Deployment Health Check
+      - alert: DeploymentHealthCheckFailed
+        expr: deployment_health_check_failures_total > 0
+        for: 2m
+        labels:
+          severity: critical
+          service: deployment
+        annotations:
+          summary: "Post-deployment health check failed"
+          description: "Health check has failed {{ $value }} time(s)"
+
+---
+
+# Recording Rules (for performance optimization)
+# These pre-compute expensive queries
+
+groups:
+  - name: APIMetrics
+    interval: 30s
+    rules:
+      # API Request Rate
+      - record: api:requests:rate5m
+        expr: rate(api_requests_total[5m])
+
+      # API Error Rate
+      - record: api:errors:rate5m
+        expr: rate(api_errors_total[5m])
+
+      # API Response Time P95
+      - record: api:response_time:p95:5m
+        expr: histogram_quantile(0.95, rate(api_request_duration_seconds_bucket[5m]))
+
+      # API Response Time P99
+      - record: api:response_time:p99:5m
+        expr: histogram_quantile(0.99, rate(api_request_duration_seconds_bucket[5m]))
+
+      # Database Query Performance
+      - record: db:query_time:p95:5m
+        expr: histogram_quantile(0.95, rate(db_query_duration_seconds_bucket[5m]))
+
+  - name: SystemMetrics
+    interval: 30s
+    rules:
+      # CPU Usage Percentage
+      - record: system:cpu:usage:percentage
+        expr: (rate(process_cpu_seconds_total[5m]) * 100)
+
+      # Memory Usage Percentage
+      - record: system:memory:usage:percentage
+        expr: (process_resident_memory_bytes / node_memory_MemTotal_bytes * 100)
+
+      # Disk I/O Rate
+      - record: system:disk:io:bytes:rate
+        expr: rate(node_disk_io_reads_bytes_total[5m]) + rate(node_disk_io_writes_bytes_total[5m])
