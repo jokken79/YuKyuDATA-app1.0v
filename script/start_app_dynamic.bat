@@ -1,5 +1,6 @@
 @echo off
 chcp 65001 > nul
+set PYTHONIOENCODING=utf-8
 cls
 echo ========================================
 echo YuKyu Dashboard v5.0 (Dynamic Port)

@@ -1,5 +1,6 @@
 @echo off
 chcp 65001 > nul
+set PYTHONIOENCODING=utf-8
 echo Iniciando en puerto 3000...
 cd /d %~dp0..
 start /min cmd /c "timeout /t 2 /nobreak > nul && start http://localhost:3000"

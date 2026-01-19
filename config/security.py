@@ -33,7 +33,7 @@ class SecuritySettings(BaseSettings):
 
     jwt_algorithm: str = "HS256"
     jwt_expiration_minutes: int = 15  # Access token: 15 minutos (v5.17)
-    jwt_expiration_hours: int = 24    # Legacy - deprecated, use jwt_expiration_minutes
+    jwt_expiration_hours: float = 24    # Legacy - deprecated, use jwt_expiration_minutes
     jwt_refresh_expiration_days: int = 7  # Refresh token: 7 dias (v5.17)
 
     # MFA Settings
