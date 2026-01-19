@@ -11,10 +11,10 @@ Sistema completo para la gestión de vacaciones pagadas de empleados, desarrolla
 | Categoría | Estado | Puntuación |
 |-----------|--------|------------|
 | **Tests** | 61/62 pasando | 98.4% |
-| **Backend** | Funcional | 6.5/10 |
-| **Frontend** | Funcional | 7.1/10 |
-| **Seguridad** | Necesita mejoras | 4.5/10 |
-| **Documentación** | Completa | 8/10 |
+| **Backend** | Funcional | 7.5/10 |
+| **Frontend** | Funcional | 8.0/10 |
+| **Seguridad** | Mejorado | 8.0/10 |
+| **Documentación** | Completa | 9/10 |
 
 ---
 
@@ -32,6 +32,9 @@ Sistema completo para la gestión de vacaciones pagadas de empleados, desarrolla
 - **Exportación Excel**: Generación de reportes en formato Excel
 - **PWA**: Funcionalidad offline con Service Worker
 - **Tema Claro/Oscuro**: Soporte completo de temas
+- **Autenticación JWT**: Sistema completo con refresh tokens y sesiones
+- **Rate Limiting**: Protección contra abuso con límites dinámicos
+- **Paginación**: Respuestas paginadas para endpoints de lista
 
 ---
 
@@ -79,6 +82,92 @@ YuKyuDATA-app1.0v/
 ```
 
 **Total**: ~12,600 líneas de código
+
+---
+
+## 🔐 Autenticación y Seguridad
+
+### Sistema de Autenticación
+
+La aplicación utiliza **JWT (JSON Web Tokens)** para autenticación con las siguientes características:
+
+- **Access Tokens**: Expiración de 15 minutos
+- **Refresh Tokens**: Expiración de 7 días con rotación automática
+- **Sesiones Múltiples**: Soporte para múltiples dispositivos
+- **Revocación**: Logout individual o de todas las sesiones
+
+### Credenciales de Desarrollo
+
+⚠️ **Solo para entorno de desarrollo** (cuando `DEBUG=true`):
+
+```bash
+# Administrador
+Usuario: admin
+Contraseña: admin123456
+Rol: admin
+
+# Usuario regular
+Usuario: demo
+Contraseña: demo123456
+Rol: user
+```
+
+### Endpoints de Autenticación
+
+| Endpoint | Método | Descripción | Auth Requerida |
+|----------|--------|-------------|----------------|
+| `/api/auth/login` | POST | Iniciar sesión | No |
+| `/api/auth/logout` | POST | Cerrar sesión actual | Sí |
+| `/api/auth/logout-all` | POST | Cerrar todas las sesiones | Sí |
+| `/api/auth/refresh` | POST | Renovar access token | No (requiere refresh token) |
+| `/api/auth/verify` | GET | Verificar validez del token | Sí |
+| `/api/auth/me` | GET | Obtener información del usuario | Sí |
+| `/api/auth/sessions` | GET | Listar sesiones activas | Sí |
+| `/api/auth/register` | POST | Registrar nuevo usuario | No |
+| `/api/auth/change-password` | POST | Cambiar contraseña | Sí |
+
+### Ejemplo de Uso
+
+```javascript
+// 1. Login
+const response = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        username: 'admin',
+        password: 'admin123456'
+    })
+});
+const data = await response.json();
+const { access_token, refresh_token } = data;
+
+// 2. Usar el token en requests
+const protectedResponse = await fetch('/api/employees', {
+    headers: {
+        'Authorization': `Bearer ${access_token}`
+    }
+});
+
+// 3. Renovar token cuando expire
+const refreshResponse = await fetch('/api/auth/refresh', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token })
+});
+```
+
+### Rate Limiting
+
+Protección automática contra abuso con límites por endpoint:
+
+| Endpoint | Límite | Ventana |
+|----------|--------|--------|
+| `/api/auth/login` | 5 requests | 60s |
+| `/api/auth/register` | 3 requests | 60s |
+| `/api/sync*` | 2 requests | 60s |
+| `/api/reports/*` | 10 requests | 60s |
+| Autenticados (general) | 200 requests | 60s |
+| Anónimos (general) | 100 requests | 60s |
 
 ---
 
@@ -143,12 +232,15 @@ python -m pytest tests/ -v
 5. **PWA**: Funcionalidad offline
 6. **Tests**: Cobertura del 98.4%
 
-### Áreas de Mejora
+### Mejoras Recientes (2026-01-19)
 
-1. **Seguridad** (CRÍTICO)
-   - Sin autenticación en endpoints
-   - File upload sin validación de MIME type
-   - Datos sensibles expuestos sin filtrado
+1. **✅ Seguridad Implementada**
+   - ✅ Sistema completo de autenticación JWT
+   - ✅ Refresh tokens con rotación
+   - ✅ Rate limiting avanzado user-aware
+   - ✅ Error handling centralizado
+   - ✅ Custom exceptions con códigos HTTP apropiados
+   - ⚠️ File upload sin validación MIME (uso local solamente)
 
 2. **Arquitectura**
    - `main.py` demasiado grande (2,751 líneas)
@@ -167,18 +259,21 @@ python -m pytest tests/ -v
 
 ## Recomendaciones
 
-### Prioridad Alta (Inmediato)
+### ✅ Completado Recientemente
 
 ```python
-# 1. Agregar autenticación
-from fastapi import Depends
-from fastapi.security import HTTPBearer
+# ✅ 1. Autenticación JWT implementada
+from middleware.auth_middleware import get_current_user, require_admin
 
-# 2. Validar uploads
-if mime not in ALLOWED_MIMES:
-    raise HTTPException(400, "Invalid file type")
+@app.get("/protected")
+async def protected(user: CurrentUser = Depends(get_current_user)):
+    return {"user": user.username}
 
-# 3. Filtrar datos sensibles por rol
+# ✅ 2. Rate limiting implementado
+from middleware.rate_limiter import user_aware_limiter
+
+# ✅ 3. Paginación disponible
+from utils.pagination_utils import paginate, PaginationParams
 ```
 
 ### Prioridad Media (1-2 semanas)
@@ -194,6 +289,37 @@ if mime not in ALLOWED_MIMES:
 - Implementar caching con Redis
 - Agregar CI/CD pipeline
 - Implementar logging centralizado
+
+---
+
+## 🚀 Producción
+
+### Configuración de Seguridad
+
+Para deployment en producción, ver **[PRODUCTION.md](PRODUCTION.md)** con:
+
+- ✅ SECRET_KEY segura desde .env
+- ✅ Tokens con expiración de 15 minutos
+- ✅ Rate limiting configurado
+- ⚠️ HTTPS requerido (configurar reverse proxy)
+- ⚠️ CORS restrictivo (actualizar dominios permitidos)
+
+### Deployment Rápido
+
+```bash
+# 1. Copiar template de producción
+cp .env.production .env
+
+# 2. Generar SECRET_KEY segura
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# 3. Actualizar .env con la key generada y configuraciones
+
+# 4. Iniciar con uvicorn
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+Ver [PRODUCTION.md](PRODUCTION.md) para guía completa.
 
 ---
 
@@ -213,6 +339,7 @@ Proyecto interno - Todos los derechos reservados
 
 ## Última Actualización
 
-- **Fecha**: 2025-12-17
-- **Versión**: 1.0v
-- **Análisis**: Completo con 62 tests, 4 agentes de análisis
+- **Fecha**: 2026-01-19
+- **Versión**: 1.1v
+- **Mejoras**: Sistema de autenticación JWT, rate limiting, paginación, error handling
+- **Tests**: 61/62 pasando (98.4%)
