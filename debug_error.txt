@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "D:\YuKyuDATA-app1.0v\verify_imports.py", line 8, in <module>
+    from exceptions.custom_exceptions import YuKyuException
+  File "D:\YuKyuDATA-app1.0v\exceptions\__init__.py", line 6, in <module>
+    from .custom_exceptions import (
+    ...<11 lines>...
+    )
+  File "D:\YuKyuDATA-app1.0v\exceptions\custom_exceptions.py", line 80
+    self.resource_type = resource_type
+                                      ^
+IndentationError: unindent does not match any outer indentation level

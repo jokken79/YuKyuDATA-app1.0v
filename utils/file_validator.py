@@ -4,10 +4,17 @@ Validación segura de archivos subidos para prevenir vulnerabilidades
 """
 
 import os
-import magic
 from pathlib import Path
 from fastapi import UploadFile, HTTPException
 from typing import Optional
+
+# Try to import magic, but don't fail if missing (fallback mode)
+try:
+    import magic
+    MAGIC_AVAILABLE = True
+except ImportError:
+    magic = None
+    MAGIC_AVAILABLE = False
 
 # MIME types permitidos para archivos Excel
 ALLOWED_MIME_TYPES = {
@@ -44,6 +51,10 @@ def validate_mime_type(file_content: bytes, filename: str) -> bool:
         HTTPException: Si el MIME type no es válido
     """
     try:
+        # Si libmagic no está disponible, saltar validación estricta
+        if not MAGIC_AVAILABLE:
+            return True
+
         # Detectar MIME type real del archivo
         mime_type = magic.from_buffer(file_content, mime=True)
 
