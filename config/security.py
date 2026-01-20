@@ -85,7 +85,7 @@ class SecuritySettings(BaseSettings):
                 import secrets
                 generated = "dev-secret-" + secrets.token_hex(16)
                 print(
-                    "⚠️  WARNING: Generated development JWT secret - "
+                    "[WARNING] Generated development JWT secret - "
                     "DO NOT USE IN PRODUCTION"
                 )
                 self.jwt_secret_key = generated
