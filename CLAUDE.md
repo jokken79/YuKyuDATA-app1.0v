@@ -18,7 +18,6 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 # Acceder
 http://localhost:8000        # App
 http://localhost:8000/docs   # Swagger UI
-http://localhost:8000/status # Dashboard estado
 ```
 
 ---
@@ -31,8 +30,7 @@ http://localhost:8000/status # Dashboard estado
 |-------|------------|
 | Backend | FastAPI + SQLite/PostgreSQL + PyJWT + Alembic |
 | Frontend | Vanilla JS (ES6) + Chart.js + ApexCharts |
-| Testing | Pytest + Jest + Playwright |
-| DevOps | Docker + GitHub Actions + Prometheus |
+| Testing | Pytest (1214 tests) + Jest + Playwright |
 
 **Data Sources (deben existir en raíz):**
 - `有給休暇管理.xlsm` - Master de vacaciones
@@ -44,11 +42,11 @@ http://localhost:8000/status # Dashboard estado
 
 ```bash
 # Tests
-pytest tests/ -v                              # Todos (806/806 passing)
+pytest tests/ -v                              # Todos
 pytest tests/test_fiscal_year.py -v           # Tests críticos fiscal
 pytest tests/test_api.py::test_sync_employees # Test individual
 npx jest                                      # Frontend unit tests
-npx playwright test                           # E2E tests
+npx playwright test                           # E2E
 
 # Docker
 docker-compose -f docker-compose.dev.yml up -d      # Desarrollo
@@ -56,7 +54,6 @@ docker-compose -f docker-compose.secure.yml up -d   # Producción
 
 # Verificaciones
 python scripts/project-status.py              # Estado CLI
-./scripts/run-checks.sh                       # Pre-commit checks
 ```
 
 ---
@@ -71,29 +68,25 @@ Frontend (SPA)                    static/js/app.js + static/src/
 API Layer (main.py + routes/)     ~50 endpoints, JWT Auth, CSRF, Rate Limiting
        │
        ▼
-Service Layer (services/)         fiscal_year, excel_service, auth, notifications
+Service Layer (services/)         14 módulos: fiscal_year, excel, auth, reports...
        │
        ▼
-Agent System (agents/)            13 agentes especializados + orchestrator
+Agent System (agents/)            14 agentes especializados + orchestrator
        │
        ▼
 Data Layer (database.py)          SQLite/PostgreSQL, backup, audit log
-       │
-       ▼
-Database (yukyu.db)               9+ tablas, 15+ índices, FK constraints
 ```
 
 ### Key Directories
 
 | Directorio | Propósito |
 |------------|-----------|
-| `routes/` | API endpoints modularizados (19 archivos) |
-| `services/` | Lógica de negocio (fiscal_year, excel, auth, reports) |
-| `agents/` | 13 agentes especializados (compliance, security, testing...) |
-| `middleware/` | CSRF, rate limiting, security headers, error handling |
-| `static/src/` | Frontend modular moderno (14 componentes, 7 páginas) |
-| `static/js/` | Legacy SPA (app.js) + módulos ES6 |
-| `monitoring/` | Health checks, performance, backups, alerts |
+| `routes/` | API endpoints modularizados (21 archivos) |
+| `services/` | Lógica de negocio (14 módulos) |
+| `agents/` | 14 agentes (compliance, security, testing, memory...) |
+| `middleware/` | CSRF, rate limiting, security headers |
+| `static/src/` | Frontend moderno (componentes ES6) |
+| `static/js/` | Legacy SPA (app.js) |
 
 ---
 
@@ -121,7 +114,6 @@ GRANT_TABLE = {
 - `calculate_granted_days(seniority)` → días otorgados
 - `apply_lifo_deduction(emp_num, days, year)` → deduce días (más nuevos primero)
 - `check_5day_compliance(year)` → verifica cumplimiento de 5 días
-- `process_year_end_carryover(from_year, to_year)` → traspaso de año
 
 ---
 
@@ -138,7 +130,6 @@ Tabla `employees` usa `{employee_num}_{year}` como PK (ej: `001_2025`).
 | `ukeoi` | Empleados contratistas (請負社員) |
 | `staff` | Personal de oficina |
 | `leave_requests` | Solicitudes (workflow: PENDING → APPROVED/REJECTED) |
-| `yukyu_usage_details` | Fechas individuales de uso |
 | `audit_log` | Trail completo de cambios |
 
 ### Patrones de Código
@@ -163,7 +154,6 @@ Copiar `.env.example` a `.env` y configurar:
 ```bash
 JWT_SECRET_KEY=...          # python -c "import secrets; print(secrets.token_urlsafe(32))"
 DATABASE_ENCRYPTION_KEY=... # python -c "import secrets; print(secrets.token_hex(32))"
-ENCRYPTION_KEY=...          # python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 ### Principales
@@ -173,26 +163,6 @@ DATABASE_TYPE=sqlite        # sqlite o postgresql
 DATABASE_URL=sqlite:///./yukyu.db
 CORS_ORIGINS=http://localhost:8000
 RATE_LIMIT_ENABLED=true
-LOG_LEVEL=INFO
-```
-
-### Opcionales
-```bash
-# PostgreSQL (producción)
-DATABASE_URL=postgresql+psycopg2://user:pass@localhost:5432/yukyu
-DB_POOL_SIZE=10
-
-# Backups
-BACKUP_ENABLED=false
-BACKUP_DIRECTORY=./backups
-
-# Notificaciones
-EMAIL_NOTIFICATIONS_ENABLED=false
-SLACK_NOTIFICATIONS_ENABLED=false
-
-# GitHub Integration
-GITHUB_TOKEN=ghp_...
-GITHUB_REPO=owner/repo
 ```
 
 ---
@@ -215,21 +185,10 @@ PUT  /api/employees/{emp}/{year}
 POST  /api/leave-requests
 PATCH /api/leave-requests/{id}/approve   # Deduce días
 PATCH /api/leave-requests/{id}/reject
-PATCH /api/leave-requests/{id}/revert    # Restaura días
 
 # Compliance
 GET  /api/compliance/5day?year=2025
 GET  /api/expiring-soon?year=2025&threshold_months=3
-
-# Notificaciones
-GET   /api/notifications
-PATCH /api/notifications/{id}/read
-GET   /api/notifications/unread-count
-
-# Reports & Analytics
-GET  /api/reports/monthly?year=2025&month=1
-GET  /api/analytics/stats?year=2025
-POST /api/reports/pdf
 
 # Health
 GET  /api/health
@@ -246,22 +205,12 @@ GET  /api/health/detailed
 | **Legacy** | `static/js/app.js` | Activo (producción) |
 | **Modern** | `static/src/` | Disponible para nuevas features |
 
-### Componentes Modernos (static/src/components/)
-Modal, Table, Form, Alert, DatePicker, Select, Card, Loader, Pagination, Button, Input, Tooltip, Badge
-
+### Uso Componentes Modernos
 ```javascript
-// Importar desde barrel export
-import { Modal, Alert, DataTable, Form } from '/static/src/components/index.js';
+import { Modal, Alert, DataTable } from '/static/src/components/index.js';
 
-// Ejemplo uso
 Alert.success('保存しました');
 Alert.error('エラーが発生しました');
-
-const table = new DataTable({
-    columns: [{ key: 'name', label: '氏名', sortable: true }],
-    data: employees,
-    pagination: { pageSize: 20 }
-});
 ```
 
 ### Seguridad Frontend
@@ -276,37 +225,13 @@ innerHTML = userInput   // ❌ Vulnerabilidad XSS
 
 ---
 
-## Agent System
-
-13 agentes especializados en `agents/`:
-
-| Agente | Propósito |
-|--------|-----------|
-| `OrchestratorAgent` | Coordinación multi-agente |
-| `ComplianceAgent` | Verificación 5 días, alertas expiración |
-| `SecurityAgent` | Auditoría vulnerabilidades |
-| `TestingAgent` | Generación tests |
-| `MemoryAgent` | Memoria persistente entre sesiones |
-
-```python
-from agents import get_compliance, get_memory
-
-compliance = get_compliance()  # Singleton pattern
-result = compliance.check_5day_compliance(2025)
-```
-
----
-
 ## Security
 
-### Backend
 - **JWT Auth:** Access 15min + Refresh 7 días
 - **CSRF Protection:** Middleware activo para POST/PUT/DELETE
-- **Rate Limiting:** 60 req/min por IP (configurable por endpoint)
-- **SQL Injection:** 100% queries parametrizadas
-- **Security Headers:** CSP, HSTS, X-Frame-Options
+- **Rate Limiting:** Configurable por endpoint
 
-### Rate Limits por Endpoint
+### Rate Limits
 | Endpoint | Límite |
 |----------|--------|
 | `/api/auth/login` | 5/min |
@@ -316,50 +241,27 @@ result = compliance.check_5day_compliance(2025)
 
 ---
 
-## Common Tasks
-
-### Agregar Nuevo Endpoint
-1. Crear/editar archivo en `routes/`
-2. Registrar en `routes/__init__.py`
-3. Implementar lógica en `services/` si es compleja
-4. Agregar validación con Pydantic models
-5. Agregar tests
-
-### Agregar Nuevo Componente Frontend
-1. Crear `static/src/components/NuevoComponente.js`
-2. Implementar: `constructor()`, `render()`, `destroy()`
-3. Exportar en `static/src/components/index.js`
-
-### Debugging
-```bash
-sqlite3 yukyu.db ".schema"         # Ver estructura DB
-curl http://localhost:8000/api/health
-python scripts/project-status.py   # Estado completo
-```
-
----
-
 ## Conventions
 
 ### Idiomas
 - **Código:** Inglés (variables, funciones)
 - **UI:** Japonés (labels, mensajes)
 - **Documentación:** Castellano
-- **Commits:** Conventional commits en inglés
+- **Commits:** Conventional commits en inglés (`feat:`, `fix:`, `docs:`, `refactor:`)
 
-### Commits
-```bash
-feat: Add new feature
-fix: Bug fix
-docs: Documentation
-refactor: Code restructuring
-test: Adding tests
-security: Security fixes
-```
-
-### Git Workflow
+### Git
 - Branch principal: `main`
 - Features: `claude/feature-name-{sessionId}`
+
+---
+
+## Common Pitfalls
+
+1. **ID Compuesto:** Employees usan `{emp_num}_{year}` como PK, no solo `emp_num`
+2. **Período Fiscal:** 21日〜20日, no mes calendario
+3. **LIFO Deduction:** Días más nuevos se deducen primero
+4. **Excel Headers:** El parser detecta headers dinámicamente, no asumir posición fija
+5. **Frontend Dual:** Verificar si el cambio va en `app.js` (legacy) o `static/src/` (moderno)
 
 ---
 
@@ -380,33 +282,3 @@ taskkill /PID <PID> /F
 ### CSRF token inválido
 - Recargar la página para obtener nuevo token
 - Verificar header X-CSRF-Token en requests
-
-### Tests E2E fallan
-```bash
-npx playwright install  # Instalar browsers
-```
-
----
-
-## Common Pitfalls
-
-1. **ID Compuesto:** Employees usan `{emp_num}_{year}` como PK, no solo `emp_num`
-2. **Período Fiscal:** 21日〜20日, no mes calendario
-3. **LIFO Deduction:** Días más nuevos se deducen primero
-4. **Excel Headers:** El parser detecta headers dinámicamente, no asumir posición fija
-5. **Frontend Dual:** Verificar si el cambio va en `app.js` (legacy) o `static/src/` (moderno)
-
----
-
-## Production Checklist
-
-- [ ] `JWT_SECRET_KEY` generado con `secrets.token_urlsafe(32)`
-- [ ] `DATABASE_ENCRYPTION_KEY` configurado
-- [ ] `DEBUG=false`
-- [ ] PostgreSQL configurado (no SQLite)
-- [ ] HTTPS habilitado (reverse proxy)
-- [ ] CORS_ORIGINS restringido a dominios permitidos
-- [ ] Backups configurados
-- [ ] Monitoring activo
-
-Ver `DEPLOYMENT_READINESS_CHECKLIST.md` para checklist completo.
