@@ -17,14 +17,82 @@ El "cerebro" del sistema que orquesta todos los 12 agentes especializados:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Any, Callable, Optional, Union
 from dataclasses import dataclass, field
 from enum import Enum
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
 import threading
+import time
 
 logger = logging.getLogger(__name__)
+
+
+# ========================================
+# CIRCUIT BREAKER
+# ========================================
+
+class CircuitState(Enum):
+    """Estados del circuit breaker."""
+    CLOSED = "closed"      # Normal operation
+    OPEN = "open"          # Blocking calls
+    HALF_OPEN = "half_open"  # Testing if service recovered
+
+
+@dataclass
+class CircuitBreakerConfig:
+    """Configuración del circuit breaker."""
+    failure_threshold: int = 3          # Fallos consecutivos para abrir
+    recovery_timeout: float = 60.0      # Segundos antes de probar recuperación
+    half_open_max_calls: int = 1        # Llamadas permitidas en half-open
+
+
+@dataclass
+class AgentCircuitState:
+    """Estado del circuit breaker para un agente."""
+    state: CircuitState = CircuitState.CLOSED
+    failure_count: int = 0
+    last_failure_time: Optional[datetime] = None
+    half_open_calls: int = 0
+
+    def record_success(self):
+        """Registra una llamada exitosa."""
+        self.failure_count = 0
+        self.state = CircuitState.CLOSED
+        self.half_open_calls = 0
+
+    def record_failure(self, config: CircuitBreakerConfig):
+        """Registra una llamada fallida."""
+        self.failure_count += 1
+        self.last_failure_time = datetime.now()
+
+        if self.failure_count >= config.failure_threshold:
+            self.state = CircuitState.OPEN
+            logger.warning(f"Circuit breaker OPENED after {self.failure_count} failures")
+
+    def can_execute(self, config: CircuitBreakerConfig) -> bool:
+        """Verifica si se puede ejecutar una llamada."""
+        if self.state == CircuitState.CLOSED:
+            return True
+
+        if self.state == CircuitState.OPEN:
+            # Verificar si pasó el tiempo de recuperación
+            if self.last_failure_time:
+                elapsed = (datetime.now() - self.last_failure_time).total_seconds()
+                if elapsed >= config.recovery_timeout:
+                    self.state = CircuitState.HALF_OPEN
+                    self.half_open_calls = 0
+                    logger.info("Circuit breaker entering HALF_OPEN state")
+                    return True
+            return False
+
+        if self.state == CircuitState.HALF_OPEN:
+            if self.half_open_calls < config.half_open_max_calls:
+                self.half_open_calls += 1
+                return True
+            return False
+
+        return False
 
 
 class TaskStatus(Enum):
@@ -34,6 +102,8 @@ class TaskStatus(Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     SKIPPED = "skipped"
+    TIMEOUT = "timeout"
+    CIRCUIT_OPEN = "circuit_open"
 
 
 class AgentType(Enum):
@@ -171,18 +241,32 @@ class OrchestratorAgent:
     ```
     """
 
-    def __init__(self, project_root: str = "."):
+    # Default configuration
+    DEFAULT_TASK_TIMEOUT = 60  # seconds
+    DEFAULT_MAX_ITERATIONS = 100
+    DEFAULT_PARALLEL_TIMEOUT = 120  # seconds for parallel execution
+
+    def __init__(
+        self,
+        project_root: str = ".",
+        circuit_breaker_config: Optional[CircuitBreakerConfig] = None
+    ):
         """
         Inicializa el Orquestador con todos los agentes.
 
         Args:
             project_root: Ruta raíz del proyecto a analizar
+            circuit_breaker_config: Configuración del circuit breaker (opcional)
         """
         self.project_root = project_root
         self._agents: Dict[AgentType, Any] = {}
         self._current_pipeline: Optional[str] = None
         self._task_history: List[PipelineResult] = []
         self._lock = threading.Lock()
+
+        # Circuit breaker
+        self._circuit_config = circuit_breaker_config or CircuitBreakerConfig()
+        self._circuit_states: Dict[AgentType, AgentCircuitState] = {}
 
         # Inicializar agentes lazy
         self._init_agents()
@@ -191,6 +275,38 @@ class OrchestratorAgent:
         """Inicializa los agentes de forma lazy."""
         # Los agentes se cargan cuando se necesitan
         pass
+
+    def _get_circuit_state(self, agent_type: AgentType) -> AgentCircuitState:
+        """Obtiene o crea el estado del circuit breaker para un agente."""
+        if agent_type not in self._circuit_states:
+            self._circuit_states[agent_type] = AgentCircuitState()
+        return self._circuit_states[agent_type]
+
+    def reset_circuit_breaker(self, agent_type: Optional[AgentType] = None):
+        """
+        Resetea el circuit breaker para un agente o todos.
+
+        Args:
+            agent_type: Tipo de agente a resetear. Si es None, resetea todos.
+        """
+        if agent_type:
+            if agent_type in self._circuit_states:
+                self._circuit_states[agent_type] = AgentCircuitState()
+                logger.info(f"Circuit breaker reset for {agent_type.value}")
+        else:
+            self._circuit_states.clear()
+            logger.info("All circuit breakers reset")
+
+    def get_circuit_breaker_status(self) -> Dict[str, Dict]:
+        """Obtiene el estado de todos los circuit breakers."""
+        return {
+            agent_type.value: {
+                'state': state.state.value,
+                'failure_count': state.failure_count,
+                'last_failure': state.last_failure_time.isoformat() if state.last_failure_time else None
+            }
+            for agent_type, state in self._circuit_states.items()
+        }
 
     def _get_agent(self, agent_type: AgentType) -> Any:
         """Obtiene o crea un agente del tipo especificado."""
@@ -259,7 +375,9 @@ class OrchestratorAgent:
         self,
         pipeline_name: str,
         steps: List[tuple],
-        stop_on_error: bool = True
+        stop_on_error: bool = True,
+        max_iterations: Optional[int] = None,
+        task_timeout: Optional[int] = None
     ) -> PipelineResult:
         """
         Ejecuta un pipeline de tareas secuenciales.
@@ -268,10 +386,15 @@ class OrchestratorAgent:
             pipeline_name: Nombre identificador del pipeline
             steps: Lista de tuplas (nombre, agent_type, method_name, kwargs)
             stop_on_error: Si True, detiene el pipeline ante cualquier error
+            max_iterations: Máximo número de tareas a ejecutar (default: 100)
+            task_timeout: Timeout por tarea en segundos (default: 60)
 
         Returns:
             PipelineResult con el resultado de todas las tareas
         """
+        max_iterations = max_iterations or self.DEFAULT_MAX_ITERATIONS
+        task_timeout = task_timeout or self.DEFAULT_TASK_TIMEOUT
+
         result = PipelineResult(
             pipeline_name=pipeline_name,
             status=TaskStatus.IN_PROGRESS,
@@ -279,26 +402,41 @@ class OrchestratorAgent:
         )
 
         self._current_pipeline = pipeline_name
-        logger.info(f"🚀 Iniciando pipeline: {pipeline_name}")
+        logger.info(f"🚀 Iniciando pipeline: {pipeline_name} (max_iterations={max_iterations}, timeout={task_timeout}s)")
 
         start_time = datetime.now()
+        iteration_count = 0
 
+        max_iterations_exceeded = False
         for step in steps:
+            # Check max iterations
+            iteration_count += 1
+            if iteration_count > max_iterations:
+                result.status = TaskStatus.FAILED
+                max_iterations_exceeded = True
+                logger.error(f"❌ Pipeline {pipeline_name} exceeded max iterations: {max_iterations}")
+                break
+
             task_name = step[0]
             agent_type = step[1] if len(step) > 1 else None
             method_name = step[2] if len(step) > 2 else None
             kwargs = step[3] if len(step) > 3 else {}
 
-            task_result = self._execute_task(task_name, agent_type, method_name, kwargs)
+            task_result = self._execute_task(
+                task_name, agent_type, method_name, kwargs,
+                timeout_seconds=task_timeout
+            )
             result.tasks.append(task_result)
 
-            if task_result.status == TaskStatus.FAILED and stop_on_error:
-                result.status = TaskStatus.FAILED
-                logger.error(f"❌ Pipeline {pipeline_name} falló en tarea: {task_name}")
-                break
+            # Check for failures
+            if task_result.status in (TaskStatus.FAILED, TaskStatus.TIMEOUT, TaskStatus.CIRCUIT_OPEN):
+                if stop_on_error:
+                    result.status = TaskStatus.FAILED
+                    logger.error(f"❌ Pipeline {pipeline_name} falló en tarea: {task_name} ({task_result.status.value})")
+                    break
         else:
             result.status = TaskStatus.COMPLETED
-            logger.info(f"✅ Pipeline {pipeline_name} completado exitosamente")
+            logger.info(f"✅ Pipeline {pipeline_name} completado exitosamente ({iteration_count} tareas)")
 
         end_time = datetime.now()
         result.total_duration_ms = (end_time - start_time).total_seconds() * 1000
@@ -308,8 +446,14 @@ class OrchestratorAgent:
         result.summary = {
             'total_tasks': len(result.tasks),
             'successful': sum(1 for t in result.tasks if t.status == TaskStatus.COMPLETED),
-            'failed': sum(1 for t in result.tasks if t.status == TaskStatus.FAILED)
+            'failed': sum(1 for t in result.tasks if t.status == TaskStatus.FAILED),
+            'timeout': sum(1 for t in result.tasks if t.status == TaskStatus.TIMEOUT),
+            'circuit_open': sum(1 for t in result.tasks if t.status == TaskStatus.CIRCUIT_OPEN),
+            'iterations': iteration_count,
+            'max_iterations_exceeded': max_iterations_exceeded
         }
+        if max_iterations_exceeded:
+            result.summary['error'] = f"Max iterations exceeded ({max_iterations})"
 
         with self._lock:
             self._task_history.append(result)
@@ -322,11 +466,39 @@ class OrchestratorAgent:
         task_name: str,
         agent_type: Optional[AgentType],
         method_name: Optional[str],
-        kwargs: dict
+        kwargs: dict,
+        timeout_seconds: Optional[int] = None
     ) -> TaskResult:
-        """Ejecuta una tarea individual."""
-        logger.info(f"  ⏳ Ejecutando: {task_name}")
+        """
+        Ejecuta una tarea individual con timeout y circuit breaker.
+
+        Args:
+            task_name: Nombre de la tarea
+            agent_type: Tipo de agente a usar
+            method_name: Método a ejecutar
+            kwargs: Argumentos para el método
+            timeout_seconds: Timeout en segundos (default: 60)
+
+        Returns:
+            TaskResult con el resultado de la tarea
+        """
+        timeout_seconds = timeout_seconds or self.DEFAULT_TASK_TIMEOUT
+        logger.info(f"  ⏳ Ejecutando: {task_name} (timeout={timeout_seconds}s)")
         start_time = datetime.now()
+
+        # Check circuit breaker
+        if agent_type:
+            circuit_state = self._get_circuit_state(agent_type)
+            if not circuit_state.can_execute(self._circuit_config):
+                duration = (datetime.now() - start_time).total_seconds() * 1000
+                logger.warning(f"  ⚡ {task_name} bloqueado por circuit breaker (estado: {circuit_state.state.value})")
+                return TaskResult(
+                    task_name=task_name,
+                    agent_type=agent_type,
+                    status=TaskStatus.CIRCUIT_OPEN,
+                    error=f"Circuit breaker open for {agent_type.value}",
+                    duration_ms=duration
+                )
 
         try:
             if agent_type and method_name:
@@ -338,12 +510,37 @@ class OrchestratorAgent:
                 if method is None:
                     raise ValueError(f"Método {method_name} no existe en {agent_type.value}")
 
-                data = method(**kwargs)
+                # Execute with timeout using ThreadPoolExecutor
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(method, **kwargs)
+                    try:
+                        data = future.result(timeout=timeout_seconds)
+                    except FuturesTimeoutError:
+                        duration = (datetime.now() - start_time).total_seconds() * 1000
+                        logger.error(f"  ⏱️ {task_name} timeout after {timeout_seconds}s")
+
+                        # Record failure for circuit breaker
+                        if agent_type:
+                            circuit_state = self._get_circuit_state(agent_type)
+                            circuit_state.record_failure(self._circuit_config)
+
+                        return TaskResult(
+                            task_name=task_name,
+                            agent_type=agent_type,
+                            status=TaskStatus.TIMEOUT,
+                            error=f"Task timed out after {timeout_seconds}s",
+                            duration_ms=duration
+                        )
             else:
                 data = None
 
             duration = (datetime.now() - start_time).total_seconds() * 1000
             logger.info(f"  ✓ {task_name} completado ({duration:.0f}ms)")
+
+            # Record success for circuit breaker
+            if agent_type:
+                circuit_state = self._get_circuit_state(agent_type)
+                circuit_state.record_success()
 
             return TaskResult(
                 task_name=task_name,
@@ -357,6 +554,11 @@ class OrchestratorAgent:
             duration = (datetime.now() - start_time).total_seconds() * 1000
             error_msg = str(e)
             logger.error(f"  ✗ {task_name} falló: {error_msg}")
+
+            # Record failure for circuit breaker
+            if agent_type:
+                circuit_state = self._get_circuit_state(agent_type)
+                circuit_state.record_failure(self._circuit_config)
 
             return TaskResult(
                 task_name=task_name,
@@ -373,7 +575,9 @@ class OrchestratorAgent:
     def execute_parallel(
         self,
         tasks: List[tuple],
-        max_workers: int = 4
+        max_workers: int = 4,
+        task_timeout: Optional[int] = None,
+        total_timeout: Optional[int] = None
     ) -> List[TaskResult]:
         """
         Ejecuta múltiples tareas en paralelo.
@@ -381,11 +585,17 @@ class OrchestratorAgent:
         Args:
             tasks: Lista de tuplas (nombre, agent_type, method_name, kwargs)
             max_workers: Número máximo de workers
+            task_timeout: Timeout por tarea individual en segundos (default: 60)
+            total_timeout: Timeout total para todas las tareas en segundos (default: 120)
 
         Returns:
             Lista de TaskResult
         """
+        task_timeout = task_timeout or self.DEFAULT_TASK_TIMEOUT
+        total_timeout = total_timeout or self.DEFAULT_PARALLEL_TIMEOUT
+
         results = []
+        start_time = datetime.now()
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {}
@@ -398,13 +608,28 @@ class OrchestratorAgent:
 
                 future = executor.submit(
                     self._execute_task,
-                    task_name, agent_type, method_name, kwargs
+                    task_name, agent_type, method_name, kwargs,
+                    timeout_seconds=task_timeout
                 )
                 futures[future] = task_name
 
-            for future in as_completed(futures):
-                result = future.result()
-                results.append(result)
+            # Wait for completion with total timeout
+            try:
+                for future in as_completed(futures, timeout=total_timeout):
+                    result = future.result()
+                    results.append(result)
+            except FuturesTimeoutError:
+                # Some tasks didn't complete in time
+                logger.error(f"Parallel execution timed out after {total_timeout}s")
+                for future, task_name in futures.items():
+                    if not future.done():
+                        results.append(TaskResult(
+                            task_name=task_name,
+                            agent_type=None,
+                            status=TaskStatus.TIMEOUT,
+                            error=f"Parallel execution timed out after {total_timeout}s",
+                            duration_ms=(datetime.now() - start_time).total_seconds() * 1000
+                        ))
 
         return results
 

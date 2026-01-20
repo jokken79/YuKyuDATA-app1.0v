@@ -27,7 +27,7 @@ import json
 import logging
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass, field, asdict
@@ -162,7 +162,19 @@ class MemoryAgent:
     - TODOs pendientes
     """
 
-    def __init__(self, storage_path: Optional[str] = None, claude_memory_path: Optional[str] = None):
+    # Default cleanup configuration
+    DEFAULT_SESSION_MAX_AGE_DAYS = 30
+    DEFAULT_TODO_MAX_AGE_DAYS = 90
+    DEFAULT_ERROR_MAX_AGE_DAYS = 180
+    DEFAULT_SESSION_KEEP_MINIMUM = 5
+
+    def __init__(
+        self,
+        storage_path: Optional[str] = None,
+        claude_memory_path: Optional[str] = None,
+        auto_cleanup: bool = False,
+        cleanup_on_load: bool = False
+    ):
         """
         Inicializa el agente de memoria.
 
@@ -171,9 +183,12 @@ class MemoryAgent:
                          Por defecto: agents/memory_store.json
             claude_memory_path: Ruta a CLAUDE_MEMORY.md.
                                Por defecto: CLAUDE_MEMORY.md en raiz del proyecto
+            auto_cleanup: Si True, ejecuta cleanup automático al guardar
+            cleanup_on_load: Si True, ejecuta cleanup al cargar datos existentes
         """
         # Determinar rutas
         self.base_dir = Path(__file__).parent.parent
+        self.auto_cleanup = auto_cleanup
 
         if storage_path:
             self.storage_path = Path(storage_path)
@@ -204,7 +219,12 @@ class MemoryAgent:
         # Cargar datos existentes
         self._load()
 
-        logger.info(f"MemoryAgent inicializado. Storage: {self.storage_path}")
+        # Cleanup al cargar si está habilitado
+        if cleanup_on_load:
+            logger.info("Ejecutando cleanup automático al cargar...")
+            self.run_full_cleanup()
+
+        logger.info(f"MemoryAgent inicializado. Storage: {self.storage_path} (auto_cleanup={auto_cleanup})")
 
     # =========================================================================
     # PERSISTENCIA
@@ -1301,6 +1321,231 @@ class MemoryAgent:
         self._save()
         logger.info("Todos los datos han sido limpiados")
         return True
+
+    # =========================================================================
+    # CLEANUP AUTOMÁTICO
+    # =========================================================================
+
+    def cleanup_old_sessions(
+        self,
+        max_age_days: int = 30,
+        keep_minimum: int = 5
+    ) -> Dict[str, int]:
+        """
+        Limpia sesiones antiguas para evitar acumulación de datos.
+
+        Args:
+            max_age_days: Edad máxima en días para mantener sesiones
+            keep_minimum: Número mínimo de sesiones a mantener (incluso si son antiguas)
+
+        Returns:
+            Dict con estadísticas de cleanup: {'removed': N, 'kept': M}
+        """
+        try:
+            cutoff_date = datetime.now() - timedelta(days=max_age_days)
+            sessions = self.data["sessions"]
+
+            # Ordenar por fecha (más recientes primero)
+            sorted_sessions = sorted(
+                sessions.items(),
+                key=lambda x: x[1].get("start_time", ""),
+                reverse=True
+            )
+
+            # Mantener las más recientes (keep_minimum) y las que no son antiguas
+            to_keep = {}
+            to_remove = []
+
+            for idx, (session_id, session_data) in enumerate(sorted_sessions):
+                # Siempre mantener las primeras keep_minimum sesiones
+                if idx < keep_minimum:
+                    to_keep[session_id] = session_data
+                    continue
+
+                # Verificar edad
+                start_time_str = session_data.get("start_time", "")
+                if start_time_str:
+                    try:
+                        start_time = datetime.fromisoformat(start_time_str)
+                        if start_time >= cutoff_date:
+                            to_keep[session_id] = session_data
+                        else:
+                            to_remove.append(session_id)
+                    except ValueError:
+                        # Si no se puede parsear la fecha, mantener
+                        to_keep[session_id] = session_data
+                else:
+                    to_keep[session_id] = session_data
+
+            self.data["sessions"] = to_keep
+            self.data["metadata"]["total_sessions"] = len(to_keep)
+            self._save()
+
+            result = {'removed': len(to_remove), 'kept': len(to_keep)}
+            if to_remove:
+                logger.info(f"Cleanup: {len(to_remove)} sesiones antiguas eliminadas, {len(to_keep)} mantenidas")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error en cleanup de sesiones: {e}")
+            return {'removed': 0, 'kept': len(self.data["sessions"]), 'error': str(e)}
+
+    def cleanup_completed_todos(
+        self,
+        max_age_days: int = 90
+    ) -> Dict[str, int]:
+        """
+        Limpia TODOs completados que son antiguos.
+
+        Args:
+            max_age_days: Edad máxima en días para mantener TODOs completados
+
+        Returns:
+            Dict con estadísticas de cleanup
+        """
+        try:
+            cutoff_date = datetime.now() - timedelta(days=max_age_days)
+            to_remove = []
+
+            for todo_id, todo in self.data["todos"].items():
+                if todo.get("completed"):
+                    completed_at = todo.get("completed_at", "")
+                    if completed_at:
+                        try:
+                            completed_time = datetime.fromisoformat(completed_at)
+                            if completed_time < cutoff_date:
+                                to_remove.append(todo_id)
+                        except ValueError:
+                            pass
+
+            for todo_id in to_remove:
+                del self.data["todos"][todo_id]
+
+            self._save()
+
+            result = {'removed': len(to_remove), 'kept': len(self.data["todos"])}
+            if to_remove:
+                logger.info(f"Cleanup: {len(to_remove)} TODOs completados eliminados")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error en cleanup de TODOs: {e}")
+            return {'removed': 0, 'kept': len(self.data["todos"]), 'error': str(e)}
+
+    def cleanup_unused_errors(
+        self,
+        min_usage: int = 0,
+        max_age_days: int = 180
+    ) -> Dict[str, int]:
+        """
+        Limpia errores que nunca se han usado y son antiguos.
+
+        Args:
+            min_usage: Uso mínimo requerido para mantener (0 = nunca usado)
+            max_age_days: Edad máxima en días
+
+        Returns:
+            Dict con estadísticas de cleanup
+        """
+        try:
+            cutoff_date = datetime.now() - timedelta(days=max_age_days)
+            to_remove = []
+
+            for error_id, error in self.data["errors"].items():
+                times_used = error.get("times_used", 0)
+                created_at = error.get("created_at", "")
+
+                if times_used <= min_usage and created_at:
+                    try:
+                        created_time = datetime.fromisoformat(created_at)
+                        if created_time < cutoff_date:
+                            to_remove.append(error_id)
+                    except ValueError:
+                        pass
+
+            for error_id in to_remove:
+                del self.data["errors"][error_id]
+
+            self._save()
+
+            result = {'removed': len(to_remove), 'kept': len(self.data["errors"])}
+            if to_remove:
+                logger.info(f"Cleanup: {len(to_remove)} errores sin uso eliminados")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error en cleanup de errores: {e}")
+            return {'removed': 0, 'kept': len(self.data["errors"]), 'error': str(e)}
+
+    def run_full_cleanup(
+        self,
+        session_max_age_days: int = 30,
+        todo_max_age_days: int = 90,
+        error_max_age_days: int = 180,
+        session_keep_minimum: int = 5
+    ) -> Dict[str, Dict[str, int]]:
+        """
+        Ejecuta cleanup completo de todos los tipos de datos.
+
+        Args:
+            session_max_age_days: Edad máxima para sesiones
+            todo_max_age_days: Edad máxima para TODOs completados
+            error_max_age_days: Edad máxima para errores sin uso
+            session_keep_minimum: Mínimo de sesiones a mantener
+
+        Returns:
+            Dict con estadísticas de cleanup por tipo
+        """
+        logger.info("🧹 Iniciando cleanup completo...")
+
+        results = {
+            'sessions': self.cleanup_old_sessions(session_max_age_days, session_keep_minimum),
+            'todos': self.cleanup_completed_todos(todo_max_age_days),
+            'errors': self.cleanup_unused_errors(0, error_max_age_days)
+        }
+
+        total_removed = sum(r.get('removed', 0) for r in results.values())
+        logger.info(f"✅ Cleanup completado. Total eliminados: {total_removed}")
+
+        return results
+
+    def get_storage_size(self) -> Dict[str, Any]:
+        """
+        Obtiene información sobre el tamaño del almacenamiento.
+
+        Returns:
+            Dict con tamaños por sección y total
+        """
+        import sys
+
+        sizes = {
+            'sessions': len(self.data["sessions"]),
+            'learnings': sum(len(cat) for cat in self.data["learnings"].values()),
+            'errors': len(self.data["errors"]),
+            'features': len(self.data["features"]),
+            'preferences': len(self.data["preferences"]),
+            'todos': len(self.data["todos"]),
+        }
+
+        # Tamaño aproximado en bytes
+        try:
+            import json
+            json_str = json.dumps(self.data, default=str)
+            sizes['total_bytes'] = len(json_str.encode('utf-8'))
+            sizes['total_kb'] = round(sizes['total_bytes'] / 1024, 2)
+        except Exception:
+            sizes['total_bytes'] = 0
+            sizes['total_kb'] = 0
+
+        # Archivo físico
+        if self.storage_path.exists():
+            sizes['file_bytes'] = self.storage_path.stat().st_size
+            sizes['file_kb'] = round(sizes['file_bytes'] / 1024, 2)
+        else:
+            sizes['file_bytes'] = 0
+            sizes['file_kb'] = 0
+
+        return sizes
 
 
 # =========================================================================
