@@ -113,6 +113,7 @@ _excel_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="excel_pa
 
 # Import audit logger utilities
 from utils.audit_logger import audit_action, log_audit_action, get_client_info
+from services.auth_service import auth_service
 
 
 # Import Pydantic models
@@ -126,37 +127,7 @@ from models.common import DateRangeQuery
 # RATE LIMITER
 # ============================================
 
-class RateLimiter:
-    """Simple in-memory rate limiter"""
-    def __init__(self, max_requests: int = 100, window_seconds: int = 60):
-        self.max_requests = max_requests
-        self.window = window_seconds
-        self.requests = defaultdict(list)
-
-    def is_allowed(self, client_ip: str) -> bool:
-        now = time()
-        # Clean old requests
-        self.requests[client_ip] = [
-            t for t in self.requests[client_ip]
-            if now - t < self.window
-        ]
-
-        if len(self.requests[client_ip]) >= self.max_requests:
-            return False
-
-        self.requests[client_ip].append(now)
-        return True
-
-    def get_remaining(self, client_ip: str) -> int:
-        now = time()
-        self.requests[client_ip] = [
-            t for t in self.requests[client_ip]
-            if now - t < self.window
-        ]
-        return max(0, self.max_requests - len(self.requests[client_ip]))
-
-
-rate_limiter = RateLimiter(max_requests=100, window_seconds=60)
+from utils.rate_limiter import RateLimiter, rate_limiter
 
 
 # ============================================
@@ -430,6 +401,9 @@ async def startup_event():
 
         # Run auto-sync
         auto_sync_on_startup()
+
+        # Initialize Auth Service (Refresh Tokens)
+        auth_service.initialize()
 
         logger.info("✅ Startup complete")
     except Exception as e:

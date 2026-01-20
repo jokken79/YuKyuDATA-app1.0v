@@ -76,13 +76,6 @@ class AuthService:
         return AuthService._db_functions
 
     def __init__(self):
-        # Inicializar tabla de refresh tokens en BD
-        try:
-            db_funcs = self._get_db_functions()
-            db_funcs['init_refresh_tokens_table']()
-        except Exception as e:
-            print(f"Warning: Could not initialize refresh_tokens table: {e}")
-
         # Almacen de tokens revocados (blacklist para access tokens)
         # Los access tokens son de corta duracion, se puede mantener en memoria
         self.revoked_tokens: set = set()
@@ -106,6 +99,14 @@ class AuthService:
                 "is_active": True
             }
         }
+
+    def initialize(self):
+        """Inicializar servicios dependientes (DB, etc.)"""
+        try:
+            db_funcs = self._get_db_functions()
+            db_funcs['init_refresh_tokens_table']()
+        except Exception as e:
+            print(f"Warning: Could not initialize refresh_tokens table: {e}")
 
     def _hash_token(self, token: str) -> str:
         """

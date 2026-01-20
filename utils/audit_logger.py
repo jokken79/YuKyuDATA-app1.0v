@@ -12,6 +12,13 @@ from datetime import datetime
 # Setup logger
 logger = logging.getLogger("audit")
 
+def get_client_info(request: Request) -> dict:
+    """Get client IP and user agent from request."""
+    return {
+        "ip": request.client.host if request.client else "unknown",
+        "user_agent": request.headers.get("user-agent", "unknown")
+    }
+
 def log_audit_action(
     request: Request,
     action: str,
