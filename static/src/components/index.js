@@ -81,6 +81,15 @@ export { Select } from './Select.js';
 // Pagination - Pagination controls
 export { Pagination } from './Pagination.js';
 
+// UIStates - Loading, Empty, Error states
+export {
+  UIStates,
+  createLoadingState,
+  createEmptyState,
+  createErrorState,
+  createSkeleton
+} from './UIStates.js';
+
 /**
  * Initialize all data-attribute based components
  * Call this after DOM is ready to auto-initialize components

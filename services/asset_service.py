@@ -68,19 +68,12 @@ def get_all_css() -> List[Dict[str, str]]:
     Returns:
         Lista de diccionarios con 'href' y 'id' opcionales
     """
+    # Updated 2025-01: Using unified design system
     css_files = [
-        {'href': 'css/main.css', 'id': 'main-css'},
-        {'href': 'css/utilities-consolidated.css'},
-        {'href': 'css/layout-utilities.css'},
-        {'href': 'css/ui-enhancements.css'},
-        {'href': 'css/modern-2025.css'},
-        {'href': 'css/responsive-enhancements.css'},
-        {'href': 'css/premium-enhancements.css'},
-        {'href': 'css/light-mode-premium.css'},
-        {'href': 'css/premium-corporate.css'},
-        {'href': 'css/sidebar-premium.css'},
-        {'href': 'css/arari-glow.css'},
-        {'href': 'css/theme-override.css'},
+        {'href': 'css/unified-design-system.css', 'id': 'design-system'},
+        {'href': 'css/yukyu-tokens.css'},  # Legacy compatibility
+        {'href': 'css/nexus-theme/main.css', 'id': 'nexus-theme'},
+        {'href': 'css/login-modal.css'},
     ]
 
     result = []

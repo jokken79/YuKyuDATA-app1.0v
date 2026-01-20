@@ -1,47 +1,24 @@
 /**
  * YuKyu Global State Management
- * Estado global de la aplicacion con patron Observer
- * @version 1.0.0
+ * @deprecated Use unified-state.js for new code
+ * This file re-exports from unified-state.js for backward compatibility
+ * @version 2.0.0 - Now delegates to UnifiedState
  */
 
-// Initial state
-const initialState = {
-    // Data
-    data: [],
-    availableYears: [],
+import { getUnifiedState } from './unified-state.js';
 
-    // Current selections
-    year: null,
-    currentView: 'dashboard',
-    typeFilter: 'all',
+// Get singleton instance - all state operations go through UnifiedState
+const unifiedState = getUnifiedState();
 
-    // Charts instances (managed externally)
-    charts: {},
-
-    // UI state
-    isLoading: false,
-    theme: 'dark',
-
-    // Warnings
-    fallbackWarnedYear: null,
-
-    // Request tracking (prevent race conditions)
-    _fetchRequestId: 0
-};
-
-// State container
-let state = { ...initialState };
-
-// Subscribers for state changes
-const subscribers = new Map();
-let subscriberId = 0;
+// Legacy state object (proxy to unified state for direct access)
+const state = unifiedState.getLegacyProxy();
 
 /**
  * Get the current state (read-only copy)
  * @returns {Object} Current state
  */
 export function getState() {
-    return { ...state };
+    return unifiedState.getSnapshot();
 }
 
 /**
@@ -50,7 +27,7 @@ export function getState() {
  * @returns {*} Property value
  */
 export function getStateValue(key) {
-    return state[key];
+    return unifiedState.get(key);
 }
 
 /**
@@ -58,11 +35,7 @@ export function getStateValue(key) {
  * @param {Object} updates - Properties to update
  */
 export function setState(updates) {
-    const prevState = { ...state };
-    state = { ...state, ...updates };
-
-    // Notify subscribers
-    notifySubscribers(prevState, state);
+    unifiedState.set(updates);
 }
 
 /**
@@ -71,61 +44,28 @@ export function setState(updates) {
  * @param {*} value - New value
  */
 export function setStateValue(key, value) {
-    const prevState = { ...state };
-    state[key] = value;
-
-    // Notify subscribers
-    notifySubscribers(prevState, state);
+    unifiedState.set(key, value);
 }
 
 /**
  * Reset state to initial values
  */
 export function resetState() {
-    const prevState = { ...state };
-    state = { ...initialState };
-    notifySubscribers(prevState, state);
+    unifiedState.reset();
 }
 
 /**
  * Subscribe to state changes
  * @param {Function} callback - Called with (newState, prevState) on changes
- * @param {string[]} [keys] - Optional array of keys to watch (watches all if not provided)
+ * @param {string[]} [keys] - Optional array of keys to watch
  * @returns {Function} Unsubscribe function
  */
 export function subscribe(callback, keys = null) {
-    const id = ++subscriberId;
-    subscribers.set(id, { callback, keys });
-
-    // Return unsubscribe function
-    return () => {
-        subscribers.delete(id);
-    };
-}
-
-/**
- * Notify all subscribers of state change
- * @param {Object} prevState - Previous state
- * @param {Object} newState - New state
- */
-function notifySubscribers(prevState, newState) {
-    subscribers.forEach(({ callback, keys }) => {
-        // If watching specific keys, check if any changed
-        if (keys) {
-            const hasChange = keys.some(key => prevState[key] !== newState[key]);
-            if (!hasChange) return;
-        }
-
-        try {
-            callback(newState, prevState);
-        } catch (error) {
-            console.error('State subscriber error:', error);
-        }
-    });
+    return unifiedState.subscribe(callback, keys);
 }
 
 // ========================================
-// DATA HELPERS
+// DATA HELPERS - Delegate to UnifiedState
 // ========================================
 
 /**
@@ -133,18 +73,7 @@ function notifySubscribers(prevState, newState) {
  * @returns {Array} Filtered employees
  */
 export function getFilteredData() {
-    if (!state.year) return state.data;
-
-    // Use loose equality to handle string/number differences
-    const filtered = state.data.filter(e => !e.year || e.year == state.year);
-
-    // Fallback: if selected year returns no data but we have data, return all
-    if (filtered.length === 0 && state.data.length > 0) {
-        console.warn(`No data for year ${state.year}, showing all records`);
-        return state.data;
-    }
-
-    return filtered;
+    return unifiedState.getFilteredData();
 }
 
 /**
@@ -152,18 +81,7 @@ export function getFilteredData() {
  * @returns {Array} Array of [factory, usedDays] sorted by usage
  */
 export function getFactoryStats() {
-    const stats = {};
-    const data = getFilteredData();
-
-    data.forEach(e => {
-        const f = e.haken;
-        // Filter invalid factory names
-        if (!f || f === '0' || f === 'Unknown' || f.trim() === '' || f === 'null') return;
-        if (!stats[f]) stats[f] = 0;
-        stats[f] += e.used;
-    });
-
-    return Object.entries(stats).sort((a, b) => b[1] - a[1]);
+    return unifiedState.getFactoryStats();
 }
 
 /**
@@ -171,8 +89,9 @@ export function getFactoryStats() {
  * @returns {number} Request ID
  */
 export function getNextFetchRequestId() {
-    state._fetchRequestId++;
-    return state._fetchRequestId;
+    const current = unifiedState.get('_fetchRequestId') || 0;
+    unifiedState.set('_fetchRequestId', current + 1);
+    return current + 1;
 }
 
 /**
@@ -181,7 +100,7 @@ export function getNextFetchRequestId() {
  * @returns {boolean} True if request is still current
  */
 export function isCurrentRequest(requestId) {
-    return requestId === state._fetchRequestId;
+    return requestId === unifiedState.get('_fetchRequestId');
 }
 
 // ========================================
@@ -193,21 +112,7 @@ export function isCurrentRequest(requestId) {
  * @returns {Object} Statistics object
  */
 export function getStatistics() {
-    const data = getFilteredData();
-
-    const total = data.length;
-    const granted = data.reduce((sum, e) => sum + (parseFloat(e.granted) || 0), 0);
-    const used = data.reduce((sum, e) => sum + (parseFloat(e.used) || 0), 0);
-    const balance = data.reduce((sum, e) => sum + (parseFloat(e.balance) || 0), 0);
-    const avgRate = granted > 0 ? Math.round((used / granted) * 100) : 0;
-
-    return {
-        total,
-        granted,
-        used,
-        balance,
-        avgRate
-    };
+    return unifiedState.getStatistics();
 }
 
 /**
@@ -215,7 +120,7 @@ export function getStatistics() {
  * @returns {Object} Counts by type
  */
 export function getTypeCounts() {
-    const data = getFilteredData();
+    const data = unifiedState.getFilteredData();
 
     return {
         all: data.length,

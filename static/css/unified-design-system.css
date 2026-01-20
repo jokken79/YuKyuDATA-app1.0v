@@ -348,8 +348,220 @@
   to { transform: rotate(360deg); }
 }
 
-/* Empty state */
-.empty-state {
+/* ========================================
+ * UI STATES (Loading, Empty, Error)
+ * ======================================== */
+
+/* Base UI State */
+.ui-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  min-height: 200px;
+}
+
+.ui-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-4);
+  max-width: 400px;
+}
+
+.ui-state-icon {
+  width: 4rem;
+  height: 4rem;
+  color: var(--color-neutral-300);
+}
+
+.ui-state-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ui-state-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.ui-state-message {
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--text-tertiary);
+  line-height: var(--leading-relaxed);
+}
+
+.ui-state-code {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.ui-state-action {
+  margin-top: var(--space-2);
+}
+
+/* Loading State */
+.ui-state-loading .ui-state-spinner {
+  color: var(--color-primary);
+}
+
+.ui-state-loading .ui-state-spinner svg {
+  animation: ui-spin 1s linear infinite;
+}
+
+@keyframes ui-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ui-state-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-overlay);
+  backdrop-filter: blur(4px);
+  z-index: var(--z-modal-backdrop);
+}
+
+/* Empty State */
+.ui-state-empty .ui-state-icon {
+  color: var(--color-neutral-300);
+}
+
+/* Error State */
+.ui-state-error {
+  background: var(--color-error-50);
+  border: 1px solid var(--color-error-500);
+  border-radius: var(--radius-lg);
+}
+
+.ui-state-icon-error {
+  color: var(--color-error-500);
+}
+
+.ui-state-error .ui-state-title {
+  color: var(--color-error-700);
+}
+
+.ui-state-error .ui-state-message {
+  color: var(--color-error-600);
+}
+
+/* ========================================
+ * SKELETON LOADING
+ * ======================================== */
+
+.ui-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.skeleton-line {
+  height: 1rem;
+  background: linear-gradient(
+    90deg,
+    var(--color-neutral-200) 0%,
+    var(--color-neutral-100) 50%,
+    var(--color-neutral-200) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: var(--radius-sm);
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-line-100, .skeleton-line-full { width: 100%; }
+.skeleton-line-80 { width: 80%; }
+.skeleton-line-75 { width: 75%; }
+.skeleton-line-60 { width: 60%; }
+.skeleton-line-50 { width: 50%; }
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Skeleton Card */
+.skeleton-card {
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+}
+
+.skeleton-header {
+  height: 2rem;
+  margin-bottom: var(--space-4);
+  background: linear-gradient(90deg, var(--color-neutral-200) 0%, var(--color-neutral-100) 50%, var(--color-neutral-200) 100%);
+  background-size: 200% 100%;
+  border-radius: var(--radius-md);
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Skeleton Table */
+.skeleton-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.skeleton-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.skeleton-row-header .skeleton-cell {
+  background: var(--color-neutral-300);
+}
+
+.skeleton-cell {
+  flex: 1;
+  height: 2.5rem;
+  background: linear-gradient(90deg, var(--color-neutral-200) 0%, var(--color-neutral-100) 50%, var(--color-neutral-200) 100%);
+  background-size: 200% 100%;
+  border-radius: var(--radius-sm);
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+/* Skeleton Avatar */
+.skeleton-avatar-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.skeleton-avatar {
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, var(--color-neutral-200) 0%, var(--color-neutral-100) 50%, var(--color-neutral-200) 100%);
+  background-size: 200% 100%;
+  border-radius: var(--radius-full);
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Legacy aliases - redirect to new classes */
+.empty-state,
+.ui-state-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -359,21 +571,10 @@
   color: var(--text-tertiary);
 }
 
-.empty-state svg {
+.empty-state svg,
+.ui-state-empty svg {
   width: 4rem;
   height: 4rem;
   margin-bottom: var(--space-4);
   color: var(--color-neutral-300);
-}
-
-/* Error state */
-.error-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: var(--space-8);
-  background: var(--color-error-50);
-  border: 1px solid var(--color-error-500);
-  border-radius: var(--radius-lg);
-  color: var(--color-error-700);
 }

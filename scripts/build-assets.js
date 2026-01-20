@@ -58,21 +58,21 @@ const CONFIG = {
         'virtual-table.js'
     ],
 
-    // Archivos CSS a minificar
+    // Archivos CSS a minificar (Updated 2025-01: unified design system)
     cssFiles: [
-        'main.css',
-        'modern-2025.css',
-        'arari-glow.css',
-        'light-mode-premium.css',
-        'premium-enhancements.css',
-        'responsive-enhancements.css',
-        'theme-override.css',
-        'ui-enhancements.css',
-        'ui-fixes-v2.8.css',
-        'layout-utilities.css',
-        'premium-corporate.css',
-        'utilities-consolidated.css',
-        'sidebar-premium.css'
+        'unified-design-system.css',
+        'yukyu-tokens.css',
+        'login-modal.css'
+    ],
+
+    // Archivos CSS de nexus-theme
+    nexusThemeFiles: [
+        'nexus-theme/main.css',
+        'nexus-theme/variables.css',
+        'nexus-theme/global.css',
+        'nexus-theme/layout.css',
+        'nexus-theme/components.css',
+        'nexus-theme/animations.css'
     ],
 
     // Opciones de terser (minificador JS)
