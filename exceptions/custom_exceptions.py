@@ -77,7 +77,7 @@ class ResourceNotFoundException(YuKyuException):
     def __init__(self, resource_type: str, resource_id: str, details: Optional[dict] = None):
         message = f"{resource_type} not found: {resource_id}"
         super().__init__(message, details)
-       self.resource_type = resource_type
+        self.resource_type = resource_type
         self.resource_id = resource_id
 
 
