@@ -142,3 +142,32 @@
     --glass-bg: rgba(31, 41, 55, 0.7);
     --glass-border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* Light Mode - Professional & Clean */
+[data-theme="light"] {
+    --color-primary: #7C3AED;
+    /* Violet 600 */
+    --color-primary-hover: #6D28D9;
+    /* Violet 700 */
+    --color-secondary: #8B5CF6;
+    /* Violet 500 */
+
+    --color-bg-base: #f8fafc;
+    /* Slate 50 */
+    --color-bg-card: #ffffff;
+    /* White */
+    --color-bg-overlay: rgba(255, 255, 255, 0.9);
+
+    --color-text-primary: #1e293b;
+    /* Slate 800 */
+    --color-text-secondary: #64748b;
+    /* Slate 500 */
+
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: 1px solid rgba(0, 0, 0, 0.08);
+
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08);
+}
