@@ -321,14 +321,18 @@ jobs:
                   name = bench.get('name', 'Unknown')
                   stats = bench.get('stats', {})
                   avg = stats.get('mean', 0) * 1000  # Convert to ms
-                  rounds = bench.get('warmup') + bench.get('rounds', 0)
+                  warmup = bench.get('warmup') or 0
+                  rounds = warmup + bench.get('rounds', 0)
 
                   print(f"| {name} | {avg:.2f} | {rounds} |")
 
           except FileNotFoundError:
               print("Database benchmark results not found")
+          except Exception as e:
+              print(f"Error analyzing benchmarks: {e}")
 
           EOF
+        continue-on-error: true
 
       - name: Upload database benchmark results
         uses: actions/upload-artifact@v4
