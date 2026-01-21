@@ -415,9 +415,47 @@ Estados: CLOSED → OPEN → HALF_OPEN
 3. **Dashboard Fiscal:** Vista de compliance y expiración
 4. ~~**Tests:** Añadir pruebas unitarias para nuevos módulos~~ ✅ 63 tests pasando
 5. **Backups:** Automatizar backups de BD
-6. **Dark Mode:** Completar soporte de tema oscuro con tokens unificados
+6. ~~**Dark/Light Mode:** Completar soporte de temas con tokens unificados~~ ✅ Completado
 
 ---
 
-*Documentación actualizada: 2026-01-20*
-*Versión: 2.1.0*
+## FASE 8: Light Mode Theme (2026-01-21)
+
+### 8.1 Sistema de Temas Completo
+**Archivos modificados:**
+- `static/css/unified-design-system.css` - Estilos completos de Light Mode
+- `static/css/yukyu-tokens.css` - Tokens de diseño para Light Mode
+
+### 8.2 Características del Light Mode
+- **Toggle funcional:** Ctrl+Shift+T o botón en header
+- **Persistencia:** Guarda preferencia en localStorage
+- **Consistencia:** Todos los componentes soportados
+- **Accesibilidad:** Contraste adecuado según WCAG
+
+### 8.3 Componentes Actualizados para Light Mode
+| Componente | Cambios |
+|------------|---------|
+| Glass Panels | Background blanco con sombras suaves |
+| Forms/Inputs | Bordes oscuros, fondo blanco |
+| Modales | Overlay claro, contenido legible |
+| Tablas | Headers claros, hover sutil |
+| Calendario | Celdas claras, eventos con colores ajustados |
+| Badges | Colores más saturados para contraste |
+| Scrollbars | Colores adaptados al tema claro |
+
+### 8.4 Uso
+```javascript
+// Toggle programático
+App.theme.toggle();
+
+// Verificar tema actual
+if (App.theme.current === 'light') { ... }
+
+// Atajo de teclado
+// Ctrl + Shift + T
+```
+
+---
+
+*Documentación actualizada: 2026-01-21*
+*Versión: 2.2.0*
