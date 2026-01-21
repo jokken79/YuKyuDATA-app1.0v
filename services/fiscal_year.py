@@ -421,8 +421,16 @@ def check_expiring_soon(year: int, warning_threshold_months: int = 3) -> List[Di
     today = date.today()
 
     for emp in employees:
-        # Fecha de expiración: fin del año fiscal actual (31 marzo)
-        expiry_date = date(year + 1, 3, 31)
+        # Fecha de expiración: fin del año fiscal siguiente al año de otorgamiento
+        # En Japón el año fiscal típicamente termina el 31 de marzo (4月-3月)
+        # Los días otorgados en el año fiscal Y expiran al final del año fiscal Y+2
+        # (máximo 2 años de carry-over según 労働基準法)
+        #
+        # Nota: Si la empresa usa un año fiscal diferente, ajustar FISCAL_CONFIG
+        # y actualizar este cálculo según corresponda.
+        grant_year = emp['year']
+        expiry_fiscal_year_end = grant_year + FISCAL_CONFIG['max_carry_over_years']
+        expiry_date = date(expiry_fiscal_year_end + 1, 3, 31)  # Fin del año fiscal
         days_until_expiry = (expiry_date - today).days
 
         result.append({

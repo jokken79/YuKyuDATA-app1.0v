@@ -24,11 +24,24 @@ os.makedirs(EXPORT_DIR, exist_ok=True)
 DB_NAME = "yukyu.db"
 
 
+from contextlib import contextmanager
+
+@contextmanager
 def get_db_connection():
-    """Obtiene conexión a la base de datos"""
+    """
+    Obtiene conexión a la base de datos como context manager.
+
+    Uso:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute("SELECT ...")
+    """
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
-    return conn
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 # Estilos reutilizables
@@ -79,37 +92,36 @@ def create_approved_requests_excel(year: int, month: int = None) -> str:
     Returns:
         Ruta del archivo creado
     """
-    conn = get_db_connection()
-    c = conn.cursor()
+    with get_db_connection() as conn:
+        c = conn.cursor()
 
-    query = '''
-        SELECT
-            lr.id,
-            lr.employee_num,
-            lr.employee_name,
-            lr.start_date,
-            lr.end_date,
-            lr.days_requested,
-            lr.hours_requested,
-            lr.leave_type,
-            lr.reason,
-            lr.approved_at,
-            lr.approved_by,
-            lr.cost_estimate
-        FROM leave_requests lr
-        WHERE lr.status = 'APPROVED'
-        AND strftime('%Y', lr.approved_at) = ?
-    '''
-    params = [str(year)]
+        query = '''
+            SELECT
+                lr.id,
+                lr.employee_num,
+                lr.employee_name,
+                lr.start_date,
+                lr.end_date,
+                lr.days_requested,
+                lr.hours_requested,
+                lr.leave_type,
+                lr.reason,
+                lr.approved_at,
+                lr.approved_by,
+                lr.cost_estimate
+            FROM leave_requests lr
+            WHERE lr.status = 'APPROVED'
+            AND strftime('%Y', lr.approved_at) = ?
+        '''
+        params = [str(year)]
 
-    if month:
-        query += " AND strftime('%m', lr.approved_at) = ?"
-        params.append(f"{month:02d}")
+        if month:
+            query += " AND strftime('%m', lr.approved_at) = ?"
+            params.append(f"{month:02d}")
 
-    query += " ORDER BY lr.approved_at DESC"
+        query += " ORDER BY lr.approved_at DESC"
 
-    requests = c.execute(query, params).fetchall()
-    conn.close()
+        requests = c.execute(query, params).fetchall()
 
     # Crear workbook
     wb = Workbook()
