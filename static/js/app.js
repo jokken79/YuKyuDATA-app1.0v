@@ -2447,8 +2447,9 @@ const App = {
                 const res = await fetch(`${App.config.apiBase}/factories?status=在職中`);
                 const json = await res.json();
 
-                if (json.data) {
-                    this.factories = json.data;
+                // API returns { factories: [...] } not { data: [...] }
+                if (json.factories) {
+                    this.factories = json.factories;
                     const select = document.getElementById('factory-filter');
                     if (select) {
                         // Keep first option (All Factories)
