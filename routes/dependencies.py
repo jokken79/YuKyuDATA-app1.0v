@@ -48,7 +48,8 @@ from middleware.csrf import generate_csrf_token
 
 # Project paths
 PROJECT_DIR = Path(__file__).parent.parent
-DEFAULT_EXCEL_PATH = PROJECT_DIR / "有給休暇管理.xlsm"
+E_DRIVE_EXCEL_PATH = Path("E:/CosasParaAppsJp/有給休暇管理.xlsm")
+DEFAULT_EXCEL_PATH = E_DRIVE_EXCEL_PATH if E_DRIVE_EXCEL_PATH.exists() else PROJECT_DIR / "有給休暇管理.xlsm"
 EMPLOYEE_REGISTRY_PATH = PROJECT_DIR / "【新】社員台帳(UNS)T　2022.04.05～.xlsm"
 UPLOAD_DIR = PROJECT_DIR / "uploads"
 

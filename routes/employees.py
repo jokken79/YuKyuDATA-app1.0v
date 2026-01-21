@@ -201,12 +201,13 @@ async def sync_employees(request: Request, user: CurrentUser = Depends(get_curre
         database.save_employees(data)
         invalidate_employee_cache()
 
-        # Also parse usage details
-        usage_details = await loop.run_in_executor(
+        # Also parse usage details (Enhanced version)
+        enhanced_res = await loop.run_in_executor(
             _excel_executor,
-            excel_service.parse_yukyu_usage_details,
+            excel_service.parse_yukyu_usage_details_enhanced,
             DEFAULT_EXCEL_PATH
         )
+        usage_details = enhanced_res.get('data', [])
         database.save_yukyu_usage_details(usage_details)
 
         # Sync Genzai (Dispatch) data
@@ -303,15 +304,17 @@ async def upload_excel(
         database.save_employees(data)
         invalidate_employee_cache()
 
-        # Parse usage details if available
+        # Parse usage details if available (Enhanced)
         try:
-            usage_details = await loop.run_in_executor(
+            enhanced_res = await loop.run_in_executor(
                 _excel_executor,
-                excel_service.parse_yukyu_usage_details,
+                excel_service.parse_yukyu_usage_details_enhanced,
                 upload_path
             )
+            usage_details = enhanced_res.get('data', [])
             database.save_yukyu_usage_details(usage_details)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Enhanced parse during upload failed: {e}")
             usage_details = []
 
         log_sync_event("UPLOAD_EXCEL", {

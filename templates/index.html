@@ -220,6 +220,7 @@
 
     <!-- Modern UI Enhancements 2025 -->
     <script src="/static/js/modern-ui.js" defer></script>
+    <script src="/static/js/modern-integration.js" defer></script>
 
     <!-- Authentication System -->
     <link rel="stylesheet" href="/static/css/login-modal.css">
@@ -418,7 +419,7 @@
                 <div class="header-actions">
                     <div class="header-actions__group header-actions__group--years">
                         <span class="header-label">Año</span>
-                        <div class="flex-center gap-sm" id="year-filter"></div>
+                        <select id="year-selector" class="input-glass year-dropdown"></select>
                     </div>
 
                     <div class="header-actions__group" id="header-controls">
@@ -1254,15 +1255,15 @@
                         </div>
 
                         <!-- Calendar Grid -->
-                        <div id="calendar-grid" class="d-grid" class="grid-7-cols">
+                        <div id="calendar-grid" class="calendar-grid">
                             <!-- Header -->
-                            <div class="calendar-header">日</div>
-                            <div class="calendar-header">月</div>
-                            <div class="calendar-header">火</div>
-                            <div class="calendar-header">水</div>
-                            <div class="calendar-header">木</div>
-                            <div class="calendar-header">金</div>
-                            <div class="calendar-header">土</div>
+                            <div class="calendar-header-cell">日</div>
+                            <div class="calendar-header-cell">月</div>
+                            <div class="calendar-header-cell">火</div>
+                            <div class="calendar-header-cell">水</div>
+                            <div class="calendar-header-cell">木</div>
+                            <div class="calendar-header-cell">金</div>
+                            <div class="calendar-header-cell">土</div>
                             <!-- Days will be rendered by JS -->
                         </div>
                     </div>
@@ -3097,39 +3098,47 @@
 
 
     <!-- Login Modal -->
-    <div class="loader-overlay bg-overlay-dark" id="login-modal" role="dialog" aria-modal="true"
-        aria-labelledby="login-modal-title">
-        <div class="glass-panel modal-content-container" style="max-width: 400px;">
-            <button class="btn modal-close-btn"
-                onclick="document.getElementById('login-modal').classList.remove('active')"
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
+        <div class="modal-container glass-panel" style="max-width: 400px;">
+            <button class="modal-close" onclick="document.getElementById('login-modal').classList.remove('active')"
                 aria-label="Close modal">✕</button>
-            <div class="p-xl">
-                <h2 id="login-modal-title" class="mb-lg text-center text-gradient title-xl">Login</h2>
+            <div class="modal-body">
+                <div class="modal-header"
+                    style="background: transparent; padding: 0; justify-content: center; margin-bottom: 2rem;">
+                    <h2 id="login-modal-title" class="text-gradient title-xl">Login</h2>
+                </div>
                 <form id="login-form">
-                    <div class="mb-lg">
+                    <div class="form-group mb-lg">
                         <label for="login-username" class="form-label">Username</label>
-                        <input type="text" id="login-username" name="username" class="input-glass w-full" required
+                        <input type="text" id="login-username" name="username" class="form-control" required
                             autocomplete="username">
                     </div>
-                    <div class="mb-lg">
+                    <div class="form-group mb-lg">
                         <label for="login-password" class="form-label">Password</label>
-                        <input type="password" id="login-password" name="password" class="input-glass w-full" required
+                        <input type="password" id="login-password" name="password" class="form-control" required
                             autocomplete="current-password">
                     </div>
-                    <div class="mb-lg" id="login-error" style="color: var(--danger); display: none; font-size: 0.9rem;">
+                    <div class="alert alert-error" id="login-error" style="display: none;">
                         Invalid credentials
                     </div>
-                    <button type="submit" class="btn btn-primary w-full shadow-glow">
-                        <span class="btn-text">Log In</span>
-                        <span class="btn-spinner d-none"></span>
-                    </button>
-                    <p class="mt-lg text-center text-muted text-sm">
-                        Development: admin / admin123456
-                    </p>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary btn-block shadow-glow">
+                            <span class="btn-text">Log In</span>
+                            <span class="btn-spinner d-none"></span>
+                        </button>
+                    </div>
+                    <div class="dev-credentials mt-lg">
+                        <p>Development Credentials:</p>
+                        <code>admin / admin123</code>
+                    </div>
                 </form>
             </div>
         </div>
     </div>
+
+    <!-- Main Application Logic -->
+    <script src="/static/js/app.js"></script>
 </body>
 
 </html>

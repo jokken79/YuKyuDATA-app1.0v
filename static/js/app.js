@@ -493,7 +493,8 @@ const App = {
 
             const radius = 34;
             const circumference = 2 * Math.PI * radius; // 213.6
-            const percent = Math.min(value / maxValue, 1);
+            const safeMaxValue = maxValue > 0 ? maxValue : 1; // Prevent division by zero
+            const percent = Math.min(value / safeMaxValue, 1);
             const offset = circumference - (percent * circumference);
 
             // Animate the ring
@@ -547,7 +548,8 @@ const App = {
 
             // Semi-circle arc length is ~251.2 (π * 80)
             const arcLength = Math.PI * 80;
-            const percent = Math.min(complianceRate / 100, 1);
+            const safeRate = isNaN(complianceRate) ? 0 : complianceRate;
+            const percent = Math.min(safeRate / 100, 1);
             const offset = arcLength - (percent * arcLength);
 
             // Set color based on compliance
@@ -667,10 +669,15 @@ const App = {
         this.auth.init();
 
         // Initialize internationalization (i18n)
-        await this.i18n.init();
+        this.i18n.init();
 
-        // Initial Fetch
-        await this.data.fetchEmployees();
+        // Initialize Calendar
+        if (this.calendar) {
+            this.calendar.init();
+        }
+
+        // Fetch initial data
+        this.data.fetchEmployees();
 
         this.ui.hideLoading();
         this.events.setupListeners();
@@ -1128,11 +1135,11 @@ const App = {
             try {
                 if (App.state.year) {
                     const res = await fetch(`${App.config.apiBase}/yukyu/kpi-stats/${App.state.year}`);
-                    const kpi = await res.json();
-                    if (kpi.status === 'success') {
-                        used = kpi.total_used;
-                        balance = kpi.total_balance;
-                        rate = kpi.usage_rate;
+                    const kpi_res = await res.json();
+                    if (kpi_res.status === 'success' && kpi_res.kpi) {
+                        used = App.utils.safeNumber(kpi_res.kpi.total_used);
+                        balance = App.utils.safeNumber(kpi_res.kpi.total_balance);
+                        rate = App.utils.safeNumber(kpi_res.kpi.usage_rate);
                     }
                 }
             } catch (e) {
@@ -1143,15 +1150,30 @@ const App = {
                 rate = granted > 0 ? Math.round((used / granted) * 100) : 0;
             }
 
-            // Update traditional KPI displays (guard missing DOM nodes)
-            const kpiUsedEl = document.getElementById('kpi-used');
-            const kpiBalanceEl = document.getElementById('kpi-balance');
-            const kpiRateEl = document.getElementById('kpi-rate');
-            const kpiTotalEl = document.getElementById('kpi-total');
-            if (kpiUsedEl) kpiUsedEl.innerText = Math.round(used).toLocaleString();
-            if (kpiBalanceEl) kpiBalanceEl.innerText = Math.round(balance).toLocaleString();
-            if (kpiRateEl) kpiRateEl.innerText = rate + '%';
-            if (kpiTotalEl) kpiTotalEl.innerText = total;
+            // Update KPI displays (guard missing DOM nodes)
+            const elements = {
+                'kpi-used': used,
+                'kpi-used-detail': used,
+                'kpi-balance': balance,
+                'kpi-balance-detail': balance,
+                'kpi-rate': rate,
+                'kpi-rate-detail': rate,
+                'kpi-total': total,
+                'kpi-granted': granted
+            };
+
+            Object.entries(elements).forEach(([id, val]) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (id.includes('rate')) {
+                        el.innerText = (val || 0) + '%';
+                    } else if (id.includes('detail')) {
+                        el.innerText = Math.round(val || 0).toLocaleString() + (id.includes('used') ? ' days' : ' days left');
+                    } else {
+                        el.innerText = Math.round(val || 0).toLocaleString();
+                    }
+                }
+            });
 
             // Calculate max values for rings
             const maxUsage = granted > 0 ? granted : 10000;
@@ -1319,34 +1341,42 @@ const App = {
         },
 
         updateYearFilter() {
-            const container = document.getElementById('year-filter');
-            if (!container) return;
-            if (!Array.isArray(App.state.availableYears) || App.state.availableYears.length === 0) return;
+            const selector = document.getElementById('year-selector');
+            if (!selector) return;
 
-            // Update year labels in the UI
-            const yearLabel = document.getElementById('trends-year-label');
-            if (yearLabel) yearLabel.textContent = `(${App.state.year})`;
+            // Ensure availableYears is an array
+            const apiYears = Array.isArray(App.state.availableYears) ? App.state.availableYears : [];
 
-            // XSS prevention: use data attributes and sanitize year values
-            container.innerHTML = App.state.availableYears.map(y => {
+            // Proactive: Always include Current Year and Next Year for future-proofing
+            const currentYear = new Date().getFullYear();
+            const nextYear = currentYear + 1;
+
+            // Combine API years with current/next year and sort unique
+            let years = [...new Set([...apiYears, currentYear, nextYear])];
+            years.sort((a, b) => b - a);
+
+            // Build options
+            selector.innerHTML = years.map(y => {
                 const safeYear = parseInt(y) || 0;
-                return `
-                <button class="btn btn-glass year-btn ${Number(App.state.year) === Number(safeYear) ? 'btn-primary' : ''}"
-                        data-year="${safeYear}">
-                    ${safeYear}
-                </button>
-            `}).join('');
+                return `<option value="${safeYear}" ${Number(App.state.year) === Number(safeYear) ? 'selected' : ''}>${safeYear}年</option>`;
+            }).join('');
 
-            // Add event listeners safely
-            container.querySelectorAll('.year-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const year = parseInt(btn.dataset.year);
+            // Handle change event (remove old listeners by replacing element or just adding once)
+            // Since we rebuild HTML, we need to reattach or use delegation
+            if (!selector.dataset.listener) {
+                selector.addEventListener('change', (e) => {
+                    const year = parseInt(e.target.value);
                     if (year) {
                         App.state.year = year;
                         App.data.fetchEmployees(year);
                     }
                 });
-            });
+                selector.dataset.listener = "true";
+            }
+
+            // Update year labels elsewhere in UI
+            const yearLabels = document.querySelectorAll('.dynamic-year-label');
+            yearLabels.forEach(el => el.textContent = `(${App.state.year})`);
         },
 
         async renderCharts() {
@@ -3925,10 +3955,11 @@ const App = {
                 const json = await res.json();
 
                 // Update summary cards
-                document.getElementById('ana-total-emp').innerText = json.summary.total_employees;
-                document.getElementById('ana-total-granted').innerText = json.summary.total_granted.toLocaleString();
-                document.getElementById('ana-total-used').innerText = json.summary.total_used.toLocaleString();
-                document.getElementById('ana-avg-rate').innerText = json.summary.average_rate + '%';
+                // Update summary cards with safety checks
+                document.getElementById('ana-total-emp').innerText = App.utils.safeNumber(json.summary.total_employees);
+                document.getElementById('ana-total-granted').innerText = App.utils.safeNumber(json.summary.total_granted).toLocaleString();
+                document.getElementById('ana-total-used').innerText = App.utils.safeNumber(json.summary.total_used).toLocaleString();
+                document.getElementById('ana-avg-rate').innerText = App.utils.safeNumber(json.summary.average_rate) + '%';
 
                 // Render department chart
                 this.renderDepartmentChart(json.department_stats);
@@ -3959,6 +3990,9 @@ const App = {
             if (App.state.charts['department']) {
                 App.state.charts['department'].destroy();
             }
+
+            // Guard: If stats are empty or null, don't attempt chart creation
+            if (!deptStats || !Array.isArray(deptStats) || deptStats.length === 0) return;
 
             const data = deptStats.slice(0, 10);
             App.state.charts['department'] = new Chart(ctx, {
@@ -7257,6 +7291,184 @@ App.reports = {
     }
 };
 
+// ========================================
+// CALENDAR MODULE (Grid View)
+// ========================================
+App.calendar = {
+    currentDate: new Date(),
+    events: [],
+
+    init() {
+        const container = document.getElementById('calendar-grid');
+        if (container) {
+            this.render();
+            // Load events if visible
+            if (container.offsetParent !== null) {
+                this.loadEvents();
+            }
+        }
+
+        // Bind button actions globally if not already bound
+        document.querySelectorAll('[data-action^="calendar."]').forEach(btn => {
+            const action = btn.dataset.action.split('.')[1]; // prevMonth, nextMonth, etc
+            if (this[action]) {
+                btn.onclick = () => this[action]();
+            }
+        });
+    },
+
+    prevMonth() {
+        this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+        this.render();
+        this.loadEvents();
+    },
+
+    nextMonth() {
+        this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+        this.render();
+        this.loadEvents();
+    },
+
+    goToToday() {
+        this.currentDate = new Date();
+        this.render();
+        this.loadEvents();
+    },
+
+    /* Render the grid structure (empty) */
+    render() {
+        const container = document.getElementById('calendar-grid');
+        if (!container) return;
+
+        container.className = 'calendar-grid';
+
+        const year = this.currentDate.getFullYear();
+        const month = this.currentDate.getMonth();
+
+        /* Update Title */
+        const titleEl = document.getElementById('calendar-month-label') || document.getElementById('calendar-month-title');
+        if (titleEl) {
+            const months = ['1月', '2月', '3月', '4月', '5月', '6月',
+                '7月', '8月', '9月', '10月', '11月', '12月'];
+            titleEl.textContent = `${year}年 ${months[month]}`;
+        }
+
+        /* Build Grid HTML */
+        let html = '';
+
+        /* Headers */
+        const days = ['日', '月', '火', '水', '木', '金', '土'];
+        days.forEach(day => {
+            html += `<div class="calendar-header-cell">${day}</div>`;
+        });
+
+        /* Days calculation */
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const today = new Date();
+        const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+
+        /* Padding */
+        for (let i = 0; i < firstDay; i++) {
+            html += `<div class="calendar-day empty"></div>`;
+        }
+
+        /* Actual Days */
+        for (let i = 1; i <= daysInMonth; i++) {
+            const isToday = isCurrentMonth && i === today.getDate();
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+
+            html += `
+            <div class="calendar-day ${isToday ? 'today' : ''}" id="cal-day-${dateStr}">
+                <span class="calendar-date-label">${i}</span>
+                <div id="cal-events-${dateStr}" class="calendar-events-list"></div>
+            </div>
+            `;
+        }
+
+        container.innerHTML = html;
+
+        // Re-bind listeners that might have been lost
+        this.bindDayClicks();
+    },
+
+    bindDayClicks() {
+        // Optional: Add click handlers to days for adding new events
+    },
+
+    /* Fetch and display events */
+    async loadEvents() {
+        const year = this.currentDate.getFullYear();
+        const month = this.currentDate.getMonth() + 1;
+
+        try {
+            App.ui.showLoading();
+
+            // source='all' to get both requests and excel usage
+            // The backend endpoint is /api/calendar/events
+            const response = await fetch(`${App.config.apiBase}/calendar/events?year=${year}&month=${month}&source=all`);
+            const json = await response.json();
+            App.ui.hideLoading();
+
+            if (json.status === 'success' && json.events) {
+                this.displayEvents(json.events);
+            }
+        } catch (error) {
+            console.error('Failed to load calendar events', error);
+            App.ui.hideLoading();
+            App.ui.showToast('error', 'カレンダーデータの取得に失敗しました');
+        }
+    },
+
+    displayEvents(events) {
+        // Clear existing events (though render() usually clears them)
+        // This is safe because render() is called before loadEvents() typically.
+
+        events.forEach(evt => {
+            // Handle multi-day events
+            let current = new Date(evt.start);
+            const end = new Date(evt.end);
+
+            // Safety break for infinite loops
+            let loopCount = 0;
+
+            while (current <= end && loopCount < 31) {
+                loopCount++;
+
+                // Format date as YYYY-MM-DD
+                const y = current.getFullYear();
+                const m = String(current.getMonth() + 1).padStart(2, '0');
+                const d = String(current.getDate()).padStart(2, '0');
+                const dateStr = `${y}-${m}-${d}`;
+
+                const container = document.getElementById(`cal-events-${dateStr}`);
+                if (container) {
+                    const el = document.createElement('div');
+
+                    // Determine class based on leave_type
+                    let typeClass = 'event-full'; // default
+                    if (evt.leave_type === 'half_am') typeClass = 'event-am';
+                    else if (evt.leave_type === 'half_pm') typeClass = 'event-pm';
+                    else if (evt.leave_type === 'hourly') typeClass = 'event-hourly';
+                    else if (evt.type === 'usage_detail') typeClass = 'event-full'; // usage from excel
+
+                    el.className = `calendar-event ${typeClass}`;
+                    el.title = evt.title; // Tooltip
+                    // Simplify text for small view: "Name (Type)"
+                    el.textContent = evt.title.split('(')[0];
+
+                    container.appendChild(el);
+                }
+
+                // Next day
+                current.setDate(current.getDate() + 1);
+            }
+        });
+    }
+};
+
+window.App = App;
+
 document.addEventListener('DOMContentLoaded', () => {
     App.init();
 
@@ -7265,6 +7477,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (App.animations && App.animations.preloadInBackground) {
         App.animations.preloadInBackground();
     }
+
+    // ========================================
+    // CALENDAR MODULE (Grid View)
+    // ========================================
+
 
     // Initialize GSAP animations after a short delay
     // GSAP will be loaded on-demand if not already preloaded

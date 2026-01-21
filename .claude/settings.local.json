@@ -8,7 +8,8 @@
       "Bash(findstr:*)",
       "Bash(dir /T:W \"d:\\YuKyuDATA-app\\templates\\index.html\")",
       "Bash(start http://localhost:8000)",
-      "Bash(taskkill:*)""Bash(*)"
+      "Bash(taskkill:*)",
+      "Bash(*)"
     ]
   }
 }

@@ -1,5 +1,86 @@
 # YuKyuDATA Design Changelog
 
+## 2026-01-20: Unified Design System (Update 4)
+
+### Problema Resuelto
+**Conflicto de tokens de diseño**: `yukyu-tokens.css` usaba violeta (#7c3aed) como primario, mientras `nexus-theme` usaba cyan (#06b6d4). Esto causaba inconsistencias visuales.
+
+### Solución: Sistema de Diseño Unificado
+Archivo: `static/css/unified-design-system.css`
+
+**Decisión**: Cyan (#06b6d4) como color primario, violeta (#7c3aed) como acento secundario.
+
+### Tokens Principales
+```css
+:root {
+  /* Primary - Cyan */
+  --color-primary-500: #06b6d4;
+  --color-primary-600: #0891b2;
+
+  /* Accent - Violet (former primary) */
+  --color-accent-600: #7c3aed;
+
+  /* Focus Ring (unificado) */
+  --shadow-focus: 0 0 0 3px rgba(6, 182, 212, 0.4);
+}
+```
+
+### Archivos Creados/Modificados
+| Archivo | Acción | Descripción |
+|---------|--------|-------------|
+| `unified-design-system.css` | **NUEVO** | Single source of truth (~580 líneas) |
+| `login-modal.css` | Modificado | Usa `--shadow-focus` unificado |
+| `templates/index.html` | Modificado | Carga unified-design-system.css primero |
+| `services/asset_service.py` | Modificado | Nueva lista de CSS |
+| `scripts/build-assets.js` | Modificado | Incluye nuevos archivos |
+
+### CSS Legacy Eliminado
+- **Eliminados ~13,884 líneas** de `static/css/legacy_backup/`
+- Archivos removidos: globals.css, theme.css, design-tokens.css duplicados
+
+### Nuevo Componente: UIStates
+Archivo: `static/src/components/UIStates.js`
+
+Proporciona estados UI consistentes:
+- `createLoadingState()` - Spinner con mensaje
+- `createEmptyState()` - Estado vacío con icono y acción opcional
+- `createErrorState()` - Error con retry button
+- `createSkeleton()` - Placeholders (text, card, table, avatar)
+
+```javascript
+import { UIStates, createLoadingState } from './components/index.js';
+
+// Uso directo
+container.appendChild(createLoadingState({ message: '読み込み中...' }));
+
+// Uso con manager
+const uiStates = new UIStates(container);
+uiStates.showLoading();
+// ... después
+uiStates.restore();
+```
+
+### Consolidación de Estado Frontend
+`static/src/store/state.js` ahora es compatibility layer que delega a `unified-state.js`:
+
+```javascript
+// Antes: 3 sistemas de estado separados
+// Después: Singleton pattern con proxy para legacy code
+import { getUnifiedState } from './unified-state.js';
+const unifiedState = getUnifiedState();
+```
+
+### Arquitectura CSS Actualizada
+```
+unified-design-system.css (Single Source of Truth)
+  ├── yukyu-tokens.css (legacy compatibility)
+  ├── nexus-theme/main.css (componentes nexus)
+  ├── login-modal.css (modal de login)
+  └── premium-corporate.css (estilos premium)
+```
+
+---
+
 ## 2025-12-16: Sidebar Premium + Light Mode Fix (Update 3)
 
 ### Sidebar Redesign

@@ -6,6 +6,13 @@ try:
     print("Attempting imports...")
     import main
     print("Import main success")
+    
+    import services.lifecycle
+    print("Import services.lifecycle success")
+    
+    import utils.rate_limiter
+    print("Import utils.rate_limiter success")
+    
 except Exception:
     print("Exception occurred!")
     exc_type, exc_value, exc_traceback = sys.exc_info()

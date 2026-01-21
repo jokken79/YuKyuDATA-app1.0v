@@ -11,7 +11,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: var(--color-bg-overlay);
+    background: var(--bg-overlay);
     backdrop-filter: var(--glass-blur);
     display: flex;
     align-items: center;
@@ -22,37 +22,39 @@
 
 /* Modal Container */
 .modal-container {
-    background: var(--color-bg-card);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-xl);
+    background: rgba(15, 23, 42, 0.95) !important;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-radius: var(--radius-2xl);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), var(--shadow-glow);
     width: 90%;
-    max-width: 450px;
+    max-width: 420px;
     max-height: 90vh;
     overflow: hidden;
-    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    /* Subtle border */
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Modal Header */
 .modal-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: var(--space-6) var(--space-6);
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-    color: var(--color-text-on-primary);
+    justify-content: center;
+    padding: var(--space-8) var(--space-6) var(--space-2);
+    background: transparent;
+    color: white;
 }
 
 .modal-header h2 {
     margin: 0;
     font-family: var(--font-heading);
-    font-size: var(--text-2xl);
-    font-weight: var(--font-semibold);
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    letter-spacing: -0.025em;
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    letter-spacing: -0.05em;
+    background: linear-gradient(135deg, #fff 0%, var(--color-primary-400) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .modal-close {
@@ -96,35 +98,34 @@
     align-items: center;
     gap: var(--space-2);
     margin-bottom: var(--space-2);
-    font-weight: var(--font-medium);
-    color: var(--color-text-primary);
+    font-weight: 600;
+    color: var(--color-primary-300);
     font-size: var(--text-sm);
-    font-family: var(--font-body);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .form-control {
     width: 100%;
-    padding: var(--space-3) var(--space-4);
-    border: 2px solid rgba(0, 0, 0, 0.1);
-    border-radius: var(--radius-lg);
+    padding: var(--space-4) var(--space-4);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-xl);
     font-size: var(--text-base);
-    font-family: var(--font-body);
-    transition: var(--transition-fast);
-    background: var(--color-bg-base);
-    color: var(--color-text-primary);
+    color: white;
+    transition: all 0.3s ease;
     box-sizing: border-box;
-    /* Prevent spill */
-}
-
-.form-control:hover {
-    border-color: var(--color-secondary);
 }
 
 .form-control:focus {
     outline: none;
-    border-color: var(--color-primary);
-    box-shadow: var(--shadow-focus);
-    /* Unified focus ring */
+    background: rgba(255, 255, 255, 0.07);
+    border-color: var(--color-primary-500);
+    box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.2);
+}
+
+.form-control::placeholder {
+    color: rgba(255, 255, 255, 0.3);
 }
 
 /* Password Input Wrapper */

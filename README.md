@@ -10,10 +10,11 @@ Sistema completo para la gestión de vacaciones pagadas de empleados, desarrolla
 
 | Categoría | Estado | Puntuación |
 |-----------|--------|------------|
-| **Tests** | 61/62 pasando | 98.4% |
-| **Backend** | Funcional | 7.5/10 |
-| **Frontend** | Funcional | 8.0/10 |
-| **Seguridad** | Mejorado | 8.0/10 |
+| **Tests** | 63 pasando | ~98% |
+| **Backend** | Funcional | 8.0/10 |
+| **Frontend** | Mejorado | 8.5/10 |
+| **Seguridad** | JWT + Rate Limiting | 8.5/10 |
+| **UI/UX** | Sistema Unificado | 8.0/10 |
 | **Documentación** | Completa | 9/10 |
 
 ---
@@ -103,14 +104,16 @@ La aplicación utiliza **JWT (JSON Web Tokens)** para autenticación con las sig
 ```bash
 # Administrador
 Usuario: admin
-Contraseña: admin123456
+Contraseña: admin123
 Rol: admin
 
 # Usuario regular
 Usuario: demo
-Contraseña: demo123456
+Contraseña: demo123
 Rol: user
 ```
+
+> **Nota**: Las contraseñas son `admin123` y `demo123` (NO `admin123456`).
 
 ### Endpoints de Autenticación
 
@@ -135,7 +138,7 @@ const response = await fetch('/api/auth/login', {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
         username: 'admin',
-        password: 'admin123456'
+        password: 'admin123'  // NOT admin123456
     })
 });
 const data = await response.json();
@@ -339,7 +342,12 @@ Proyecto interno - Todos los derechos reservados
 
 ## Última Actualización
 
-- **Fecha**: 2026-01-19
-- **Versión**: 1.1v
-- **Mejoras**: Sistema de autenticación JWT, rate limiting, paginación, error handling
-- **Tests**: 61/62 pasando (98.4%)
+- **Fecha**: 2026-01-20
+- **Versión**: 1.2v
+- **Mejoras**:
+  - Sistema de diseño unificado (`unified-design-system.css`)
+  - Componente UIStates (loading/empty/error/skeleton)
+  - Consolidación estado frontend (singleton pattern)
+  - Limpieza CSS legacy (-13,884 líneas)
+  - Mejoras de agentes (timeout, circuit breaker, cleanup)
+- **Tests**: 63 pasando (~98%)

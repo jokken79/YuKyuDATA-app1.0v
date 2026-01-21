@@ -327,15 +327,97 @@ curl -X POST "http://localhost:8000/api/sync/update-master-excel?year=2025"
 
 ---
 
-## Próximos Pasos Recomendados
+---
 
-1. **Autenticación:** Implementar JWT o OAuth2 con roles
-2. **Notificaciones:** Emails al aprobar/rechazar solicitudes
-3. **Dashboard Fiscal:** Vista de compliance y expiración
-4. **Tests:** Añadir pruebas unitarias para nuevos módulos
-5. **Backups:** Automatizar backups de BD
+## FASE 6: UI/UX y Frontend (2026-01-20)
+
+### 6.1 Sistema de Diseño Unificado
+**Archivo:** `static/css/unified-design-system.css` (nuevo)
+
+**Problema resuelto:** Conflicto entre `yukyu-tokens.css` (violeta) y `nexus-theme` (cyan).
+
+**Decisión de diseño:**
+- Primary: Cyan (#06b6d4)
+- Accent: Violet (#7c3aed)
+
+```css
+:root {
+  --color-primary-500: #06b6d4;
+  --color-accent-600: #7c3aed;
+  --shadow-focus: 0 0 0 3px rgba(6, 182, 212, 0.4);
+}
+```
+
+### 6.2 Componente UIStates
+**Archivo:** `static/src/components/UIStates.js` (nuevo)
+
+Estados UI consistentes con accesibilidad ARIA:
+| Función | Descripción |
+|---------|-------------|
+| `createLoadingState()` | Spinner con mensaje |
+| `createEmptyState()` | Estado vacío con icono |
+| `createErrorState()` | Error con botón retry |
+| `createSkeleton()` | Placeholders animados |
+
+### 6.3 Consolidación Estado Frontend
+**Archivo:** `static/src/store/state.js` (reescrito)
+
+Antes: 3 sistemas de estado separados
+Después: Delegación a `unified-state.js` (singleton)
+
+```javascript
+import { getUnifiedState } from './unified-state.js';
+const unifiedState = getUnifiedState();
+export const state = unifiedState.getLegacyProxy();
+```
+
+### 6.4 Limpieza CSS Legacy
+**Eliminados:** ~13,884 líneas de código duplicado
+- `static/css/legacy_backup/` eliminado completamente
+
+### 6.5 Actualización de Asset Pipeline
+**Archivos modificados:**
+- `services/asset_service.py` - Nueva lista de CSS
+- `scripts/build-assets.js` - Archivos para minificación
 
 ---
 
-*Documentación generada: 2025-12-15*
-*Versión: 2.0.0*
+## FASE 7: Mejoras de Agentes (2026-01-19)
+
+### 7.1 Timeout con ThreadPoolExecutor
+**Archivo:** `agents/orchestrator.py`
+
+```python
+with ThreadPoolExecutor() as executor:
+    future = executor.submit(agent.execute, task)
+    result = future.result(timeout=task_timeout)
+```
+
+### 7.2 Circuit Breaker Pattern
+**Archivo:** `agents/orchestrator.py`
+
+Estados: CLOSED → OPEN → HALF_OPEN
+- Protege contra cascadas de fallos
+- Recuperación automática con half-open
+
+### 7.3 Auto-cleanup de Recursos
+**Archivos:** `agents/orchestrator.py`, `agents/memory_agent.py`
+
+- Limpieza de estado interno
+- Liberación de recursos en shutdown
+
+---
+
+## Próximos Pasos Recomendados
+
+1. ~~**Autenticación:** Implementar JWT o OAuth2 con roles~~ ✅ Completado
+2. **Notificaciones:** Emails al aprobar/rechazar solicitudes
+3. **Dashboard Fiscal:** Vista de compliance y expiración
+4. ~~**Tests:** Añadir pruebas unitarias para nuevos módulos~~ ✅ 63 tests pasando
+5. **Backups:** Automatizar backups de BD
+6. **Dark Mode:** Completar soporte de tema oscuro con tokens unificados
+
+---
+
+*Documentación actualizada: 2026-01-20*
+*Versión: 2.1.0*

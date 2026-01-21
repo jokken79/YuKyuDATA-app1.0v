@@ -379,7 +379,7 @@ async def recalculate_employee_totals(
         old_data = database.get_employee_by_num_year(employee_num, year)
 
         # Recalculate
-        result = database.recalculate_employee_from_details(employee_num, year)
+        result = database.recalculate_employee_used_days(employee_num, year)
         invalidate_employee_cache()
 
         # Audit log

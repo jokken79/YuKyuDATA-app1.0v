@@ -1731,6 +1731,20 @@ def add_single_yukyu_usage(employee_num: str, name: str, use_date: str, days_use
         return dict(created)
 
 
+def get_employee_by_num_year(employee_num: str, year: int) -> Optional[Dict]:
+    """Retrieves a single employee record by number and year."""
+    with get_db() as conn:
+        c = conn.cursor()
+        employee_id = f"{employee_num}_{year}"
+        row = c.execute("SELECT * FROM employees WHERE id = ?", (employee_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def recalculate_employee_from_details(employee_num: str, year: int):
+    """Alias for recalculate_employee_used_days to maintain compatibility."""
+    return recalculate_employee_used_days(employee_num, year)
+
+
 def recalculate_employee_used_days(employee_num: str, year: int):
     """
     Recalcula los días usados de un empleado basándose en yukyu_usage_details.
