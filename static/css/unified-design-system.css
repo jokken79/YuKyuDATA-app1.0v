@@ -255,7 +255,51 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
+/* Modal Overlay - Hidden by default */
+.confirm-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  pointer-events: none;
+}
+
+.confirm-modal.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
 /* Modal Content Logic */
+.confirm-modal-content {
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: var(--space-8);
+  transform: scale(0.9) translateY(20px);
+  transition: transform 0.3s ease;
+}
+
+.confirm-modal.active .confirm-modal-content {
+  transform: scale(1) translateY(0);
+}
+
+.confirm-modal-content.modal-lg {
+  max-width: 800px;
+}
+
+.confirm-modal-content.modal-sm {
+  max-width: 400px;
+}
+
 .confirm-modal-content {
   background: rgba(15, 23, 42, 0.9) !important;
   backdrop-filter: blur(25px);

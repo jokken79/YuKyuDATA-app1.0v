@@ -8,6 +8,8 @@ import jwt
 import secrets
 import hashlib
 import uuid
+import os
+import json
 import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional, Dict
@@ -17,9 +19,49 @@ from pydantic import BaseModel
 # Database imports are lazy to avoid circular import issues
 # They are imported within __init__ and methods as needed
 
-# Configuracion de seguridad
-SECRET_KEY = secrets.token_urlsafe(32)  # Generar key aleatoria
-REFRESH_SECRET_KEY = secrets.token_urlsafe(32)
+# Configuracion de seguridad - LEER DE VARIABLES DE ENTORNO
+# CRÍTICO: Nunca generar secrets dinámicamente en producción
+def _get_secret_key() -> str:
+    """Obtiene JWT_SECRET_KEY de variable de entorno (requerido en producción)"""
+    key = os.getenv("JWT_SECRET_KEY")
+    if not key:
+        # En desarrollo, generar una clave temporal (con warning)
+        if os.getenv("DEBUG", "false").lower() == "true":
+            import warnings
+            warnings.warn(
+                "JWT_SECRET_KEY no configurado. Usando clave temporal. "
+                "Configura JWT_SECRET_KEY en producción.",
+                RuntimeWarning
+            )
+            return secrets.token_urlsafe(32)
+        raise RuntimeError(
+            "JWT_SECRET_KEY debe estar configurado en producción. "
+            "Genera uno con: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+        )
+    if len(key) < 32:
+        raise RuntimeError("JWT_SECRET_KEY debe tener al menos 32 caracteres")
+    return key
+
+
+def _get_refresh_secret_key() -> str:
+    """Obtiene JWT_REFRESH_SECRET_KEY de variable de entorno"""
+    key = os.getenv("JWT_REFRESH_SECRET_KEY")
+    if not key:
+        # Fallback a JWT_SECRET_KEY + sufijo si no está definido
+        base_key = os.getenv("JWT_SECRET_KEY", "")
+        if base_key:
+            return base_key + "_refresh"
+        # En desarrollo, generar temporal
+        if os.getenv("DEBUG", "false").lower() == "true":
+            return secrets.token_urlsafe(32)
+        raise RuntimeError(
+            "JWT_REFRESH_SECRET_KEY debe estar configurado en producción."
+        )
+    return key
+
+
+SECRET_KEY = _get_secret_key()
+REFRESH_SECRET_KEY = _get_refresh_secret_key()
 ALGORITHM = "HS256"
 
 # Tiempos de expiracion actualizados (v5.17)
@@ -80,25 +122,116 @@ class AuthService:
         # Los access tokens son de corta duracion, se puede mantener en memoria
         self.revoked_tokens: set = set()
 
-        # Base de datos de usuarios (en produccion usar BD real)
-        self.users_db = {
-            "admin": {
-                "username": "admin",
-                "hashed_password": self.get_password_hash("admin123"),
-                "email": "admin@yukyu.com",
-                "full_name": "Administrator",
-                "role": "admin",
-                "is_active": True
-            },
-            "manager": {
-                "username": "manager",
-                "hashed_password": self.get_password_hash("manager123"),
-                "email": "manager@yukyu.com",
-                "full_name": "Manager User",
-                "role": "manager",
-                "is_active": True
+        # Cargar usuarios de forma segura
+        self.users_db = self._load_users_securely()
+
+    def _load_users_securely(self) -> Dict:
+        """
+        Carga usuarios de forma segura desde variables de entorno o BD.
+
+        Prioridad:
+        1. USERS_JSON env var (JSON con usuarios y hashes)
+        2. USERS_FILE env var (path a archivo JSON)
+        3. Base de datos (tabla users)
+        4. Solo en DEBUG=true: usuarios de desarrollo (con contraseñas fuertes temporales)
+        """
+        # Opción 1: JSON directo en variable de entorno
+        users_json = os.getenv("USERS_JSON")
+        if users_json:
+            try:
+                users = json.loads(users_json)
+                return users
+            except json.JSONDecodeError as e:
+                raise RuntimeError(f"USERS_JSON inválido: {e}")
+
+        # Opción 2: Archivo JSON externo
+        users_file = os.getenv("USERS_FILE")
+        if users_file and os.path.exists(users_file):
+            try:
+                with open(users_file, 'r', encoding='utf-8') as f:
+                    users = json.load(f)
+                return users
+            except (json.JSONDecodeError, IOError) as e:
+                raise RuntimeError(f"Error leyendo USERS_FILE: {e}")
+
+        # Opción 3: Intentar cargar de base de datos
+        try:
+            users = self._load_users_from_database()
+            if users:
+                return users
+        except Exception:
+            pass  # BD no disponible, continuar
+
+        # Opción 4: Solo en modo DEBUG - usuarios de desarrollo
+        if os.getenv("DEBUG", "false").lower() == "true":
+            import warnings
+            # Generar contraseñas temporales seguras para desarrollo
+            dev_admin_pass = os.getenv("DEV_ADMIN_PASSWORD", secrets.token_urlsafe(16))
+            dev_manager_pass = os.getenv("DEV_MANAGER_PASSWORD", secrets.token_urlsafe(16))
+
+            warnings.warn(
+                f"\n⚠️  MODO DESARROLLO - Usuarios temporales creados:\n"
+                f"   admin / {dev_admin_pass}\n"
+                f"   manager / {dev_manager_pass}\n"
+                f"   Configura USERS_JSON o USERS_FILE para producción.",
+                RuntimeWarning
+            )
+
+            return {
+                "admin": {
+                    "username": "admin",
+                    "hashed_password": self.get_password_hash(dev_admin_pass),
+                    "email": "admin@yukyu.local",
+                    "full_name": "Dev Administrator",
+                    "role": "admin",
+                    "is_active": True
+                },
+                "manager": {
+                    "username": "manager",
+                    "hashed_password": self.get_password_hash(dev_manager_pass),
+                    "email": "manager@yukyu.local",
+                    "full_name": "Dev Manager",
+                    "role": "manager",
+                    "is_active": True
+                }
             }
-        }
+
+        # Producción sin usuarios configurados = error
+        raise RuntimeError(
+            "No hay usuarios configurados. Configura una de estas opciones:\n"
+            "  1. USERS_JSON='{\"admin\":{...}}' (variable de entorno)\n"
+            "  2. USERS_FILE=/path/to/users.json\n"
+            "  3. Tabla 'users' en base de datos\n"
+            "  4. DEBUG=true para usuarios de desarrollo"
+        )
+
+    def _load_users_from_database(self) -> Optional[Dict]:
+        """Intenta cargar usuarios de la tabla 'users' en BD"""
+        try:
+            from database import get_db
+            with get_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT username, hashed_password, email, full_name, role, is_active
+                    FROM users WHERE is_active = 1
+                """)
+                rows = cursor.fetchall()
+                if not rows:
+                    return None
+
+                users = {}
+                for row in rows:
+                    users[row[0]] = {
+                        "username": row[0],
+                        "hashed_password": row[1],
+                        "email": row[2],
+                        "full_name": row[3],
+                        "role": row[4],
+                        "is_active": bool(row[5])
+                    }
+                return users
+        except Exception:
+            return None
 
     def initialize(self):
         """Inicializar servicios dependientes (DB, etc.)"""

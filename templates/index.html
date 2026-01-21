@@ -3128,9 +3128,10 @@
                             <span class="btn-spinner d-none"></span>
                         </button>
                     </div>
-                    <div class="dev-credentials mt-lg">
-                        <p>Development Credentials:</p>
-                        <code>admin / admin123</code>
+                    <!-- Credenciales de desarrollo se muestran en la consola del servidor cuando DEBUG=true -->
+                    <div class="dev-credentials mt-lg" id="dev-creds" style="display: none;">
+                        <p>Development Mode</p>
+                        <code id="dev-creds-info">Check server console for credentials</code>
                     </div>
                 </form>
             </div>

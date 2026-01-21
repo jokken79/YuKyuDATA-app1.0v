@@ -1,5 +1,10 @@
 import os
 import json
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 from datetime import datetime, timedelta
 from pathlib import Path
 from contextlib import contextmanager
