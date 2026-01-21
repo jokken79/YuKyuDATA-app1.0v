@@ -101,19 +101,27 @@ La aplicación utiliza **JWT (JSON Web Tokens)** para autenticación con las sig
 
 ⚠️ **Solo para entorno de desarrollo** (cuando `DEBUG=true`):
 
-```bash
-# Administrador
-Usuario: admin
-Contraseña: admin123
-Rol: admin
+En modo DEBUG, el sistema genera automáticamente credenciales temporales seguras.
+Las credenciales se muestran en la **consola del servidor** al iniciar.
 
-# Usuario regular
-Usuario: demo
-Contraseña: demo123
-Rol: user
+```bash
+# Las credenciales temporales aparecerán así en la consola:
+[WARNING] Credenciales de desarrollo generadas:
+  admin: <contraseña-aleatoria-16-chars>
+  demo: <contraseña-aleatoria-16-chars>
 ```
 
-> **Nota**: Las contraseñas son `admin123` y `demo123` (NO `admin123456`).
+### Configurar Usuarios en Producción
+
+```bash
+# Opción 1: Variable de entorno JSON
+USERS_JSON='{"admin":{"password":"$2b$12$hash...","role":"admin"}}'
+
+# Opción 2: Archivo externo
+USERS_FILE=/etc/yukyu/users.json
+```
+
+> **IMPORTANTE**: En producción (`DEBUG=false`), debes configurar `JWT_SECRET_KEY` y usuarios.
 
 ### Endpoints de Autenticación
 
@@ -132,13 +140,13 @@ Rol: user
 ### Ejemplo de Uso
 
 ```javascript
-// 1. Login
+// 1. Login (usar credenciales de la consola del servidor en desarrollo)
 const response = await fetch('/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
         username: 'admin',
-        password: 'admin123'  // NOT admin123456
+        password: 'tu-contraseña'  // Ver consola del servidor
     })
 });
 const data = await response.json();

@@ -152,18 +152,31 @@ Copiar `.env.example` a `.env` y configurar:
 
 ### Críticas (REQUERIDAS en producción)
 ```bash
-JWT_SECRET_KEY=...          # python -c "import secrets; print(secrets.token_urlsafe(32))"
-DATABASE_ENCRYPTION_KEY=... # python -c "import secrets; print(secrets.token_hex(32))"
+JWT_SECRET_KEY=...              # python -c "import secrets; print(secrets.token_urlsafe(32))"
+JWT_REFRESH_SECRET_KEY=...      # python -c "import secrets; print(secrets.token_urlsafe(32))"
+DATABASE_ENCRYPTION_KEY=...     # python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+### Autenticación de Usuarios
+```bash
+# Opción 1: JSON inline (pequeños equipos)
+USERS_JSON='{"admin":{"password":"hash_bcrypt","role":"admin"}}'
+
+# Opción 2: Archivo externo (recomendado)
+USERS_FILE=/secure/path/users.json
 ```
 
 ### Principales
 ```bash
-DEBUG=false                 # true para desarrollo
+DEBUG=false                 # true para desarrollo (genera credenciales temporales)
 DATABASE_TYPE=sqlite        # sqlite o postgresql
 DATABASE_URL=sqlite:///./yukyu.db
 CORS_ORIGINS=http://localhost:8000
 RATE_LIMIT_ENABLED=true
 ```
+
+> **IMPORTANTE:** En producción, `DEBUG=false` requiere `JWT_SECRET_KEY` configurado.
+> En desarrollo (`DEBUG=true`), se generan claves temporales y usuarios de prueba.
 
 ---
 
@@ -227,9 +240,18 @@ innerHTML = userInput   // ❌ Vulnerabilidad XSS
 
 ## Security
 
-- **JWT Auth:** Access 15min + Refresh 7 días
+- **JWT Auth:** Access 15min + Refresh 7 días (claves desde env vars)
 - **CSRF Protection:** Middleware activo para POST/PUT/DELETE
 - **Rate Limiting:** Configurable por endpoint
+- **Secrets Management:** Claves JWT NUNCA hardcodeadas, siempre desde variables de entorno
+
+### Configuración Segura de Autenticación
+```python
+# services/auth_service.py maneja:
+# 1. JWT_SECRET_KEY desde env (requerido en producción)
+# 2. Usuarios desde USERS_JSON, USERS_FILE, o BD
+# 3. En DEBUG=true: genera credenciales temporales seguras
+```
 
 ### Rate Limits
 | Endpoint | Límite |
@@ -282,3 +304,29 @@ taskkill /PID <PID> /F
 ### CSRF token inválido
 - Recargar la página para obtener nuevo token
 - Verificar header X-CSRF-Token en requests
+
+---
+
+## Recent Changes (2026-01)
+
+### Security Fixes
+1. **JWT Secrets:** Ahora se leen de `JWT_SECRET_KEY` y `JWT_REFRESH_SECRET_KEY` env vars
+   - En producción: REQUERIDO configurar
+   - En desarrollo (DEBUG=true): genera claves temporales con warning
+
+2. **User Authentication:** Eliminadas credenciales hardcodeadas
+   - Prioridad: USERS_JSON → USERS_FILE → Database → Temporal (solo DEBUG)
+   - Contraseñas temporales son seguras (16 chars aleatorios)
+
+3. **Login Modal:** Eliminada visualización de credenciales en UI
+
+### UI/CSS Fixes
+1. **Modales ocultos:** Agregados estilos para `.confirm-modal` en `unified-design-system.css`
+   - Los modales ahora están ocultos por defecto (`visibility: hidden`)
+   - Solo visibles cuando tienen clase `.active`
+   - Afecta: edit-yukyu-modal, audit-history-modal, bulk-edit-modal, import-result-modal
+
+### Files Modified
+- `services/auth_service.py` - Gestión segura de secrets y usuarios
+- `templates/index.html` - Eliminadas credenciales visibles
+- `static/css/unified-design-system.css` - Estilos de modales

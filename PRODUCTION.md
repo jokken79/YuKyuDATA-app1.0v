@@ -154,34 +154,41 @@ Rate limiting is already configured per endpoint in `middleware/rate_limiter.py`
 
 ### User Credentials
 
-#### Development Credentials (Keep as Requested)
+#### Development Credentials (DEBUG=true only)
 
-```python
-# In routes/auth.py - DEV_USERS dictionary
-"admin": {
-    "password": "admin123456",
-    "user_id": "dev_admin_001",
-    "role": "admin"
-}
+En modo desarrollo, las credenciales se generan automáticamente y se muestran en la consola:
+
+```bash
+# Ver consola del servidor al iniciar
+[WARNING] Credenciales de desarrollo generadas:
+  admin: <contraseña-aleatoria-16-chars>
+  demo: <contraseña-aleatoria-16-chars>
 ```
 
-> ⚠️ **Important**: These dev credentials only work when `DEBUG=true`
+> ⚠️ **IMPORTANTE**: Las credenciales hardcodeadas fueron eliminadas por seguridad.
 
 #### Production User Management
 
-For production, you should:
+Para producción (`DEBUG=false`), configurar usuarios de estas formas:
 
-1. **Disable dev credentials** by ensuring `DEBUG=false`
-2. **Use database-backed users** via `/api/auth/register`
-3. **Implement proper user management**:
-   ```python
-   # Create admin user
+1. **Variable de entorno JSON** (equipos pequeños):
+   ```bash
+   USERS_JSON='{"admin":{"password":"$2b$12$hash...","role":"admin"}}'
+   ```
+
+2. **Archivo externo** (recomendado):
+   ```bash
+   USERS_FILE=/etc/yukyu/users.json
+   ```
+
+3. **Base de datos** (usuarios dinámicos):
+   ```bash
+   # Crear usuarios via API
    POST /api/auth/register
    {
        "username": "production_admin",
        "password": "SecureP@ssw0rd123!",
-       "email": "admin@yourdomain.com",
-       "full_name": "Admin User"
+       "email": "admin@yourdomain.com"
    }
    ```
 
@@ -192,10 +199,10 @@ For production, you should:
 ### 1. Test Token Expiration
 
 ```bash
-# Login
+# Login (usar credenciales de la consola del servidor)
 curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123456"}'
+  -d '{"username":"admin","password":"<ver-consola>"}'
 
 # Save token and wait 16 minutes
 # Try to use token - should fail with 401

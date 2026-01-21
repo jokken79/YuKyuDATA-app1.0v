@@ -23,11 +23,11 @@ Esta sesion se enfoco en la sincronizacion de datos con el archivo Excel actuali
 ### Alta Prioridad
 
 #### 1. Implementar Login en Frontend
-**Estado:** Pendiente
-**Descripcion:** La interfaz web necesita formulario de login para acceder a funciones admin
-- Actualmente el boton Sync falla con 401 porque no hay token
-- Se necesita agregar modal/pagina de login
-- Guardar token en localStorage/sessionStorage
+**Estado:** ✅ COMPLETADO (2026-01)
+**Descripcion:** Login modal implementado con autenticacion JWT
+- Modal de login en templates/index.html
+- Credenciales seguras desde env vars o generadas en DEBUG
+- Tokens guardados en localStorage
 
 ---
 
@@ -65,8 +65,15 @@ Esta sesion se enfoco en la sincronizacion de datos con el archivo Excel actuali
 ## Notas Tecnicas
 
 ### Credenciales de Desarrollo (Solo DEBUG=true)
-- Usuario: `demo` / Password: `demo123456` / Rol: user
-- Usuario: `admin` / Password: `admin123456` / Rol: admin
+En modo DEBUG, las credenciales se generan automaticamente y se muestran en la consola del servidor.
+```bash
+# Ver consola del servidor para credenciales temporales
+[WARNING] Credenciales de desarrollo generadas:
+  admin: <password-aleatorio>
+  demo: <password-aleatorio>
+```
+
+> **NOTA:** Las credenciales hardcodeadas fueron eliminadas por seguridad (2026-01)
 
 ### Puertos
 - Puerto por defecto: 8000
