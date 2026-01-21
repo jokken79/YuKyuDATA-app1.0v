@@ -455,8 +455,9 @@ class AuthService:
         """
         # Verificar primero en la base de datos usando el hash
         token_hash = self._hash_token(token)
+        db_funcs = self._get_db_functions()
 
-        if not is_refresh_token_valid(token_hash):
+        if not db_funcs['is_refresh_token_valid'](token_hash):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Refresh token invalido o expirado"
@@ -483,7 +484,7 @@ class AuthService:
 
         except jwt.ExpiredSignatureError:
             # El token expiro - revocar en BD
-            db_revoke_refresh_token(token_hash)
+            db_funcs['db_revoke_refresh_token'](token_hash)
 
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -517,7 +518,8 @@ class AuthService:
 
         # Revocar el refresh token antiguo (rotacion de tokens)
         old_token_hash = self._hash_token(refresh_token)
-        db_revoke_refresh_token(old_token_hash)
+        db_funcs = self._get_db_functions()
+        db_funcs['db_revoke_refresh_token'](old_token_hash)
 
         # Generar nuevo par de tokens
         return self.create_token_pair(username, user_agent, ip_address)
@@ -557,7 +559,8 @@ class AuthService:
             True si se revoco correctamente
         """
         token_hash = self._hash_token(refresh_token)
-        return db_revoke_refresh_token(token_hash)
+        db_funcs = self._get_db_functions()
+        return db_funcs['db_revoke_refresh_token'](token_hash)
 
     def revoke_all_user_tokens(self, username: str) -> int:
         """
@@ -569,7 +572,8 @@ class AuthService:
         Returns:
             Numero de tokens revocados
         """
-        return revoke_all_user_refresh_tokens(username)
+        db_funcs = self._get_db_functions()
+        return db_funcs['revoke_all_user_refresh_tokens'](username)
 
     def get_user_sessions(self, username: str) -> list:
         """
@@ -581,7 +585,8 @@ class AuthService:
         Returns:
             Lista de sesiones activas (tokens sin el hash)
         """
-        return get_user_active_refresh_tokens(username)
+        db_funcs = self._get_db_functions()
+        return db_funcs['get_user_active_refresh_tokens'](username)
 
     def get_token_stats(self) -> dict:
         """
@@ -590,7 +595,8 @@ class AuthService:
         Returns:
             Dict con estadisticas
         """
-        return get_refresh_token_stats()
+        db_funcs = self._get_db_functions()
+        return db_funcs['get_refresh_token_stats']()
 
     def cleanup_tokens(self) -> int:
         """
@@ -600,7 +606,8 @@ class AuthService:
         Returns:
             Numero de tokens eliminados
         """
-        return cleanup_expired_refresh_tokens()
+        db_funcs = self._get_db_functions()
+        return db_funcs['cleanup_expired_refresh_tokens']()
 
     def get_user(self, username: str) -> Optional[dict]:
         """

@@ -12,6 +12,7 @@ from time import time
 from datetime import datetime
 from typing import Callable
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """
         Check rate limit before processing request
         """
+        # Skip rate limiting in testing mode
+        if os.environ.get("TESTING") == "true":
+            return await call_next(request)
+
         # Skip rate limiting for excluded paths
         if request.url.path in self.exclude_paths:
             return await call_next(request)
