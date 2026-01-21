@@ -73,31 +73,31 @@ jobs:
       - name: Lint with flake8 (critical errors)
         run: |
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics \
-            --exclude=node_modules,venv,.git,__pycache__,backups,terraform,basuraa,ThemeTheBestJpkken \
+            --exclude=node_modules,venv,.git,__pycache__,backups,terraform,basuraa,ThemeTheBestJpkken,.agent \
             --max-line-length=120
 
       - name: Lint with flake8 (warnings)
         run: |
           flake8 . --count --exit-zero --max-complexity=15 --max-line-length=120 \
-            --exclude=node_modules,venv,.git,__pycache__,backups,terraform,basuraa,ThemeTheBestJpkken \
+            --exclude=node_modules,venv,.git,__pycache__,backups,terraform,basuraa,ThemeTheBestJpkken,.agent \
             --format=default > flake8-report.txt || true
 
       - name: Check code formatting with black
         run: |
           black --check --diff . --line-length=120 \
-            --exclude='/(node_modules|venv|\.git|__pycache__|backups|terraform|basuraa|ThemeTheBestJpkken)/' || true
+            --exclude='/(node_modules|venv|\.git|__pycache__|backups|terraform|basuraa|ThemeTheBestJpkken|\.agent)/' || true
         continue-on-error: true
 
       - name: Check import sorting with isort
         run: |
           isort --check-only --diff . --profile=black --line-length=120 \
-            --skip node_modules --skip venv --skip backups --skip terraform --skip basuraa --skip ThemeTheBestJpkken || true
+            --skip node_modules --skip venv --skip backups --skip terraform --skip basuraa --skip ThemeTheBestJpkken --skip .agent || true
         continue-on-error: true
 
       - name: Type checking with mypy
         run: |
           mypy . --ignore-missing-imports --no-implicit-optional \
-            --exclude='venv|node_modules|backups|terraform|basuraa|ThemeTheBestJpkken' || true
+            --exclude='venv|node_modules|backups|terraform|basuraa|ThemeTheBestJpkken|\.agent' || true
         continue-on-error: true
 
       - name: Upload code quality reports
@@ -407,7 +407,7 @@ jobs:
       - name: Run Bandit (Python security)
         run: |
           bandit -r . -ll -f json -o bandit-report.json \
-            --exclude ./node_modules,./venv,./backups,./tests,./.git,./terraform,./basuraa,./ThemeTheBestJpkken \
+            --exclude ./node_modules,./venv,./backups,./tests,./.git,./terraform,./basuraa,./ThemeTheBestJpkken,./.agent \
             || echo "Bandit scan complete"
 
       - name: Run Safety check (dependency vulnerabilities)

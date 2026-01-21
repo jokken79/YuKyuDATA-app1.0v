@@ -213,7 +213,7 @@ jobs:
           format: 'JSON'
           args: >
             --enableExperimental
-            --exclude node_modules,venv,.git,backups,basuraa,ThemeTheBestJpkken
+            --exclude node_modules,venv,.git,backups,basuraa,ThemeTheBestJpkken,.agent
         continue-on-error: true
 
       - name: Upload Dependency Check results

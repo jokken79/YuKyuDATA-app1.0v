@@ -59,10 +59,10 @@ jobs:
         run: |
           pip install bandit
           bandit -r . -ll -f json -o bandit-report.json \
-            --exclude ./node_modules,./venv,./backups,./tests,./.git,./basuraa,./ThemeTheBestJpkken \
+            --exclude ./node_modules,./venv,./backups,./tests,./.git,./basuraa,./ThemeTheBestJpkken,./.agent \
             || echo "Bandit scan complete"
           bandit -r . -ll \
-            --exclude ./node_modules,./venv,./backups,./tests,./.git,./basuraa,./ThemeTheBestJpkken \
+            --exclude ./node_modules,./venv,./backups,./tests,./.git,./basuraa,./ThemeTheBestJpkken,./.agent \
             || true
 
       - name: Run Pylint
@@ -232,7 +232,7 @@ jobs:
         run: |
           pip install black
           black --check --line-length=120 . \
-            --exclude='/(node_modules|venv|\.git|__pycache__|backups|basuraa|ThemeTheBestJpkken)/' \
+            --exclude='/(node_modules|venv|\.git|__pycache__|backups|basuraa|ThemeTheBestJpkken|\.agent)/' \
             || echo "::warning::Some files need formatting"
         continue-on-error: true
 
@@ -240,7 +240,7 @@ jobs:
         run: |
           pip install isort
           isort --check-only --profile=black --line-length=120 . \
-            --skip node_modules --skip venv --skip backups --skip basuraa --skip ThemeTheBestJpkken \
+            --skip node_modules --skip venv --skip backups --skip basuraa --skip ThemeTheBestJpkken --skip .agent \
             || echo "::warning::Imports need sorting"
         continue-on-error: true
 
@@ -248,13 +248,13 @@ jobs:
         run: |
           pip install flake8
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics \
-            --exclude=node_modules,venv,.git,__pycache__,backups,basuraa,ThemeTheBestJpkken
+            --exclude=node_modules,venv,.git,__pycache__,backups,basuraa,ThemeTheBestJpkken,.agent
 
       - name: Run type checking (mypy)
         run: |
           pip install mypy
           mypy . --ignore-missing-imports \
-            --exclude='venv|node_modules|backups|basuraa|ThemeTheBestJpkken' \
+            --exclude='venv|node_modules|backups|basuraa|ThemeTheBestJpkken|\.agent' \
             || echo "::warning::Type issues found"
         continue-on-error: true
 
