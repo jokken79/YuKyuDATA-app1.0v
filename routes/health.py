@@ -276,13 +276,13 @@ async def get_project_status():
         try:
             staff = database.get_staff()
             staff_count = len(staff)
-        except:
+        except Exception:
             staff_count = 0
 
         try:
             leave_requests = database.get_leave_requests()
             leave_count = len(leave_requests) if leave_requests else 0
-        except:
+        except Exception:
             leave_count = 0
 
         try:
@@ -290,7 +290,7 @@ async def get_project_status():
                 c = conn.cursor()
                 c.execute("SELECT COUNT(*) FROM yukyu_usage_details")
                 usage_count = c.fetchone()[0]
-        except:
+        except Exception:
             usage_count = 0
 
         todos = []

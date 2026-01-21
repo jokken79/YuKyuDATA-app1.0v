@@ -120,7 +120,8 @@ async def export_to_excel(
                 try:
                     if len(str(cell.value)) > max_length:
                         max_length = len(str(cell.value))
-                except:
+                except (TypeError, AttributeError):
+                    # Cell value might be None or not stringifiable
                     pass
             ws.column_dimensions[column_letter].width = min(max_length + 2, 50)
 

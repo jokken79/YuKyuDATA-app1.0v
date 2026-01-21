@@ -30,7 +30,7 @@ http://localhost:8000/docs   # Swagger UI
 |-------|------------|
 | Backend | FastAPI + SQLite/PostgreSQL + PyJWT + Alembic |
 | Frontend | Vanilla JS (ES6) + Chart.js + ApexCharts |
-| Testing | Pytest (1214 tests) + Jest + Playwright |
+| Testing | Pytest (52 test files) + Jest + Playwright |
 
 **Data Sources (deben existir en raíz):**
 - `有給休暇管理.xlsm` - Master de vacaciones
@@ -68,7 +68,7 @@ Frontend (SPA)                    static/js/app.js + static/src/
 API Layer (main.py + routes/)     ~50 endpoints, JWT Auth, CSRF, Rate Limiting
        │
        ▼
-Service Layer (services/)         14 módulos: fiscal_year, excel, auth, reports...
+Service Layer (services/)         15 módulos: fiscal_year, excel, auth, reports...
        │
        ▼
 Agent System (agents/)            14 agentes especializados + orchestrator
@@ -81,12 +81,15 @@ Data Layer (database.py)          SQLite/PostgreSQL, backup, audit log
 
 | Directorio | Propósito |
 |------------|-----------|
-| `routes/` | API endpoints modularizados (21 archivos) |
-| `services/` | Lógica de negocio (14 módulos) |
+| `routes/` | API endpoints modularizados (22 archivos) |
+| `services/` | Lógica de negocio (15 módulos) |
 | `agents/` | 14 agentes (compliance, security, testing, memory...) |
-| `middleware/` | CSRF, rate limiting, security headers |
-| `static/src/` | Frontend moderno (componentes ES6) |
+| `middleware/` | 9 módulos (CSRF, rate limiting, security headers, auth...) |
+| `models/` | 8 modelos Pydantic (employee, vacation, user...) |
+| `repositories/` | 10 repositorios (patrón Repository) |
+| `static/src/` | Frontend moderno (17 componentes ES6) |
 | `static/js/` | Legacy SPA (app.js) |
+| `.claude/skills/` | 19 skills especializados para Claude |
 
 ---
 
@@ -203,6 +206,10 @@ PATCH /api/leave-requests/{id}/reject
 GET  /api/compliance/5day?year=2025
 GET  /api/expiring-soon?year=2025&threshold_months=3
 
+# Calendar
+GET  /api/calendar/events?year=2025&month=1
+POST /api/calendar/events
+
 # Health
 GET  /api/health
 GET  /api/health/detailed
@@ -218,13 +225,26 @@ GET  /api/health/detailed
 | **Legacy** | `static/js/app.js` | Activo (producción) |
 | **Modern** | `static/src/` | Disponible para nuevas features |
 
-### Uso Componentes Modernos
+### Componentes Modernos (17)
 ```javascript
-import { Modal, Alert, DataTable } from '/static/src/components/index.js';
+import { Modal, Alert, DataTable, Form, Button, Input,
+         Select, Card, Badge, Tooltip, Pagination,
+         DatePicker, Loader, UIStates } from '/static/src/components/index.js';
 
 Alert.success('保存しました');
 Alert.error('エラーが発生しました');
 ```
+
+### CSS Design System
+| Archivo | Propósito |
+|---------|-----------|
+| `unified-design-system.css` | Sistema de diseño unificado |
+| `yukyu-tokens.css` | Design tokens (colores, espaciado) |
+| `login-modal.css` | Estilos del modal de login |
+
+### Temas
+- **Dark Mode:** Tema por defecto
+- **Light Mode:** Soporte completo agregado (2026-01)
 
 ### Seguridad Frontend
 ```javascript
@@ -238,12 +258,70 @@ innerHTML = userInput   // ❌ Vulnerabilidad XSS
 
 ---
 
+## Agent System
+
+14 agentes especializados en `agents/`:
+
+| Agente | Propósito |
+|--------|-----------|
+| `orchestrator.py` | Coordinador principal de agentes |
+| `compliance.py` | Verificación de cumplimiento legal japonés |
+| `security.py` | Análisis de seguridad y vulnerabilidades |
+| `testing.py` | Generación y ejecución de tests |
+| `memory.py` | Persistencia de contexto y aprendizaje |
+| `performance.py` | Análisis de rendimiento |
+| `data_parser.py` | Parsing de datos Excel |
+| `ui_designer.py` | Diseño de interfaces |
+| `ux_analyst.py` | Análisis de experiencia de usuario |
+| `documentor.py` | Generación de documentación |
+| `nerd.py` | Análisis técnico profundo |
+| `canvas.py` | Generación de visualizaciones |
+| `figma.py` | Integración con Figma |
+
+### Características de Agentes
+- **Timeout:** Configurado por agente
+- **Circuit Breaker:** Protección contra fallos en cascada
+- **Auto-cleanup:** Limpieza automática de recursos
+
+---
+
+## Claude Skills
+
+Skills especializados en `.claude/skills/`:
+
+### Skills de Dominio YuKyu
+| Skill | Descripción |
+|-------|-------------|
+| `yukyu-compliance` | Cumplimiento legal japonés (有給休暇) |
+| `yukyu-frontend-dashboard` | Dashboard de vacaciones |
+| `yukyu-vacation-manager` | Gestión de vacaciones |
+| `yukyu-sync` | Sincronización con Excel |
+| `yukyu-test` | Testing específico |
+| `yukyu-status` | Estado del sistema |
+| `yukyu-start` | Inicialización |
+| `yukyu-backup` | Backup de datos |
+| `japanese-labor-compliance` | Ley laboral japonesa |
+| `excel-japanese-parser` | Parser de Excel japonés |
+
+### Skills Generales
+| Skill | Descripción |
+|-------|-------------|
+| `app-optimizer` | Optimización de rendimiento |
+| `code-quality-master` | Calidad de código |
+| `documentation-generator` | Generación de documentación |
+| `frontend-design` | Diseño frontend |
+| `full-stack-architect` | Arquitectura full-stack |
+| `intelligent-testing` | Testing inteligente |
+| `playwright` | Testing E2E |
+
+---
+
 ## Security
 
 - **JWT Auth:** Access 15min + Refresh 7 días (claves desde env vars)
 - **CSRF Protection:** Middleware activo para POST/PUT/DELETE
 - **Rate Limiting:** Configurable por endpoint
-- **Secrets Management:** Claves JWT NUNCA hardcodeadas, siempre desde variables de entorno
+- **Secrets Management:** Claves JWT NUNCA hardcodeadas
 
 ### Configuración Segura de Autenticación
 ```python
@@ -284,6 +362,7 @@ innerHTML = userInput   // ❌ Vulnerabilidad XSS
 3. **LIFO Deduction:** Días más nuevos se deducen primero
 4. **Excel Headers:** El parser detecta headers dinámicamente, no asumir posición fija
 5. **Frontend Dual:** Verificar si el cambio va en `app.js` (legacy) o `static/src/` (moderno)
+6. **Theme Support:** Verificar que estilos funcionen en Dark y Light mode
 
 ---
 
@@ -309,8 +388,19 @@ taskkill /PID <PID> /F
 
 ## Recent Changes (2026-01)
 
+### New Features
+1. **Light Mode Theme:** Soporte completo de tema claro
+   - Toggle en UI para cambiar entre Dark/Light mode
+   - CSS variables actualizadas en `yukyu-tokens.css`
+
+2. **Calendar Module:** Implementación completa
+   - Endpoints `/api/calendar/events`
+   - Vista de calendario en frontend
+
+3. **Specialized YuKyu Skills:** 3 nuevos skills para UI/UX
+
 ### Security Fixes
-1. **JWT Secrets:** Ahora se leen de `JWT_SECRET_KEY` y `JWT_REFRESH_SECRET_KEY` env vars
+1. **JWT Secrets:** Se leen de `JWT_SECRET_KEY` y `JWT_REFRESH_SECRET_KEY` env vars
    - En producción: REQUERIDO configurar
    - En desarrollo (DEBUG=true): genera claves temporales con warning
 
@@ -321,12 +411,20 @@ taskkill /PID <PID> /F
 3. **Login Modal:** Eliminada visualización de credenciales en UI
 
 ### UI/CSS Fixes
-1. **Modales ocultos:** Agregados estilos para `.confirm-modal` en `unified-design-system.css`
-   - Los modales ahora están ocultos por defecto (`visibility: hidden`)
+1. **Modales ocultos:** Estilos para `.confirm-modal` en `unified-design-system.css`
+   - Los modales están ocultos por defecto (`visibility: hidden`)
    - Solo visibles cuando tienen clase `.active`
-   - Afecta: edit-yukyu-modal, audit-history-modal, bulk-edit-modal, import-result-modal
+
+2. **Factory Dropdown Fix:** Corrección de propiedad incorrecta
+
+### Architecture Improvements
+1. **Agents:** Timeout, circuit breaker, y auto-cleanup
+2. **Frontend Consolidation:** Eliminación de CSS legacy
+3. **Unified Design System:** Resolución de conflictos de tokens
 
 ### Files Modified
 - `services/auth_service.py` - Gestión segura de secrets y usuarios
 - `templates/index.html` - Eliminadas credenciales visibles
-- `static/css/unified-design-system.css` - Estilos de modales
+- `static/css/unified-design-system.css` - Estilos de modales y temas
+- `static/css/yukyu-tokens.css` - Design tokens para temas
+- `routes/calendar.py` - Nuevo módulo de calendario
