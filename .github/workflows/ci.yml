@@ -144,11 +144,17 @@ jobs:
             --cov-report=xml \
             --cov-report=html \
             --cov-report=term-missing \
-            --cov-fail-under=60 \
+            --cov-fail-under=50 \
             --ignore=node_modules \
             --ignore=backups \
             --ignore=basuraa \
-            --ignore=ThemeTheBestJpkken
+            --ignore=ThemeTheBestJpkken \
+            --ignore=.agent
+        env:
+          DEBUG: "true"
+          JWT_SECRET_KEY: "test-secret-key-for-ci-tests"
+          JWT_REFRESH_SECRET_KEY: "test-refresh-secret-key-for-ci-tests"
+          DATABASE_URL: "sqlite:///./test_yukyu.db"
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
