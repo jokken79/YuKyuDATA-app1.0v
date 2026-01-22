@@ -545,6 +545,82 @@ body {
 }
 
 /* =============================================
+   DARK MODE THEME (Explicit Text Overrides)
+   =============================================
+   Ensures all text is visible in Dark Mode.
+============================================= */
+
+[data-theme="dark"],
+body.dark-theme,
+html[data-theme="dark"] body {
+  color: #f8fafc !important;
+  /* Slate 50 - White text */
+  background-color: #020617 !important;
+  /* Slate 950 */
+}
+
+[data-theme="dark"] .sidebar,
+[data-theme="dark"] .nav-sidebar {
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .nav-link,
+[data-theme="dark"] .nav-item,
+[data-theme="dark"] .nav-text {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .nav-link:hover,
+[data-theme="dark"] .nav-link.active,
+[data-theme="dark"] .nav-item:hover,
+[data-theme="dark"] .nav-item.active {
+  color: #06b6d4 !important;
+  /* Cyan */
+}
+
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] h6 {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .modern-table th,
+[data-theme="dark"] .modern-table td,
+[data-theme="dark"] table th,
+[data-theme="dark"] table td {
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .glass-panel {
+  background: #1e293b !important;
+  /* Slate 800 */
+  color: #f8fafc !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .stat-value,
+[data-theme="dark"] .stat-label,
+[data-theme="dark"] .kpi-value,
+[data-theme="dark"] .kpi-label {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] label,
+[data-theme="dark"] .form-label,
+[data-theme="dark"] .input-label {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] p,
+[data-theme="dark"] span,
+[data-theme="dark"] div {
+  color: inherit;
+}
+
+/* =============================================
    LIGHT MODE THEME
    =============================================
    Uses [data-theme="light"] to override dark mode defaults.
@@ -840,6 +916,7 @@ body {
 
 /* Reduce motion preference */
 @media (prefers-reduced-motion: reduce) {
+
   [data-theme="light"] *,
   [data-theme="light"] *::before,
   [data-theme="light"] *::after {
