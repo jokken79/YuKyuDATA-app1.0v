@@ -71,26 +71,30 @@ class SearchService:
                 cursor = conn.cursor()
 
                 # Use plainto_tsquery for simple phrase search
+                # Include kana from genzai/ukeoi tables
                 cursor.execute("""
                     SELECT
-                        id,
-                        employee_num,
-                        name,
-                        haken,
-                        granted,
-                        used,
-                        balance,
-                        year,
-                        ts_rank(search_vector, query) as relevance
-                    FROM employees,
+                        e.id,
+                        e.employee_num,
+                        e.name,
+                        COALESCE(g.kana, u.kana, '') as kana,
+                        e.haken,
+                        e.granted,
+                        e.used,
+                        e.balance,
+                        e.year,
+                        ts_rank(e.search_vector, query) as relevance
+                    FROM employees e
+                    LEFT JOIN genzai g ON e.employee_num = g.employee_num
+                    LEFT JOIN ukeoi u ON e.employee_num = u.employee_num,
                          plainto_tsquery('english', %s) query
-                    WHERE search_vector @@ query
-                    ORDER BY relevance DESC, year DESC
+                    WHERE e.search_vector @@ query
+                    ORDER BY relevance DESC, e.year DESC
                     LIMIT %s OFFSET %s
                 """, (query, limit, offset))
 
                 columns = [
-                    'id', 'employee_num', 'name', 'haken',
+                    'id', 'employee_num', 'name', 'kana', 'haken',
                     'granted', 'used', 'balance', 'year', 'relevance'
                 ]
 
@@ -134,6 +138,7 @@ class SearchService:
                         id,
                         employee_num,
                         name,
+                        kana,
                         dispatch_name,
                         department,
                         status,
@@ -147,7 +152,7 @@ class SearchService:
                 """, (query, limit, offset))
 
                 columns = [
-                    'id', 'employee_num', 'name', 'dispatch_name',
+                    'id', 'employee_num', 'name', 'kana', 'dispatch_name',
                     'department', 'status', 'hire_date', 'relevance'
                 ]
 
@@ -191,6 +196,7 @@ class SearchService:
                         id,
                         employee_num,
                         name,
+                        kana,
                         contract_business,
                         status,
                         hire_date,
@@ -203,7 +209,7 @@ class SearchService:
                 """, (query, limit, offset))
 
                 columns = [
-                    'id', 'employee_num', 'name', 'contract_business',
+                    'id', 'employee_num', 'name', 'kana', 'contract_business',
                     'status', 'hire_date', 'relevance'
                 ]
 
@@ -247,6 +253,7 @@ class SearchService:
                         id,
                         employee_num,
                         name,
+                        kana,
                         office,
                         status,
                         hire_date,
@@ -259,7 +266,7 @@ class SearchService:
                 """, (query, limit, offset))
 
                 columns = [
-                    'id', 'employee_num', 'name', 'office',
+                    'id', 'employee_num', 'name', 'kana', 'office',
                     'status', 'hire_date', 'relevance'
                 ]
 

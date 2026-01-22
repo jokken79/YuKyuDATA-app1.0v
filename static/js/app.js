@@ -1229,15 +1229,13 @@ const App = {
             tbody.innerHTML = data.map(e => {
                 const empNum = App.utils.escapeAttr(e.employeeNum);
 
-                // Name display logic: Show Kana if name is Romaji and Kana is available
-                let displayName = App.utils.escapeHtml(e.name);
+                // Name display logic: Show name with Kana below when available
+                const displayName = App.utils.escapeHtml(e.name);
                 let subName = '';
 
-                // Simple check for Romaji attributes (ASCII-only mostly)
-                const isRomaji = /^[A-Za-z0-9\s.,]+$/.test(e.name);
-                if (isRomaji && e.kana) {
-                    displayName = App.utils.escapeHtml(e.kana);
-                    subName = `<div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">${App.utils.escapeHtml(e.name)}</div>`;
+                // Show Kana (katakana) below the name when available
+                if (e.kana && e.kana.trim()) {
+                    subName = `<div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">${App.utils.escapeHtml(e.kana)}</div>`;
                 }
 
                 const haken = App.utils.escapeHtml(e.haken || '-');
@@ -2531,12 +2529,15 @@ const App = {
                     container.innerHTML = json.data.slice(0, 15).map(emp => {
                         const empNum = App.utils.escapeAttr(emp.employee_num);
                         const name = App.utils.escapeHtml(emp.name);
+                        const kana = emp.kana ? App.utils.escapeHtml(emp.kana) : '';
                         const empFactory = App.utils.escapeHtml(emp.factory || '-');
                         const type = App.utils.escapeHtml(emp.type);
+                        const kanaDisplay = kana ? `<div style="font-size: 0.75rem; color: #94a3b8;">${kana}</div>` : '';
                         return `
                         <div class="search-result-item" data-employee-num="${empNum}"
                              style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.2s;">
                             <div style="font-weight: 600;">${name}</div>
+                            ${kanaDisplay}
                             <div style="font-size: 0.85rem; color: var(--muted);">${empNum} | ${empFactory} | ${type}</div>
                         </div>
                     `}).join('');
@@ -2574,12 +2575,15 @@ const App = {
                         container.innerHTML = json.data.slice(0, 15).map(emp => {
                             const empNum = App.utils.escapeAttr(emp.employee_num);
                             const name = App.utils.escapeHtml(emp.name);
+                            const kana = emp.kana ? App.utils.escapeHtml(emp.kana) : '';
                             const empFactory = App.utils.escapeHtml(emp.factory || '-');
                             const type = App.utils.escapeHtml(emp.type);
+                            const kanaDisplay = kana ? `<div style="font-size: 0.75rem; color: #94a3b8;">${kana}</div>` : '';
                             return `
                             <div class="search-result-item" data-employee-num="${empNum}"
                                  style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.2s;">
                                 <div style="font-weight: 600;">${name}</div>
+                                ${kanaDisplay}
                                 <div style="font-size: 0.85rem; color: var(--muted);">${empNum} | ${empFactory} | ${type}</div>
                             </div>
                         `}).join('');
