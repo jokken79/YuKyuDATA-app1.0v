@@ -39,8 +39,9 @@
     <!-- YuKyu Unified Design System (Single Source of Truth) -->
     <link rel="stylesheet" href="/static/css/unified-design-system.css">
 
-    <!-- Legacy Design Tokens (kept for backwards compatibility) -->
-    <link rel="stylesheet" href="/static/css/yukyu-tokens.css">
+    <!-- Legacy Design Tokens - COMMENTED OUT: Conflicts with unified-design-system.css -->
+    <!-- Violet (#7C3AED) vs Cyan (#06b6d4) color conflict resolved -->
+    <!-- <link rel="stylesheet" href="/static/css/yukyu-tokens.css"> -->
 
     <!-- NEXUS THEME - Hyper Modern Glass UI -->
     <link rel="stylesheet" href="/static/css/nexus-theme/main.css">
@@ -226,6 +227,9 @@
     <link rel="stylesheet" href="/static/css/login-modal.css">
     <script type="module" src="/static/js/utils/auth-manager.js"></script>
     <script type="module" src="/static/js/components/login-modal.js"></script>
+
+    <!-- UI/UX Critical Fixes 2026 - Load LAST to override conflicts -->
+    <link rel="stylesheet" href="/static/css/ui-ux-fixes-2026.css">
 </head>
 
 <body>

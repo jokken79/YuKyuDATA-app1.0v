@@ -1,0 +1,388 @@
+/**
+ * YuKyuDATA UI/UX Critical Fixes - 2026-01
+ * =========================================
+ * Fixes P0 and P1 issues identified in UI/UX audit.
+ * Load this file LAST in the CSS cascade.
+ *
+ * Author: Nerd de Diseño con Maestría en Figma
+ */
+
+/* ========================================
+   FIX #1: Z-INDEX STRATEGY (P0 - CRITICAL)
+   Establece jerarquía clara de capas
+   ======================================== */
+:root {
+  /* Z-Index Scale - NUNCA usar valores arbitrarios */
+  --z-base: 1;
+  --z-dropdown: 100;
+  --z-sticky: 500;
+  --z-fixed: 1000;
+  --z-drawer: 1100;
+  --z-modal-backdrop: 5000;
+  --z-modal: 5100;
+  --z-popover: 6000;
+  --z-tooltip: 7000;
+  --z-toast: 8000;
+  --z-skip-link: 9999; /* Siempre último */
+}
+
+/* Aplicar z-index correctos */
+.skip-link {
+  z-index: var(--z-skip-link) !important;
+}
+
+.modal-overlay,
+.modal-backdrop,
+.confirm-modal-overlay {
+  z-index: var(--z-modal-backdrop) !important;
+}
+
+.modal,
+.confirm-modal,
+.login-modal {
+  z-index: var(--z-modal) !important;
+}
+
+.toast-container {
+  z-index: var(--z-toast) !important;
+}
+
+.tooltip,
+[data-tooltip] {
+  z-index: var(--z-tooltip) !important;
+}
+
+.dropdown-menu,
+.select-dropdown {
+  z-index: var(--z-dropdown) !important;
+}
+
+/* ========================================
+   FIX #2: LIGHT MODE - SIDEBAR/NAVBAR (P1)
+   Completa cobertura de Light Mode
+   ======================================== */
+[data-theme="light"] {
+  /* Light mode border unificado */
+  --light-border: rgba(0, 0, 0, 0.08);
+  --light-border-strong: rgba(0, 0, 0, 0.12);
+  --light-surface: rgba(255, 255, 255, 0.95);
+  --light-surface-hover: rgba(255, 255, 255, 0.98);
+}
+
+/* Sidebar en Light Mode */
+[data-theme="light"] .sidebar,
+[data-theme="light"] .nav-sidebar,
+[data-theme="light"] #sidebar {
+  background: var(--light-surface) !important;
+  border-right: 1px solid var(--light-border-strong) !important;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.03) !important;
+}
+
+[data-theme="light"] .nav-link,
+[data-theme="light"] .sidebar-link,
+[data-theme="light"] .menu-item {
+  color: #475569 !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-theme="light"] .nav-link:hover,
+[data-theme="light"] .sidebar-link:hover,
+[data-theme="light"] .menu-item:hover {
+  background: rgba(6, 182, 212, 0.08) !important;
+  color: var(--color-primary-700, #0e7490) !important;
+}
+
+[data-theme="light"] .nav-link.active,
+[data-theme="light"] .sidebar-link.active,
+[data-theme="light"] .menu-item.active {
+  background: rgba(6, 182, 212, 0.12) !important;
+  color: var(--color-primary-700, #0e7490) !important;
+  border-left: 3px solid var(--color-primary-500, #06b6d4) !important;
+}
+
+/* Navbar/Header en Light Mode */
+[data-theme="light"] .navbar,
+[data-theme="light"] .header,
+[data-theme="light"] #header {
+  background: var(--light-surface) !important;
+  border-bottom: 1px solid var(--light-border) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .navbar-brand,
+[data-theme="light"] .logo-text {
+  color: #0f172a !important;
+}
+
+/* ========================================
+   FIX #3: CONTRASTE WCAG AA (P1)
+   Mejora ratios de contraste
+   ======================================== */
+
+/* Dark Mode - Textos secundarios más legibles */
+[data-theme="dark"] .text-muted,
+[data-theme="dark"] .text-secondary,
+[data-theme="dark"] .help-text {
+  color: #94a3b8 !important; /* slate-400, ratio 4.6:1 con #0f172a */
+}
+
+/* Light Mode - Pagination buttons más visibles */
+[data-theme="light"] .pagination-btn,
+[data-theme="light"] .page-link {
+  background: rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  color: #334155 !important; /* slate-700 */
+}
+
+[data-theme="light"] .pagination-btn:hover,
+[data-theme="light"] .page-link:hover {
+  background: rgba(6, 182, 212, 0.1) !important;
+  border-color: rgba(6, 182, 212, 0.3) !important;
+}
+
+/* Table headers más distinguibles */
+[data-theme="light"] th,
+[data-theme="light"] .table-header {
+  background: rgba(0, 0, 0, 0.03) !important;
+  color: #1e293b !important;
+  font-weight: 600 !important;
+}
+
+/* ========================================
+   FIX #4: REDUCED MOTION (P1 - Accessibility)
+   Respeta preferencias del usuario
+   ======================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Mantener focus visible */
+  *:focus-visible {
+    transition: none !important;
+  }
+}
+
+/* ========================================
+   FIX #5: SAFE AREA INSET (P2 - Notch devices)
+   Soporte para iPhone notch y similares
+   ======================================== */
+.toast-container {
+  padding-top: max(16px, env(safe-area-inset-top)) !important;
+  padding-right: max(16px, env(safe-area-inset-right)) !important;
+  padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
+  padding-left: max(16px, env(safe-area-inset-left)) !important;
+}
+
+/* Sidebar respeta safe area */
+.sidebar,
+#sidebar {
+  padding-left: max(0px, env(safe-area-inset-left));
+  padding-bottom: max(0px, env(safe-area-inset-bottom));
+}
+
+/* ========================================
+   FIX #6: BUTTON SHADOW (P2)
+   Sombra del botón primario usa Cyan, no Violet
+   ======================================== */
+.btn-primary {
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3) !important; /* Cyan, era Violet */
+}
+
+.btn-primary:hover {
+  box-shadow: 0 6px 16px rgba(6, 182, 212, 0.4) !important;
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.3) !important;
+  transform: translateY(0);
+}
+
+/* ========================================
+   FIX #7: GLASS PANELS LIGHT MODE (P2)
+   Mejora legibilidad en Light Mode
+   ======================================== */
+[data-theme="light"] .glass-panel {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 4px 6px rgba(0, 0, 0, 0.02) !important;
+}
+
+[data-theme="light"] .glass-panel:hover {
+  border-color: rgba(6, 182, 212, 0.3) !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(6, 182, 212, 0.1) !important;
+}
+
+/* ========================================
+   FIX #8: TABLE SCROLL INDICATOR (P3)
+   Indicador visual de scroll horizontal
+   ======================================== */
+.table-wrapper,
+.table-container {
+  position: relative;
+}
+
+.table-wrapper::after,
+.table-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 40px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(15, 23, 42, 0.1)
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.table-wrapper.has-overflow::after,
+.table-container.has-overflow::after {
+  opacity: 1;
+}
+
+[data-theme="light"] .table-wrapper::after,
+[data-theme="light"] .table-container::after {
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(0, 0, 0, 0.05)
+  );
+}
+
+/* ========================================
+   FIX #9: FORM INPUTS CONSISTENCY (P2)
+   Inputs consistentes en ambos temas
+   ======================================== */
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  background: #ffffff !important;
+  border: 1px solid var(--light-border-strong) !important;
+  color: #1e293b !important;
+}
+
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+[data-theme="light"] input:focus,
+[data-theme="light"] select:focus,
+[data-theme="light"] textarea:focus {
+  border-color: var(--color-primary-500, #06b6d4) !important;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15) !important;
+}
+
+/* ========================================
+   FIX #10: CARD/STAT IMPROVEMENTS (P2)
+   KPI cards más profesionales
+   ======================================== */
+.stat-card,
+.kpi-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before,
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--color-primary-500, #06b6d4),
+    var(--color-primary-300, #67e8f9)
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.stat-card:hover::before,
+.kpi-card:hover::before {
+  opacity: 1;
+}
+
+/* Success/Warning/Error card variants */
+.stat-card.success::before { background: linear-gradient(90deg, #10b981, #34d399); opacity: 1; }
+.stat-card.warning::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); opacity: 1; }
+.stat-card.error::before { background: linear-gradient(90deg, #ef4444, #f87171); opacity: 1; }
+
+/* ========================================
+   RESPONSIVE REFINEMENTS
+   ======================================== */
+@media (max-width: 768px) {
+  /* Sidebar collapse */
+  .sidebar,
+  #sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .sidebar.open,
+  #sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* Full-width modals en móvil */
+  .modal {
+    width: 95% !important;
+    max-width: none !important;
+    margin: 1rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Stack KPI cards */
+  .stats-grid,
+  .kpi-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  /* Smaller text */
+  .stat-value {
+    font-size: 2rem !important;
+  }
+}
+
+/* ========================================
+   PRINT STYLES (Bonus)
+   ======================================== */
+@media print {
+  .sidebar,
+  .navbar,
+  .toast-container,
+  .skip-link,
+  .btn {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .glass-panel {
+    background: white !important;
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+  }
+}
