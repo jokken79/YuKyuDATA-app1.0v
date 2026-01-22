@@ -5,17 +5,17 @@
      */
 
     /* --- CHROMATIC PALETTE (HSL) --- */
-    /* Primary: Royal Purple (#7C3AED) */
-    --primary-h: 258;
-    --primary-s: 89%;
-    --primary-l: 66%;
+    /* Primary: Tech Cyan (#06B6D4) */
+    --primary-h: 188;
+    --primary-s: 94%;
+    --primary-l: 43%;
     --primary: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
     --primary-glow: hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.4);
 
-    /* Secondary: Soft Lavender (#A78BFA) */
-    --secondary-h: 255;
-    --secondary-s: 92%;
-    --secondary-l: 76%;
+    /* Secondary: Electric Blue (#38BDF8) */
+    --secondary-h: 198;
+    --secondary-s: 93%;
+    --secondary-l: 60%;
     --secondary: hsl(var(--secondary-h), var(--secondary-s), var(--secondary-l));
 
     /* Accent: Action Orange (#F97316) */
