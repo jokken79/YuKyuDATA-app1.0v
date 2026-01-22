@@ -1623,20 +1623,52 @@ const App = {
                     `;
                 });
 
-                // Generar HTML de fechas de uso recientes
+                // Generar HTML de fechas de uso recientes CON indicador de año fiscal
                 let usageDatesHtml = '';
                 if (usageHistory.length > 0) {
                     const recentUsage = usageHistory.slice(0, 10);
+
+                    // Determinar el año fiscal al que pertenece cada fecha de uso
+                    // Regla: El año fiscal comienza en abril (mes 4)
+                    // Ejemplo: 2024-02-03 pertenece al año fiscal 2023 (porque aún no llegó abril 2024)
+                    const getFiscalYear = (dateStr) => {
+                        const date = new Date(dateStr);
+                        const year = date.getFullYear();
+                        const month = date.getMonth() + 1; // 0-indexed to 1-indexed
+                        // Si estamos antes de abril, el año fiscal es el año anterior
+                        return month < 4 ? year - 1 : year;
+                    };
+
+                    // Colores para diferenciar años fiscales
+                    const fiscalYearColors = {
+                        [new Date().getFullYear()]: '#22c55e',     // Current FY - Green
+                        [new Date().getFullYear() - 1]: '#38bdf8', // Last FY - Cyan
+                        [new Date().getFullYear() - 2]: '#a78bfa', // 2 years ago - Purple
+                    };
+                    const defaultColor = '#94a3b8'; // Older years - Gray
+
                     usageDatesHtml = `
                         <div style="margin-top: 1rem;">
                             <h4 style="color: #94a3b8; margin-bottom: 0.5rem;">📋 使用履歴 (最近10件)</h4>
-                            <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 0.5rem;">
-                                ${recentUsage.map(u => `
-                                    <div style="display: flex; justify-content: space-between; padding: 0.3rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                                        <span>${u.date}</span>
-                                        <span style="color: #38bdf8;">${u.days}日</span>
+                            <div style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 0.5rem;">
+                                ${recentUsage.map(u => {
+                        const fiscalYear = getFiscalYear(u.date);
+                        const fyColor = fiscalYearColors[fiscalYear] || defaultColor;
+                        return `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <span style="background: ${fyColor}; color: #fff; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: bold;">${fiscalYear}年度</span>
+                                            <span style="color: #e2e8f0;">${u.date}</span>
+                                        </div>
+                                        <span style="color: #06b6d4; font-weight: bold;">${u.days}日</span>
                                     </div>
-                                `).join('')}
+                                `}).join('')}
+                            </div>
+                            <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; font-size: 0.7rem;">
+                                <span style="color: #94a3b8;">凡例:</span>
+                                <span style="color: #22c55e;">● 今年度</span>
+                                <span style="color: #38bdf8;">● 昨年度</span>
+                                <span style="color: #a78bfa;">● 2年前</span>
                             </div>
                         </div>
                     `;
