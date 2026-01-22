@@ -91,7 +91,7 @@ class AuthManager {
      */
     async login(username, password) {
         try {
-            const response = await fetch('/api/auth/login', {
+            const response = await fetch('/api/v1/auth/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -128,7 +128,7 @@ class AuthManager {
         try {
             // Optional: Call backend logout endpoint
             if (this.isAuthenticated()) {
-                await fetch('/api/auth/logout', {
+                await fetch('/api/v1/auth/logout', {
                     method: 'POST',
                     headers: this.getAuthHeaders(),
                 });
@@ -225,7 +225,7 @@ class AuthManager {
         }
 
         try {
-            const response = await this.authFetch('/api/auth/verify');
+            const response = await this.authFetch('/api/v1/auth/verify');
             return response.ok;
         } catch (error) {
             return false;

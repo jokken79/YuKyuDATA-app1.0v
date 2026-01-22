@@ -1,20 +1,22 @@
 """
-API Routes Module
-Contiene todos los endpoints organizados por dominio
+API Routes Module - YuKyuDATA
+=============================
 
-Usage in main.py:
-    from routes import (
-        auth_router, employees_router, leave_requests_router, ...
-    )
-    app.include_router(auth_router)
-    ...
+v0 routes have been migrated to v1. Use routes.v1 for all API endpoints.
 
-Response helpers:
+Response helpers are still available from this module:
     from routes.responses import success_response, error_response
     return success_response(data=employees, message="Data retrieved")
+
+For API routes, use:
+    from routes.v1 import router_v1
+    app.include_router(router_v1)
+
+Migration completed: 2026-01-22
+See docs/MIGRATION_PLAN.md for details.
 """
 
-# Response helpers
+# Response helpers (still available for use across the application)
 from .responses import (
     APIResponse,
     PaginatedResponse,
@@ -30,39 +32,13 @@ from .responses import (
     forbidden_response,
 )
 
-# Auth routes
-from .auth import router as auth_router
-
-# Employee management routes
-from .employees import router as employees_router
-from .genzai import router as genzai_router
-from .ukeoi import router as ukeoi_router
-from .staff import router as staff_router
-
-# Leave management routes
-from .leave_requests import router as leave_requests_router
-from .yukyu import router as yukyu_router
-
-# Compliance and fiscal routes
-from .compliance import router as compliance_router
-from .compliance_advanced import router as compliance_advanced_router
-from .fiscal import router as fiscal_router
-
-# Analytics and reporting routes
-from .analytics import router as analytics_router
-from .reports import router as reports_router
-from .export import router as export_router
-
-# Calendar and notifications routes
-from .calendar import router as calendar_router
-from .notifications import router as notifications_router
-
-# System routes
-from .system import router as system_router
-from .health import router as health_router
-
-# GitHub integration routes
-from .github import router as github_router
+# Dependencies module (shared authentication/authorization helpers)
+from .dependencies import (
+    get_current_user,
+    get_current_user_optional,
+    get_db_connection,
+    verify_csrf_token,
+)
 
 __all__ = [
     # Response helpers
@@ -78,30 +54,9 @@ __all__ = [
     "validation_error_response",
     "unauthorized_response",
     "forbidden_response",
-    # Auth
-    "auth_router",
-    # Employees
-    "employees_router",
-    "genzai_router",
-    "ukeoi_router",
-    "staff_router",
-    # Leave management
-    "leave_requests_router",
-    "yukyu_router",
-    # Compliance
-    "compliance_router",
-    "compliance_advanced_router",
-    "fiscal_router",
-    # Analytics & Reporting
-    "analytics_router",
-    "reports_router",
-    "export_router",
-    # Calendar & Notifications
-    "calendar_router",
-    "notifications_router",
-    # System
-    "system_router",
-    "health_router",
-    # GitHub
-    "github_router",
+    # Dependencies
+    "get_current_user",
+    "get_current_user_optional",
+    "get_db_connection",
+    "verify_csrf_token",
 ]

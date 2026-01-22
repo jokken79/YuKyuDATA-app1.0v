@@ -30,25 +30,25 @@ const STATIC_ASSETS = [
   '/static/icons/icon.svg'
 ];
 
-// Endpoints de API para cachear estrategicamente
+// Endpoints de API para cachear estrategicamente (v1 routes)
 const API_CACHE_STRATEGIES = {
   // GET requests - cachear por 5 minutos
   cacheable: [
-    '/api/employees',
-    '/api/yukyu/kpi-stats',
-    '/api/yukyu/monthly-summary',
-    '/api/yukyu/by-employee-type',
-    '/api/analytics/top10-active',
-    '/api/factories'
+    '/api/v1/employees',
+    '/api/v1/yukyu/kpi-stats',
+    '/api/v1/yukyu/monthly-summary',
+    '/api/v1/yukyu/by-employee-type',
+    '/api/v1/analytics/top10-active',
+    '/api/v1/factories'
   ],
-  
+
   // POST requests - no cachear
   nonCacheable: [
-    '/api/sync',
-    '/api/sync-genzai',
-    '/api/sync-ukeoi',
-    '/api/leave-request',
-    '/api/error-report'
+    '/api/v1/sync',
+    '/api/v1/sync/genzai',
+    '/api/v1/sync/ukeoi',
+    '/api/v1/leave-requests',
+    '/api/v1/system/error-report'
   ]
 };
 
@@ -218,8 +218,8 @@ async function handleStaticRequest(request) {
 async function preloadCriticalData(apiCache) {
   try {
     const criticalEndpoints = [
-      '/api/employees?enhanced=true&active_only=true',
-      '/api/yukyu/kpi-stats/2024'
+      '/api/v1/employees?enhanced=true&active_only=true',
+      '/api/v1/yukyu/kpi-stats/2024'
     ];
     
     const preloadPromises = criticalEndpoints.map(async (endpoint) => {
@@ -258,7 +258,7 @@ async function syncPendingData() {
     
     for (const data of pendingData) {
       try {
-        const response = await fetch('/api/sync', {
+        const response = await fetch('/api/v1/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data)
@@ -283,7 +283,7 @@ async function syncLeaveRequests() {
     
     for (const request of pendingRequests) {
       try {
-        const response = await fetch('/api/leave-request', {
+        const response = await fetch('/api/v1/leave-requests', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(request.data)

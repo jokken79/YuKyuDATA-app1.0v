@@ -14,7 +14,7 @@ const App = {
     },
 
     config: {
-        apiBase: '/api'
+        apiBase: '/api/v1'  // MIGRATION: Updated from /api to /api/v1
     },
 
     // ========================================

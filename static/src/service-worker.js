@@ -198,7 +198,7 @@ async function syncPendingRequest() {
     });
 
     // Retry submission
-    const response = await fetch('/api/leave-requests', {
+    const response = await fetch('/api/v1/leave-requests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
