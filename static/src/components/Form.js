@@ -198,7 +198,7 @@ export class Form {
         background: rgba(0, 0, 0, 0.25);
       }
 
-      .form-control:focus {
+      .form-control:focus-visible {
         border-color: var(--color-primary, #06b6d4);
         background: rgba(0, 0, 0, 0.3);
         box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
@@ -347,7 +347,7 @@ export class Form {
         border-color: rgba(0, 0, 0, 0.2);
       }
 
-      [data-theme="light"] .form-control:focus {
+      [data-theme="light"] .form-control:focus-visible {
         background: #ffffff;
       }
 

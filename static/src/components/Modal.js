@@ -332,7 +332,7 @@ export class Modal {
         color: var(--color-danger, #f87171);
       }
 
-      .modal-close:focus {
+      .modal-close:focus-visible {
         outline: var(--focus-outline, 3px solid var(--color-primary));
         outline-offset: var(--focus-outline-offset, 2px);
       }

@@ -2110,34 +2110,9 @@ def get_audit_log(
         return result
 
 
-def get_audit_log_by_user(user_id: str, limit: int = 100) -> List[Dict]:
-    """
-    Obtiene todos los registros de audit de un usuario especifico.
-
-    Args:
-        user_id: ID del usuario
-        limit: Maximo de registros a retornar
-
-    Returns:
-        Lista de registros de audit del usuario
-    """
-    return get_audit_log(user_id=user_id, limit=limit)
-
-
-def get_entity_history(entity_type: str, entity_id: str, limit: int = 50) -> List[Dict]:
-    """
-    Obtiene el historial completo de cambios de una entidad.
-
-    Args:
-        entity_type: Tipo de entidad
-        entity_id: ID de la entidad
-        limit: Maximo de registros
-
-    Returns:
-        Lista de cambios ordenados por fecha (mas reciente primero)
-    """
-    return get_audit_log(entity_type=entity_type, entity_id=entity_id, limit=limit)
-
+# NOTE: get_audit_log_by_user and get_entity_history removed (2026-01)
+# They were simple wrappers around get_audit_log() with no callers.
+# Use get_audit_log(user_id=...) or get_audit_log(entity_type=..., entity_id=...) directly.
 
 def get_audit_stats(days: int = 30) -> Dict:
     """

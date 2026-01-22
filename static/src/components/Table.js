@@ -159,7 +159,7 @@ export class DataTable {
         color: var(--color-text-primary, #f8fafc);
       }
 
-      .data-table th.sortable:focus {
+      .data-table th.sortable:focus-visible {
         outline: var(--focus-outline, 3px solid var(--color-primary));
         outline-offset: -3px;
       }
@@ -318,7 +318,7 @@ export class DataTable {
         cursor: not-allowed;
       }
 
-      .pagination-btn:focus {
+      .pagination-btn:focus-visible {
         outline: var(--focus-outline, 3px solid var(--color-primary));
         outline-offset: 2px;
       }
@@ -355,7 +355,7 @@ export class DataTable {
         font-weight: 600;
       }
 
-      .pagination-page:focus {
+      .pagination-page:focus-visible {
         outline: var(--focus-outline, 3px solid var(--color-primary));
         outline-offset: 2px;
       }
@@ -374,7 +374,7 @@ export class DataTable {
         background-position: right 0.75rem center;
       }
 
-      .page-size-select:focus {
+      .page-size-select:focus-visible {
         outline: var(--focus-outline, 3px solid var(--color-primary));
         outline-offset: 2px;
         border-color: var(--color-primary, #06b6d4);

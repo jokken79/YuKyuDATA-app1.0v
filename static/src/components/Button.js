@@ -239,7 +239,7 @@ function injectButtonStyles() {
       white-space: nowrap;
     }
 
-    .btn:focus {
+    .btn:focus-visible {
       outline: var(--focus-outline, 3px solid var(--color-primary));
       outline-offset: var(--focus-outline-offset, 2px);
     }

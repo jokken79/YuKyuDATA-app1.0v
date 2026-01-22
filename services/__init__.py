@@ -77,11 +77,9 @@ from .caching import (
     get_cache_stats,
     clear_cache,
     invalidate_cache_pattern,
-    invalidate_genzai_cache,
-    invalidate_ukeoi_cache,
-    invalidate_stats_cache,
     SimpleCache,
 )
+# NOTE: invalidate_genzai_cache, invalidate_ukeoi_cache, invalidate_stats_cache removed - never used
 
 # Crypto Utils
 from .crypto_utils import (
@@ -151,9 +149,6 @@ __all__ = [
     "get_cache_stats",
     "clear_cache",
     "invalidate_cache_pattern",
-    "invalidate_genzai_cache",
-    "invalidate_ukeoi_cache",
-    "invalidate_stats_cache",
     "SimpleCache",
     # Crypto Utils
     "encrypt_field",

@@ -306,7 +306,7 @@ function injectCardStyles() {
       cursor: pointer;
     }
 
-    .card-clickable:focus {
+    .card-clickable:focus-visible {
       outline: var(--focus-outline, 3px solid var(--color-primary));
       outline-offset: 2px;
     }
@@ -374,7 +374,7 @@ function injectCardStyles() {
       color: var(--color-text-primary, #f8fafc);
     }
 
-    .card-header-action:focus {
+    .card-header-action:focus-visible {
       outline: var(--focus-outline, 3px solid var(--color-primary));
       outline-offset: 2px;
     }
@@ -397,7 +397,7 @@ function injectCardStyles() {
       color: var(--color-text-primary, #f8fafc);
     }
 
-    .card-collapse-btn:focus {
+    .card-collapse-btn:focus-visible {
       outline: var(--focus-outline, 3px solid var(--color-primary));
       outline-offset: 2px;
     }
