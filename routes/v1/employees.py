@@ -41,7 +41,12 @@ _excel_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="excel_pa
 # ============================================
 
 @router.get("/employees")
-async def get_employees(year: int = None, enhanced: bool = False, active_only: bool = False):
+async def get_employees(
+    year: int = None,
+    enhanced: bool = False,
+    active_only: bool = False,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Returns list of employees from database.
 
@@ -68,7 +73,8 @@ async def get_employees_v1(
     status: Optional[str] = None,
     haken: Optional[str] = None,
     page: int = Query(default=1, ge=1),
-    limit: int = Query(default=50, ge=1, le=500)
+    limit: int = Query(default=50, ge=1, le=500),
+    user: CurrentUser = Depends(get_current_user)
 ):
     """
     Get employees with enhanced filtering and pagination (v1 API).
@@ -110,7 +116,8 @@ async def get_genzai_v1(
     status: Optional[str] = None,
     dispatch_name: Optional[str] = None,
     page: int = Query(default=1, ge=1),
-    limit: int = Query(default=50, ge=1, le=500)
+    limit: int = Query(default=50, ge=1, le=500),
+    user: CurrentUser = Depends(get_current_user)
 ):
     """Get genzai employees with filtering and pagination (v1 API)."""
     try:
@@ -143,7 +150,8 @@ async def get_ukeoi_v1(
     status: Optional[str] = None,
     contract_business: Optional[str] = None,
     page: int = Query(default=1, ge=1),
-    limit: int = Query(default=50, ge=1, le=500)
+    limit: int = Query(default=50, ge=1, le=500),
+    user: CurrentUser = Depends(get_current_user)
 ):
     """Get ukeoi employees with filtering and pagination (v1 API)."""
     try:
@@ -311,7 +319,8 @@ async def reset_employees(user: CurrentUser = Depends(get_admin_user)):
 async def search_employees(
     q: str = Query(..., min_length=1),
     year: Optional[int] = None,
-    limit: int = Query(default=50, ge=1, le=200)
+    limit: int = Query(default=50, ge=1, le=200),
+    user: CurrentUser = Depends(get_current_user)
 ):
     """
     Search employees by name or employee number.
@@ -337,7 +346,8 @@ async def full_text_search(
     q: str = Query(..., min_length=1),
     table: Optional[str] = None,
     year: Optional[int] = None,
-    limit: int = Query(default=100, ge=1, le=500)
+    limit: int = Query(default=100, ge=1, le=500),
+    user: CurrentUser = Depends(get_current_user)
 ):
     """
     Full text search across all employee tables.
@@ -368,7 +378,8 @@ async def search_employees_detailed(
     q: str = Query(..., min_length=1),
     year: Optional[int] = None,
     haken: Optional[str] = None,
-    limit: int = Query(default=50, ge=1, le=200)
+    limit: int = Query(default=50, ge=1, le=200),
+    user: CurrentUser = Depends(get_current_user)
 ):
     """Search employees with detailed results."""
     try:
@@ -393,7 +404,8 @@ async def search_employees_detailed(
 async def search_genzai(
     q: str = Query(..., min_length=1),
     status: Optional[str] = None,
-    limit: int = Query(default=50, ge=1, le=200)
+    limit: int = Query(default=50, ge=1, le=200),
+    user: CurrentUser = Depends(get_current_user)
 ):
     """Search genzai employees."""
     try:
@@ -415,7 +427,8 @@ async def search_genzai(
 async def search_ukeoi(
     q: str = Query(..., min_length=1),
     status: Optional[str] = None,
-    limit: int = Query(default=50, ge=1, le=200)
+    limit: int = Query(default=50, ge=1, le=200),
+    user: CurrentUser = Depends(get_current_user)
 ):
     """Search ukeoi employees."""
     try:
@@ -437,7 +450,8 @@ async def search_ukeoi(
 async def search_staff(
     q: str = Query(..., min_length=1),
     status: Optional[str] = None,
-    limit: int = Query(default=50, ge=1, le=200)
+    limit: int = Query(default=50, ge=1, le=200),
+    user: CurrentUser = Depends(get_current_user)
 ):
     """Search staff employees."""
     try:
@@ -460,7 +474,11 @@ async def search_staff(
 # ============================================
 
 @router.get("/employees/{employee_num}/leave-info")
-async def get_employee_leave_info(employee_num: str, year: Optional[int] = None):
+async def get_employee_leave_info(
+    employee_num: str,
+    year: Optional[int] = None,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get detailed leave information for an employee.
     Obtiene informacion detallada de vacaciones de un empleado.
@@ -664,7 +682,10 @@ async def bulk_update_employees(
 
 
 @router.post("/employees/bulk-update/preview")
-async def preview_bulk_update(bulk_data: BulkUpdatePreview):
+async def preview_bulk_update(
+    bulk_data: BulkUpdatePreview,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Preview bulk update changes without applying them.
     Previsualiza cambios de bulk update sin aplicarlos.
@@ -742,7 +763,8 @@ async def preview_bulk_update(bulk_data: BulkUpdatePreview):
 async def get_bulk_update_history(
     operation_id: Optional[str] = None,
     employee_num: Optional[str] = None,
-    limit: int = 100
+    limit: int = 100,
+    user: CurrentUser = Depends(get_current_user)
 ):
     """Get bulk update operation history."""
     try:
@@ -782,7 +804,11 @@ async def get_bulk_update_history(
 
 
 @router.post("/employees/bulk-update/revert/{operation_id}")
-async def revert_bulk_update(request: Request, operation_id: str):
+async def revert_bulk_update(
+    request: Request,
+    operation_id: str,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Revert a bulk update operation.
     Revierte una operacion de bulk update.
@@ -822,7 +848,10 @@ async def revert_bulk_update(request: Request, operation_id: str):
 # ============================================
 
 @router.get("/employees/active")
-async def get_active_employees(year: int = None):
+async def get_active_employees(
+    year: int = None,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get only ACTIVE employees (status = '在職中') with their yukyu data.
     Obtiene solo empleados ACTIVOS (在職中) con sus datos de yukyu.
@@ -855,7 +884,8 @@ async def get_active_employees(year: int = None):
 async def get_employees_by_type(
     year: int = None,
     active_only: bool = True,
-    filter_by_year: bool = True
+    filter_by_year: bool = True,
+    user: CurrentUser = Depends(get_current_user)
 ):
     """
     Get employees separated by type: Haken, Ukeoi, Staff.

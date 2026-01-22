@@ -93,11 +93,7 @@ from .crypto_utils import (
 # Search Service
 from .search_service import SearchService
 
-# Asset Service
-try:
-    from .asset_service import AssetService
-except ImportError:
-    AssetService = None  # AssetService not available
+# NOTE: asset_service.py removed - was unused in production
 
 __all__ = [
     # Auth
@@ -165,5 +161,4 @@ __all__ = [
     "get_encryption_manager",
     # Services
     "SearchService",
-    "AssetService",
 ]

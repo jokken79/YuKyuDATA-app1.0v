@@ -26,7 +26,10 @@ _excel_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="genzai_p
 
 
 @router.get("/genzai")
-async def get_genzai(status: str = None):
+async def get_genzai(
+    status: str = None,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get genzai (dispatch) employees.
     Obtiene empleados de despacho (派遣社員).

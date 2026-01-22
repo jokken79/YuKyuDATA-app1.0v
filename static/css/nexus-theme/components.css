@@ -37,7 +37,11 @@
     cursor: pointer;
     transition: all 0.3s var(--ease-elastic);
     border: none;
-    outline: none;
+}
+
+.btn:focus-visible {
+    outline: 3px solid var(--color-primary-500, #06b6d4);
+    outline-offset: 2px;
 }
 
 .btn-primary {
@@ -45,12 +49,12 @@
     /* Safe fallback */
     background: linear-gradient(135deg, var(--primary), var(--color-primary-800));
     color: #fff;
-    box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+    box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4);
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(124, 58, 237, 0.6);
+    box-shadow: 0 8px 25px rgba(6, 182, 212, 0.6);
 }
 
 .btn-glass {

@@ -133,21 +133,22 @@ def get_employees_enhanced_orm(
     Returns: List of dicts with extra fields: employee_type, employment_status, is_active
     """
     with get_orm_session() as session:
-        # Get employees with left joins
-        employees = session.query(Employee).all()
+        # OPTIMIZED: Pre-load all genzai and ukeoi in 2 queries (O(1) instead of O(N))
+        # This fixes N+1 query pattern - from 1 + 2*N queries to just 3 queries
+        genzai_index = {g.employee_num: g for g in session.query(GenzaiEmployee).all()}
+        ukeoi_index = {u.employee_num: u for u in session.query(UkeoiEmployee).all()}
+
+        # Get employees (optionally filtered by year)
+        query = session.query(Employee)
+        if year:
+            query = query.filter_by(year=year)
+        employees = query.all()
+
         results = []
-
         for emp in employees:
-            if year and emp.year != year:
-                continue
-
-            # Determine employee type by looking up in genzai/ukeoi
-            genzai = session.query(GenzaiEmployee).filter_by(
-                employee_num=emp.employee_num
-            ).first()
-            ukeoi = session.query(UkeoiEmployee).filter_by(
-                employee_num=emp.employee_num
-            ).first()
+            # O(1) lookup in pre-loaded indexes instead of N+1 queries
+            genzai = genzai_index.get(emp.employee_num)
+            ukeoi = ukeoi_index.get(emp.employee_num)
 
             if genzai:
                 employee_type = 'genzai'
