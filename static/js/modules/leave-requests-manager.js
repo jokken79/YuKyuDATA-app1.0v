@@ -4,8 +4,18 @@
  */
 
 import { escapeHtml } from './utils.js';
+import authManager from '../utils/auth-manager.js';
 
 const API_BASE = '/api';
+
+/**
+ * Get the current user's username for approval/rejection tracking
+ * @returns {string} Username or 'system' if not logged in
+ */
+function getCurrentUsername() {
+    const user = authManager.getCurrentUser();
+    return user?.username || 'system';
+}
 
 /**
  * LeaveRequestsManager - Singleton for managing leave requests
@@ -178,7 +188,7 @@ export const LeaveRequestsManager = {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    approved_by: 'manager' // Could be dynamic based on logged-in user
+                    approved_by: getCurrentUsername()
                 })
             });
 
@@ -221,7 +231,8 @@ export const LeaveRequestsManager = {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    reason: reason
+                    reason: reason,
+                    rejected_by: getCurrentUsername()
                 })
             });
 

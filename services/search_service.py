@@ -38,12 +38,72 @@ except ImportError:
 class SearchService:
     """Provides full-text search functionality for employee records."""
 
+    # Whitelist of allowed tables for search queries (SQL Injection prevention)
+    ALLOWED_TABLES = frozenset({'employees', 'genzai', 'ukeoi', 'staff'})
+
     def __init__(self):
         """Initialize search service."""
         self.use_postgresql = os.getenv('DATABASE_TYPE', 'sqlite').lower() == 'postgresql'
 
         if not self.use_postgresql:
             logger.warning("⚠️  Full-text search requires PostgreSQL")
+
+    def _execute_search(
+        self,
+        table: str,
+        columns: List[str],
+        query: str,
+        limit: int,
+        offset: int,
+        order_by: str = "relevance DESC"
+    ) -> List[Dict[str, Any]]:
+        """
+        Generic search execution method (DRY helper).
+
+        Args:
+            table: Table name (must be in ALLOWED_TABLES)
+            columns: List of column names to select
+            query: Search query string
+            limit: Maximum results
+            offset: Pagination offset
+            order_by: ORDER BY clause
+
+        Returns:
+            List of matching records as dictionaries
+        """
+        if table not in self.ALLOWED_TABLES:
+            logger.warning(f"⚠️  Rejected invalid table: {table}")
+            return []
+
+        if not self.use_postgresql or not HAS_DATABASE:
+            return []
+
+        try:
+            with database.get_db() as conn:
+                cursor = conn.cursor()
+
+                # Build column list for SELECT
+                select_cols = ', '.join(columns)
+
+                cursor.execute(f"""
+                    SELECT {select_cols},
+                           ts_rank(search_vector, query) as relevance
+                    FROM {table},
+                         plainto_tsquery('english', %s) query
+                    WHERE search_vector @@ query
+                    ORDER BY {order_by}
+                    LIMIT %s OFFSET %s
+                """, (query, limit, offset))
+
+                result_columns = columns + ['relevance']
+                results = [dict(zip(result_columns, row)) for row in cursor.fetchall()]
+
+                logger.info(f"✅ Found {len(results)} {table} matching '{query}'")
+                return results
+
+        except Exception as e:
+            logger.error(f"❌ {table} search failed: {e}")
+            return []
 
     def search_employees(
         self,
@@ -71,26 +131,30 @@ class SearchService:
                 cursor = conn.cursor()
 
                 # Use plainto_tsquery for simple phrase search
+                # Include kana from genzai/ukeoi tables
                 cursor.execute("""
                     SELECT
-                        id,
-                        employee_num,
-                        name,
-                        haken,
-                        granted,
-                        used,
-                        balance,
-                        year,
-                        ts_rank(search_vector, query) as relevance
-                    FROM employees,
+                        e.id,
+                        e.employee_num,
+                        e.name,
+                        COALESCE(g.kana, u.kana, '') as kana,
+                        e.haken,
+                        e.granted,
+                        e.used,
+                        e.balance,
+                        e.year,
+                        ts_rank(e.search_vector, query) as relevance
+                    FROM employees e
+                    LEFT JOIN genzai g ON e.employee_num = g.employee_num
+                    LEFT JOIN ukeoi u ON e.employee_num = u.employee_num,
                          plainto_tsquery('english', %s) query
-                    WHERE search_vector @@ query
-                    ORDER BY relevance DESC, year DESC
+                    WHERE e.search_vector @@ query
+                    ORDER BY relevance DESC, e.year DESC
                     LIMIT %s OFFSET %s
                 """, (query, limit, offset))
 
                 columns = [
-                    'id', 'employee_num', 'name', 'haken',
+                    'id', 'employee_num', 'name', 'kana', 'haken',
                     'granted', 'used', 'balance', 'year', 'relevance'
                 ]
 
@@ -134,6 +198,7 @@ class SearchService:
                         id,
                         employee_num,
                         name,
+                        kana,
                         dispatch_name,
                         department,
                         status,
@@ -147,7 +212,7 @@ class SearchService:
                 """, (query, limit, offset))
 
                 columns = [
-                    'id', 'employee_num', 'name', 'dispatch_name',
+                    'id', 'employee_num', 'name', 'kana', 'dispatch_name',
                     'department', 'status', 'hire_date', 'relevance'
                 ]
 
@@ -191,6 +256,7 @@ class SearchService:
                         id,
                         employee_num,
                         name,
+                        kana,
                         contract_business,
                         status,
                         hire_date,
@@ -203,7 +269,7 @@ class SearchService:
                 """, (query, limit, offset))
 
                 columns = [
-                    'id', 'employee_num', 'name', 'contract_business',
+                    'id', 'employee_num', 'name', 'kana', 'contract_business',
                     'status', 'hire_date', 'relevance'
                 ]
 
@@ -247,6 +313,7 @@ class SearchService:
                         id,
                         employee_num,
                         name,
+                        kana,
                         office,
                         status,
                         hire_date,
@@ -259,7 +326,7 @@ class SearchService:
                 """, (query, limit, offset))
 
                 columns = [
-                    'id', 'employee_num', 'name', 'office',
+                    'id', 'employee_num', 'name', 'kana', 'office',
                     'status', 'hire_date', 'relevance'
                 ]
 
@@ -275,7 +342,20 @@ class SearchService:
             return []
 
     def get_search_count(self, table: str, query: str) -> int:
-        """Get total count of matching records (for pagination)."""
+        """Get total count of matching records (for pagination).
+
+        Args:
+            table: Table name (must be in ALLOWED_TABLES whitelist)
+            query: Search query string
+
+        Returns:
+            Count of matching records, or 0 if invalid table or error
+        """
+        # SQL Injection prevention: validate table name against whitelist
+        if table not in self.ALLOWED_TABLES:
+            logger.warning(f"⚠️  Rejected invalid table name: {table}")
+            return 0
+
         if not self.use_postgresql or not HAS_DATABASE:
             return 0
 
@@ -283,6 +363,7 @@ class SearchService:
             with database.get_db() as conn:
                 cursor = conn.cursor()
 
+                # Table name is now safe (validated against whitelist)
                 cursor.execute(f"""
                     SELECT COUNT(*)
                     FROM {table},

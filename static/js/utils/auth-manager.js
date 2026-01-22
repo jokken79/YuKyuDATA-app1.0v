@@ -21,10 +21,19 @@ class AuthManager {
 
     /**
      * Get stored user data from localStorage
+     * @returns {Object|null} User data or null if not found/invalid
      */
     getStoredUser() {
         const userData = localStorage.getItem(this.userKey);
-        return userData ? JSON.parse(userData) : null;
+        if (!userData) return null;
+
+        try {
+            return JSON.parse(userData);
+        } catch (e) {
+            console.warn('Invalid user data in localStorage, clearing...');
+            localStorage.removeItem(this.userKey);
+            return null;
+        }
     }
 
     /**
