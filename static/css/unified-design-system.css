@@ -6,21 +6,21 @@
  */
 
 :root {
-  /* --- COLORS --- */
-  --color-primary-50: #ecfeff;
-  --color-primary-100: #cffafe;
-  --color-primary-200: #a5f3fc;
-  --color-primary-300: #67e8f9;
-  --color-primary-400: #22d3ee;
-  --color-primary-500: #06b6d4;
-  --color-primary-600: #0891b2;
-  --color-primary-700: #0e7490;
-  --color-primary-800: #155e75;
-  --color-primary-900: #164e63;
+  /* --- COLORS (Staffing Intelligence Theme) --- */
+  --color-primary-50: #f5f3ff;
+  --color-primary-100: #ede9fe;
+  --color-primary-200: #ddd6fe;
+  --color-primary-300: #c4b5fd;
+  --color-primary-400: #a78bfa;
+  --color-primary-500: #8b5cf6;
+  --color-primary-600: #7c3aed;
+  --color-primary-700: #6d28d9;
+  --color-primary-800: #5b21b6;
+  --color-primary-900: #4c1d95;
 
-  --color-primary: var(--color-primary-500);
-  --color-primary-hover: var(--color-primary-600);
-  --color-primary-active: var(--color-primary-700);
+  --color-primary: var(--color-primary-600);
+  --color-primary-hover: var(--color-primary-700);
+  --color-primary-active: var(--color-primary-800);
 
   --color-cta: #f97316;
   --color-cta-hover: #ea580c;
@@ -30,21 +30,21 @@
   --color-error: #ef4444;
   --color-info: #3b82f6;
 
-  --color-neutral-50: #f8fafc;
-  --color-neutral-100: #f1f5f9;
-  --color-neutral-200: #e2e8f0;
-  --color-neutral-300: #cbd5e1;
-  --color-neutral-400: #94a3b8;
-  --color-neutral-500: #64748b;
-  --color-neutral-600: #475569;
-  --color-neutral-700: #334155;
-  --color-neutral-800: #1e293b;
-  --color-neutral-900: #0f172a;
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f5fafb;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-500: #6b7280;
+  --color-neutral-600: #4b5563;
+  --color-neutral-700: #374151;
+  --color-neutral-800: #1f2937;
+  --color-neutral-900: #111827;
 
-  /* --- TYPOGRAPHY --- */
-  --font-heading: 'Poppins', 'Outfit', sans-serif;
-  --font-body: 'Open Sans', 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  /* --- TYPOGRAPHY (Precision Focused) --- */
+  --font-heading: 'Fira Code', 'Poppins', monospace;
+  --font-body: 'Fira Sans', 'Inter', sans-serif;
+  --font-mono: 'Fira Code', monospace;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -60,57 +60,60 @@
   --font-semibold: 600;
   --font-bold: 700;
 
-  /* --- EFFECTS & GLASS --- */
-  --glass-bg: rgba(15, 23, 42, 0.6);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-blur: blur(12px);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  /* --- EFFECTS & GLASS (Crystal Clear) --- */
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-bg-dark: rgba(15, 23, 42, 0.8);
+  --glass-border: rgba(124, 58, 237, 0.1);
+  --glass-blur: blur(16px);
+  --glass-shadow: 0 4px 20px -2px rgba(124, 58, 237, 0.15);
 
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  --shadow-glow: 0 0 20px rgba(6, 182, 212, 0.3);
+  --shadow-glow: 0 0 15px rgba(124, 58, 237, 0.25);
 
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
-  --radius-2xl: 1.5rem;
+  --radius-2xl: 1.25rem;
   --radius-full: 9999px;
 
-  /* --- UI ELEMENTS --- */
-  --bg-overlay: rgba(2, 6, 23, 0.8);
+  /* --- UI CONSTANTS --- */
+  --bg-overlay: rgba(15, 23, 42, 0.8);
   --z-modal: 5000;
-  --transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Base Reset */
 body {
-  background-color: #020617;
+  background-color: #faf5ff;
+  /* Soft Background for Light Mode */
   background-image:
-    radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.1) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.05) 0px, transparent 50%);
-  color: #f8fafc;
+    radial-gradient(at 0% 0%, rgba(124, 58, 237, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(249, 115, 22, 0.03) 0px, transparent 50%);
+  color: #1e1b4b;
+  /* Deep Indigo Text for legibility */
   font-family: var(--font-body);
   margin: 0;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Glass Panel */
+/* Glass Panel (Harmonized with Clean Tech) */
 .glass-panel {
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
+  background: #ffffff;
+  /* Explicit White for safety */
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: var(--radius-xl);
-  box-shadow: var(--glass-shadow);
-  color: white !important;
-  /* Force text to be white in panels */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  color: #1e1b4b !important;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* Force dark background for specific report sections to avoid white flash */
-#view-reports .glass-panel,
-#view-analytics .glass-panel {
-  background-color: rgba(15, 23, 42, 0.85) !important;
+.glass-panel:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+  border-color: rgba(124, 58, 237, 0.3);
 }
 
 /* KPI Cards */
@@ -126,8 +129,8 @@ body {
   font-family: var(--font-heading);
   font-size: 2.5rem;
   font-weight: 700;
-  color: white;
-  background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+  color: var(--color-primary-900);
+  background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-900) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -135,7 +138,7 @@ body {
 
 /* Typography Helpers */
 .text-gradient {
-  background: linear-gradient(135deg, var(--color-primary-400), var(--color-primary-600));
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-900));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -151,7 +154,7 @@ body {
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition-base);
-  box-shadow: var(--shadow-glow);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
 }
 
 /* Subtle Backgrounds (Fixed for Dark Mode) */
@@ -212,11 +215,11 @@ body {
   font-family: var(--font-heading);
   font-weight: 700;
   font-size: var(--text-lg);
-  color: var(--color-primary-300);
+  color: var(--color-primary-700);
   margin-bottom: var(--space-4);
   padding: 0.5rem 1rem;
-  background: rgba(6, 182, 212, 0.1);
-  border-left: 4px solid var(--color-primary-500);
+  background: rgba(124, 58, 237, 0.05);
+  border-left: 4px solid var(--color-primary-600);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   display: flex;
   align-items: center;
@@ -224,19 +227,19 @@ body {
 }
 
 .input-glass {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.5) !important;
+  border: 1px solid rgba(124, 58, 237, 0.1) !important;
   border-radius: var(--radius-md);
-  color: white !important;
+  color: var(--color-neutral-900) !important;
   padding: 0.6rem 1rem;
   transition: all 0.3s ease;
   font-family: var(--font-body);
 }
 
 .input-glass:focus {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-color: var(--color-primary-400) !important;
-  box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.2);
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: var(--color-primary-500) !important;
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
   outline: none;
 }
 

@@ -5,140 +5,140 @@
  */
 
 :root {
-    /* =========================================
+   /* =========================================
        Colors
        ========================================= */
 
-    /* Brand Colors */
-    --color-primary: #7C3AED;
-    /* Violet 600 */
-    --color-primary-hover: #6D28D9;
-    /* Violet 700 */
-    --color-secondary: #A78BFA;
-    /* Violet 400 */
-    --color-cta: #F97316;
-    /* Orange 500 */
-    --color-cta-hover: #EA580C;
-    /* Orange 600 */
+   /* Brand Colors */
+   --color-primary: #7C3AED;
+   /* Violet 600 */
+   --color-primary-hover: #6D28D9;
+   /* Violet 700 */
+   --color-secondary: #A78BFA;
+   /* Violet 400 */
+   --color-cta: #F97316;
+   /* Orange 500 */
+   --color-cta-hover: #EA580C;
+   /* Orange 600 */
 
-    /* Backgrounds */
-    --color-bg-base: #FAF5FF;
-    /* Violet 50 */
-    --color-bg-card: #FFFFFF;
-    --color-bg-overlay: rgba(255, 255, 255, 0.8);
+   /* Backgrounds */
+   --color-bg-base: #FAF5FF;
+   /* Violet 50 */
+   --color-bg-card: #FFFFFF;
+   --color-bg-overlay: rgba(255, 255, 255, 0.8);
 
-    /* Text */
-    --color-text-primary: #4C1D95;
-    /* Violet 900 */
-    --color-text-secondary: #6B7280;
-    /* Gray 500 */
-    --color-text-on-primary: #FFFFFF;
+   /* Text */
+   --color-text-primary: #4C1D95;
+   /* Violet 900 */
+   --color-text-secondary: #6B7280;
+   /* Gray 500 */
+   --color-text-on-primary: #FFFFFF;
 
-    /* Semantic */
-    --color-success: #10B981;
-    --color-error: #EF4444;
-    --color-warning: #F59E0B;
+   /* Semantic */
+   --color-success: #10B981;
+   --color-error: #EF4444;
+   --color-warning: #F59E0B;
 
-    /* =========================================
+   /* =========================================
        Typography
        ========================================= */
 
-    --font-heading: 'Poppins', sans-serif;
-    --font-body: 'Open Sans', sans-serif;
+   --font-heading: 'Fira Code', monospace;
+   --font-body: 'Fira Sans', sans-serif;
 
-    /* Scale */
-    --text-xs: 0.75rem;
-    /* 12px */
-    --text-sm: 0.875rem;
-    /* 14px */
-    --text-base: 1rem;
-    /* 16px */
-    --text-lg: 1.125rem;
-    /* 18px */
-    --text-xl: 1.25rem;
-    /* 20px */
-    --text-2xl: 1.5rem;
-    /* 24px */
-    --text-3xl: 1.875rem;
-    /* 30px */
+   /* Scale */
+   --text-xs: 0.75rem;
+   /* 12px */
+   --text-sm: 0.875rem;
+   /* 14px */
+   --text-base: 1rem;
+   /* 16px */
+   --text-lg: 1.125rem;
+   /* 18px */
+   --text-xl: 1.25rem;
+   /* 20px */
+   --text-2xl: 1.5rem;
+   /* 24px */
+   --text-3xl: 1.875rem;
+   /* 30px */
 
-    /* Weights */
-    --font-light: 300;
-    --font-regular: 400;
-    --font-medium: 500;
-    --font-semibold: 600;
-    --font-bold: 700;
+   /* Weights */
+   --font-light: 300;
+   --font-regular: 400;
+   --font-medium: 500;
+   --font-semibold: 600;
+   --font-bold: 700;
 
-    /* =========================================
+   /* =========================================
        Spacing
        ========================================= */
 
-    --space-1: 0.25rem;
-    /* 4px */
-    --space-2: 0.5rem;
-    /* 8px */
-    --space-3: 0.75rem;
-    /* 12px */
-    --space-4: 1rem;
-    /* 16px */
-    --space-6: 1.5rem;
-    /* 24px */
-    --space-8: 2rem;
-    /* 32px */
-    --space-12: 3rem;
-    /* 48px */
+   --space-1: 0.25rem;
+   /* 4px */
+   --space-2: 0.5rem;
+   /* 8px */
+   --space-3: 0.75rem;
+   /* 12px */
+   --space-4: 1rem;
+   /* 16px */
+   --space-6: 1.5rem;
+   /* 24px */
+   --space-8: 2rem;
+   /* 32px */
+   --space-12: 3rem;
+   /* 48px */
 
-    /* =========================================
+   /* =========================================
        Effects
        ========================================= */
 
-    /* Radius */
-    --radius-sm: 0.375rem;
-    /* 6px */
-    --radius-md: 0.5rem;
-    /* 8px */
-    --radius-lg: 1rem;
-    /* 16px */
-    --radius-xl: 1.5rem;
-    /* 24px */
+   /* Radius */
+   --radius-sm: 0.375rem;
+   /* 6px */
+   --radius-md: 0.5rem;
+   /* 8px */
+   --radius-lg: 1rem;
+   /* 16px */
+   --radius-xl: 1.5rem;
+   /* 24px */
 
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+   /* Shadows */
+   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 
-    /* Transitions */
-    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+   /* Transitions */
+   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+   --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 
-    /* Glassmorphism */
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --glass-border: 1px solid rgba(255, 255, 255, 0.3);
-    --glass-blur: blur(12px);
+   /* Glassmorphism */
+   --glass-bg: rgba(255, 255, 255, 0.7);
+   --glass-border: 1px solid rgba(255, 255, 255, 0.3);
+   --glass-blur: blur(12px);
 }
 
 /* Dark Mode Overrides */
 [data-theme="dark"] {
-    --color-primary: #8B5CF6;
-    /* Violet 500 */
-    --color-primary-hover: #7C3AED;
-    /* Violet 600 */
-    --color-secondary: #C4B5FD;
-    /* Violet 300 */
+   --color-primary: #8B5CF6;
+   /* Violet 500 */
+   --color-primary-hover: #7C3AED;
+   /* Violet 600 */
+   --color-secondary: #C4B5FD;
+   /* Violet 300 */
 
-    --color-bg-base: #111827;
-    /* Gray 900 */
-    --color-bg-card: #1F2937;
-    /* Gray 800 */
-    --color-bg-overlay: rgba(0, 0, 0, 0.8);
+   --color-bg-base: #111827;
+   /* Gray 900 */
+   --color-bg-card: #1F2937;
+   /* Gray 800 */
+   --color-bg-overlay: rgba(0, 0, 0, 0.8);
 
-    --color-text-primary: #F3F4F6;
-    /* Gray 100 */
-    --color-text-secondary: #9CA3AF;
-    /* Gray 400 */
+   --color-text-primary: #F3F4F6;
+   /* Gray 100 */
+   --color-text-secondary: #9CA3AF;
+   /* Gray 400 */
 
-    --glass-bg: rgba(31, 41, 55, 0.7);
-    --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+   --glass-bg: rgba(31, 41, 55, 0.7);
+   --glass-border: 1px solid rgba(255, 255, 255, 0.1);
 }

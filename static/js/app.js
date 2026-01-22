@@ -687,12 +687,12 @@ const App = {
     // THEME MODULE
     // ========================================
     theme: {
-        current: 'dark',
+        current: 'light',
 
         init() {
-            // Load saved theme or default to dark
+            // Load saved theme or default to light
             const saved = localStorage.getItem('yukyu-theme');
-            this.current = saved || 'dark';
+            this.current = saved || 'light';
             this.apply();
 
             // Setup keyboard shortcut (Ctrl+Shift+T)

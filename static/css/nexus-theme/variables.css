@@ -5,64 +5,69 @@
      */
 
     /* --- CHROMATIC PALETTE (HSL) --- */
-    /* Primary: Electric Cyan */
-    --primary-h: 186;
-    --primary-s: 100%;
-    --primary-l: 50%;
+    /* Primary: Royal Purple (#7C3AED) */
+    --primary-h: 258;
+    --primary-s: 89%;
+    --primary-l: 66%;
     --primary: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
-    --primary-glow: hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.6);
+    --primary-glow: hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.4);
 
-    /* Secondary: Deep Violet */
-    --secondary-h: 270;
-    --secondary-s: 100%;
-    --secondary-l: 60%;
+    /* Secondary: Soft Lavender (#A78BFA) */
+    --secondary-h: 255;
+    --secondary-s: 92%;
+    --secondary-l: 76%;
     --secondary: hsl(var(--secondary-h), var(--secondary-s), var(--secondary-l));
 
-    /* Accent: Hot Pink */
-    --accent-h: 330;
-    --accent-s: 100%;
-    --accent-l: 60%;
+    /* Accent: Action Orange (#F97316) */
+    --accent-h: 25;
+    --accent-s: 95%;
+    --accent-l: 53%;
     --accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
 
-    /* Success: Neon Green */
-    --success-h: 150;
-    --success-s: 100%;
-    --success-l: 45%;
+    /* Success: Professional Emerald */
+    --success-h: 161;
+    --success-s: 84%;
+    --success-l: 39%;
     --success: hsl(var(--success-h), var(--success-s), var(--success-l));
 
-    /* Warning: Amber Legacy */
-    --warning-h: 35;
-    --warning-s: 100%;
-    --warning-l: 55%;
+    /* Warning: Amber Intelligence */
+    --warning-h: 38;
+    --warning-s: 92%;
+    --warning-l: 50%;
     --warning: hsl(var(--warning-h), var(--warning-s), var(--warning-l));
 
-    /* Danger: Red Alert */
+    /* Danger: Error Red */
     --danger-h: 0;
-    --danger-s: 100%;
+    --danger-s: 84%;
     --danger-l: 60%;
     --danger: hsl(var(--danger-h), var(--danger-s), var(--danger-l));
 
-    /* --- NEUTRAL SCALES (Pure Black base) --- */
-    --bg-depth: #030305;
-    /* Deepest Void */
-    --bg-base: #0a0a0f;
-    /* App Background */
-    --bg-surface: #13131f;
-    /* Card Surface */
+    /* --- NEUTRAL SCALES (Clean Tech) --- */
+    --bg-depth: #f9fafb;
+    /* Very light cool gray */
+    --bg-base: #f3f4f6;
+    /* Dashboard background */
+    --bg-surface: #ffffff;
+    /* Card surface */
 
-    --text-primary: #ffffff;
-    --text-secondary: #94a3b8;
+    /* --- BORDERS --- */
+    --border-subtle: rgba(0, 0, 0, 0.06);
+    --border-focus: rgba(124, 58, 237, 0.4);
+
+    --text-primary: #1e1b4b;
+    --text-secondary: #475569;
     --text-tertiary: #64748b;
-    --text-disabled: #475569;
+    --text-disabled: #94a3b8;
 
-    /* --- GLASSMORPHISM --- */
-    /* The core of the Nexus aesthetic */
-    --glass-bg: rgba(20, 20, 30, 0.6);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-highlight: rgba(255, 255, 255, 0.05);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-    --glass-blur: 20px;
-    --glass-saturate: 180%;
+    /* --- SHADOWS (Diffuse & Ambient) --- */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+
+    /* Glass remains for overlays only */
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-blur: 12px;
+    --glass-saturate: 160%;
 
     --glass-panel: linear-gradient(135deg,
             rgba(255, 255, 255, 0.05),
@@ -105,4 +110,34 @@
     --z-dropdown: 100;
     --z-modal: 1000;
     --z-tooltip: 1100;
+}
+
+/* --- DARK MODE OVERRIDES (Clean Tech Dark) --- */
+[data-theme="dark"] {
+    /* Neutral Scales */
+    --bg-depth: #0f172a;
+    /* Slate 900 */
+    --bg-base: #020617;
+    /* Slate 950 */
+    --bg-surface: #1e293b;
+    /* Slate 800 */
+
+    /* Borders */
+    --border-subtle: rgba(255, 255, 255, 0.1);
+    --border-focus: rgba(139, 92, 246, 0.5);
+
+    /* Text */
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-tertiary: #64748b;
+    --text-disabled: #475569;
+
+    /* Shadows (Glow based) */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+
+    /* Glass */
+    --glass-bg: rgba(30, 41, 59, 0.7);
+    --primary-glow: hsla(258, 89%, 66%, 0.2);
 }
