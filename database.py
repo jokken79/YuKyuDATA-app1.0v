@@ -1364,7 +1364,15 @@ def get_leave_requests(status=None, employee_num=None, year=None):
         return [dict(row) for row in rows]
 
 def approve_leave_request(request_id, approved_by):
-    """Approves a leave request and updates employee yukyu balance."""
+    """
+    Approves a leave request and updates employee yukyu balance using LIFO deduction.
+
+    IMPORTANTE: Esta función usa deducción LIFO (Last In First Out) según la ley laboral
+    japonesa (労働基準法), consumiendo primero los días del año más reciente.
+    """
+    # Import here to avoid circular imports
+    from services.fiscal_year import apply_lifo_deduction
+
     with get_db() as conn:
         c = conn.cursor()
         timestamp = datetime.now().isoformat()
@@ -1378,32 +1386,66 @@ def approve_leave_request(request_id, approved_by):
         if request['status'] != 'PENDING':
             raise ValueError(f"Request {request_id} is not pending (current status: {request['status']})")
 
-        # Update request status
+        # Get current employee record to validate balance
+        employee_id = f"{request['employee_num']}_{request['year']}"
+        employee = c.execute("SELECT * FROM employees WHERE id = ?", (employee_id,)).fetchone()
+
+        if not employee:
+            raise ValueError(f"Employee record not found for {employee_id}")
+
+        # Validate sufficient balance before approving
+        if employee['balance'] < request['days_requested']:
+            raise ValueError(
+                f"Insufficient balance: {employee['balance']} days available, "
+                f"{request['days_requested']} days requested"
+            )
+
+        # Update request status first
         c.execute('''
             UPDATE leave_requests
             SET status = 'APPROVED', approved_by = ?, approved_at = ?
             WHERE id = ?
         ''', (approved_by, timestamp, request_id))
 
-        # Update employee yukyu balance (add to used days)
-        employee_id = f"{request['employee_num']}_{request['year']}"
-
-        # Get current employee record
-        employee = c.execute("SELECT * FROM employees WHERE id = ?", (employee_id,)).fetchone()
-
-        if employee:
-            new_used = employee['used'] + request['days_requested']
-            new_balance = employee['granted'] - new_used
-            new_usage_rate = round((new_used / employee['granted']) * 100) if employee['granted'] > 0 else 0
-
-            c.execute('''
-                UPDATE employees
-                SET used = ?, balance = ?, usage_rate = ?, last_updated = ?
-                WHERE id = ?
-            ''', (new_used, new_balance, new_usage_rate, timestamp, employee_id))
-
         conn.commit()
-        return True
+
+    # Apply LIFO deduction (uses its own transaction for audit trail)
+    lifo_result = apply_lifo_deduction(
+        employee_num=request['employee_num'],
+        days_to_use=request['days_requested'],
+        current_year=request['year'],
+        performed_by=approved_by,
+        reason=f"Leave request #{request_id} approved"
+    )
+
+    if not lifo_result['success']:
+        # Rollback the approval if LIFO failed
+        with get_db() as conn:
+            c = conn.cursor()
+            c.execute('''
+                UPDATE leave_requests
+                SET status = 'PENDING', approved_by = NULL, approved_at = NULL
+                WHERE id = ?
+            ''', (request_id,))
+            conn.commit()
+        raise ValueError(
+            f"LIFO deduction failed: could not deduct {request['days_requested']} days. "
+            f"Only {lifo_result['total_deducted']} days were available."
+        )
+
+    # Update usage_rate after LIFO deduction
+    with get_db() as conn:
+        c = conn.cursor()
+        employee = c.execute("SELECT * FROM employees WHERE id = ?", (employee_id,)).fetchone()
+        if employee and employee['granted'] > 0:
+            new_usage_rate = round((employee['used'] / employee['granted']) * 100)
+            c.execute('''
+                UPDATE employees SET usage_rate = ?, last_updated = ?
+                WHERE id = ?
+            ''', (new_usage_rate, timestamp, employee_id))
+            conn.commit()
+
+    return True
 
 def reject_leave_request(request_id, approved_by):
     """Rejects a leave request."""

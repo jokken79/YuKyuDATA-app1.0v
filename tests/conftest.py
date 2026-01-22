@@ -241,23 +241,13 @@ def sample_leave_request_data():
 
 
 def pytest_configure(config):
-    """Configure pytest with custom markers."""
-    config.addinivalue_line(
-        "markers",
-        "unit: mark test as a unit test"
-    )
-    config.addinivalue_line(
-        "markers",
-        "integration: mark test as an integration test"
-    )
-    config.addinivalue_line(
-        "markers",
-        "pooling: mark test as a pooling test"
-    )
-    config.addinivalue_line(
-        "markers",
-        "skip_without_postgres: skip test if PostgreSQL is not configured"
-    )
+    """Configure pytest with custom markers.
+
+    Note: Most markers are already defined in pytest.ini.
+    Only add markers here that are not in pytest.ini.
+    """
+    # Markers unit, integration, pooling, skip_without_postgres are in pytest.ini
+    pass
 
 
 def pytest_collection_modifyitems(config, items):

@@ -187,6 +187,15 @@ class LeaveRequestResponse(BaseModel):
 
 class LeaveRequestApprove(BaseModel):
     """Modelo para aprobar una solicitud."""
+    approved_by: Optional[str] = Field(
+        None,
+        max_length=100,
+        description="Usuario que aprueba (si no se especifica, usa el usuario actual)"
+    )
+    validate_limit: bool = Field(
+        True,
+        description="Validar limite de balance antes de aprobar"
+    )
     approver_comment: Optional[str] = Field(
         None,
         max_length=500,
@@ -196,6 +205,8 @@ class LeaveRequestApprove(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
+                "approved_by": "admin",
+                "validate_limit": True,
                 "approver_comment": "Approved as requested"
             }
         }

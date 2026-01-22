@@ -17,7 +17,7 @@ from .dependencies import (
 )
 
 # Import centralized Pydantic models
-from models import LeaveRequestCreate
+from models import LeaveRequestCreate, LeaveRequestApprove, LeaveRequestReject
 
 router = APIRouter(prefix="/api", tags=["Leave Requests"])
 
@@ -138,7 +138,7 @@ async def get_leave_requests_list(
 async def approve_leave_request(
     request: Request,
     request_id: int,
-    approval_data: dict,
+    approval_data: LeaveRequestApprove,
     user: CurrentUser = Depends(get_current_user)
 ):
     """
@@ -146,10 +146,11 @@ async def approve_leave_request(
     Aprueba una solicitud y actualiza automaticamente el balance.
 
     Note: PATCH is the preferred method. POST is deprecated and kept for backwards compatibility.
+    Uses LIFO deduction (Last In First Out) per Japanese labor law.
     """
     try:
-        approved_by = approval_data.get('approved_by', user.username if user else 'Manager')
-        validate_limit = approval_data.get('validate_limit', True)
+        approved_by = approval_data.approved_by or (user.username if user else 'Manager')
+        validate_limit = approval_data.validate_limit
 
         # Get old value before approval
         old_requests = database.get_leave_requests()

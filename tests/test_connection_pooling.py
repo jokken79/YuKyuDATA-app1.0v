@@ -29,11 +29,14 @@ pytestmark = pytest.mark.skipif(
 if os.getenv('DATABASE_TYPE', 'sqlite').lower() == 'postgresql':
     try:
         from database.connection import PostgreSQLConnectionPool
+        import database
     except ImportError:
         # Fallback for testing when module not available
         PostgreSQLConnectionPool = None
+        database = None
 else:
     PostgreSQLConnectionPool = None
+    database = None
 
 
 class TestConnectionPoolBasics:
@@ -174,6 +177,8 @@ class TestConnectionPoolWithDatabase:
 
     def test_get_db_context_uses_pool(self):
         """Test that get_db() context manager uses the pool."""
+        if database is None:
+            pytest.skip("database module not available")
         try:
             # Set to PostgreSQL
             database.USE_POSTGRESQL = True
@@ -194,6 +199,8 @@ class TestConnectionPoolWithDatabase:
 
     def test_multiple_database_operations_with_pool(self):
         """Test multiple database operations using pooled connections."""
+        if database is None:
+            pytest.skip("database module not available")
         try:
             database.USE_POSTGRESQL = True
 

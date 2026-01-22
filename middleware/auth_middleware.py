@@ -15,7 +15,26 @@ from exceptions.custom_exceptions import AuthenticationException, AuthorizationE
 
 
 # Configuration from environment variables
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "development-secret-key-change-this-in-production")
+def _get_secret_key():
+    """Get JWT secret key from environment, raising error in production if not set."""
+    secret = os.getenv("JWT_SECRET_KEY")
+    if not secret:
+        is_debug = os.getenv("DEBUG", "false").lower() == "true"
+        if is_debug:
+            import warnings
+            import secrets
+            warnings.warn(
+                "JWT_SECRET_KEY not configured. Using temporary key for development only.",
+                RuntimeWarning
+            )
+            return secrets.token_urlsafe(32)
+        raise ValueError(
+            "JWT_SECRET_KEY environment variable is required in production. "
+            "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+        )
+    return secret
+
+SECRET_KEY = _get_secret_key()
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 # Default 15 minutes (0.25 hours) for production security
 ACCESS_TOKEN_EXPIRE_HOURS = float(os.getenv("JWT_EXPIRATION_HOURS", "0.25"))

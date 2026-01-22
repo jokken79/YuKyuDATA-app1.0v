@@ -78,11 +78,24 @@ COLORS = {
 }
 
 
+from contextlib import contextmanager
+
+@contextmanager
 def get_db_connection():
-    """Obtiene conexion a la base de datos"""
+    """
+    Obtiene conexion a la base de datos como context manager.
+
+    Uso:
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute("SELECT ...")
+    """
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
-    return conn
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 class ReportGenerator:
@@ -284,58 +297,58 @@ class ReportGenerator:
 
     def _get_employee_data(self, employee_num: str, year: int = None) -> Dict[str, Any]:
         """Obtiene datos de un empleado de la base de datos"""
-        conn = get_db_connection()
-        c = conn.cursor()
+        with get_db_connection() as conn:
+            c = conn.cursor()
 
-        # Datos basicos del empleado (de genzai, ukeoi o staff)
-        employee = None
-        for table in ['genzai', 'ukeoi', 'staff']:
-            c.execute(f"SELECT * FROM {table} WHERE employee_num = ?", (employee_num,))
-            row = c.fetchone()
-            if row:
-                employee = dict(row)
-                employee['source_table'] = table
-                break
+            # Datos basicos del empleado (de genzai, ukeoi o staff)
+            # Validamos tablas permitidas para evitar SQL injection
+            ALLOWED_TABLES = {'genzai', 'ukeoi', 'staff'}
+            employee = None
+            for table in ALLOWED_TABLES:
+                c.execute(f"SELECT * FROM {table} WHERE employee_num = ?", (employee_num,))
+                row = c.fetchone()
+                if row:
+                    employee = dict(row)
+                    employee['source_table'] = table
+                    break
 
-        if not employee:
-            conn.close()
-            return None
+            if not employee:
+                return None
 
-        # Datos de vacaciones por ano
-        if year:
-            c.execute("""
-                SELECT * FROM employees
-                WHERE employee_num = ? AND year = ?
-            """, (employee_num, year))
-        else:
-            c.execute("""
-                SELECT * FROM employees
-                WHERE employee_num = ?
-                ORDER BY year DESC
-            """, (employee_num,))
+            # Datos de vacaciones por ano
+            if year:
+                c.execute("""
+                    SELECT * FROM employees
+                    WHERE employee_num = ? AND year = ?
+                """, (employee_num, year))
+            else:
+                c.execute("""
+                    SELECT * FROM employees
+                    WHERE employee_num = ?
+                    ORDER BY year DESC
+                """, (employee_num,))
 
-        vacation_rows = c.fetchall()
-        employee['vacation_data'] = [dict(r) for r in vacation_rows]
+            vacation_rows = c.fetchall()
+            employee['vacation_data'] = [dict(r) for r in vacation_rows]
 
-        # Detalles de uso (fechas individuales)
-        if year:
-            c.execute("""
-                SELECT * FROM yukyu_usage_details
-                WHERE employee_num = ? AND year = ?
-                ORDER BY use_date
-            """, (employee_num, year))
-        else:
-            c.execute("""
-                SELECT * FROM yukyu_usage_details
-                WHERE employee_num = ?
-                ORDER BY use_date DESC
-            """, (employee_num,))
+            # Detalles de uso (fechas individuales)
+            if year:
+                c.execute("""
+                    SELECT * FROM yukyu_usage_details
+                    WHERE employee_num = ? AND year = ?
+                    ORDER BY use_date
+                """, (employee_num, year))
+            else:
+                c.execute("""
+                    SELECT * FROM yukyu_usage_details
+                    WHERE employee_num = ?
+                    ORDER BY use_date DESC
+                """, (employee_num,))
 
-        usage_rows = c.fetchall()
-        employee['usage_details'] = [dict(r) for r in usage_rows]
+            usage_rows = c.fetchall()
+            employee['usage_details'] = [dict(r) for r in usage_rows]
 
-        conn.close()
-        return employee
+            return employee
 
     def generate_employee_report(self, employee_num: str, year: int = None) -> bytes:
         """
