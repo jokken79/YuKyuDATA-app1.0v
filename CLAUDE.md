@@ -28,9 +28,9 @@ http://localhost:8000/docs   # Swagger UI
 
 | Stack | Tecnología |
 |-------|------------|
-| Backend | FastAPI + SQLite/PostgreSQL + PyJWT + Alembic |
+| Backend | FastAPI + SQLite/PostgreSQL + PyJWT |
 | Frontend | Vanilla JS (ES6) + Chart.js + ApexCharts |
-| Testing | Pytest (52 test files) + Jest + Playwright |
+| Testing | Pytest (~40 test files) + Jest + Playwright |
 
 **Data Sources (deben existir en raíz):**
 - `有給休暇管理.xlsm` - Master de vacaciones
@@ -48,12 +48,16 @@ pytest tests/test_api.py::test_sync_employees # Test individual
 npx jest                                      # Frontend unit tests
 npx playwright test                           # E2E
 
+# Lint
+npm run lint:js                               # ESLint
+npm run lint:css                              # Stylelint
+
+# Build
+npm run build                                 # Webpack production
+
 # Docker
 docker-compose -f docker-compose.dev.yml up -d      # Desarrollo
 docker-compose -f docker-compose.secure.yml up -d   # Producción
-
-# Verificaciones
-python scripts/project-status.py              # Estado CLI
 ```
 
 ---
@@ -68,7 +72,7 @@ Frontend (SPA)                    static/js/app.js + static/src/
 API Layer (main.py + routes/)     ~50 endpoints, JWT Auth, CSRF, Rate Limiting
        │
        ▼
-Service Layer (services/)         15 módulos: fiscal_year, excel, auth, reports...
+Service Layer (services/)         14 módulos: fiscal_year, excel, auth, reports...
        │
        ▼
 Agent System (agents/)            14 agentes especializados + orchestrator
@@ -81,15 +85,15 @@ Data Layer (database.py)          SQLite/PostgreSQL, backup, audit log
 
 | Directorio | Propósito |
 |------------|-----------|
-| `routes/` | API endpoints modularizados (22 archivos) |
-| `services/` | Lógica de negocio (15 módulos) |
+| `routes/` | API endpoints modularizados (21 archivos) |
+| `services/` | Lógica de negocio (14 módulos) |
 | `agents/` | 14 agentes (compliance, security, testing, memory...) |
 | `middleware/` | 9 módulos (CSRF, rate limiting, security headers, auth...) |
-| `models/` | 8 modelos Pydantic (employee, vacation, user...) |
-| `repositories/` | 10 repositorios (patrón Repository) |
-| `static/src/` | Frontend moderno (17 componentes ES6) |
+| `models/` | 9 modelos Pydantic (employee, vacation, user...) |
+| `repositories/` | 11 repositorios (patrón Repository) |
+| `static/src/` | Frontend moderno (componentes ES6) |
 | `static/js/` | Legacy SPA (app.js) |
-| `.claude/skills/` | 19 skills especializados para Claude |
+| `.claude/skills/` | 10 skills especializados para Claude |
 
 ---
 
@@ -260,59 +264,22 @@ innerHTML = userInput   // ❌ Vulnerabilidad XSS
 
 ## Agent System
 
-14 agentes especializados en `agents/`:
+14 agentes especializados en `agents/`. Los principales:
+- `orchestrator.py` - Coordinador principal
+- `compliance.py` - Verificación de cumplimiento legal japonés (労働基準法)
+- `security.py` - Análisis de seguridad
+- `memory.py` - Persistencia de contexto
 
-| Agente | Propósito |
-|--------|-----------|
-| `orchestrator.py` | Coordinador principal de agentes |
-| `compliance.py` | Verificación de cumplimiento legal japonés |
-| `security.py` | Análisis de seguridad y vulnerabilidades |
-| `testing.py` | Generación y ejecución de tests |
-| `memory.py` | Persistencia de contexto y aprendizaje |
-| `performance.py` | Análisis de rendimiento |
-| `data_parser.py` | Parsing de datos Excel |
-| `ui_designer.py` | Diseño de interfaces |
-| `ux_analyst.py` | Análisis de experiencia de usuario |
-| `documentor.py` | Generación de documentación |
-| `nerd.py` | Análisis técnico profundo |
-| `canvas.py` | Generación de visualizaciones |
-| `figma.py` | Integración con Figma |
-
-### Características de Agentes
-- **Timeout:** Configurado por agente
-- **Circuit Breaker:** Protección contra fallos en cascada
-- **Auto-cleanup:** Limpieza automática de recursos
+Características: Timeout configurado por agente, circuit breaker, auto-cleanup.
 
 ---
 
 ## Claude Skills
 
-Skills especializados en `.claude/skills/`:
-
-### Skills de Dominio YuKyu
-| Skill | Descripción |
-|-------|-------------|
-| `yukyu-compliance` | Cumplimiento legal japonés (有給休暇) |
-| `yukyu-frontend-dashboard` | Dashboard de vacaciones |
-| `yukyu-vacation-manager` | Gestión de vacaciones |
-| `yukyu-sync` | Sincronización con Excel |
-| `yukyu-test` | Testing específico |
-| `yukyu-status` | Estado del sistema |
-| `yukyu-start` | Inicialización |
-| `yukyu-backup` | Backup de datos |
-| `japanese-labor-compliance` | Ley laboral japonesa |
-| `excel-japanese-parser` | Parser de Excel japonés |
-
-### Skills Generales
-| Skill | Descripción |
-|-------|-------------|
-| `app-optimizer` | Optimización de rendimiento |
-| `code-quality-master` | Calidad de código |
-| `documentation-generator` | Generación de documentación |
-| `frontend-design` | Diseño frontend |
-| `full-stack-architect` | Arquitectura full-stack |
-| `intelligent-testing` | Testing inteligente |
-| `playwright` | Testing E2E |
+10 skills en `.claude/skills/`:
+- **yukyu-*** - Skills específicos del dominio (compliance, sync, test, status, start, backup)
+- **japanese-labor-compliance** - Ley laboral japonesa
+- **excel-japanese-parser** - Parser de Excel con caracteres japoneses
 
 ---
 
@@ -386,90 +353,8 @@ taskkill /PID <PID> /F
 
 ---
 
-## Recent Changes (2026-01)
+## Notes
 
-### CI/CD Pipeline Fixes (Latest)
-1. **ci.yml - Security Scan:**
-   - Excluidos directorios `basuraa` y `ThemeTheBestJpkken` de scans
-   - Mejorado manejo de errores en `safety check`
-   - Simplificado check de secrets para evitar falsos positivos
-   - Agregado `continue-on-error: true` a pasos no críticos
-
-2. **ci.yml - Lint Code:**
-   - Excluidos directorios legacy de flake8, black, isort
-   - Black e isort ahora con `continue-on-error: true`
-
-3. **ci.yml - Tests:**
-   - Bajado threshold de cobertura Python a 60%
-   - Tests de frontend con `continue-on-error: true`
-   - Solo lint y tests Python son críticos para el pipeline
-
-4. **ci.yml - Coverage Reports:**
-   - Mejorado merge de reportes con fallback
-   - Creación de placeholder si no hay coverage data
-
-5. **e2e-tests.yml:**
-   - Corregido `JWT_SECRET` a `JWT_SECRET_KEY`
-   - Agregado `JWT_REFRESH_SECRET_KEY`
-   - Agregado `DEBUG=true` para tests
-
-6. **package.json:**
-   - Agregado `@playwright/test: ^1.40.0`
-   - Agregado `babel-plugin-transform-remove-console: ^6.9.4`
-   - Agregado `core-js: ^3.35.0`
-   - Agregado script `start:test`
-   - Corregido `purgecss` a `^6.0.0`
-
-7. **jest.config.js:**
-   - Excluidos tests E2E (.spec.js) de Jest
-   - Bajado threshold de cobertura a 10%
-   - Agregado `/tests/e2e/` a testPathIgnorePatterns
-
-8. **conftest.py:**
-   - Eliminados markers duplicados (ya definidos en pytest.ini)
-
-### New Features
-1. **Light Mode Theme:** Soporte completo de tema claro
-   - Toggle en UI para cambiar entre Dark/Light mode
-   - CSS variables actualizadas en `yukyu-tokens.css`
-
-2. **Calendar Module:** Implementación completa
-   - Endpoints `/api/calendar/events`
-   - Vista de calendario en frontend
-
-3. **Specialized YuKyu Skills:** 3 nuevos skills para UI/UX
-
-### Security Fixes
-1. **JWT Secrets:** Se leen de `JWT_SECRET_KEY` y `JWT_REFRESH_SECRET_KEY` env vars
-   - En producción: REQUERIDO configurar
-   - En desarrollo (DEBUG=true): genera claves temporales con warning
-
-2. **User Authentication:** Eliminadas credenciales hardcodeadas
-   - Prioridad: USERS_JSON → USERS_FILE → Database → Temporal (solo DEBUG)
-   - Contraseñas temporales son seguras (16 chars aleatorios)
-
-3. **Login Modal:** Eliminada visualización de credenciales en UI
-
-### UI/CSS Fixes
-1. **Modales ocultos:** Estilos para `.confirm-modal` en `unified-design-system.css`
-   - Los modales están ocultos por defecto (`visibility: hidden`)
-   - Solo visibles cuando tienen clase `.active`
-
-2. **Factory Dropdown Fix:** Corrección de propiedad incorrecta
-
-### Architecture Improvements
-1. **Agents:** Timeout, circuit breaker, y auto-cleanup
-2. **Frontend Consolidation:** Eliminación de CSS legacy
-3. **Unified Design System:** Resolución de conflictos de tokens
-
-### Files Modified
-- `.github/workflows/ci.yml` - Arreglos completos del pipeline CI
-- `.github/workflows/e2e-tests.yml` - Corregidas env vars
-- `services/auth_service.py` - Gestión segura de secrets y usuarios
-- `tests/conftest.py` - Eliminados markers duplicados
-- `package.json` - Dependencias faltantes agregadas
-- `jest.config.js` - Configuración actualizada
-- `templates/index.html` - Eliminadas credenciales visibles
-- `static/css/unified-design-system.css` - Estilos de modales y temas
-- `static/css/yukyu-tokens.css` - Design tokens para temas
-- `routes/calendar.py` - Nuevo módulo de calendario
+- Los directorios `basuraa/` y `ThemeTheBestJpkken/` contienen código legacy y están excluidos de CI/CD
+- Los modales usan `visibility: hidden` por defecto, clase `.active` para mostrar
+- Pytest markers definidos en `pytest.ini`: `unit`, `integration`, `pooling`, `slow`, `e2e`, `flaky`
