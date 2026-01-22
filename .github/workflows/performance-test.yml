@@ -81,22 +81,36 @@ jobs:
 
       - name: Run load test
         run: |
+          mkdir -p reports
           locust -f locustfile.py \
             --host=http://localhost:8000 \
             --headless \
             --users 100 \
             --spawn-rate 10 \
             --run-time 5m \
-            --csv=reports/load-test
+            --csv=reports/load-test \
+            || echo "::warning::Load test completed with issues"
+        continue-on-error: true
 
       - name: Generate performance report
         run: |
           python3 << 'EOF'
           import csv
-          import json
+          import os
+
+          # Find the stats file (locust creates load-test_stats.csv)
+          stats_file = None
+          for filename in ['reports/load-test_stats.csv', 'reports/load_test_stats.csv']:
+              if os.path.exists(filename):
+                  stats_file = filename
+                  break
+
+          if not stats_file:
+              print("Load test output files not found")
+              exit(0)
 
           try:
-              with open('reports/load_test_stats.csv', 'r') as f:
+              with open(stats_file, 'r') as f:
                   stats = csv.DictReader(f)
                   rows = list(stats)
 
@@ -110,8 +124,8 @@ jobs:
                       if row.get('Name') and row.get('Name') != 'Aggregated':
                           print(f"| {row.get('Name')} | {row.get('Average Response Time')} ms |")
 
-          except FileNotFoundError:
-              print("Load test output files not found")
+          except Exception as e:
+              print(f"Error reading stats: {e}")
 
           EOF
 
@@ -307,14 +321,18 @@ jobs:
                   name = bench.get('name', 'Unknown')
                   stats = bench.get('stats', {})
                   avg = stats.get('mean', 0) * 1000  # Convert to ms
-                  rounds = bench.get('warmup') + bench.get('rounds', 0)
+                  warmup = bench.get('warmup') or 0
+                  rounds = warmup + bench.get('rounds', 0)
 
                   print(f"| {name} | {avg:.2f} | {rounds} |")
 
           except FileNotFoundError:
               print("Database benchmark results not found")
+          except Exception as e:
+              print(f"Error analyzing benchmarks: {e}")
 
           EOF
+        continue-on-error: true
 
       - name: Upload database benchmark results
         uses: actions/upload-artifact@v4

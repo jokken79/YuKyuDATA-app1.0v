@@ -337,7 +337,7 @@ jobs:
   infrastructure-summary:
     name: Infrastructure Summary
     runs-on: ubuntu-latest
-    needs: [terraform-validation, tflint, checkov-infrastructure, terraform-plan, terraform-modules]
+    needs: [terraform-validation, tflint, checkov-infrastructure, terraform-modules]
     if: always()
 
     steps:
@@ -351,7 +351,6 @@ jobs:
           echo "| Terraform Validation | ${{ needs.terraform-validation.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| TFLint | ${{ needs.tflint.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Checkov | ${{ needs.checkov-infrastructure.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Plan & Cost Analysis | ${{ needs.terraform-plan.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Module Verification | ${{ needs.terraform-modules.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
