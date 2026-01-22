@@ -140,8 +140,8 @@ export class EnhancedApp {
             registration.active.postMessage({
                 type: 'CACHE_API',
                 urls: [
-                    '/api/employees?enhanced=true&active_only=true',
-                    '/api/yukyu/kpi-stats/2024'
+                    '/api/v1/employees?enhanced=true&active_only=true',
+                    '/api/v1/yukyu/kpi-stats/2024'
                 ]
             });
         }
@@ -162,9 +162,9 @@ export class EnhancedApp {
         
         // Precargar datos críticos
         const criticalUrls = [
-            '/api/employees?enhanced=true&active_only=true',
-            '/api/yukyu/kpi-stats/2024',
-            '/api/yukyu/monthly-summary/2024'
+            '/api/v1/employees?enhanced=true&active_only=true',
+            '/api/v1/yukyu/kpi-stats/2024',
+            '/api/v1/yukyu/monthly-summary/2024'
         ];
         
         await cacheManager.preload(criticalUrls.map(url => ({ url })));

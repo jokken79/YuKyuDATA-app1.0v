@@ -23,7 +23,10 @@ router = APIRouter(prefix="/compliance", tags=["Compliance"])
 # ============================================
 
 @router.get("/5day-check/{year}")
-async def check_5day_compliance_endpoint(year: int):
+async def check_5day_compliance_endpoint(
+    year: int,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Check 5-day usage obligation compliance for all employees.
     Verifica cumplimiento de 5日取得義務 para todos los empleados.
@@ -61,7 +64,11 @@ async def check_5day_compliance_endpoint(year: int):
 
 
 @router.get("/expiring/{year}")
-async def check_expiring_balances(year: int, warning_days: int = 30):
+async def check_expiring_balances(
+    year: int,
+    warning_days: int = 30,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Check balances close to expiring.
     Verifica balances proximos a expirar.
@@ -94,7 +101,10 @@ async def check_expiring_balances(year: int, warning_days: int = 30):
 
 
 @router.get("/report/{year}")
-async def get_compliance_report(year: int):
+async def get_compliance_report(
+    year: int,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Generate a complete compliance report for the specified year.
     Genera un reporte completo de compliance para el ano especificado.
@@ -110,7 +120,9 @@ async def get_compliance_report(year: int):
 
 
 @router.get("/alerts")
-async def get_compliance_alerts():
+async def get_compliance_alerts(
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get all active compliance alerts.
     Obtiene todas las alertas de compliance activas.
@@ -145,7 +157,10 @@ async def get_compliance_alerts():
 
 
 @router.get("/annual-ledger/{year}")
-async def get_annual_ledger(year: int):
+async def get_annual_ledger(
+    year: int,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Generate the 年次有給休暇管理簿 (Annual Paid Leave Ledger).
     Document required by law since 2019.
@@ -182,7 +197,11 @@ async def get_annual_ledger(year: int):
 
 
 @router.post("/export-ledger/{year}")
-async def export_annual_ledger(year: int, format: str = "csv"):
+async def export_annual_ledger(
+    year: int,
+    format: str = "csv",
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Export the 年次有給休暇管理簿 to file.
     Formats: csv, json

@@ -194,38 +194,8 @@ def cached(ttl: Optional[int] = None, cache_instance: Optional[SimpleCache] = No
     return decorator
 
 
-def cache_result(
-    key: str,
-    ttl: Optional[int] = None,
-    cache_instance: Optional[SimpleCache] = None
-):
-    """
-    Decorator with explicit cache key
-
-    Args:
-        key: Explicit cache key
-        ttl: Time-to-live in seconds
-        cache_instance: Cache instance to use
-    """
-    cache = cache_instance or _cache
-
-    def decorator(func: Callable) -> Callable:
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            cached_value = cache.get(key)
-            if cached_value is not None:
-                logger.debug(f"Cache HIT: {key}")
-                return cached_value
-
-            result = func(*args, **kwargs)
-            cache.set(key, result, ttl)
-            return result
-
-        wrapper.cache_clear = lambda: cache.delete(key)
-        return wrapper
-
-    return decorator
-
+# NOTE: cache_result decorator removed (2026-01) - never used in codebase
+# Use @cached(ttl=...) decorator instead which auto-generates keys
 
 def clear_cache():
     """Clear global cache"""
@@ -251,16 +221,5 @@ def invalidate_employee_cache(emp_id: Optional[int] = None):
         invalidate_cache_pattern("employee:*")
 
 
-def invalidate_genzai_cache():
-    """Invalidate genzai-related caches"""
-    invalidate_cache_pattern("genzai:*")
-
-
-def invalidate_ukeoi_cache():
-    """Invalidate ukeoi-related caches"""
-    invalidate_cache_pattern("ukeoi:*")
-
-
-def invalidate_stats_cache():
-    """Invalidate statistics caches"""
-    invalidate_cache_pattern("stats:*")
+# NOTE: invalidate_genzai_cache, invalidate_ukeoi_cache, invalidate_stats_cache removed (2026-01)
+# These were defined but never called. Use invalidate_cache_pattern("genzai:*") etc directly if needed.

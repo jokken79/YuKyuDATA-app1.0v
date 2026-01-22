@@ -269,7 +269,7 @@ export class DatePicker {
         border-color: rgba(255, 255, 255, 0.2);
       }
 
-      .datepicker-input:focus {
+      .datepicker-input:focus-visible {
         border-color: var(--color-primary, #06b6d4);
         box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
       }
@@ -366,7 +366,7 @@ export class DatePicker {
         color: var(--color-text-primary, #f8fafc);
       }
 
-      .datepicker-nav-btn:focus {
+      .datepicker-nav-btn:focus-visible {
         outline: var(--focus-outline, 3px solid var(--color-primary));
         outline-offset: 2px;
       }
@@ -425,7 +425,7 @@ export class DatePicker {
         background: rgba(255, 255, 255, 0.1);
       }
 
-      .datepicker-day:focus {
+      .datepicker-day:focus-visible {
         outline: var(--focus-outline, 3px solid var(--color-primary));
         outline-offset: -2px;
       }
@@ -489,7 +489,7 @@ export class DatePicker {
         color: var(--color-text-primary, #f8fafc);
       }
 
-      .datepicker-today-btn:focus {
+      .datepicker-today-btn:focus-visible {
         outline: var(--focus-outline, 3px solid var(--color-primary));
         outline-offset: 2px;
       }

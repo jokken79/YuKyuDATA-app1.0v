@@ -26,7 +26,10 @@ _excel_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="ukeoi_pa
 
 
 @router.get("/ukeoi")
-async def get_ukeoi(status: str = None):
+async def get_ukeoi(
+    status: str = None,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get ukeoi (contract) employees.
     Obtiene empleados contratistas (請負社員).

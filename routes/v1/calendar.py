@@ -3,11 +3,13 @@ Calendar Routes
 Endpoints de calendario y eventos
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional
 from datetime import datetime, timedelta
 
 from ..dependencies import (
+    get_current_user,
+    CurrentUser,
     database,
     logger,
     get_active_employee_nums,
@@ -21,7 +23,8 @@ async def get_calendar_events(
     year: int = None,
     month: int = None,
     source: str = 'requests',
-    active_only: bool = True
+    active_only: bool = True,
+    user: CurrentUser = Depends(get_current_user)
 ):
     """
     Get calendar event data.
@@ -125,7 +128,12 @@ async def get_calendar_events(
 
 
 @router.get("/summary/{year}/{month}")
-async def get_calendar_month_summary(year: int, month: int, source: str = 'requests'):
+async def get_calendar_month_summary(
+    year: int,
+    month: int,
+    source: str = 'requests',
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get monthly calendar summary.
     Returns leave count per day.

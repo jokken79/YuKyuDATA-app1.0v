@@ -225,7 +225,7 @@ export class ErrorBoundary {
                 sessionId: this.getSessionId()
             };
             
-            await fetch('/api/error-report', {
+            await fetch('/api/v1/system/error-report', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

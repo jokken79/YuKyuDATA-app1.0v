@@ -374,7 +374,7 @@ function injectInputStyles() {
       background: rgba(0, 0, 0, 0.25);
     }
 
-    .input:focus {
+    .input:focus-visible {
       border-color: var(--color-primary, #06b6d4);
       background: rgba(0, 0, 0, 0.3);
       box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
@@ -478,7 +478,7 @@ function injectInputStyles() {
       color: var(--color-danger, #f87171);
     }
 
-    .input-clear:focus {
+    .input-clear:focus-visible {
       outline: var(--focus-outline, 3px solid var(--color-primary));
       outline-offset: 2px;
       opacity: 1;
@@ -521,7 +521,7 @@ function injectInputStyles() {
       border-color: rgba(0, 0, 0, 0.2);
     }
 
-    [data-theme="light"] .input:focus {
+    [data-theme="light"] .input:focus-visible {
       background: #ffffff;
     }
 

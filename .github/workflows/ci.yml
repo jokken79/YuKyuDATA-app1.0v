@@ -138,6 +138,8 @@ jobs:
           mkdir -p backups
 
       - name: Run pytest with coverage
+        # P0.2 FIX: Tests MUST pass - removed continue-on-error and || echo
+        # Test failures should block the build to prevent broken code from merging
         run: |
           pytest tests/ -v \
             --cov=. \
@@ -148,8 +150,7 @@ jobs:
             --ignore=backups \
             --ignore=basuraa \
             --ignore=ThemeTheBestJpkken \
-            --ignore=.agent \
-            || echo "::warning::Some tests failed or coverage is low"
+            --ignore=.agent
         env:
           DEBUG: "true"
           JWT_SECRET_KEY: "test-secret-key-for-ci-tests"

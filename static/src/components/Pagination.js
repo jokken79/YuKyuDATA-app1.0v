@@ -382,7 +382,7 @@ function injectPaginationStyles() {
       color: var(--color-text-primary, #f8fafc);
     }
 
-    .pagination-btn:focus {
+    .pagination-btn:focus-visible {
       outline: var(--focus-outline, 3px solid var(--color-primary));
       outline-offset: 2px;
     }
@@ -426,7 +426,7 @@ function injectPaginationStyles() {
       font-weight: 600;
     }
 
-    .pagination-page:focus {
+    .pagination-page:focus-visible {
       outline: var(--focus-outline, 3px solid var(--color-primary));
       outline-offset: 2px;
     }
@@ -455,7 +455,7 @@ function injectPaginationStyles() {
       background-position: right 0.75rem center;
     }
 
-    .pagination-size-select:focus {
+    .pagination-size-select:focus-visible {
       outline: var(--focus-outline, 3px solid var(--color-primary));
       outline-offset: 2px;
       border-color: var(--color-primary, #06b6d4);
@@ -478,7 +478,7 @@ function injectPaginationStyles() {
       text-align: center;
     }
 
-    .pagination-jumper-input:focus {
+    .pagination-jumper-input:focus-visible {
       outline: none;
       border-color: var(--color-primary, #06b6d4);
     }
@@ -505,7 +505,7 @@ function injectPaginationStyles() {
       color: var(--color-text-primary, #f8fafc);
     }
 
-    .pagination-jumper-btn:focus {
+    .pagination-jumper-btn:focus-visible {
       outline: var(--focus-outline, 3px solid var(--color-primary));
       outline-offset: 2px;
     }

@@ -382,10 +382,27 @@ export async function submitRequest() {
 }
 
 /**
- * Approve a pending request
+ * Approve a pending request with confirmation
+ * P0.3 FIX: Added confirmation modal before critical action
  * @param {string|number} requestId
  */
 export async function approveRequest(requestId) {
+    // Get request info for confirmation message
+    const card = document.querySelector(`.request-card[data-request-id="${requestId}"]`);
+    const empName = card?.querySelector('.request-employee')?.textContent || 'Unknown';
+    const days = card?.querySelector('.request-days')?.textContent || '';
+
+    // Show confirmation modal
+    const confirmed = await showConfirmModal({
+        title: '承認確認',
+        message: `${empName}さんの休暇申請 (${days}) を承認しますか？\n\n承認すると有給残高から差し引かれます。`,
+        confirmText: '承認する',
+        cancelText: 'キャンセル',
+        type: 'success'
+    });
+
+    if (!confirmed) return;
+
     try {
         const res = await fetch(`${API_BASE_URL}/leave-requests/${requestId}/approve`, {
             method: 'PATCH'
@@ -396,7 +413,7 @@ export async function approveRequest(requestId) {
             throw new Error(error.detail || 'Failed to approve request');
         }
 
-        showToast('success', 'Request approved');
+        showToast('success', '申請を承認しました');
         loadPending();
         loadHistory();
     } catch (e) {
@@ -405,10 +422,26 @@ export async function approveRequest(requestId) {
 }
 
 /**
- * Reject a pending request
+ * Reject a pending request with confirmation
+ * P0.3 FIX: Added confirmation modal before critical action
  * @param {string|number} requestId
  */
 export async function rejectRequest(requestId) {
+    // Get request info for confirmation message
+    const card = document.querySelector(`.request-card[data-request-id="${requestId}"]`);
+    const empName = card?.querySelector('.request-employee')?.textContent || 'Unknown';
+
+    // Show confirmation modal
+    const confirmed = await showConfirmModal({
+        title: '却下確認',
+        message: `${empName}さんの休暇申請を却下しますか？`,
+        confirmText: '却下する',
+        cancelText: 'キャンセル',
+        type: 'danger'
+    });
+
+    if (!confirmed) return;
+
     try {
         const res = await fetch(`${API_BASE_URL}/leave-requests/${requestId}/reject`, {
             method: 'PATCH'
@@ -419,7 +452,7 @@ export async function rejectRequest(requestId) {
             throw new Error(error.detail || 'Failed to reject request');
         }
 
-        showToast('success', 'Request rejected');
+        showToast('success', '申請を却下しました');
         loadPending();
         loadHistory();
     } catch (e) {
@@ -518,6 +551,131 @@ export function validateDates() {
     }
 
     return isValid;
+}
+
+// ========================================
+// CONFIRMATION MODAL (P0.3 FIX)
+// ========================================
+
+/**
+ * Show a confirmation modal for critical actions
+ * @param {Object} options - Modal options
+ * @param {string} options.title - Modal title
+ * @param {string} options.message - Confirmation message
+ * @param {string} options.confirmText - Confirm button text
+ * @param {string} options.cancelText - Cancel button text
+ * @param {string} options.type - Modal type (success, danger, warning)
+ * @returns {Promise<boolean>} - True if confirmed, false otherwise
+ */
+function showConfirmModal({ title, message, confirmText = '確認', cancelText = 'キャンセル', type = 'info' }) {
+    return new Promise((resolve) => {
+        // Remove existing modal if any
+        const existingModal = document.getElementById('confirm-modal-overlay');
+        if (existingModal) existingModal.remove();
+
+        // Color based on type
+        const colors = {
+            success: { btn: '#10b981', btnHover: '#059669' },
+            danger: { btn: '#ef4444', btnHover: '#dc2626' },
+            warning: { btn: '#f59e0b', btnHover: '#d97706' },
+            info: { btn: '#06b6d4', btnHover: '#0891b2' }
+        };
+        const color = colors[type] || colors.info;
+
+        // Create modal HTML
+        const modalHTML = `
+            <div id="confirm-modal-overlay" style="
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px);
+                display: flex; align-items: center; justify-content: center;
+                z-index: 10000; animation: fadeIn 0.2s ease;
+            ">
+                <div id="confirm-modal" style="
+                    background: var(--glass-bg-dark, #1e293b);
+                    border: 1px solid var(--glass-border, rgba(255,255,255,0.1));
+                    border-radius: 12px; padding: 24px; max-width: 400px; width: 90%;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                    animation: slideUp 0.3s ease;
+                " role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+                    <h3 id="confirm-modal-title" style="
+                        margin: 0 0 16px 0; font-size: 1.25rem; font-weight: 600;
+                        color: var(--text-primary, #f1f5f9);
+                    ">${escapeHtml(title)}</h3>
+                    <p style="
+                        margin: 0 0 24px 0; color: var(--text-secondary, #94a3b8);
+                        line-height: 1.6; white-space: pre-line;
+                    ">${escapeHtml(message)}</p>
+                    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                        <button id="confirm-modal-cancel" style="
+                            padding: 10px 20px; border-radius: 8px;
+                            border: 1px solid var(--color-neutral-600, #4b5563);
+                            background: transparent; color: var(--text-primary, #f1f5f9);
+                            cursor: pointer; font-weight: 500; transition: all 0.2s;
+                        ">${escapeHtml(cancelText)}</button>
+                        <button id="confirm-modal-confirm" style="
+                            padding: 10px 20px; border-radius: 8px;
+                            border: none; background: ${color.btn}; color: white;
+                            cursor: pointer; font-weight: 500; transition: all 0.2s;
+                        ">${escapeHtml(confirmText)}</button>
+                    </div>
+                </div>
+            </div>
+            <style>
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+                #confirm-modal-cancel:hover { background: var(--color-neutral-700, #374151); }
+                #confirm-modal-confirm:hover { background: ${color.btnHover}; }
+            </style>
+        `;
+
+        // Insert modal into DOM
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+        const overlay = document.getElementById('confirm-modal-overlay');
+        const confirmBtn = document.getElementById('confirm-modal-confirm');
+        const cancelBtn = document.getElementById('confirm-modal-cancel');
+
+        // Focus confirm button for accessibility
+        confirmBtn.focus();
+
+        // Handle confirm
+        const handleConfirm = () => {
+            cleanup();
+            resolve(true);
+        };
+
+        // Handle cancel
+        const handleCancel = () => {
+            cleanup();
+            resolve(false);
+        };
+
+        // Handle escape key
+        const handleKeydown = (e) => {
+            if (e.key === 'Escape') handleCancel();
+            if (e.key === 'Enter') handleConfirm();
+        };
+
+        // Cleanup function
+        const cleanup = () => {
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            overlay.removeEventListener('click', handleOverlayClick);
+            document.removeEventListener('keydown', handleKeydown);
+            overlay.remove();
+        };
+
+        // Handle overlay click (close on backdrop)
+        const handleOverlayClick = (e) => {
+            if (e.target === overlay) handleCancel();
+        };
+
+        // Attach event listeners
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+        overlay.addEventListener('click', handleOverlayClick);
+        document.addEventListener('keydown', handleKeydown);
+    });
 }
 
 // ========================================

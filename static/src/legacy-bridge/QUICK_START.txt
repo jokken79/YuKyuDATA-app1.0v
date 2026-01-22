@@ -1,0 +1,310 @@
+╔═════════════════════════════════════════════════════════════════════════════╗
+║                    UNIFIED BRIDGE: QUICK START GUIDE                       ║
+║                                                                             ║
+║               Strangler Fig Pattern for Legacy → Modern Migration          ║
+╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+🚀 GET STARTED IN 5 MINUTES
+═════════════════════════════════════════════════════════════════════════════
+
+STEP 1: Initialize Bridge
+─────────────────────────────────────────────────────────────────────────────
+In templates/index.html (BEFORE app.js):
+
+    <script type="module">
+        import { initBridge } from '/static/src/legacy-bridge/index.js';
+        window.bridge = initBridge();
+    </script>
+
+    <script src="/static/js/app.js"></script>
+
+
+STEP 2: Register Components
+─────────────────────────────────────────────────────────────────────────────
+In static/src/bootstrap.js or similar:
+
+    import { getUnifiedBridge } from '/static/src/legacy-bridge/index.js';
+    import { Alert } from '/static/src/components/index.js';
+
+    const bridge = getUnifiedBridge();
+    bridge.registerModernComponent('Alert', Alert, {
+        category: 'core',
+        props: ['type', 'message']
+    });
+
+
+STEP 3: Use in Legacy Code
+─────────────────────────────────────────────────────────────────────────────
+In app.js or anywhere:
+
+    async function showAlert() {
+        await window.bridge.renderInLegacy('Alert', 'alert-container', {
+            type: 'success',
+            message: 'Guardado!'
+        });
+    }
+
+
+STEP 4: Add HTML Container
+─────────────────────────────────────────────────────────────────────────────
+In your HTML template:
+
+    <div id="alert-container"></div>
+
+
+DONE! ✓
+
+
+📚 DOCUMENTATION FILES
+═════════════════════════════════════════════════════════════════════════════
+
+START HERE:
+├─ THIS FILE               Quick start (2 min read)
+├─ README.md               API reference (5 min read)
+└─ STRUCTURE.txt           Architecture overview (10 min read)
+
+DETAILED GUIDES:
+├─ MIGRATION_GUIDE.md      Complete patterns & best practices
+├─ examples.js             10 practical code examples
+└─ bridge.test.js          70+ unit tests to learn from
+
+CORE FILES:
+├─ unified-bridge.js       Main bridge implementation
+├─ setup.js                Configuration helpers
+└─ index.js                Public API exports
+
+
+🎯 COMMON TASKS
+═════════════════════════════════════════════════════════════════════════════
+
+Task: Render Modern Component in Legacy Container
+─────────────────────────────────────────────────
+
+    const bridge = window.bridge;
+
+    // Container must exist in HTML
+    // <div id="my-container"></div>
+
+    await bridge.renderInLegacy('ComponentName', 'my-container', {
+        prop1: value1,
+        prop2: value2
+    });
+
+
+Task: Synchronize State Between Systems
+─────────────────────────────────────────────────────
+
+    // From legacy to modern
+    window.bridge.syncState('selectedYear', 2025);
+
+    // Modern code listens
+    bridge.onStateChange('selectedYear', (newYear) => {
+        console.log('Year changed:', newYear);
+        reloadData(newYear);
+    });
+
+
+Task: Track Feature Migration
+─────────────────────────────────────────────
+
+    // Register feature as legacy/modern/hybrid
+    bridge.registerFeature('employees', 'hybrid', {
+        legacy: ['Table', 'Pagination'],
+        modern: ['ActionButtons']
+    });
+
+    // Get migration progress
+    const progress = bridge.getMigrationProgress(); // 0-100
+
+
+Task: Add Event Listeners
+─────────────────────────────────────────────────
+
+    // Render event
+    bridge.on('component-rendered', (data) => {
+        console.log(`${data.componentName} rendered`);
+    });
+
+    // Error event
+    bridge.on('component-error', (data) => {
+        console.error(`${data.componentName} error`);
+    });
+
+
+Task: Enable Debug Mode
+─────────────────────────────────────────────────
+
+    bridge.enableDebugMode();
+    bridge.printDebugInfo();
+
+
+📊 API CHEAT SHEET
+═════════════════════════════════════════════════════════════════════════════
+
+COMPONENTS:
+    bridge.registerModernComponent(name, Component, metadata)
+    bridge.getRegisteredComponents()
+
+RENDERING:
+    await bridge.renderInLegacy(name, containerId, props)
+
+STATE:
+    bridge.syncState(key, value)
+    bridge.getState(key)
+    bridge.onStateChange(key, callback)  // Returns unsubscribe
+
+MIGRATION:
+    bridge.registerFeature(name, 'legacy'|'modern'|'hybrid', details)
+    bridge.trackPageView(page, system)
+    bridge.getMigrationStats()
+    bridge.getMigrationProgress()
+    bridge.getMigrationReport()
+    bridge.exportMigrationData()
+
+EVENTS:
+    bridge.on(eventType, listener)
+    bridge.off(eventType, listener)
+
+DEBUG:
+    bridge.enableDebugMode()
+    bridge.getDebugInfo()
+
+
+⚠️  COMMON MISTAKES
+═════════════════════════════════════════════════════════════════════════════
+
+❌ WRONG: Component not registered
+    await bridge.renderInLegacy('UnregisteredComponent', 'id', {});
+
+✅ RIGHT: Register first
+    bridge.registerModernComponent('MyComponent', Component, {...});
+    await bridge.renderInLegacy('MyComponent', 'id', {});
+
+
+❌ WRONG: State not synchronized
+    App.state.year = 2025;  // Modern code doesn't know about this
+
+✅ RIGHT: Use bridge to sync
+    bridge.syncState('year', 2025);  // Both systems get notified
+
+
+❌ WRONG: Memory leak from listeners
+    bridge.onStateChange('key', callback);  // Never removed
+
+✅ RIGHT: Store unsub and call it
+    const unsub = bridge.onStateChange('key', callback);
+    // Later: unsub();
+
+
+❌ WRONG: Container doesn't exist
+    await bridge.renderInLegacy('Component', 'non-existent', {});
+
+✅ RIGHT: Verify HTML exists
+    <div id="my-container"></div>
+    await bridge.renderInLegacy('Component', 'my-container', {});
+
+
+🧪 TESTING
+═════════════════════════════════════════════════════════════════════════════
+
+Run all tests:
+    npm test -- bridge.test.js
+
+Run specific test:
+    npm test -- bridge.test.js -t "should register component"
+
+Coverage:
+    npm test -- bridge.test.js --coverage
+
+
+📈 MIGRATION PROGRESS
+═════════════════════════════════════════════════════════════════════════════
+
+Check progress anytime:
+
+    const progress = bridge.getMigrationProgress();
+    console.log(`${progress}% features migrated`);
+
+Get detailed stats:
+
+    const stats = bridge.getMigrationStats();
+    console.log(stats);
+    // {
+    //   features: {...},
+    //   componentUsage: {...},
+    //   pageViews: [...],
+    //   systems: { legacy: 8, modern: 4, hybrid: 2 }
+    // }
+
+Generate full report:
+
+    console.log(bridge.getMigrationReport());
+    // ╔════════════════════════════════════════╗
+    // ║      MIGRATION STATUS REPORT           ║
+    // ╚════════════════════════════════════════╝
+    // ... detailed statistics
+
+
+🎓 LEARNING PATH
+═════════════════════════════════════════════════════════════════════════════
+
+30 seconds: Read this file
+2 minutes:  Read README.md
+5 minutes:  Read STRUCTURE.txt
+10 minutes: Skim MIGRATION_GUIDE.md
+20 minutes: Study examples.js (pick 1-2 examples)
+30 minutes: Implement your first component
+1 hour:     Run tests and verify everything works
+2 hours:    Migrate your first feature end-to-end
+
+
+✨ NEXT STEPS
+═════════════════════════════════════════════════════════════════════════════
+
+1. Read README.md (5 min)
+2. Check STRUCTURE.txt (10 min)
+3. Look at examples.js (pick an example)
+4. Register your first component
+5. Render it in a container
+6. Verify in browser
+7. Check migration progress
+8. Repeat for next component!
+
+
+📞 HELP & RESOURCES
+═════════════════════════════════════════════════════════════════════════════
+
+Troubleshooting:
+    → See MIGRATION_GUIDE.md "Troubleshooting" section
+
+API Reference:
+    → See README.md or STRUCTURE.txt
+
+Code Examples:
+    → See examples.js (10 complete examples)
+
+Architecture:
+    → See STRUCTURE.txt (detailed architecture)
+
+Tests:
+    → See bridge.test.js (70+ unit tests)
+
+
+🚀 YOU'RE READY!
+═════════════════════════════════════════════════════════════════════════════
+
+The bridge is now available on window.bridge
+Start rendering modern components in legacy containers!
+
+    window.bridge.renderInLegacy('Alert', 'container', {...})
+
+
+Questions? → Check the documentation files
+Code examples? → See examples.js
+Need help debugging? → bridge.enableDebugMode()
+
+
+═════════════════════════════════════════════════════════════════════════════
+Version: 1.0.0 | Pattern: Strangler Fig | Status: Production Ready
+═════════════════════════════════════════════════════════════════════════════

@@ -235,7 +235,7 @@ export class Alert {
         color: #ffffff;
       }
 
-      .toast-close:focus {
+      .toast-close:focus-visible {
         outline: var(--focus-outline, 3px solid var(--color-primary));
         outline-offset: 2px;
       }
@@ -473,7 +473,7 @@ export class Alert {
         gap: 8px;
       }
 
-      .confirm-btn:focus {
+      .confirm-btn:focus-visible {
         outline: var(--focus-outline, 3px solid var(--color-primary));
         outline-offset: 2px;
       }

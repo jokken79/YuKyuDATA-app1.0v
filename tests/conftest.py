@@ -315,3 +315,76 @@ def csrf_token(test_client, reset_rate_limiter):
         data = response.json()
         return data.get("csrf_token", "")
     return ""
+
+
+# ============================================
+# DATABASE CLEANUP FIXTURES
+# ============================================
+# These functions were moved from database.py
+# They are only for test cleanup, not production use
+
+@pytest.fixture
+def clear_database():
+    """Fixture that provides a function to clear employees table."""
+    def _clear():
+        from database import get_db
+        with get_db() as conn:
+            conn.execute("DELETE FROM employees")
+            conn.commit()
+    return _clear
+
+
+@pytest.fixture
+def clear_genzai():
+    """Fixture that provides a function to clear genzai table."""
+    def _clear():
+        from database import get_db
+        with get_db() as conn:
+            conn.execute("DELETE FROM genzai")
+            conn.commit()
+    return _clear
+
+
+@pytest.fixture
+def clear_ukeoi():
+    """Fixture that provides a function to clear ukeoi table."""
+    def _clear():
+        from database import get_db
+        with get_db() as conn:
+            conn.execute("DELETE FROM ukeoi")
+            conn.commit()
+    return _clear
+
+
+@pytest.fixture
+def clear_staff():
+    """Fixture that provides a function to clear staff table."""
+    def _clear():
+        from database import get_db
+        with get_db() as conn:
+            conn.execute("DELETE FROM staff")
+            conn.commit()
+    return _clear
+
+
+@pytest.fixture
+def clear_yukyu_usage_details():
+    """Fixture that provides a function to clear yukyu_usage_details table."""
+    def _clear():
+        from database import get_db
+        with get_db() as conn:
+            conn.execute("DELETE FROM yukyu_usage_details")
+            conn.commit()
+    return _clear
+
+
+@pytest.fixture
+def clear_all_test_data(clear_database, clear_genzai, clear_ukeoi, clear_staff, clear_yukyu_usage_details):
+    """Fixture that clears all test data from database tables."""
+    def _clear_all():
+        clear_database()
+        clear_genzai()
+        clear_ukeoi()
+        clear_staff()
+        clear_yukyu_usage_details()
+    return _clear_all

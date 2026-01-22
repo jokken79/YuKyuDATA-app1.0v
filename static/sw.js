@@ -31,15 +31,15 @@ const OPTIONAL_ASSETS = [
     'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap'
 ];
 
-// API endpoints to cache
+// API endpoints to cache (v1 routes)
 const API_ENDPOINTS = [
-    '/api/employees',
-    '/api/genzai',
-    '/api/ukeoi',
-    '/api/staff',
-    '/api/leave-requests',
-    '/api/available-years',
-    '/api/db-status'
+    '/api/v1/employees',
+    '/api/v1/genzai',
+    '/api/v1/ukeoi',
+    '/api/v1/staff',
+    '/api/v1/leave-requests',
+    '/api/v1/fiscal/years',
+    '/api/v1/system/db-status'
 ];
 
 // Cache expiration times (milliseconds)
@@ -280,7 +280,7 @@ self.addEventListener('fetch', (event) => {
     // Skip non-GET requests (except for background sync)
     if (request.method !== 'GET') {
         // For POST requests to leave-requests, try background sync
-        if (request.method === 'POST' && url.pathname === '/api/leave-requests') {
+        if (request.method === 'POST' && url.pathname === '/api/v1/leave-requests') {
             event.respondWith(handleOfflinePost(request));
         }
         return;

@@ -1,0 +1,223 @@
+{
+  "version": "2.0.0",
+  "description": "YuKyuDATA Agent Registry - Routing and workflow configuration",
+  "agents": {
+    "core": [
+      {
+        "name": "architect",
+        "file": "agents/architect.md",
+        "model": "opus",
+        "description": "Diseño de arquitectura y detección de deuda técnica",
+        "priority": 1,
+        "triggers": ["architecture", "design", "system design", "scalability", "technical debt"]
+      },
+      {
+        "name": "critic",
+        "file": "agents/critic.md",
+        "model": "opus",
+        "description": "Análisis crítico y evaluación de propuestas",
+        "priority": 2,
+        "triggers": ["review proposal", "evaluate", "challenge", "risk analysis"]
+      },
+      {
+        "name": "explorer",
+        "file": "agents/explorer.md",
+        "model": "opus",
+        "description": "Investigación exhaustiva de código",
+        "priority": 1,
+        "triggers": ["investigate", "explore", "find usage", "impact analysis", "how does"]
+      },
+      {
+        "name": "memory",
+        "file": "agents/memory.md",
+        "model": "opus",
+        "description": "Persistencia de contexto entre sesiones",
+        "priority": 0,
+        "triggers": ["remember", "recall", "context", "decision", "history"]
+      },
+      {
+        "name": "stuck",
+        "file": "agents/stuck.md",
+        "model": "sonnet",
+        "description": "Escalación a humano cuando hay problemas",
+        "priority": 0,
+        "triggers": ["stuck", "blocked", "need help", "uncertain", "escalate"]
+      }
+    ],
+    "quality": [
+      {
+        "name": "debugger",
+        "file": "agents/debugger.md",
+        "model": "opus",
+        "description": "Debugging y búsqueda de causa raíz",
+        "priority": 1,
+        "triggers": ["bug", "error", "not working", "broken", "fails", "debug"]
+      },
+      {
+        "name": "reviewer",
+        "file": "agents/reviewer.md",
+        "model": "opus",
+        "description": "Code review y evaluación de calidad",
+        "priority": 2,
+        "triggers": ["code review", "review PR", "check code", "evaluate"]
+      },
+      {
+        "name": "yukyu-test-engineer",
+        "file": "agents/yukyu-test-engineer.md",
+        "model": "opus",
+        "description": "Testing especializado para YuKyuDATA",
+        "priority": 1,
+        "triggers": ["test", "pytest", "jest", "playwright", "coverage"]
+      }
+    ],
+    "domain": [
+      {
+        "name": "yukyu-backend-engineer",
+        "file": "agents/yukyu-backend-engineer.md",
+        "model": "opus",
+        "description": "Backend FastAPI y SQLite para YuKyuDATA",
+        "priority": 1,
+        "triggers": ["api", "endpoint", "backend", "fastapi", "database", "sqlite"]
+      },
+      {
+        "name": "yukyu-ui-ux-designer",
+        "file": "agents/yukyu-ui-ux-designer.md",
+        "model": "opus",
+        "description": "Diseño UI/UX para YuKyuDATA",
+        "priority": 1,
+        "triggers": ["ui", "ux", "design", "component", "accessibility", "frontend"]
+      },
+      {
+        "name": "yukyu-compliance-expert",
+        "file": "agents/yukyu-compliance-expert.md",
+        "model": "opus",
+        "description": "Cumplimiento de ley laboral japonesa",
+        "priority": 1,
+        "triggers": ["compliance", "労働基準法", "5day rule", "vacation law", "有給休暇"]
+      },
+      {
+        "name": "yukyu-devops-engineer",
+        "file": "agents/yukyu-devops-engineer.md",
+        "model": "opus",
+        "description": "DevOps y deployment para YuKyuDATA",
+        "priority": 2,
+        "triggers": ["docker", "deploy", "ci/cd", "devops", "infrastructure"]
+      },
+      {
+        "name": "yukyu-ci-cd-master",
+        "file": "agents/yukyu-ci-cd-master.md",
+        "model": "opus",
+        "description": "Pipelines CI/CD y automatización",
+        "priority": 2,
+        "triggers": ["pipeline", "github actions", "automation", "workflow"]
+      },
+      {
+        "name": "database",
+        "file": "agents/database.md",
+        "model": "opus",
+        "description": "Diseño de esquemas, queries y migraciones",
+        "priority": 1,
+        "triggers": ["schema", "migration", "query", "index", "sql", "orm"]
+      },
+      {
+        "name": "api-designer",
+        "file": "agents/api-designer.md",
+        "model": "opus",
+        "description": "Diseño de APIs RESTful y OpenAPI",
+        "priority": 2,
+        "triggers": ["api design", "rest api", "openapi", "swagger", "versioning"]
+      },
+      {
+        "name": "data-sync",
+        "file": "agents/data-sync.md",
+        "model": "opus",
+        "description": "Sincronización Excel, ETL y validación",
+        "priority": 1,
+        "triggers": ["sync", "excel", "import", "export", "etl", "transform"]
+      }
+    ]
+  },
+  "workflows": {
+    "new-feature": {
+      "description": "Implementar nueva funcionalidad",
+      "steps": [
+        {"agent": "memory", "action": "load-context"},
+        {"agent": "explorer", "action": "investigate-codebase"},
+        {"agent": "architect", "action": "design-solution"},
+        {"agent": "critic", "action": "evaluate-design"},
+        {"agent": "yukyu-backend-engineer", "action": "implement"},
+        {"agent": "yukyu-test-engineer", "action": "write-tests"},
+        {"agent": "reviewer", "action": "code-review"},
+        {"agent": "memory", "action": "record-decision"}
+      ]
+    },
+    "bug-fix": {
+      "description": "Arreglar un bug",
+      "steps": [
+        {"agent": "memory", "action": "check-history"},
+        {"agent": "debugger", "action": "investigate"},
+        {"agent": "explorer", "action": "find-impact"},
+        {"agent": "yukyu-backend-engineer", "action": "fix"},
+        {"agent": "yukyu-test-engineer", "action": "add-regression-test"},
+        {"agent": "memory", "action": "record-lesson"}
+      ]
+    },
+    "excel-sync": {
+      "description": "Sincronización desde Excel",
+      "steps": [
+        {"agent": "data-sync", "action": "validate-source"},
+        {"agent": "data-sync", "action": "transform-data"},
+        {"agent": "database", "action": "update-records"},
+        {"agent": "yukyu-compliance-expert", "action": "verify-rules"}
+      ]
+    },
+    "api-development": {
+      "description": "Desarrollar nuevo endpoint API",
+      "steps": [
+        {"agent": "api-designer", "action": "design-contract"},
+        {"agent": "critic", "action": "review-design"},
+        {"agent": "yukyu-backend-engineer", "action": "implement"},
+        {"agent": "yukyu-test-engineer", "action": "write-tests"},
+        {"agent": "reviewer", "action": "security-review"}
+      ]
+    },
+    "database-change": {
+      "description": "Modificar esquema de base de datos",
+      "steps": [
+        {"agent": "database", "action": "design-schema"},
+        {"agent": "architect", "action": "review-impact"},
+        {"agent": "database", "action": "create-migration"},
+        {"agent": "yukyu-test-engineer", "action": "test-migration"},
+        {"agent": "memory", "action": "record-decision"}
+      ]
+    },
+    "compliance-check": {
+      "description": "Verificar cumplimiento legal",
+      "steps": [
+        {"agent": "yukyu-compliance-expert", "action": "audit"},
+        {"agent": "data-sync", "action": "validate-data"},
+        {"agent": "yukyu-compliance-expert", "action": "generate-report"}
+      ]
+    }
+  },
+  "escalation": {
+    "policy": "zero-fallback",
+    "description": "Cuando un agente encuentra un problema, debe invocar al agente 'stuck' en lugar de continuar con workarounds",
+    "triggers": [
+      "Error no manejable",
+      "Requisito ambiguo",
+      "Decisión de negocio necesaria",
+      "Conflicto de patrones",
+      "Cambio de alcance significativo"
+    ]
+  },
+  "model_distribution": {
+    "opus": [
+      "architect", "critic", "explorer", "memory", "debugger", "reviewer",
+      "yukyu-backend-engineer", "yukyu-ui-ux-designer", "yukyu-compliance-expert",
+      "yukyu-devops-engineer", "yukyu-ci-cd-master", "yukyu-test-engineer",
+      "database", "api-designer", "data-sync"
+    ],
+    "sonnet": ["stuck"]
+  }
+}

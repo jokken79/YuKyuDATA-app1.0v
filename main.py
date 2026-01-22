@@ -81,29 +81,7 @@ from functools import wraps
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
-# Import API routers from routes module
-from routes import (
-    auth_router,
-    employees_router,
-    genzai_router,
-    ukeoi_router,
-    staff_router,
-    leave_requests_router,
-    yukyu_router,
-    compliance_router,
-    compliance_advanced_router,
-    fiscal_router,
-    analytics_router,
-    reports_router,
-    export_router,
-    calendar_router,
-    notifications_router,
-    system_router,
-    health_router,
-    github_router,
-)
-
-# Import v1 router
+# Import v1 router (v0 routes removed in migration - see docs/MIGRATION_PLAN.md)
 from routes.v1 import router_v1
 
 # Import middleware for API versioning
@@ -322,25 +300,8 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 # ============================================
 # REGISTER API ROUTERS
 # ============================================
-# All modular routes are defined in routes/ directory
-app.include_router(auth_router)
-app.include_router(employees_router)
-app.include_router(genzai_router)
-app.include_router(ukeoi_router)
-app.include_router(staff_router)
-app.include_router(leave_requests_router)
-app.include_router(yukyu_router)
-app.include_router(compliance_router)
-app.include_router(compliance_advanced_router)
-app.include_router(fiscal_router)
-app.include_router(analytics_router)
-app.include_router(reports_router)
-app.include_router(export_router)
-app.include_router(calendar_router)
-app.include_router(notifications_router)
-app.include_router(system_router)
-app.include_router(health_router)
-app.include_router(github_router)
+# v0 routes (/api/*) have been removed in favor of v1 (/api/v1/*)
+# See docs/MIGRATION_PLAN.md for details
 
 # Include v1 API router (all endpoints available at /api/v1/*)
 app.include_router(router_v1)

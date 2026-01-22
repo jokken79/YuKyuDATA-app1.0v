@@ -154,7 +154,7 @@ export class Select {
         background: rgba(0, 0, 0, 0.25);
       }
 
-      .select-trigger:focus {
+      .select-trigger:focus-visible {
         border-color: var(--color-primary, #06b6d4);
         box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
       }
@@ -271,7 +271,7 @@ export class Select {
         outline: none;
       }
 
-      .select-search-input:focus {
+      .select-search-input:focus-visible {
         border-color: var(--color-primary, #06b6d4);
       }
 

@@ -338,21 +338,26 @@ try {
 
 15 agentes especializados en `agents/`:
 
-| Agente | Propósito | Tamaño |
-|--------|-----------|--------|
-| `orchestrator.py` | Coordinador principal | 35.9 KB |
-| `compliance.py` | Verificación 労働基準法 | 21.6 KB |
-| `security.py` | Análisis de seguridad | 34 KB |
-| `memory.py` | Persistencia de contexto | 59.1 KB |
-| `testing.py` | Generación de tests | 35.9 KB |
-| `performance.py` | Optimización | 30.7 KB |
-| `ui_designer.py` | Diseño de componentes UI | 37.2 KB |
-| `ux_analyst.py` | Análisis UX/accesibilidad | 38.2 KB |
-| `documentor.py` | Documentación automática | 20.6 KB |
-| `data_parser.py` | Parsing Excel/datos | 18.1 KB |
-| `figma.py` | Sync sistema de diseño | 23.8 KB |
-| `canvas.py` | Visualización/dibujo | 26.3 KB |
-| `nerd.py` | Análisis técnico | 37.2 KB |
+| Agente | Propósito | Estado | Endpoints |
+|--------|-----------|--------|-----------|
+| `orchestrator.py` | Coordinador principal | **ACTIVO** | 3 endpoints |
+| `compliance.py` | Verificación 労働基準法 | **ACTIVO** | 6+ endpoints |
+| `documentor.py` | Documentación automática | **ACTIVO** | 3 endpoints |
+| `memory.py` | Persistencia de contexto | DESARROLLO | Integración parcial |
+| `security.py` | Análisis de seguridad | DESARROLLO | Pipeline sin endpoint |
+| `nerd.py` | Análisis técnico | DESARROLLO | Pipeline sin endpoint |
+| `performance.py` | Optimización | DESARROLLO | Pipeline sin endpoint |
+| `testing.py` | Generación de tests | DESARROLLO | Pipeline sin endpoint |
+| `ui_designer.py` | Diseño de componentes UI | DESARROLLO | Pipeline sin endpoint |
+| `ux_analyst.py` | Análisis UX/accesibilidad | DESARROLLO | Pipeline sin endpoint |
+| `data_parser.py` | Parsing Excel/datos | DESARROLLO | Duplica excel_service |
+| `figma.py` | Sync sistema de diseño | DESARROLLO | Sin pipeline |
+| `canvas.py` | Visualización/dibujo | DESARROLLO | Sin pipeline |
+
+**Estado de Integración:**
+- **ACTIVO (3):** Tienen endpoints funcionando en producción
+- **DESARROLLO (10):** Código completo pero sin endpoints expuestos
+- ~80% del código de agentes no se ejecuta en producción (pendiente exponer pipelines)
 
 Características: Timeout configurado por agente, circuit breaker, auto-cleanup.
 

@@ -51,9 +51,9 @@ class TestAgentsImport:
         assert TestingAgent is not None
 
     def test_import_ui_designer(self):
-        """Test UIDesignAgent import."""
-        from agents.ui_designer import UIDesignAgent
-        assert UIDesignAgent is not None
+        """Test UIDesignerAgent import."""
+        from agents.ui_designer import UIDesignerAgent
+        assert UIDesignerAgent is not None
 
     def test_import_ux_analyst(self):
         """Test UXAnalystAgent import."""
@@ -127,9 +127,9 @@ class TestAgentsInstantiation:
         assert agent is not None
 
     def test_instantiate_ui_designer(self):
-        """Test UIDesignAgent instantiation."""
-        from agents.ui_designer import UIDesignAgent
-        agent = UIDesignAgent()
+        """Test UIDesignerAgent instantiation."""
+        from agents.ui_designer import UIDesignerAgent
+        agent = UIDesignerAgent()
         assert agent is not None
 
     def test_instantiate_ux_analyst(self):

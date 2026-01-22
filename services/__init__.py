@@ -77,11 +77,9 @@ from .caching import (
     get_cache_stats,
     clear_cache,
     invalidate_cache_pattern,
-    invalidate_genzai_cache,
-    invalidate_ukeoi_cache,
-    invalidate_stats_cache,
     SimpleCache,
 )
+# NOTE: invalidate_genzai_cache, invalidate_ukeoi_cache, invalidate_stats_cache removed - never used
 
 # Crypto Utils
 from .crypto_utils import (
@@ -93,11 +91,7 @@ from .crypto_utils import (
 # Search Service
 from .search_service import SearchService
 
-# Asset Service
-try:
-    from .asset_service import AssetService
-except ImportError:
-    AssetService = None  # AssetService not available
+# NOTE: asset_service.py removed - was unused in production
 
 __all__ = [
     # Auth
@@ -155,9 +149,6 @@ __all__ = [
     "get_cache_stats",
     "clear_cache",
     "invalidate_cache_pattern",
-    "invalidate_genzai_cache",
-    "invalidate_ukeoi_cache",
-    "invalidate_stats_cache",
     "SimpleCache",
     # Crypto Utils
     "encrypt_field",
@@ -165,5 +156,4 @@ __all__ = [
     "get_encryption_manager",
     # Services
     "SearchService",
-    "AssetService",
 ]

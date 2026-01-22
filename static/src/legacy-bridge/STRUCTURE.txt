@@ -1,0 +1,441 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                     UNIFIED BRIDGE SYSTEM STRUCTURE                        ║
+║                    Legacy ↔ Modern Component Bridge                        ║
+║                                                                            ║
+║                        Pattern: Strangler Fig                             ║
+║                   Gradual Migration Framework v1.0.0                       ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+
+📦 ARCHIVOS DEL BRIDGE
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─ Core System
+│
+├─ unified-bridge.js (22 KB)                    [MAIN ENTRY POINT]
+│  └─ UnifiedBridge class con:
+│     ├─ ComponentRegistry      - Registro de componentes modernos
+│     ├─ StateSyncManager       - Sincronización de estado
+│     ├─ MigrationTracker       - Tracking de migración
+│     ├─ RenderQueue            - Queue de renderización
+│     └─ EventSystem            - Sistema de eventos
+│
+├─ unified-state-bridge.js (6.2 KB)            [STATE SYNCHRONIZATION]
+│  └─ Sincroniza App.state ↔ UnifiedState
+│     ├─ initUnifiedStateBridge()
+│     ├─ getAppUnifiedState()
+│     ├─ switchPageModern()
+│     └─ subscribeToState()
+│
+├─ index.js (2.4 KB)                           [PUBLIC EXPORTS]
+│  └─ Re-exporta todas las APIs públicas
+│     ├─ getUnifiedBridge()
+│     ├─ setupBridgeWithDefaults()
+│     └─ quickStart()
+│
+└─ setup.js (16 KB)                            [CONFIGURATION]
+   └─ Helpers para inicialización
+      ├─ setupBridgeWithDefaults()  - Setup completo
+      ├─ setupBridgeMinimal()       - Solo componentes core
+      ├─ setupBridgeComplete()      - Todo con debug
+      ├─ setupBridgeYuKyu()         - Solo componentes YuKyu
+      └─ registerCustomComponent()  - Componentes personalizados
+
+
+📚 DOCUMENTACIÓN
+═══════════════════════════════════════════════════════════════════════════════
+
+├─ README.md (12 KB)                           [QUICK START]
+│  └─ Guía rápida de uso, API principal, ejemplos básicos
+│
+├─ MIGRATION_GUIDE.md (15 KB)                  [COMPREHENSIVE GUIDE]
+│  └─ Patrones completos de migración, mejores prácticas,
+│     troubleshooting, checklist, hoja de ruta
+│
+├─ examples.js (19 KB)                         [PRACTICAL EXAMPLES]
+│  └─ 10 ejemplos prácticos:
+│     ├─ Ejemplo 1: Alert notifications
+│     ├─ Ejemplo 2: Sync de año entre sistemas
+│     ├─ Ejemplo 3: Feature híbrida
+│     ├─ Ejemplo 4: Migración completa
+│     ├─ Ejemplo 5: Monitoreo de migración
+│     ├─ Ejemplo 6: Manejo de errores
+│     ├─ Ejemplo 7: Auth sync
+│     ├─ Ejemplo 8: Setup completo
+│     ├─ Ejemplo 9: Testing
+│     └─ Ejemplo 10: Performance
+│
+└─ bridge.test.js (20 KB)                      [UNIT TESTS]
+   └─ Suite de tests Jasmine/Jest:
+      ├─ Component Registry tests
+      ├─ State Synchronization tests
+      ├─ Component Rendering tests
+      ├─ Migration Tracking tests
+      ├─ Events tests
+      ├─ Debug tests
+      ├─ Integration tests
+      └─ Edge cases tests
+
+
+🏗️  ARQUITECTURA DEL BRIDGE
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          UNIFIED BRIDGE INSTANCE                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  ComponentRegistry                                                   │  │
+│  ├──────────────────────────────────────────────────────────────────────┤  │
+│  │  • register(name, Component, metadata)                              │  │
+│  │  • get(name)                                                        │  │
+│  │  • has(name)                                                        │  │
+│  │  • getAll()                                                         │  │
+│  │  • getByCategory(category)                                          │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  StateSyncManager                                                    │  │
+│  ├──────────────────────────────────────────────────────────────────────┤  │
+│  │  • syncValue(key, value, source)                                    │  │
+│  │  • getValue(key)                                                    │  │
+│  │  • subscribe(key, callback)                                         │  │
+│  │  • getSyncLog(limit)                                                │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  MigrationTracker                                                    │  │
+│  ├──────────────────────────────────────────────────────────────────────┤  │
+│  │  • registerFeature(name, system, details)                           │  │
+│  │  • trackComponentUsage(name, system)                                │  │
+│  │  • trackPageView(page, system)                                      │  │
+│  │  • getStatistics()                                                  │  │
+│  │  • getMigrationProgress()                                           │  │
+│  │  • generateReport()                                                 │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  RenderQueue + Events                                               │  │
+│  ├──────────────────────────────────────────────────────────────────────┤  │
+│  │  • renderInLegacy(name, id, props)                                  │  │
+│  │  • on(event, listener)                                              │  │
+│  │  • off(event, listener)                                             │  │
+│  │  Events: 'component-rendered', 'component-error', etc               │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+🔄 FLUJO DE DATOS
+═══════════════════════════════════════════════════════════════════════════════
+
+RENDERIZACIÓN:
+─────────────
+
+1. Legacy Code (app.js)
+   ↓
+   bridge.renderInLegacy('ComponentName', 'container-id', {props})
+   ↓
+2. Bridge Validation
+   ├─ Verificar componente registrado ✓
+   ├─ Verificar contenedor en DOM ✓
+   ├─ Validar props ✓
+   ↓
+3. Render Queue
+   └─ Encolar tarea asincrónica
+   ↓
+4. Component Execution
+   └─ Component(props) → HTMLElement
+   ↓
+5. DOM Update
+   ├─ Limpiar contenedor (opcional)
+   ├─ Insertar elemento
+   ├─ Emitir evento 'component-rendered'
+   ↓
+6. Modern Code
+   └─ Componente activo y funcional
+
+
+SINCRONIZACIÓN DE ESTADO:
+─────────────────────────
+
+Legacy (app.js)
+  ├─ App.state.selectedYear = 2025
+  ├─ Cambio no detectado automáticamente
+  ↓
+Bridge.syncState()
+  ├─ bridge.syncState('selectedYear', 2025)
+  ├─ Actualizar modernState Map
+  ├─ Actualizar App.state (si existe)
+  ├─ Notificar subscribers
+  ↓
+Modern (static/src/)
+  ├─ bridge.onStateChange('selectedYear', callback)
+  ├─ Recibir notificación
+  ├─ Recargar datos
+  ↓
+Sincronización bidireccional
+  └─ Ambos sistemas siempre en sync
+
+
+MIGRACIÓN:
+──────────
+
+Patrón Strangler Fig:
+
+ANTES:          100% Legacy
+                ┌──────────┐
+                │ app.js   │
+                └──────────┘
+
+DURANTE:        Hybrid + Bridge
+                ┌────────────────────────┐
+                │  Modern Components     │◄─ Nuevas features
+                │         ↓              │
+                │     [Bridge]           │   Gradualmente
+                │         ↓              │   reemplaza
+                │      app.js            │   legacy
+                └────────────────────────┘
+
+DESPUÉS:        100% Modern
+                ┌──────────────┐
+                │ Modern App   │
+                └──────────────┘
+
+
+📊 API COMPLETA
+═══════════════════════════════════════════════════════════════════════════════
+
+COMPONENTES:
+────────────
+registerModernComponent(name, Component, metadata)     - Registrar componente
+getRegisteredComponents()                               - Listar componentes
+componentRegistry.get(name)                             - Obtener componente
+componentRegistry.has(name)                             - Verificar existencia
+componentRegistry.getByCategory(category)               - Listar por categoría
+
+
+RENDERIZACIÓN:
+──────────────
+renderInLegacy(name, containerId, props, options)      - Renderizar componente
+on(eventType, listener)                                 - Escuchar eventos
+off(eventType, listener)                                - Remover listener
+
+
+ESTADO:
+───────
+syncState(key, value)                                   - Sincronizar valor
+getState(key)                                           - Obtener valor
+onStateChange(key, callback) → unsubscribe              - Escuchar cambios
+getStateSnapshot()                                      - Snapshot actual
+
+
+MIGRACIÓN:
+──────────
+registerFeature(name, system, details)                  - Registrar feature
+trackPageView(page, system)                             - Rastrear página
+getMigrationStats()                                     - Obtener estadísticas
+getMigrationProgress()                                  - Progreso 0-100
+getMigrationReport()                                    - Reporte formateado
+exportMigrationData()                                   - Exportar datos
+
+
+DEBUG:
+──────
+enableDebugMode()                                       - Modo debug
+getDebugInfo()                                          - Info de debug
+printDebugInfo()                                        - Imprimir info
+
+
+⚙️  INICIALIZACIÓN
+═══════════════════════════════════════════════════════════════════════════════
+
+OPCIÓN 1: Mínima (Solo bridge core)
+──────────────────────────────────
+
+import { initBridge } from '/static/src/legacy-bridge/index.js';
+
+const bridge = initBridge();
+// Usar bridge.registerModernComponent() manualmente
+
+
+OPCIÓN 2: Estándar (Con componentes comunes)
+────────────────────────────────────────────
+
+import { setupBridgeWithDefaults } from '/static/src/legacy-bridge/index.js';
+
+await setupBridgeWithDefaults({
+    categories: ['core', 'form', 'data'],
+    enableDebug: false,
+    setupDefaultFeatures: true
+});
+
+
+OPCIÓN 3: Completa (Todo incluido)
+─────────────────────────────────
+
+import { setupBridgeComplete } from '/static/src/legacy-bridge/index.js';
+
+await setupBridgeComplete();
+
+
+OPCIÓN 4: Quick Start (Más rápido)
+──────────────────────────────────
+
+import { quickStart } from '/static/src/legacy-bridge/index.js';
+
+const bridge = await quickStart();
+
+
+📋 CATEGORÍAS DE COMPONENTES
+═════════════════════════════════════════════════════════════════════════════
+
+core:
+  ├─ Alert           - Notificaciones
+  ├─ Modal           - Diálogos
+  ├─ Button          - Botones
+
+form:
+  ├─ Form            - Wrapper de formulario
+  ├─ Input           - Campos de texto
+  ├─ Select          - Dropdowns
+  └─ DatePicker      - Selectores de fecha
+
+data:
+  ├─ Table           - Tablas de datos
+  ├─ Card            - Contenedores de datos
+  └─ Badge           - Etiquetas
+
+layout:
+  ├─ Container       - Contenedor principal
+  ├─ Grid            - Layout de grid
+  └─ Stack           - Layout de stack
+
+yukyu:
+  ├─ EmployeeCard    - Tarjeta de empleado
+  ├─ LeaveRequestForm - Formulario de solicitud
+  ├─ ComplianceIndicator - Indicador de cumplimiento
+  └─ StatCard        - Tarjeta de estadísticas
+
+
+🎯 CASOS DE USO
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Mostrar Alert Moderno en Legacy
+   └─ bridge.renderInLegacy('Alert', 'container', {type, message})
+
+2. Sincronizar Filtro de Año
+   └─ bridge.syncState('selectedYear', 2025)
+
+3. Feature Híbrida (Tabla Legacy + Botones Modernos)
+   └─ Renderizar tabla legacy, renderizar botones modernos
+
+4. Monitorear Migración
+   └─ bridge.getMigrationProgress()
+
+5. Error Handling con Fallbacks
+   └─ try/catch + rendering alternativo
+
+6. Multi-idioma y Accesibilidad
+   └─ Componentes modernos con ARIA labels
+
+
+✅ CHECKLIST DE USO
+═══════════════════════════════════════════════════════════════════════════════
+
+Inicializar Bridge:
+  [ ] Importar { initBridge }
+  [ ] Llamar initBridge() ANTES de app.js
+  [ ] Verificar window.UnifiedBridge disponible
+
+Registrar Componentes:
+  [ ] Crear componente moderno
+  [ ] Exportar desde components/index.js
+  [ ] Registrar: bridge.registerModernComponent()
+  [ ] Verificar en getRegisteredComponents()
+
+Usar en Legacy:
+  [ ] Preparar contenedor HTML
+  [ ] Llamar bridge.renderInLegacy()
+  [ ] Manejar errores
+  [ ] Verificar render en DOM
+
+Sincronizar Estado:
+  [ ] Usar bridge.syncState() para cambios críticos
+  [ ] Escuchar con bridge.onStateChange()
+  [ ] Unsubscribirse cuando ya no necesite
+  [ ] Testear bidireccionalidad
+
+Rastrear Migración:
+  [ ] Registrar features: bridge.registerFeature()
+  [ ] Rastrear page views: bridge.trackPageView()
+  [ ] Revisar progreso: bridge.getMigrationProgress()
+  [ ] Analizar estadísticas: bridge.exportMigrationData()
+
+
+🔗 REFERENCIAS CRUZADAS
+═════════════════════════════════════════════════════════════════════════════
+
+├─ Archivos relacionados:
+│  ├─ /static/css/main.css                 - Design system
+│  ├─ /static/src/components/index.js      - Componentes modernos
+│  ├─ /static/js/app.js                    - App legacy (3,701 líneas)
+│  ├─ /static/src/store/unified-state.js   - State management moderno
+│  └─ /static/src/managers/                - Page managers
+│
+├─ Documentación:
+│  ├─ CLAUDE.md                            - Instrucciones del proyecto
+│  ├─ DESIGN_SYSTEM.md                     - Sistema de diseño
+│  ├─ /static/src/README.md                - Frontend moderno
+│  └─ /static/js/REFACTORING.md            - Refactoring legacy
+│
+└─ Testing:
+   ├─ tests/legacy-bridge.test.js          - Tests unitarios
+   ├─ tests/e2e/                           - Tests E2E
+   └─ jest.config.js                       - Configuración Jest
+
+
+📈 MÉTRICAS DE ÉXITO
+═════════════════════════════════════════════════════════════════════════════
+
+✓ 100% de componentes modernos en registry
+✓ 0 console errors o warnings
+✓ State sync bidireccional 100%
+✓ Render queue sin pendientes
+✓ Migration progress > 50% (Q2 2026)
+✓ Performance: Component render < 50ms
+✓ Accesibilidad: WCAG AA compliance
+✓ Test coverage: > 90%
+
+
+🚀 NEXT STEPS
+═════════════════════════════════════════════════════════════════════════════
+
+Q1 2026 (Actual):
+  • Dashboard y Employees como hybrid
+  • Alert y Modal modernos en uso
+  • State sync funcionando
+  • Bridge testing completo
+
+Q2 2026:
+  • Migrar Leave Requests completamente
+  • Forms modernos (LeaveRequestForm, etc)
+  • Reducir legacy code 30%
+
+Q3 2026:
+  • Analytics y Reports modernos
+  • Gráficos y visualizaciones
+  • Reducir legacy code 60%
+
+Q4 2026:
+  • Cleanup final
+  • Remover app.js
+  • 100% moderno
+
+
+═════════════════════════════════════════════════════════════════════════════════
+Última actualización: 2026-01-22
+Versión: 1.0.0
+Patrón: Strangler Fig
+Objetivo: Migración gradual sin downtime
+═════════════════════════════════════════════════════════════════════════════════

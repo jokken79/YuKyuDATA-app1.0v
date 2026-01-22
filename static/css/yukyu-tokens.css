@@ -6,30 +6,30 @@
 
 :root {
    /* =========================================
-       Colors
+       Colors - CYAN Theme (YuKyu Brand)
        ========================================= */
 
-   /* Brand Colors */
-   --color-primary: #7C3AED;
-   /* Violet 600 */
-   --color-primary-hover: #6D28D9;
-   /* Violet 700 */
-   --color-secondary: #A78BFA;
-   /* Violet 400 */
+   /* Brand Colors - CYAN */
+   --color-primary: #06b6d4;
+   /* Cyan 500 */
+   --color-primary-hover: #0891b2;
+   /* Cyan 600 */
+   --color-secondary: #22d3ee;
+   /* Cyan 400 */
    --color-cta: #F97316;
    /* Orange 500 */
    --color-cta-hover: #EA580C;
    /* Orange 600 */
 
    /* Backgrounds */
-   --color-bg-base: #FAF5FF;
-   /* Violet 50 */
+   --color-bg-base: #ecfeff;
+   /* Cyan 50 */
    --color-bg-card: #FFFFFF;
    --color-bg-overlay: rgba(255, 255, 255, 0.8);
 
    /* Text */
-   --color-text-primary: #4C1D95;
-   /* Violet 900 */
+   --color-text-primary: #164e63;
+   /* Cyan 900 */
    --color-text-secondary: #6B7280;
    /* Gray 500 */
    --color-text-on-primary: #FFFFFF;
@@ -121,12 +121,12 @@
 
 /* Dark Mode Overrides - CYAN Theme */
 [data-theme="dark"] {
-   --color-primary: #8B5CF6;
-   /* Violet 500 */
-   --color-primary-hover: #7C3AED;
-   /* Violet 600 */
-   --color-secondary: #C4B5FD;
-   /* Violet 300 */
+   --color-primary: #22d3ee;
+   /* Cyan 400 */
+   --color-primary-hover: #06b6d4;
+   /* Cyan 500 */
+   --color-secondary: #67e8f9;
+   /* Cyan 300 */
 
    --color-bg-base: #111827;
    /* Gray 900 */

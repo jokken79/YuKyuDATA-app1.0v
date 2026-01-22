@@ -592,55 +592,50 @@ def get_employees_enhanced(year=None, active_only=False):
     Retrieves employees with type (genzai/ukeoi/staff) and active status.
     Crosses employees table with genzai and ukeoi to determine employment type and status.
     """
-    conn = get_db_connection()
-    c = conn.cursor()
+    with get_db() as conn:  # Use context manager for safe connection handling
+        c = conn.cursor()
 
-    # Query with LEFT JOINs to genzai and ukeoi
-    query = '''
-        SELECT
-            e.*,
-            COALESCE(g.kana, u.kana, '') as kana,
-            CASE
-                WHEN g.id IS NOT NULL THEN 'genzai'
-                WHEN u.id IS NOT NULL THEN 'ukeoi'
-                ELSE 'staff'
-            END as employee_type,
-            COALESCE(g.status, u.status, '在職中') as employment_status,
-            CASE
-                WHEN g.status = '在職中' OR u.status = '在職中' OR (g.id IS NULL AND u.id IS NULL) THEN 1
-                ELSE 0
-            END as is_active
-        FROM employees e
-        LEFT JOIN genzai g ON e.employee_num = g.employee_num
-        LEFT JOIN ukeoi u ON e.employee_num = u.employee_num
-    '''
+        # Query with LEFT JOINs to genzai and ukeoi
+        query = '''
+            SELECT
+                e.*,
+                COALESCE(g.kana, u.kana, '') as kana,
+                CASE
+                    WHEN g.id IS NOT NULL THEN 'genzai'
+                    WHEN u.id IS NOT NULL THEN 'ukeoi'
+                    ELSE 'staff'
+                END as employee_type,
+                COALESCE(g.status, u.status, '在職中') as employment_status,
+                CASE
+                    WHEN g.status = '在職中' OR u.status = '在職中' OR (g.id IS NULL AND u.id IS NULL) THEN 1
+                    ELSE 0
+                END as is_active
+            FROM employees e
+            LEFT JOIN genzai g ON e.employee_num = g.employee_num
+            LEFT JOIN ukeoi u ON e.employee_num = u.employee_num
+        '''
 
-    params = []
-    conditions = []
+        params = []
+        conditions = []
 
-    if year:
-        conditions.append("e.year = ?")
-        params.append(year)
+        if year:
+            conditions.append("e.year = ?")
+            params.append(year)
 
-    if active_only:
-        conditions.append("""
-            (g.status = '在職中' OR u.status = '在職中' OR (g.id IS NULL AND u.id IS NULL))
-        """)
+        if active_only:
+            conditions.append("""
+                (g.status = '在職中' OR u.status = '在職中' OR (g.id IS NULL AND u.id IS NULL))
+            """)
 
-    if conditions:
-        query += " WHERE " + " AND ".join(conditions)
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
 
-    query += " ORDER BY e.usage_rate DESC"
+        query += " ORDER BY e.usage_rate DESC"
 
-    rows = c.execute(query, params).fetchall()
-    conn.close()
+        rows = c.execute(query, params).fetchall()
+        return [dict(row) for row in rows]
 
-    return [dict(row) for row in rows]
-
-def clear_database():
-    with get_db() as conn:
-        conn.execute("DELETE FROM employees")
-        conn.commit()
+# clear_database() removed - only used in tests, now in conftest.py
 
 # === GENZAI (Dispatch Employees) Functions ===
 
@@ -713,7 +708,15 @@ def save_genzai(genzai_data):
 
 def get_ukeoi(status=None, year=None, active_in_year=False):
     """
-    Retrieves contract employees with optional filters.
+    Retrieves contract employees (請負社員) with optional filters.
+
+    Args:
+        status: Filter by status (e.g., '在職中', '退職')
+        year: Filter by fiscal year
+        active_in_year: If True with year, filters employees who were active during that year
+
+    Returns:
+        List of employee dictionaries with decrypted sensitive fields
     """
     with get_db() as conn:
         c = conn.cursor()
@@ -754,152 +757,9 @@ def get_ukeoi(status=None, year=None, active_in_year=False):
 
         return result
 
-def clear_ukeoi():
-    """Clears ukeoi table."""
-    with get_db() as conn:
-        conn.execute("DELETE FROM ukeoi")
-        conn.commit()
-
-
-# ============================================
-# REFRESH TOKENS FUNCTIONS (Auth Service)
-# ============================================
-
-def init_refresh_tokens_table():
-    """Initializes the refresh_tokens table. Wrapper for init_db part."""
-    # This logic is already in init_db, but we expose it here for auth_service
-    init_db()
-
-def store_refresh_token(token_id, user_id, token_hash, expires_at, user_agent=None, ip_address=None):
-    """Stores a new refresh token hash."""
-    with get_db() as conn:
-        c = conn.cursor()
-        if USE_POSTGRESQL:
-            c.execute('''
-                INSERT INTO refresh_tokens
-                (id, user_id, token_hash, expires_at, user_agent, ip_address)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            ''', (token_id, user_id, token_hash, expires_at, user_agent, ip_address))
-        else:
-            c.execute('''
-                INSERT INTO refresh_tokens
-                (id, user_id, token_hash, expires_at, user_agent, ip_address)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (token_id, user_id, token_hash, expires_at, user_agent, ip_address))
-        conn.commit()
-
-def get_refresh_token_by_hash(token_hash):
-    """Retrieves a refresh token by its hash."""
-    with get_db() as conn:
-        c = conn.cursor()
-        query = "SELECT * FROM refresh_tokens WHERE token_hash = ?"
-        if USE_POSTGRESQL:
-            query = query.replace('?', '%s')
-        
-        row = c.execute(query, (token_hash,)).fetchone()
-        return dict(row) if row else None
-
-def revoke_refresh_token(token_hash):
-    """Revokes a refresh token (soft delete or flag)."""
-    with get_db() as conn:
-        c = conn.cursor()
-        query = """
-            UPDATE refresh_tokens 
-            SET revoked = 1, revoked_at = ? 
-            WHERE token_hash = ?
-        """
-        timestamp = datetime.now().isoformat()
-        if USE_POSTGRESQL:
-            query = query.replace('?', '%s')
-            
-        c.execute(query, (timestamp, token_hash))
-        conn.commit()
-        return c.rowcount > 0
-
-def revoke_all_user_refresh_tokens(user_id):
-    """Revokes all refresh tokens for a user."""
-    with get_db() as conn:
-        c = conn.cursor()
-        query = """
-            UPDATE refresh_tokens 
-            SET revoked = 1, revoked_at = ? 
-            WHERE user_id = ? AND revoked = 0
-        """
-        timestamp = datetime.now().isoformat()
-        if USE_POSTGRESQL:
-            query = query.replace('?', '%s')
-            
-        c.execute(query, (timestamp, user_id))
-        conn.commit()
-        return c.rowcount
-
-def is_refresh_token_valid(token_hash):
-    """Checks if a token is valid (exists, not revoked, not expired)."""
-    token = get_refresh_token_by_hash(token_hash)
-    if not token:
-        return False
-    
-    if token.get('revoked', 0) == 1:
-        return False
-        
-    expires_at = token.get('expires_at')
-    if expires_at:
-        try:
-            # Handle potential ISO format variations
-            exp_date = datetime.fromisoformat(expires_at)
-            if datetime.now() > exp_date:
-                return False
-        except ValueError:
-            pass # Fail safe structure
-            
-    return True
-
-def cleanup_expired_refresh_tokens():
-    """Permanently deletes expired or revoked tokens older than 30 days."""
-    with get_db() as conn:
-        c = conn.cursor()
-        cutoff_date = (datetime.now() - timedelta(days=30)).isoformat()
-        current_date = datetime.now().isoformat()
-        
-        query = """
-            DELETE FROM refresh_tokens 
-            WHERE (expires_at < ?) OR (revoked = 1 AND revoked_at < ?)
-        """
-        if USE_POSTGRESQL:
-            query = query.replace('?', '%s')
-            
-        c.execute(query, (current_date, cutoff_date))
-        conn.commit()
-        return c.rowcount
-
-def get_user_active_refresh_tokens(user_id):
-    """Returns active tokens for a user (session management)."""
-    with get_db() as conn:
-        c = conn.cursor()
-        current_date = datetime.now().isoformat()
-        query = """
-            SELECT * FROM refresh_tokens 
-            WHERE user_id = ? AND revoked = 0 AND expires_at > ?
-            ORDER BY created_at DESC
-        """
-        if USE_POSTGRESQL:
-            query = query.replace('?', '%s')
-            
-        rows = c.execute(query, (user_id, current_date)).fetchall()
-        return [dict(row) for row in rows]
-
-def get_refresh_token_stats():
-    """Returns statistics about refresh tokens."""
-    with get_db() as conn:
-        c = conn.cursor()
-        
-        c.execute("SELECT COUNT(*) as total FROM refresh_tokens")
-        total = c.fetchone()['total']
-        
-        c.execute("SELECT COUNT(*) as active FROM refresh_tokens WHERE revoked = 0")
-        active = c.fetchone()['active']
-        
-        return {"total": total, "active": active, "revoked": total - active}
+# clear_ukeoi() removed - only used in tests, now in conftest.py
+# Legacy refresh token functions removed (init_refresh_tokens_table, store_refresh_token)
+# Use newer versions with type hints located later in this file
 
 def get_genzai(status=None, year=None, active_in_year=False):
     """
@@ -950,11 +810,7 @@ def get_genzai(status=None, year=None, active_in_year=False):
 
         return result
 
-def clear_genzai():
-    """Clears genzai table."""
-    with get_db() as conn:
-        conn.execute("DELETE FROM genzai")
-        conn.commit()
+# clear_genzai() removed - only used in tests, now in conftest.py
 
 # === UKEOI (Contract Employees) Functions ===
 
@@ -1015,54 +871,8 @@ def save_ukeoi(ukeoi_data):
 
         conn.commit()
 
-def get_ukeoi(status=None, year=None, active_in_year=False):
-    """
-    Retrieves contract employees with optional filters.
-
-    Args:
-        status: Filter by status (e.g., '在職中')
-        year: Filter by fiscal year
-        active_in_year: If True with year, filters employees who were active during that year
-    """
-    with get_db() as conn:
-        c = conn.cursor()
-
-        query = "SELECT * FROM ukeoi WHERE 1=1"
-        params = []
-
-        if status:
-            query += " AND status = ?"
-            params.append(status)
-
-        if year and active_in_year:
-            year_start = f"{year}-01-01"
-            year_end = f"{year}-12-31"
-            query += """ AND (
-                (hire_date IS NULL OR hire_date <= ?)
-                AND (leave_date IS NULL OR leave_date >= ?)
-            )"""
-            params.extend([year_end, year_start])
-
-        query += " ORDER BY name"
-        rows = c.execute(query, params).fetchall()
-
-        # Decrypt sensitive fields
-        result = []
-        for row in rows:
-            emp = dict(row)
-            if emp.get('birth_date'):
-                emp['birth_date'] = decrypt_field(emp['birth_date']) or emp['birth_date']
-            if emp.get('hourly_wage'):
-                try:
-                    decrypted = decrypt_field(emp['hourly_wage'])
-                    if decrypted:
-                        emp['hourly_wage'] = int(float(decrypted))
-                except (ValueError, TypeError):
-                    pass
-            result.append(emp)
-
-        return result
-
+# P2.1 FIX: Removed duplicate get_ukeoi() function (was defined at line 714)
+# The original function at line 714 is the authoritative version
 
 # === STAFF Functions ===
 
@@ -1188,17 +998,7 @@ def get_staff(status=None, year=None, active_in_year=False):
         return result
 
 
-def clear_staff():
-    """Clears staff table."""
-    with get_db() as conn:
-        conn.execute("DELETE FROM staff")
-        conn.commit()
-
-def clear_ukeoi():
-    """Clears ukeoi table."""
-    with get_db() as conn:
-        conn.execute("DELETE FROM ukeoi")
-        conn.commit()
+# clear_staff() and duplicate clear_ukeoi() removed - only used in tests
 
 # === STATISTICS Functions ===
 
@@ -1633,12 +1433,7 @@ def get_monthly_usage_summary(year):
 
         return result
 
-def clear_yukyu_usage_details():
-    """Clears all yukyu usage details from the database."""
-    with get_db() as conn:
-        conn.execute("DELETE FROM yukyu_usage_details")
-        conn.commit()
-
+# clear_yukyu_usage_details() removed - only used in tests
 
 # ============================================
 # EDIT YUKYU USAGE DETAILS (NEW - v2.1 feature)
@@ -2315,34 +2110,9 @@ def get_audit_log(
         return result
 
 
-def get_audit_log_by_user(user_id: str, limit: int = 100) -> List[Dict]:
-    """
-    Obtiene todos los registros de audit de un usuario especifico.
-
-    Args:
-        user_id: ID del usuario
-        limit: Maximo de registros a retornar
-
-    Returns:
-        Lista de registros de audit del usuario
-    """
-    return get_audit_log(user_id=user_id, limit=limit)
-
-
-def get_entity_history(entity_type: str, entity_id: str, limit: int = 50) -> List[Dict]:
-    """
-    Obtiene el historial completo de cambios de una entidad.
-
-    Args:
-        entity_type: Tipo de entidad
-        entity_id: ID de la entidad
-        limit: Maximo de registros
-
-    Returns:
-        Lista de cambios ordenados por fecha (mas reciente primero)
-    """
-    return get_audit_log(entity_type=entity_type, entity_id=entity_id, limit=limit)
-
+# NOTE: get_audit_log_by_user and get_entity_history removed (2026-01)
+# They were simple wrappers around get_audit_log() with no callers.
+# Use get_audit_log(user_id=...) or get_audit_log(entity_type=..., entity_id=...) directly.
 
 def get_audit_stats(days: int = 30) -> Dict:
     """
@@ -2883,25 +2653,7 @@ def mark_all_notifications_read(user_id: str, notification_ids: list) -> int:
         return marked_count
 
 
-def is_notification_read(notification_id: str, user_id: str) -> bool:
-    """
-    Verifica si una notificación ha sido leída por un usuario.
-
-    Args:
-        notification_id: ID de la notificación
-        user_id: ID del usuario
-
-    Returns:
-        True si está leída, False si no
-    """
-    with get_db() as conn:
-        c = conn.cursor()
-        c.execute('''
-            SELECT 1 FROM notification_reads
-            WHERE notification_id = ? AND user_id = ?
-        ''', (notification_id, user_id))
-        return c.fetchone() is not None
-
+# is_notification_read() removed - redundant with get_read_notification_ids()
 
 def get_read_notification_ids(user_id: str) -> set:
     """
@@ -3047,26 +2799,7 @@ def get_refresh_token_by_hash(token_hash: str) -> Optional[Dict]:
         return None
 
 
-def get_refresh_token_by_id(token_id: str) -> Optional[Dict]:
-    """
-    Busca un refresh token por su ID.
-
-    Args:
-        token_id: ID del token
-
-    Returns:
-        Dict con los datos del token o None si no existe
-    """
-    with get_db() as conn:
-        c = conn.cursor()
-
-        c.execute('SELECT * FROM refresh_tokens WHERE id = ?', (token_id,))
-
-        row = c.fetchone()
-        if row:
-            return dict(row)
-        return None
-
+# get_refresh_token_by_id() removed - security: use get_refresh_token_by_hash() instead
 
 def revoke_refresh_token(token_hash: str) -> bool:
     """
@@ -3092,29 +2825,7 @@ def revoke_refresh_token(token_hash: str) -> bool:
         return c.rowcount > 0
 
 
-def revoke_refresh_token_by_id(token_id: str) -> bool:
-    """
-    Revoca un refresh token por su ID.
-
-    Args:
-        token_id: ID del token a revocar
-
-    Returns:
-        True si se revocó correctamente
-    """
-    with get_db() as conn:
-        c = conn.cursor()
-        timestamp = datetime.now().isoformat()
-
-        c.execute('''
-            UPDATE refresh_tokens
-            SET revoked = 1, revoked_at = ?
-            WHERE id = ? AND revoked = 0
-        ''', (timestamp, token_id))
-
-        conn.commit()
-        return c.rowcount > 0
-
+# revoke_refresh_token_by_id() removed - security: use revoke_refresh_token() (by hash) instead
 
 def revoke_all_user_refresh_tokens(user_id: str) -> int:
     """
@@ -3260,3 +2971,93 @@ def get_refresh_token_stats() -> Dict:
             "expired": expired,
             "unique_users_with_sessions": unique_users
         }
+
+
+# ============================================
+# RESET FUNCTIONS (Admin operations)
+# ============================================
+
+def reset_employees():
+    """Clear all employee data from database. Admin operation."""
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM employees")
+        conn.commit()
+        log_audit_event("employees", "RESET_ALL", "admin", None, None, "All employees cleared")
+
+
+def reset_genzai():
+    """Clear all genzai data from database. Admin operation."""
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM genzai")
+        conn.commit()
+        log_audit_event("genzai", "RESET_ALL", "admin", None, None, "All genzai cleared")
+
+
+def reset_ukeoi():
+    """Clear all ukeoi data from database. Admin operation."""
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM ukeoi")
+        conn.commit()
+        log_audit_event("ukeoi", "RESET_ALL", "admin", None, None, "All ukeoi cleared")
+
+
+def reset_staff():
+    """Clear all staff data from database. Admin operation."""
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM staff")
+        conn.commit()
+        log_audit_event("staff", "RESET_ALL", "admin", None, None, "All staff cleared")
+
+
+# ============================================
+# USAGE DETAIL FUNCTIONS
+# ============================================
+
+def get_usage_detail_by_id(detail_id: int) -> Optional[Dict]:
+    """Get a single yukyu usage detail by ID."""
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM yukyu_usage_details WHERE id = ?", (detail_id,))
+        row = c.fetchone()
+        return dict(row) if row else None
+
+
+def create_yukyu_usage_detail(
+    employee_num: str,
+    name: str,
+    use_date: str,
+    days_used: float = 1.0,
+    year: int = None,
+    month: int = None
+) -> int:
+    """Create a new yukyu usage detail record. Returns the new ID."""
+    from datetime import datetime
+    if year is None or month is None:
+        date_obj = datetime.strptime(use_date, "%Y-%m-%d")
+        year = year or date_obj.year
+        month = month or date_obj.month
+
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute('''
+            INSERT INTO yukyu_usage_details
+            (employee_num, name, use_date, days_used, year, month, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (employee_num, name, use_date, days_used, year, month, datetime.now().isoformat()))
+        conn.commit()
+        return c.lastrowid
+
+
+# ============================================
+# ALIASES FOR BACKWARD COMPATIBILITY
+# ============================================
+
+# Alias: get_audit_logs -> get_audit_log (routes use plural form)
+get_audit_logs = get_audit_log
+
+# Alias: cleanup_audit_log -> cleanup_old_audit_logs (routes use shorter name)
+cleanup_audit_log = cleanup_old_audit_logs
