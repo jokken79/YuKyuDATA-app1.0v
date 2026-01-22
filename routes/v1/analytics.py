@@ -3,11 +3,13 @@ Analytics Routes
 Endpoints de analisis y KPIs
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional
 from datetime import datetime
 
 from ..dependencies import (
+    get_current_user,
+    CurrentUser,
     database,
     logger,
     get_active_employee_nums,
@@ -21,7 +23,10 @@ router = APIRouter(prefix="", tags=["Analytics"])
 # ============================================
 
 @router.get("/stats/by-factory")
-async def get_stats_by_factory(year: int = None):
+async def get_stats_by_factory(
+    year: int = None,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get statistics grouped by factory/haken.
     Obtiene estadisticas agrupadas por fabrica/haken.
@@ -69,7 +74,9 @@ async def get_stats_by_factory(year: int = None):
 
 
 @router.get("/factories")
-async def get_factories():
+async def get_factories(
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get list of unique factories/haken values.
     Obtiene lista de valores unicos de fabricas/haken.
@@ -94,7 +101,10 @@ async def get_factories():
 
 
 @router.get("/analytics/top10-active/{year}")
-async def get_top10_active_users(year: int):
+async def get_top10_active_users(
+    year: int,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get top 10 active users (only 在職中).
     Excludes employees who have resigned.
@@ -141,7 +151,11 @@ async def get_top10_active_users(year: int):
 
 
 @router.get("/analytics/high-balance-active/{year}")
-async def get_high_balance_active(year: int, min_balance: float = 20):
+async def get_high_balance_active(
+    year: int,
+    min_balance: float = 20,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get active employees with high balance.
     Useful for identifying employees who should be encouraged to use leave.
@@ -184,7 +198,10 @@ async def get_high_balance_active(year: int, min_balance: float = 20):
 
 
 @router.get("/analytics/dashboard/{year}")
-async def get_dashboard_analytics(year: int):
+async def get_dashboard_analytics(
+    year: int,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get comprehensive dashboard analytics.
     Obtiene analiticas completas para el dashboard.
@@ -254,7 +271,10 @@ async def get_dashboard_analytics(year: int):
 
 
 @router.get("/analytics/monthly-trend/{year}")
-async def get_monthly_trend(year: int):
+async def get_monthly_trend(
+    year: int,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get monthly usage trend for a year.
     Obtiene tendencia mensual de uso para un ano.
@@ -281,7 +301,10 @@ async def get_monthly_trend(year: int):
 
 
 @router.get("/analytics/predictions/{year}")
-async def get_usage_predictions(year: int):
+async def get_usage_predictions(
+    year: int,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get usage predictions based on historical data.
     Obtiene predicciones de uso basadas en datos historicos.

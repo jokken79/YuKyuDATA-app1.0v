@@ -2996,3 +2996,93 @@ def get_refresh_token_stats() -> Dict:
             "expired": expired,
             "unique_users_with_sessions": unique_users
         }
+
+
+# ============================================
+# RESET FUNCTIONS (Admin operations)
+# ============================================
+
+def reset_employees():
+    """Clear all employee data from database. Admin operation."""
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM employees")
+        conn.commit()
+        log_audit_event("employees", "RESET_ALL", "admin", None, None, "All employees cleared")
+
+
+def reset_genzai():
+    """Clear all genzai data from database. Admin operation."""
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM genzai")
+        conn.commit()
+        log_audit_event("genzai", "RESET_ALL", "admin", None, None, "All genzai cleared")
+
+
+def reset_ukeoi():
+    """Clear all ukeoi data from database. Admin operation."""
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM ukeoi")
+        conn.commit()
+        log_audit_event("ukeoi", "RESET_ALL", "admin", None, None, "All ukeoi cleared")
+
+
+def reset_staff():
+    """Clear all staff data from database. Admin operation."""
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM staff")
+        conn.commit()
+        log_audit_event("staff", "RESET_ALL", "admin", None, None, "All staff cleared")
+
+
+# ============================================
+# USAGE DETAIL FUNCTIONS
+# ============================================
+
+def get_usage_detail_by_id(detail_id: int) -> Optional[Dict]:
+    """Get a single yukyu usage detail by ID."""
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM yukyu_usage_details WHERE id = ?", (detail_id,))
+        row = c.fetchone()
+        return dict(row) if row else None
+
+
+def create_yukyu_usage_detail(
+    employee_num: str,
+    name: str,
+    use_date: str,
+    days_used: float = 1.0,
+    year: int = None,
+    month: int = None
+) -> int:
+    """Create a new yukyu usage detail record. Returns the new ID."""
+    from datetime import datetime
+    if year is None or month is None:
+        date_obj = datetime.strptime(use_date, "%Y-%m-%d")
+        year = year or date_obj.year
+        month = month or date_obj.month
+
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute('''
+            INSERT INTO yukyu_usage_details
+            (employee_num, name, use_date, days_used, year, month, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (employee_num, name, use_date, days_used, year, month, datetime.now().isoformat()))
+        conn.commit()
+        return c.lastrowid
+
+
+# ============================================
+# ALIASES FOR BACKWARD COMPATIBILITY
+# ============================================
+
+# Alias: get_audit_logs -> get_audit_log (routes use plural form)
+get_audit_logs = get_audit_log
+
+# Alias: cleanup_audit_log -> cleanup_old_audit_logs (routes use shorter name)
+cleanup_audit_log = cleanup_old_audit_logs

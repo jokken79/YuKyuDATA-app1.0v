@@ -41,7 +41,8 @@ async def get_custom_report_data(
     year: int,
     month: Optional[int] = None,
     haken: Optional[str] = None,
-    active_only: bool = True
+    active_only: bool = True,
+    user: CurrentUser = Depends(get_current_user)
 ):
     """
     Get data for custom report generation.
@@ -90,7 +91,11 @@ async def get_custom_report_data(
 
 
 @router.get("/monthly/{year}/{month}")
-async def get_monthly_report_data(year: int, month: int):
+async def get_monthly_report_data(
+    year: int,
+    month: int,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get monthly report data for the 21st-20th period.
     Obtiene datos del reporte mensual para el periodo 21-20.
@@ -129,7 +134,10 @@ async def get_monthly_report_data(year: int, month: int):
 
 
 @router.get("/monthly-list/{year}")
-async def get_monthly_reports_list(year: int):
+async def get_monthly_reports_list(
+    year: int,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get list of monthly reports available for a year.
     Obtiene lista de reportes mensuales disponibles para un ano.

@@ -52,7 +52,7 @@
 
     /* --- BORDERS --- */
     --border-subtle: rgba(0, 0, 0, 0.06);
-    --border-focus: rgba(124, 58, 237, 0.4);
+    --border-focus: rgba(6, 182, 212, 0.4);
 
     --text-primary: #1e1b4b;
     --text-secondary: #475569;
@@ -124,7 +124,7 @@
 
     /* Borders */
     --border-subtle: rgba(255, 255, 255, 0.1);
-    --border-focus: rgba(139, 92, 246, 0.5);
+    --border-focus: rgba(34, 211, 238, 0.5);
 
     /* Text */
     --text-primary: #f8fafc;
@@ -139,5 +139,5 @@
 
     /* Glass */
     --glass-bg: rgba(30, 41, 59, 0.7);
-    --primary-glow: hsla(258, 89%, 66%, 0.2);
+    --primary-glow: hsla(188, 94%, 43%, 0.2);
 }

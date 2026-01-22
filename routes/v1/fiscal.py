@@ -73,7 +73,11 @@ async def process_carryover(
 
 
 @router.get("/balance-breakdown/{employee_num}")
-async def get_balance_breakdown(employee_num: str, year: Optional[int] = None):
+async def get_balance_breakdown(
+    employee_num: str,
+    year: Optional[int] = None,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get detailed balance breakdown for an employee.
     Shows balance by grant year (LIFO order).
@@ -100,7 +104,8 @@ async def get_balance_breakdown(employee_num: str, year: Optional[int] = None):
 @router.get("/expiring-soon")
 async def get_expiring_soon(
     year: Optional[int] = None,
-    threshold_months: int = 3
+    threshold_months: int = 3,
+    user: CurrentUser = Depends(get_current_user)
 ):
     """
     Get employees with days expiring soon.
@@ -125,7 +130,10 @@ async def get_expiring_soon(
 
 
 @router.get("/5day-compliance/{year}")
-async def get_5day_compliance(year: int):
+async def get_5day_compliance(
+    year: int,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Check 5-day compliance for all employees.
     Verifica cumplimiento de 5 dias para todos los empleados.
@@ -143,7 +151,10 @@ async def get_5day_compliance(year: int):
 
 
 @router.get("/grant-recommendation/{employee_num}")
-async def get_grant_recommendation_endpoint(employee_num: str):
+async def get_grant_recommendation_endpoint(
+    employee_num: str,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get grant recommendation for an employee based on seniority.
     Obtiene recomendacion de otorgamiento basada en antiguedad.

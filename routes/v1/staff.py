@@ -26,7 +26,10 @@ _excel_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="staff_pa
 
 
 @router.get("/staff")
-async def get_staff(status: str = None):
+async def get_staff(
+    status: str = None,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get staff (office) employees.
     Obtiene personal de oficina.

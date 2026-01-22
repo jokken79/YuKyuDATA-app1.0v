@@ -82,7 +82,7 @@
 .input-glass:focus {
     background: rgba(255, 255, 255, 0.8);
     border-color: var(--primary);
-    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+    box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.1);
 }
 
 /* --- STAT CARDS (Bento Items) --- */
@@ -148,7 +148,7 @@
 
 .progress-ring__circle--primary {
     stroke: var(--primary);
-    filter: drop-shadow(0 0 6px rgba(124, 58, 237, 0.5));
+    filter: drop-shadow(0 0 6px rgba(6, 182, 212, 0.5));
 }
 
 .progress-ring__value {
@@ -201,9 +201,9 @@
 }
 
 .badge-primary {
-    background: rgba(124, 58, 237, 0.15);
+    background: rgba(6, 182, 212, 0.15);
     color: var(--primary);
-    border: 1px solid rgba(124, 58, 237, 0.3);
+    border: 1px solid rgba(6, 182, 212, 0.3);
 }
 
 .badge-success {
@@ -543,7 +543,7 @@
 }
 
 .dialog-icon.info {
-    background: rgba(124, 58, 237, 0.1);
+    background: rgba(6, 182, 212, 0.1);
     color: var(--primary);
 }
 
@@ -609,7 +609,7 @@
     background: var(--primary);
     border: none;
     color: #fff;
-    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -619,7 +619,7 @@
 
 .fab:hover {
     transform: scale(1.1);
-    box-shadow: 0 8px 16px rgba(124, 58, 237, 0.6);
+    box-shadow: 0 8px 16px rgba(6, 182, 212, 0.6);
 }
 
 .fab.open {
