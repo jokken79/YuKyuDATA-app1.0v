@@ -38,12 +38,72 @@ except ImportError:
 class SearchService:
     """Provides full-text search functionality for employee records."""
 
+    # Whitelist of allowed tables for search queries (SQL Injection prevention)
+    ALLOWED_TABLES = frozenset({'employees', 'genzai', 'ukeoi', 'staff'})
+
     def __init__(self):
         """Initialize search service."""
         self.use_postgresql = os.getenv('DATABASE_TYPE', 'sqlite').lower() == 'postgresql'
 
         if not self.use_postgresql:
             logger.warning("⚠️  Full-text search requires PostgreSQL")
+
+    def _execute_search(
+        self,
+        table: str,
+        columns: List[str],
+        query: str,
+        limit: int,
+        offset: int,
+        order_by: str = "relevance DESC"
+    ) -> List[Dict[str, Any]]:
+        """
+        Generic search execution method (DRY helper).
+
+        Args:
+            table: Table name (must be in ALLOWED_TABLES)
+            columns: List of column names to select
+            query: Search query string
+            limit: Maximum results
+            offset: Pagination offset
+            order_by: ORDER BY clause
+
+        Returns:
+            List of matching records as dictionaries
+        """
+        if table not in self.ALLOWED_TABLES:
+            logger.warning(f"⚠️  Rejected invalid table: {table}")
+            return []
+
+        if not self.use_postgresql or not HAS_DATABASE:
+            return []
+
+        try:
+            with database.get_db() as conn:
+                cursor = conn.cursor()
+
+                # Build column list for SELECT
+                select_cols = ', '.join(columns)
+
+                cursor.execute(f"""
+                    SELECT {select_cols},
+                           ts_rank(search_vector, query) as relevance
+                    FROM {table},
+                         plainto_tsquery('english', %s) query
+                    WHERE search_vector @@ query
+                    ORDER BY {order_by}
+                    LIMIT %s OFFSET %s
+                """, (query, limit, offset))
+
+                result_columns = columns + ['relevance']
+                results = [dict(zip(result_columns, row)) for row in cursor.fetchall()]
+
+                logger.info(f"✅ Found {len(results)} {table} matching '{query}'")
+                return results
+
+        except Exception as e:
+            logger.error(f"❌ {table} search failed: {e}")
+            return []
 
     def search_employees(
         self,
@@ -282,7 +342,20 @@ class SearchService:
             return []
 
     def get_search_count(self, table: str, query: str) -> int:
-        """Get total count of matching records (for pagination)."""
+        """Get total count of matching records (for pagination).
+
+        Args:
+            table: Table name (must be in ALLOWED_TABLES whitelist)
+            query: Search query string
+
+        Returns:
+            Count of matching records, or 0 if invalid table or error
+        """
+        # SQL Injection prevention: validate table name against whitelist
+        if table not in self.ALLOWED_TABLES:
+            logger.warning(f"⚠️  Rejected invalid table name: {table}")
+            return 0
+
         if not self.use_postgresql or not HAS_DATABASE:
             return 0
 
@@ -290,6 +363,7 @@ class SearchService:
             with database.get_db() as conn:
                 cursor = conn.cursor()
 
+                # Table name is now safe (validated against whitelist)
                 cursor.execute(f"""
                     SELECT COUNT(*)
                     FROM {table},
