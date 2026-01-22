@@ -10,10 +10,10 @@ Características:
 
 from datetime import date, datetime
 from typing import Optional, Dict, List, Tuple
-import sqlite3
-from contextlib import contextmanager
+import os
 
-DB_NAME = "yukyu.db"
+# Import centralized database connection - P0.1 FIX: Single source of truth
+from database import get_db, USE_POSTGRESQL
 
 # Tabla de otorgamiento según antigüedad (Ley Laboral Japonesa Art. 39)
 GRANT_TABLE = {
@@ -26,27 +26,17 @@ GRANT_TABLE = {
     6.5: 20,   # 6+ años (máximo legal)
 }
 
-# Configuración del período fiscal
+# Configuración del período fiscal - P1.2 FIX: Externalized to env vars
+# Allows customization without code changes (e.g., different fiscal period)
 FISCAL_CONFIG = {
-    'period_start_day': 21,           # Día de inicio del período mensual
-    'period_end_day': 20,             # Día de fin del período mensual
-    'max_carry_over_years': 2,        # Máximo años de carry-over
-    'max_accumulated_days': 40,       # Máximo días acumulables
-    'minimum_annual_use': 5,          # 5日取得義務
-    'minimum_days_for_obligation': 10, # Aplica obligación si tiene 10+ días
-    'ledger_retention_years': 3,      # Años de retención de registros
+    'period_start_day': int(os.getenv('FISCAL_PERIOD_START_DAY', '21')),      # Día de inicio del período mensual
+    'period_end_day': int(os.getenv('FISCAL_PERIOD_END_DAY', '20')),          # Día de fin del período mensual
+    'max_carry_over_years': int(os.getenv('FISCAL_MAX_CARRY_OVER_YEARS', '2')), # Máximo años de carry-over
+    'max_accumulated_days': int(os.getenv('FISCAL_MAX_ACCUMULATED_DAYS', '40')), # Máximo días acumulables
+    'minimum_annual_use': int(os.getenv('FISCAL_MINIMUM_ANNUAL_USE', '5')),   # 5日取得義務
+    'minimum_days_for_obligation': int(os.getenv('FISCAL_MIN_DAYS_FOR_OBLIGATION', '10')), # Aplica obligación si tiene 10+ días
+    'ledger_retention_years': int(os.getenv('FISCAL_LEDGER_RETENTION_YEARS', '3')), # Años de retención de registros
 }
-
-
-@contextmanager
-def get_db():
-    """Context manager para conexiones seguras a BD"""
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    try:
-        yield conn
-    finally:
-        conn.close()
 
 
 def calculate_seniority_years(hire_date: str, reference_date: date = None) -> float:

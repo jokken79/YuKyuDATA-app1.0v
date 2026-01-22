@@ -713,7 +713,15 @@ def save_genzai(genzai_data):
 
 def get_ukeoi(status=None, year=None, active_in_year=False):
     """
-    Retrieves contract employees with optional filters.
+    Retrieves contract employees (請負社員) with optional filters.
+
+    Args:
+        status: Filter by status (e.g., '在職中', '退職')
+        year: Filter by fiscal year
+        active_in_year: If True with year, filters employees who were active during that year
+
+    Returns:
+        List of employee dictionaries with decrypted sensitive fields
     """
     with get_db() as conn:
         c = conn.cursor()
@@ -1015,54 +1023,8 @@ def save_ukeoi(ukeoi_data):
 
         conn.commit()
 
-def get_ukeoi(status=None, year=None, active_in_year=False):
-    """
-    Retrieves contract employees with optional filters.
-
-    Args:
-        status: Filter by status (e.g., '在職中')
-        year: Filter by fiscal year
-        active_in_year: If True with year, filters employees who were active during that year
-    """
-    with get_db() as conn:
-        c = conn.cursor()
-
-        query = "SELECT * FROM ukeoi WHERE 1=1"
-        params = []
-
-        if status:
-            query += " AND status = ?"
-            params.append(status)
-
-        if year and active_in_year:
-            year_start = f"{year}-01-01"
-            year_end = f"{year}-12-31"
-            query += """ AND (
-                (hire_date IS NULL OR hire_date <= ?)
-                AND (leave_date IS NULL OR leave_date >= ?)
-            )"""
-            params.extend([year_end, year_start])
-
-        query += " ORDER BY name"
-        rows = c.execute(query, params).fetchall()
-
-        # Decrypt sensitive fields
-        result = []
-        for row in rows:
-            emp = dict(row)
-            if emp.get('birth_date'):
-                emp['birth_date'] = decrypt_field(emp['birth_date']) or emp['birth_date']
-            if emp.get('hourly_wage'):
-                try:
-                    decrypted = decrypt_field(emp['hourly_wage'])
-                    if decrypted:
-                        emp['hourly_wage'] = int(float(decrypted))
-                except (ValueError, TypeError):
-                    pass
-            result.append(emp)
-
-        return result
-
+# P2.1 FIX: Removed duplicate get_ukeoi() function (was defined at line 714)
+# The original function at line 714 is the authoritative version
 
 # === STAFF Functions ===
 

@@ -126,6 +126,13 @@
   color: #94a3b8 !important; /* slate-400, ratio 4.6:1 con #0f172a */
 }
 
+/* P2.3 FIX: Light Mode - Textos secundarios con contraste WCAG AA */
+[data-theme="light"] .text-muted,
+[data-theme="light"] .text-secondary,
+[data-theme="light"] .help-text {
+  color: #64748b !important; /* slate-500, ratio 4.5:1 con #ffffff - WCAG AA compliant */
+}
+
 /* Light Mode - Pagination buttons más visibles */
 [data-theme="light"] .pagination-btn,
 [data-theme="light"] .page-link {
@@ -360,6 +367,120 @@
   /* Smaller text */
   .stat-value {
     font-size: 2rem !important;
+  }
+}
+
+/* ========================================
+   P2.2 FIX: RESPONSIVE TABLES WITH COLUMN HIDING
+   Tablas adaptativas que ocultan columnas secundarias en móvil
+   ======================================== */
+
+/* Column priority classes */
+.col-priority-1 { /* Always visible */ }
+.col-priority-2 { /* Hidden on tablet and below */ }
+.col-priority-3 { /* Hidden on mobile */ }
+
+/* Hide low priority columns on tablets */
+@media (max-width: 1024px) {
+  .data-table .col-priority-3,
+  .employee-table .col-priority-3,
+  table .col-priority-3 {
+    display: none !important;
+  }
+}
+
+/* Hide medium priority columns on mobile */
+@media (max-width: 768px) {
+  .data-table .col-priority-2,
+  .employee-table .col-priority-2,
+  table .col-priority-2 {
+    display: none !important;
+  }
+
+  /* Responsive table: Card-based layout on mobile */
+  .responsive-table {
+    display: block;
+  }
+
+  .responsive-table thead {
+    display: none;
+  }
+
+  .responsive-table tbody,
+  .responsive-table tr {
+    display: block;
+  }
+
+  .responsive-table tr {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: var(--glass-bg-dark, rgba(15, 23, 42, 0.8));
+    border-radius: 8px;
+    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+  }
+
+  [data-theme="light"] .responsive-table tr {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(0, 0, 0, 0.08);
+  }
+
+  .responsive-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  [data-theme="light"] .responsive-table td {
+    border-bottom-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .responsive-table td:last-child {
+    border-bottom: none;
+  }
+
+  .responsive-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--color-primary-400, #22d3ee);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  [data-theme="light"] .responsive-table td::before {
+    color: var(--color-primary-700, #0e7490);
+  }
+}
+
+/* Table horizontal scroll with snap */
+.table-scroll-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+
+.table-scroll-container table {
+  min-width: 600px;
+}
+
+/* Indicate scrollable table */
+.table-scroll-container::before {
+  content: '← スクロール →';
+  display: none;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted, #94a3b8);
+  padding: 0.5rem;
+  background: rgba(6, 182, 212, 0.1);
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .table-scroll-container.has-overflow::before {
+    display: block;
   }
 }
 
