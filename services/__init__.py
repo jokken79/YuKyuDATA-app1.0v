@@ -23,8 +23,42 @@ from .auth import (
 # Auth Service
 from .auth_service import AuthService
 
-# Fiscal Year
-from .fiscal_year import (
+# Fiscal Year - Lazy import to avoid circular dependency with database
+# These are imported on-demand in functions that need them
+def _import_fiscal_year():
+    from .fiscal_year import (
+        process_year_end_carryover,
+        get_employee_balance_breakdown,
+        check_expiring_soon,
+        check_5day_compliance,
+        get_grant_recommendation,
+        calculate_seniority_years,
+        calculate_granted_days,
+        get_fiscal_period,
+        get_fiscal_year_period,
+        apply_lifo_deduction,
+        apply_fifo_deduction,
+        FISCAL_CONFIG,
+        GRANT_TABLE,
+    )
+    return (
+        process_year_end_carryover,
+        get_employee_balance_breakdown,
+        check_expiring_soon,
+        check_5day_compliance,
+        get_grant_recommendation,
+        calculate_seniority_years,
+        calculate_granted_days,
+        get_fiscal_period,
+        get_fiscal_year_period,
+        apply_lifo_deduction,
+        apply_fifo_deduction,
+        FISCAL_CONFIG,
+        GRANT_TABLE,
+    )
+
+# Create lazy-loaded exports
+(
     process_year_end_carryover,
     get_employee_balance_breakdown,
     check_expiring_soon,
@@ -38,7 +72,7 @@ from .fiscal_year import (
     apply_fifo_deduction,
     FISCAL_CONFIG,
     GRANT_TABLE,
-)
+) = _import_fiscal_year()
 
 # Notifications
 from .notifications import (

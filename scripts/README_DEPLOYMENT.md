@@ -205,7 +205,11 @@ Create `.env` in project root:
 # Server
 HOST=0.0.0.0
 PORT=8000
+FRONTEND_PORT=3000
 DEBUG=false
+
+# CORS (keep in sync with PORT/FRONTEND_PORT)
+CORS_ORIGINS=http://localhost:3000,http://localhost:8000
 
 # Database
 DATABASE_URL=sqlite:///./yukyu.db

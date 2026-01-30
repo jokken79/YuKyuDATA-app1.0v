@@ -10,10 +10,9 @@ Características:
 
 from datetime import date, datetime
 from typing import Optional, Dict, List, Tuple
-import os
 
-# Import centralized database connection - P0.1 FIX: Single source of truth
-from database import get_db, USE_POSTGRESQL
+# NOTE: get_db and USE_POSTGRESQL are imported locally in functions that need them
+# to avoid circular imports during module initialization
 
 # Tabla de otorgamiento según antigüedad (Ley Laboral Japonesa Art. 39)
 GRANT_TABLE = {
@@ -26,17 +25,24 @@ GRANT_TABLE = {
     6.5: 20,   # 6+ años (máximo legal)
 }
 
-# Configuración del período fiscal - P1.2 FIX: Externalized to env vars
-# Allows customization without code changes (e.g., different fiscal period)
+# Configuración del período fiscal
 FISCAL_CONFIG = {
-    'period_start_day': int(os.getenv('FISCAL_PERIOD_START_DAY', '21')),      # Día de inicio del período mensual
-    'period_end_day': int(os.getenv('FISCAL_PERIOD_END_DAY', '20')),          # Día de fin del período mensual
-    'max_carry_over_years': int(os.getenv('FISCAL_MAX_CARRY_OVER_YEARS', '2')), # Máximo años de carry-over
-    'max_accumulated_days': int(os.getenv('FISCAL_MAX_ACCUMULATED_DAYS', '40')), # Máximo días acumulables
-    'minimum_annual_use': int(os.getenv('FISCAL_MINIMUM_ANNUAL_USE', '5')),   # 5日取得義務
-    'minimum_days_for_obligation': int(os.getenv('FISCAL_MIN_DAYS_FOR_OBLIGATION', '10')), # Aplica obligación si tiene 10+ días
-    'ledger_retention_years': int(os.getenv('FISCAL_LEDGER_RETENTION_YEARS', '3')), # Años de retención de registros
+    'period_start_day': 21,           # Día de inicio del período mensual
+    'period_end_day': 20,             # Día de fin del período mensual
+    'max_carry_over_years': 2,        # Máximo años de carry-over
+    'max_accumulated_days': 40,       # Máximo días acumulables
+    'minimum_annual_use': 5,          # 5日取得義務
+    'minimum_days_for_obligation': 10, # Aplica obligación si tiene 10+ días
+    'ledger_retention_years': 3,      # Años de retención de registros
 }
+
+
+def _prepare_query(query: str) -> str:
+    """Ajusta los placeholders de parámetros según el motor de BD."""
+    if USE_POSTGRESQL:
+        # Cambiar placeholders de SQLite (?) a PostgreSQL (%s)
+        return query.replace('?', '%s')
+    return query
 
 
 def calculate_seniority_years(hire_date: str, reference_date: date = None) -> float:
@@ -155,11 +161,11 @@ def process_year_end_carryover(from_year: int, to_year: int) -> Dict:
             c = conn.cursor()
 
             # 1. Obtener empleados con balance positivo del año que termina
-            employees_with_balance = c.execute('''
+            employees_with_balance = c.execute(_prepare_query('''
                 SELECT employee_num, name, balance, granted, used, year
                 FROM employees
                 WHERE year = ? AND balance > 0
-            ''', (from_year,)).fetchall()
+            '''), (from_year,)).fetchall()
 
             for emp in employees_with_balance:
                 emp_num = emp['employee_num']
@@ -172,29 +178,29 @@ def process_year_end_carryover(from_year: int, to_year: int) -> Dict:
                     carry_over = max_carry
 
                 # 2. Verificar si ya existe registro del nuevo año
-                existing = c.execute('''
+                existing = c.execute(_prepare_query('''
                     SELECT id, granted, used, balance FROM employees
                     WHERE employee_num = ? AND year = ?
-                ''', (emp_num, to_year)).fetchone()
+                '''), (emp_num, to_year)).fetchone()
 
                 if existing:
                     # Sumar carry-over al balance existente
                     new_balance = float(existing['balance']) + carry_over
                     new_balance = min(new_balance, max_carry)
 
-                    c.execute('''
+                    c.execute(_prepare_query('''
                         UPDATE employees
                         SET balance = ?, last_updated = ?
                         WHERE id = ?
-                    ''', (new_balance, datetime.now().isoformat(), existing['id']))
+                    '''), (new_balance, datetime.now().isoformat(), existing['id']))
                 else:
                     # Crear nuevo registro con carry-over
                     new_id = f"{emp_num}_{to_year}"
-                    c.execute('''
+                    c.execute(_prepare_query('''
                         INSERT INTO employees
                         (id, employee_num, name, granted, used, balance, year, last_updated)
                         VALUES (?, ?, ?, 0, 0, ?, ?, ?)
-                    ''', (new_id, emp_num, emp['name'], carry_over, to_year,
+                    '''), (new_id, emp_num, emp['name'], carry_over, to_year,
                           datetime.now().isoformat()))
 
                 stats['employees_processed'] += 1
@@ -202,17 +208,17 @@ def process_year_end_carryover(from_year: int, to_year: int) -> Dict:
 
             # 3. Marcar/eliminar días expirados (más de 2 años)
             expiry_year = to_year - FISCAL_CONFIG['max_carry_over_years']
-            expired = c.execute('''
+            expired = c.execute(_prepare_query('''
                 SELECT employee_num, balance FROM employees
                 WHERE year <= ? AND balance > 0
-            ''', (expiry_year,)).fetchall()
+            '''), (expiry_year,)).fetchall()
 
             for exp in expired:
                 stats['days_expired'] += float(exp['balance'])
 
             # 4. Eliminar registros muy antiguos (más de 3 años para auditoría)
             retention_year = to_year - FISCAL_CONFIG['ledger_retention_years']
-            c.execute('DELETE FROM employees WHERE year < ?', (retention_year,))
+            c.execute(_prepare_query('DELETE FROM employees WHERE year < ?'), (retention_year,))
             stats['records_deleted'] = c.rowcount
 
             conn.commit()
@@ -238,12 +244,12 @@ def get_employee_balance_breakdown(employee_num: str, year: int) -> Dict:
     """
     with get_db() as conn:
         # Obtener últimos 2 años de datos
-        records = conn.execute('''
+        records = conn.execute(_prepare_query('''
             SELECT year, granted, used, balance
             FROM employees
             WHERE employee_num = ? AND year >= ?
             ORDER BY year DESC
-        ''', (employee_num, year - 1)).fetchall()
+        '''), (employee_num, year - 1)).fetchall()
 
     breakdown = {
         'employee_num': employee_num,
@@ -314,33 +320,33 @@ def apply_lifo_deduction(employee_num: str, days_to_use: float, current_year: in
 
                 if to_deduct > 0:
                     # Obtener balance antes para auditoría
-                    emp_before = c.execute('''
+                    emp_before = c.execute(_prepare_query('''
                         SELECT balance, used FROM employees
                         WHERE employee_num = ? AND year = ?
-                    ''', (employee_num, item['year'])).fetchone()
+                    '''), (employee_num, item['year'])).fetchone()
 
                     balance_before = float(emp_before['balance']) if emp_before and emp_before['balance'] else 0
                     used_before = float(emp_before['used']) if emp_before and emp_before['used'] else 0
 
                     # Actualizar balance de ese año
-                    c.execute('''
+                    c.execute(_prepare_query('''
                         UPDATE employees
                         SET used = used + ?,
                             balance = balance - ?,
                             last_updated = ?
                         WHERE employee_num = ? AND year = ?
-                    ''', (to_deduct, to_deduct, timestamp,
+                    '''), (to_deduct, to_deduct, timestamp,
                           employee_num, item['year']))
 
                     balance_after = balance_before - to_deduct
 
                     # Auditar en audit_log (tabla estándar)
                     try:
-                        c.execute('''
+                        c.execute(_prepare_query('''
                             INSERT INTO audit_log
                             (action, details, performed_by, timestamp)
                             VALUES (?, ?, ?, ?)
-                        ''', ('LIFO_DEDUCTION',
+                        '''), ('LIFO_DEDUCTION',
                               f"{employee_num} {item['year']}: {to_deduct} days",
                               performed_by, timestamp))
                     except Exception:
@@ -399,13 +405,13 @@ def check_expiring_soon(year: int, warning_threshold_months: int = 3) -> List[Di
     expiring_year = year - 1
 
     with get_db() as conn:
-        employees = conn.execute('''
+        employees = conn.execute(_prepare_query('''
             SELECT e.employee_num, e.name, e.balance, e.year,
                    g.hire_date
             FROM employees e
             LEFT JOIN genzai g ON e.employee_num = g.employee_num
             WHERE e.year = ? AND e.balance > 0
-        ''', (expiring_year,)).fetchall()
+        '''), (expiring_year,)).fetchall()
 
     result = []
     today = date.today()
@@ -456,11 +462,11 @@ def check_5day_compliance(year: int) -> Dict:
     min_days_for_rule = FISCAL_CONFIG['minimum_days_for_obligation']
 
     with get_db() as conn:
-        employees = conn.execute('''
+        employees = conn.execute(_prepare_query('''
             SELECT employee_num, name, granted, used, balance
             FROM employees
             WHERE year = ? AND granted >= ?
-        ''', (year, min_days_for_rule)).fetchall()
+        '''), (year, min_days_for_rule)).fetchall()
 
     compliant = []
     non_compliant = []
@@ -512,16 +518,16 @@ def get_grant_recommendation(employee_num: str) -> Dict:
     """
     with get_db() as conn:
         # Buscar en genzai primero, luego ukeoi
-        emp = conn.execute('''
+        emp = conn.execute(_prepare_query('''
             SELECT employee_num, name, hire_date FROM genzai
             WHERE employee_num = ?
-        ''', (employee_num,)).fetchone()
+        '''), (employee_num,)).fetchone()
 
         if not emp:
-            emp = conn.execute('''
+            emp = conn.execute(_prepare_query('''
                 SELECT employee_num, name, hire_date FROM ukeoi
                 WHERE employee_num = ?
-            ''', (employee_num,)).fetchone()
+            '''), (employee_num,)).fetchone()
 
     if not emp:
         return {'error': 'Empleado no encontrado'}
@@ -565,11 +571,11 @@ def auto_designate_5_days(employee_num: str, year: int, performed_by: str = "sys
             c = conn.cursor()
 
             # 1. Obtener balance actual
-            emp = c.execute('''
+            emp = c.execute(_prepare_query('''
                 SELECT id, employee_num, name, granted, used, balance, year
                 FROM employees
                 WHERE employee_num = ? AND year = ?
-            ''', (employee_num, year)).fetchone()
+            '''), (employee_num, year)).fetchone()
 
             if not emp:
                 conn.rollback()
@@ -604,21 +610,21 @@ def auto_designate_5_days(employee_num: str, year: int, performed_by: str = "sys
             # 4. Designar los días (crear registros en official_leave_designation)
             designation_date = datetime.now().isoformat()
 
-            c.execute('''
+            c.execute(_prepare_query('''
                 INSERT INTO official_leave_designation
                 (employee_num, year, designated_date, days, reason, designated_by, designated_at, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (employee_num, year, designation_date, remaining_required,
+            '''), (employee_num, year, designation_date, remaining_required,
                   'Legal 5-day requirement (年5日の取得義務)',
                   performed_by, designation_date, 'CONFIRMED'))
 
             # 5. Registrar en audit_log
-            c.execute('''
+            c.execute(_prepare_query('''
                 INSERT INTO fiscal_year_audit_log
                 (action, employee_num, year, days_affected, balance_before, balance_after,
                  performed_by, reason, timestamp)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', ('DESIGNATE_5DAYS', employee_num, year, remaining_required,
+            '''), ('DESIGNATE_5DAYS', employee_num, year, remaining_required,
                   float(emp['balance']) if emp['balance'] else 0,
                   float(emp['balance']) if emp['balance'] else 0,  # Balance no cambia, es una designación
                   performed_by,

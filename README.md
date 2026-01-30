@@ -55,7 +55,9 @@ pip install fastapi uvicorn openpyxl
 python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 # O usar scripts de inicio (Windows)
-start_quick_8000.bat
+set PORT=8000
+set FRONTEND_PORT=3000
+start.bat
 ```
 
 Accede a: http://localhost:8000

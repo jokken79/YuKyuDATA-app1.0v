@@ -192,7 +192,8 @@ def create_access_token(
         JWT token string
     """
     if not expires_delta:
-        expires_delta = timedelta(hours=settings.jwt_expiration_hours)
+        # Prefer minute-based expiry (aligned con configuración actual y guías de seguridad)
+        expires_delta = timedelta(minutes=settings.jwt_expiration_minutes)
 
     now = datetime.now(timezone.utc)
     expire = now + expires_delta

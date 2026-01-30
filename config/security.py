@@ -69,8 +69,6 @@ class SecuritySettings(BaseSettings):
     cors_origins: List[str] = [
         "http://localhost:3000",
         "http://localhost:8000",
-        "http://localhost:8765",
-        "http://127.0.0.1:8765",
     ]
 
     # Parse from env if provided

@@ -128,8 +128,8 @@ export function renderDepartmentChart(deptStats) {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#6b6b6b' } },
-                y: { grid: { display: false }, ticks: { color: '#6b6b6b' } }
+                x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#64748b' } },
+                y: { grid: { display: false }, ticks: { color: '#64748b' } }
             },
             plugins: {
                 legend: { display: false }

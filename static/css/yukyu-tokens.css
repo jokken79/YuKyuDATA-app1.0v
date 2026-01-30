@@ -1,20 +1,20 @@
 /**
  * YuKyuDATA Design Tokens
  * System: Corporate CYAN Theme (YuKyu Brand)
- * Updated: 2026-01 - Changed from Violet to CYAN for brand consistency
+ * Updated: 2026-01 - CYAN as primary for professional HR/Compliance feel
  */
 
 :root {
    /* =========================================
-       Colors - CYAN Theme (YuKyu Brand)
+       Colors
        ========================================= */
 
-   /* Brand Colors - CYAN */
-   --color-primary: #06b6d4;
+   /* Brand Colors - CYAN for trust & professionalism */
+   --color-primary: #06B6D4;
    /* Cyan 500 */
-   --color-primary-hover: #0891b2;
+   --color-primary-hover: #0891B2;
    /* Cyan 600 */
-   --color-secondary: #22d3ee;
+   --color-secondary: #22D3EE;
    /* Cyan 400 */
    --color-cta: #F97316;
    /* Orange 500 */
@@ -22,16 +22,16 @@
    /* Orange 600 */
 
    /* Backgrounds */
-   --color-bg-base: #ecfeff;
-   /* Cyan 50 */
+   --color-bg-base: #F8FAFC;
+   /* Slate 50 - neutral */
    --color-bg-card: #FFFFFF;
    --color-bg-overlay: rgba(255, 255, 255, 0.8);
 
    /* Text */
-   --color-text-primary: #164e63;
-   /* Cyan 900 */
-   --color-text-secondary: #6B7280;
-   /* Gray 500 */
+   --color-text-primary: #0F172A;
+   /* Slate 900 - high contrast */
+   --color-text-secondary: #64748B;
+   /* Slate 500 */
    --color-text-on-primary: #FFFFFF;
 
    /* Semantic */
@@ -121,24 +121,24 @@
 
 /* Dark Mode Overrides - CYAN Theme */
 [data-theme="dark"] {
-   --color-primary: #22d3ee;
-   /* Cyan 400 */
-   --color-primary-hover: #06b6d4;
+   --color-primary: #22D3EE;
+   /* Cyan 400 - brighter for dark mode */
+   --color-primary-hover: #06B6D4;
    /* Cyan 500 */
-   --color-secondary: #67e8f9;
+   --color-secondary: #67E8F9;
    /* Cyan 300 */
 
-   --color-bg-base: #111827;
-   /* Gray 900 */
-   --color-bg-card: #1F2937;
-   /* Gray 800 */
+   --color-bg-base: #0F172A;
+   /* Slate 900 */
+   --color-bg-card: #1E293B;
+   /* Slate 800 */
    --color-bg-overlay: rgba(0, 0, 0, 0.8);
 
-   --color-text-primary: #F3F4F6;
-   /* Gray 100 */
-   --color-text-secondary: #9CA3AF;
-   /* Gray 400 */
+   --color-text-primary: #F8FAFC;
+   /* Slate 50 */
+   --color-text-secondary: #94A3B8;
+   /* Slate 400 */
 
-   --glass-bg: rgba(31, 41, 55, 0.7);
+   --glass-bg: rgba(30, 41, 59, 0.7);
    --glass-border: 1px solid rgba(255, 255, 255, 0.1);
 }

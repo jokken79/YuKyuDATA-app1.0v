@@ -10,18 +10,17 @@ describe('ThemeManager', () => {
             <input class="flatpickr-input" />
         `;
         manager = new ThemeManager();
-        localStorage.getItem.mockReset();
-        localStorage.setItem.mockReset();
+            localStorage.clear();
     });
 
     it('initializes from storage and applies theme', () => {
-        localStorage.getItem.mockReturnValue('light');
+        localStorage.setItem(manager.storageKey, 'light');
         manager.init();
         expect(document.documentElement.getAttribute('data-theme')).toBe('light');
     });
 
     it('falls back to default theme when storage is empty', () => {
-        localStorage.getItem.mockReturnValue(null);
+        localStorage.removeItem('theme');
         manager.init();
         expect(manager.getCurrent()).toBe('dark');
     });
@@ -29,7 +28,7 @@ describe('ThemeManager', () => {
     it('toggles theme and updates UI', () => {
         const toast = jest.fn();
         manager.toggle(toast);
-        expect(localStorage.setItem).toHaveBeenCalled();
+        expect(localStorage.getItem(manager.storageKey)).toBeTruthy();
         expect(document.getElementById('theme-label').textContent).not.toBe('');
 
         manager.toggle(toast);

@@ -276,10 +276,10 @@ export class ChartManager {
                 }
             },
             labels: ['0-25%', '26-50%', '51-75%', '76-100%'],
-            colors: ['#f87171', '#fbbf24', '#38bdf8', '#34d399'],
+            colors: ['#cbd5e1', '#67e8f9', '#06b6d4', '#0e7490'],
             legend: {
                 position: 'right',
-                labels: { colors: '#6b6b6b' },
+                labels: { colors: '#64748b' },
                 markers: { width: 12, height: 12, radius: 3 }
             },
             plotOptions: {
@@ -374,7 +374,7 @@ export class ChartManager {
                     shade: 'dark',
                     type: 'vertical',
                     shadeIntensity: 0.5,
-                    gradientToColors: ['#8b5cf6'],
+                    gradientToColors: ['#0e7490'],
                     opacityFrom: 0.7,
                     opacityTo: 0.2,
                     stops: [0, 100]
@@ -455,7 +455,7 @@ export class ChartManager {
                 labels: ['Haken (Dispatch)', 'Ukeoi (Contract)', 'Staff'],
                 datasets: [{
                     data: typeData.data,
-                    backgroundColor: ['#06b6d4', '#8b5cf6', '#34d399'],
+                    backgroundColor: ['#06b6d4', '#0891b2', '#0e7490'],
                     borderWidth: 0
                 }]
             },
@@ -463,7 +463,7 @@ export class ChartManager {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'right', labels: { color: '#6b6b6b' } }
+                    legend: { position: 'right', labels: { color: '#64748b' } }
                 }
             }
         });
@@ -562,8 +562,8 @@ export class ChartManager {
                     distributed: true
                 }
             },
-            colors: ['#06b6d4', '#3b82f6', '#8b5cf6', '#f472b6', '#34d399',
-                '#fbbf24', '#f87171', '#a78bfa', '#22d3ee', '#818cf8'],
+            colors: ['#06b6d4', '#0891b2', '#0e7490', '#155e75', '#164e63',
+                '#3b82f6', '#10b981', '#f59e0b', '#64748b', '#475569'],
             dataLabels: {
                 enabled: true,
                 style: { fontSize: '12px', colors: ['#fff'] },

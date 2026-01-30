@@ -196,17 +196,21 @@ app = FastAPI(
 SERVER_PORT = int(os.getenv("PORT", "8000"))
 FRONTEND_PORT = int(os.getenv("FRONTEND_PORT", "3000"))
 
-ALLOWED_ORIGINS = [
-    f"http://localhost:{SERVER_PORT}",
-    f"http://127.0.0.1:{SERVER_PORT}",
-    f"http://localhost:{FRONTEND_PORT}",
-    f"http://127.0.0.1:{FRONTEND_PORT}",
-    # Also allow standard ports just in case
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+cors_env = os.getenv("CORS_ORIGINS")
+if cors_env:
+    ALLOWED_ORIGINS = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
+else:
+    ALLOWED_ORIGINS = [
+        f"http://localhost:{SERVER_PORT}",
+        f"http://127.0.0.1:{SERVER_PORT}",
+        f"http://localhost:{FRONTEND_PORT}",
+        f"http://127.0.0.1:{FRONTEND_PORT}",
+        # Also allow standard ports just in case
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
 
 logger.info(f"CORS Configured for Server Port: {SERVER_PORT}, Frontend Port: {FRONTEND_PORT}")
 
@@ -355,7 +359,7 @@ async def get_csrf_token():
 
 if __name__ == "__main__":
     import os
-    port = int(os.getenv("PORT", 8765))
+    port = int(os.getenv("PORT", 8000))
     logger.info(f"Starting YuKyuDATA-app server on port {port}...")
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
 

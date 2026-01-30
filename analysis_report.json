@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-01-30T15:11:11.531747",
+  "overall_score": 7.7125,
+  "scores": {
+    "UI/UX Design": 8.2,
+    "Technical Quality": 7.8,
+    "Security": 7.5,
+    "Performance": 7.9,
+    "Testing Coverage": 6.5,
+    "Compliance": 8.5,
+    "Documentation": 7.0,
+    "Visualizations": 8.3
+  },
+  "url": "http://localhost:8000"
+}

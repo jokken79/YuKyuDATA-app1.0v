@@ -3,24 +3,40 @@
  * Global test configuration and mocks
  */
 
-// Mock DOM APIs
-Object.defineProperty(window, 'localStorage', {
-  value: {
-    getItem: jest.fn(),
-    setItem: jest.fn(),
-    removeItem: jest.fn(),
-    clear: jest.fn(),
+// TextEncoder polyfill for jsdom
+const { TextEncoder, TextDecoder } = require('util');
+Object.assign(global, {
+  TextEncoder,
+  TextDecoder,
+});
+
+// Import jest-dom matchers
+require('@testing-library/jest-dom');
+
+// Mock DOM APIs with real storage
+const storageImpl = {
+  _storage: {},
+  getItem(key) {
+    return this._storage[key] || null;
   },
+  setItem(key, value) {
+    this._storage[key] = String(value);
+  },
+  removeItem(key) {
+    delete this._storage[key];
+  },
+  clear() {
+    this._storage = {};
+  },
+};
+
+Object.defineProperty(window, 'localStorage', {
+  value: storageImpl,
   writable: true,
 });
 
 Object.defineProperty(window, 'sessionStorage', {
-  value: {
-    getItem: jest.fn(),
-    setItem: jest.fn(),
-    removeItem: jest.fn(),
-    clear: jest.fn(),
-  },
+  value: { ...storageImpl, _storage: {} },
   writable: true,
 });
 

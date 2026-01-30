@@ -56,7 +56,10 @@ Luego abre en tu navegador:
 Si ya tienes el servidor de la aplicación corriendo:
 
 ```bash
-python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+set PORT=8000
+set FRONTEND_PORT=3000
+set CORS_ORIGINS=http://localhost:%FRONTEND_PORT%,http://127.0.0.1:%FRONTEND_PORT%,http://localhost:%PORT%,http://127.0.0.1:%PORT%
+python -m uvicorn main:app --reload --host 0.0.0.0 --port %PORT%
 ```
 
 Abre: http://localhost:8000/tests/unit/test_utils.html (etc.)

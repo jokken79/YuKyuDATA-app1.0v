@@ -5,11 +5,15 @@ cd /d "%~dp0"
 echo Activating venv...
 if exist venv\Scripts\activate.bat call venv\Scripts\activate.bat
 
-echo Opening Browser...
-start /min cmd /c "timeout /t 5 /nobreak > nul && start http://localhost:8765"
+if "%PORT%"=="" set PORT=8000
+if "%FRONTEND_PORT%"=="" set FRONTEND_PORT=3000
+if "%CORS_ORIGINS%"=="" set CORS_ORIGINS=http://localhost:%FRONTEND_PORT%,http://127.0.0.1:%FRONTEND_PORT%,http://localhost:%PORT%,http://127.0.0.1:%PORT%
 
-echo Starting Server on port 8765...
-python -m uvicorn main:app --reload --host 0.0.0.0 --port 8765
+echo Opening Browser...
+start /min cmd /c "timeout /t 5 /nobreak > nul && start http://localhost:%PORT%"
+
+echo Starting Server on port %PORT%...
+python -m uvicorn main:app --reload --host 0.0.0.0 --port %PORT%
 
 echo.
 echo Server stopped.

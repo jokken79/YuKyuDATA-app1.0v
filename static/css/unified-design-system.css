@@ -6,7 +6,7 @@
  */
 
 :root {
-  /* --- COLORS (Corporate Cyan Theme - Tailwind Cyan Scale) --- */
+  /* --- COLORS (Staffing Intelligence Theme - CYAN) --- */
   --color-primary-50: #ecfeff;
   --color-primary-100: #cffafe;
   --color-primary-200: #a5f3fc;
@@ -60,17 +60,17 @@
   --font-semibold: 600;
   --font-bold: 700;
 
-  /* --- EFFECTS & GLASS (Crystal Clear - Cyan Tinted) --- */
+  /* --- EFFECTS & GLASS (Crystal Clear - CYAN) --- */
   --glass-bg: rgba(255, 255, 255, 0.75);
   --glass-bg-dark: rgba(15, 23, 42, 0.8);
-  --glass-border: rgba(6, 182, 212, 0.15);
+  --glass-border: rgba(6, 182, 212, 0.1);
   --glass-blur: blur(16px);
-  --glass-shadow: 0 4px 20px -2px rgba(6, 182, 212, 0.2);
+  --glass-shadow: 0 4px 20px -2px rgba(6, 182, 212, 0.15);
 
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  --shadow-glow: 0 0 15px rgba(6, 182, 212, 0.3);
+  --shadow-glow: 0 0 15px rgba(6, 182, 212, 0.25);
 
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
@@ -84,67 +84,37 @@
   --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ========================================
-   ACCESSIBILITY: Focus Visible (WCAG 2.1)
-   ======================================== */
-*:focus-visible {
-  outline: 3px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-button:focus:not(:focus-visible),
-a:focus:not(:focus-visible),
-input:focus:not(:focus-visible),
-select:focus:not(:focus-visible) {
-  outline: none;
-}
-
-/* Skip Link for keyboard navigation */
-.skip-link {
-  position: absolute;
-  top: -40px;
-  left: 0;
-  padding: 0.75rem 1.5rem;
-  background: var(--color-primary);
-  color: white;
-  z-index: 10000;
-  transition: top 0.2s ease;
-}
-
-.skip-link:focus {
-  top: 0;
-}
-
 /* Base Reset */
 body {
-  background-color: #f0fdfa;
-  /* Soft Cyan Background for Light Mode */
+  background-color: #f8fafc;
+  /* Slate 50 - Neutral light background */
   background-image:
-    radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.05) 0px, transparent 50%),
+    radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.06) 0px, transparent 50%),
     radial-gradient(at 100% 0%, rgba(249, 115, 22, 0.03) 0px, transparent 50%);
   color: #0f172a;
-  /* Slate 900 for legibility */
+  /* Slate 900 - High contrast text */
   font-family: var(--font-body);
   margin: 0;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Glass Panel (Harmonized with Clean Tech) */
+/* Glass Panel (Harmonized with Cyan Theme) */
 .glass-panel {
   background: #ffffff;
   /* Explicit White for safety */
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: var(--radius-xl);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  color: #1e1b4b !important;
+  color: #0f172a !important;
+  /* Slate 900 - high contrast */
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .glass-panel:hover {
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
-  border-color: rgba(6, 182, 212, 0.4);
+  border-color: rgba(6, 182, 212, 0.3);
 }
 
 /* KPI Cards */
@@ -270,13 +240,8 @@ body {
 .input-glass:focus {
   background: rgba(255, 255, 255, 0.8) !important;
   border-color: var(--color-primary-500) !important;
-  box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.15);
-  outline: 2px solid transparent;
-}
-
-.input-glass:focus-visible {
-  outline: 2px solid var(--color-primary-500);
-  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.1);
+  outline: none;
 }
 
 /* Fix for broken white blocks and sub-optimal contrast */
@@ -604,14 +569,33 @@ html[data-theme="dark"] body {
 [data-theme="dark"] .nav-item,
 [data-theme="dark"] .nav-text {
   color: #cbd5e1 !important;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  cursor: pointer;
 }
 
 [data-theme="dark"] .nav-link:hover,
 [data-theme="dark"] .nav-link.active,
 [data-theme="dark"] .nav-item:hover,
 [data-theme="dark"] .nav-item.active {
-  color: #06b6d4 !important;
-  /* Cyan */
+  color: #22d3ee !important;
+  /* Cyan 400 */
+  background: rgba(34, 211, 238, 0.1);
+  transform: translateX(4px);
+}
+
+[data-theme="dark"] .nav-link:focus-visible,
+[data-theme="dark"] .nav-item:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+}
+
+[data-theme="dark"] .nav-link.active,
+[data-theme="dark"] .nav-item.active {
+  background: rgba(34, 211, 238, 0.15);
+  font-weight: 500;
+  border-left: 3px solid #22d3ee;
 }
 
 [data-theme="dark"] h1,
@@ -684,7 +668,7 @@ html[data-theme="dark"] body {
   background-color: #f8fafc;
   background-image:
     radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.08) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(34, 211, 238, 0.05) 0px, transparent 50%);
+    radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.05) 0px, transparent 50%);
   color: #1e293b;
 }
 
@@ -896,14 +880,35 @@ html[data-theme="dark"] body {
   border-right: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-[data-theme="light"] .nav-link {
+[data-theme="light"] .nav-link,
+[data-theme="light"] .nav-item {
   color: #475569;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  cursor: pointer;
 }
 
 [data-theme="light"] .nav-link:hover,
-[data-theme="light"] .nav-link.active {
+[data-theme="light"] .nav-link.active,
+[data-theme="light"] .nav-item:hover,
+[data-theme="light"] .nav-item.active {
   background: rgba(6, 182, 212, 0.1);
   color: var(--color-primary-700);
+  transform: translateX(4px);
+}
+
+[data-theme="light"] .nav-link:focus-visible,
+[data-theme="light"] .nav-item:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+[data-theme="light"] .nav-link.active,
+[data-theme="light"] .nav-item.active {
+  background: rgba(6, 182, 212, 0.15);
+  font-weight: 500;
+  border-left: 3px solid var(--color-primary-500);
 }
 
 /* Scrollbar - Light Mode */

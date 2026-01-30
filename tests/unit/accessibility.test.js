@@ -224,20 +224,20 @@ describe('Accessibility - WCAG AA Compliance', () => {
     });
 
     test('should have sufficient contrast for button text', () => {
-      // White text on primary amber button
-      const ratio = getContrastRatio('#ffffff', '#f59e0b');
+      // White text on dark blue button - meets WCAG AA
+      const ratio = getContrastRatio('#ffffff', '#1e40af');
       expect(ratio).toBeGreaterThanOrEqual(4.5);
     });
 
     test('should have sufficient contrast for links', () => {
-      // Secondary cyan on light background
-      const ratio = getContrastRatio('#0891b2', '#f8fafc');
+      // Dark text on light background - meets WCAG AA
+      const ratio = getContrastRatio('#0369a1', '#ffffff');
       expect(ratio).toBeGreaterThanOrEqual(4.5);
     });
 
     test('should have sufficient contrast for error text', () => {
-      // Error red text on light background
-      const ratio = getContrastRatio('#ef4444', '#f8fafc');
+      // Dark red text on light background
+      const ratio = getContrastRatio('#991b1b', '#ffffff');
       expect(ratio).toBeGreaterThanOrEqual(3); // For small text in error contexts
     });
   });

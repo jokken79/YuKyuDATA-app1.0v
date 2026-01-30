@@ -1639,9 +1639,9 @@ const App = {
 
                     // Colores para diferenciar años fiscales
                     const fiscalYearColors = {
-                        [new Date().getFullYear()]: '#22c55e',     // Current FY - Green
-                        [new Date().getFullYear() - 1]: '#38bdf8', // Last FY - Cyan
-                        [new Date().getFullYear() - 2]: '#a78bfa', // 2 years ago - Purple
+                        [new Date().getFullYear()]: '#10b981',     // Current FY - Emerald
+                        [new Date().getFullYear() - 1]: '#06b6d4', // Last FY - Cyan
+                        [new Date().getFullYear() - 2]: '#64748b', // 2 years ago - Slate
                     };
                     const defaultColor = '#94a3b8'; // Older years - Gray
 
@@ -1664,9 +1664,9 @@ const App = {
                             </div>
                             <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; font-size: 0.7rem;">
                                 <span style="color: #94a3b8;">凡例:</span>
-                                <span style="color: #22c55e;">● 今年度</span>
-                                <span style="color: #38bdf8;">● 昨年度</span>
-                                <span style="color: #a78bfa;">● 2年前</span>
+                                <span style="color: #10b981;">● 今年度</span>
+                                <span style="color: #06b6d4;">● 昨年度</span>
+                                <span style="color: #64748b;">● 2年前</span>
                             </div>
                         </div>
                     `;
@@ -1868,11 +1868,11 @@ const App = {
                     }
                 },
                 labels: ['0-25%', '26-50%', '51-75%', '76-100%'],
-                colors: ['#f87171', '#fbbf24', '#38bdf8', '#34d399'],
+                colors: ['#cbd5e1', '#67e8f9', '#06b6d4', '#0e7490'],
                 legend: {
                     position: 'right',
                     labels: {
-                        colors: '#6b6b6b'
+                        colors: '#64748b'
                     },
                     markers: {
                         width: 12,
@@ -1889,11 +1889,11 @@ const App = {
                                 total: {
                                     show: true,
                                     label: 'Total',
-                                    color: '#94a3b8',
+                                    color: '#64748b',
                                     formatter: () => data.length
                                 },
                                 value: {
-                                    color: '#e2e8f0',
+                                    color: '#0f172a',
                                     fontSize: '22px',
                                     fontWeight: 600
                                 }
@@ -2003,7 +2003,7 @@ const App = {
                         shade: 'dark',
                         type: 'vertical',
                         shadeIntensity: 0.5,
-                        gradientToColors: ['#8b5cf6'],
+                        gradientToColors: ['#0e7490'],
                         opacityFrom: 0.7,
                         opacityTo: 0.2,
                         stops: [0, 100]
@@ -2114,7 +2114,7 @@ const App = {
                     labels: ['Haken (Dispatch)', 'Ukeoi (Contract)', 'Staff'],
                     datasets: [{
                         data: typeData.data,
-                        backgroundColor: ['#06b6d4', '#8b5cf6', '#34d399'],
+                        backgroundColor: ['#06b6d4', '#0891b2', '#0e7490'],
                         borderWidth: 0
                     }]
                 },
@@ -2122,7 +2122,7 @@ const App = {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'right', labels: { color: '#6b6b6b' } }
+                        legend: { position: 'right', labels: { color: '#64748b' } }
                     }
                 }
             });
@@ -2234,8 +2234,8 @@ const App = {
                         distributed: true
                     }
                 },
-                colors: ['#06b6d4', '#3b82f6', '#8b5cf6', '#f472b6', '#34d399',
-                    '#fbbf24', '#f87171', '#a78bfa', '#22d3ee', '#818cf8'],
+                colors: ['#06b6d4', '#0891b2', '#0e7490', '#155e75', '#164e63',
+                    '#3b82f6', '#10b981', '#f59e0b', '#64748b', '#475569'],
                 dataLabels: {
                     enabled: true,
                     style: {
@@ -4050,8 +4050,8 @@ const App = {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#6b6b6b' } },
-                        y: { grid: { display: false }, ticks: { color: '#6b6b6b' } }
+                        x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#64748b' } },
+                        y: { grid: { display: false }, ticks: { color: '#64748b' } }
                     },
                     plugins: { legend: { display: false } }
                 }
@@ -4072,7 +4072,7 @@ const App = {
                     labels: Object.keys(typeStats),
                     datasets: [{
                         data: Object.values(typeStats).map(v => v.used),
-                        backgroundColor: ['#06b6d4', '#8b5cf6', '#34d399'],
+                        backgroundColor: ['#06b6d4', '#0891b2', '#0e7490'],
                         borderWidth: 0
                     }]
                 },
@@ -4080,7 +4080,7 @@ const App = {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'right', labels: { color: '#6b6b6b' } }
+                        legend: { position: 'right', labels: { color: '#64748b' } }
                     }
                 }
             });
@@ -4255,12 +4255,12 @@ const App = {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        x: { grid: { display: false }, ticks: { color: '#6b6b6b' } },
-                        y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#6b6b6b' } }
+                        x: { grid: { display: false }, ticks: { color: '#64748b' } },
+                        y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#64748b' } }
                     },
                     plugins: {
-                        legend: { position: 'top', labels: { color: '#6b6b6b' } },
-                        title: { display: true, text: '年度比較', color: '#6b6b6b' }
+                        legend: { position: 'top', labels: { color: '#64748b' } },
+                        title: { display: true, text: '年度比較', color: '#64748b' }
                     }
                 }
             });
@@ -4332,7 +4332,7 @@ const App = {
                         {
                             label: '累積使用',
                             data: cumulativeData,
-                            borderColor: '#8b5cf6',
+                            borderColor: '#0891b2',
                             backgroundColor: 'transparent',
                             borderDash: [5, 5],
                             tension: 0.4,
@@ -4344,12 +4344,12 @@ const App = {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        x: { grid: { display: false }, ticks: { color: '#6b6b6b' } },
-                        y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#6b6b6b' } }
+                        x: { grid: { display: false }, ticks: { color: '#64748b' } },
+                        y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#64748b' } }
                     },
                     plugins: {
-                        legend: { position: 'top', labels: { color: '#6b6b6b' } },
-                        title: { display: true, text: '月次使用トレンド', color: '#6b6b6b' }
+                        legend: { position: 'top', labels: { color: '#64748b' } },
+                        title: { display: true, text: '月次使用トレンド', color: '#64748b' }
                     }
                 }
             });

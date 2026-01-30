@@ -5,6 +5,7 @@
 
 // Mock DOM environment
 const mockElement = (tag = 'div', props = {}) => {
+    const attributes = {};
     const el = {
         tagName: tag.toUpperCase(),
         style: {},
@@ -13,9 +14,13 @@ const mockElement = (tag = 'div', props = {}) => {
             remove: jest.fn(),
             contains: jest.fn(() => false)
         },
-        setAttribute: jest.fn(),
-        getAttribute: jest.fn(() => null),
-        removeAttribute: jest.fn(),
+        setAttribute: jest.fn((key, value) => {
+            attributes[key] = String(value);
+        }),
+        getAttribute: jest.fn((key) => attributes[key] ?? null),
+        removeAttribute: jest.fn((key) => {
+            delete attributes[key];
+        }),
         focus: jest.fn(),
         blur: jest.fn(),
         addEventListener: jest.fn(),
@@ -161,17 +166,17 @@ describe('Accessibility Module', () => {
 
         test('should create element with aria-live attribute', () => {
             const region = new LiveRegion();
-            expect(region.element.setAttribute).toHaveBeenCalledWith('aria-live', 'polite');
+            expect(region.element.getAttribute('aria-live')).toBe('polite');
         });
 
         test('should use assertive politeness when specified', () => {
             const region = new LiveRegion({ politeness: 'assertive' });
-            expect(region.element.setAttribute).toHaveBeenCalledWith('aria-live', 'assertive');
+            expect(region.element.getAttribute('aria-live')).toBe('assertive');
         });
 
         test('should set aria-atomic attribute', () => {
             const region = new LiveRegion();
-            expect(region.element.setAttribute).toHaveBeenCalledWith('aria-atomic', 'true');
+            expect(region.element.getAttribute('aria-atomic')).toBe('true');
         });
 
         test('should clear content before announcing', () => {
@@ -291,7 +296,10 @@ describe('Accessibility Module', () => {
                 preventDefault: jest.fn()
             };
 
-            document.activeElement = lastBtn;
+            Object.defineProperty(document, 'activeElement', {
+                value: lastBtn,
+                configurable: true
+            });
             handleKeyDown(event, firstBtn, lastBtn);
 
             expect(event.preventDefault).toHaveBeenCalled();

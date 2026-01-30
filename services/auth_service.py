@@ -165,9 +165,9 @@ class AuthService:
         # Opción 4: Solo en modo DEBUG - usuarios de desarrollo
         if os.getenv("DEBUG", "false").lower() == "true":
             import warnings
-            # Generar contraseñas temporales seguras para desarrollo
-            dev_admin_pass = os.getenv("DEV_ADMIN_PASSWORD", secrets.token_urlsafe(16))
-            dev_manager_pass = os.getenv("DEV_MANAGER_PASSWORD", secrets.token_urlsafe(16))
+            # Usar contraseñas fijas para desarrollo (para facilitar testing)
+            dev_admin_pass = os.getenv("DEV_ADMIN_PASSWORD", "admin123")
+            dev_manager_pass = os.getenv("DEV_MANAGER_PASSWORD", "admin123")
 
             warnings.warn(
                 f"\n⚠️  MODO DESARROLLO - Usuarios temporales creados:\n"

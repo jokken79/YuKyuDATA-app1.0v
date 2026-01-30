@@ -225,6 +225,8 @@ export const pages = {
 http://localhost:8000/static/src/test.html
 ```
 
+Si cambias `PORT`, ajusta el puerto en la URL del navegador para que coincida.
+
 ## File Sizes
 
 | File | Lines | Purpose |

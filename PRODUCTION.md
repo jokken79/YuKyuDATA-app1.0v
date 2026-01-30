@@ -81,14 +81,16 @@ ALLOWED_ORIGINS = [
 
 Add to `.env`:
 ```bash
-ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+PORT=8000
+FRONTEND_PORT=3000
 ```
 
 Update `main.py` to read from env:
 ```python
 import os
 
-origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000")
+origins_str = os.getenv("CORS_ORIGINS", "http://localhost:8000")
 ALLOWED_ORIGINS = [origin.strip() for origin in origins_str.split(",")]
 ```
 

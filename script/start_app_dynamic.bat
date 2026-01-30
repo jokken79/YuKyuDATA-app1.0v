@@ -8,11 +8,11 @@ echo ========================================
 echo.
 
 :AskPort
-set /p PORT="Ingrese el puerto para la APP (backend) [default=8765]: "
-if "%PORT%"=="" set PORT=8765
+set /p PORT="Ingrese el puerto para la APP (backend) [default=8000]: "
+if "%PORT%"=="" set PORT=8000
 
-REM Calculate Frontend Port (Simple arithmetic not directly supported in basic set for all versions without /a, but /a works in std Windows CMD)
-set /a FRONTEND_PORT=%PORT%-5000
+set /p FRONTEND_PORT="Ingrese el puerto para Frontend/CORS [default=3000]: "
+if "%FRONTEND_PORT%"=="" set FRONTEND_PORT=3000
 
 echo.
 echo ========================================
@@ -23,7 +23,7 @@ echo Frontend Port (Browser):  %FRONTEND_PORT%
 echo ========================================
 echo.
 echo Si esto es correcto, el navegador se abrira en http://localhost:%PORT%
-echo (La logica interna permitira conexiones desde el frontend %FRONTEND_PORT%)
+echo (CORS permitido para frontend %FRONTEND_PORT%)
 echo.
 pause
 
@@ -32,6 +32,7 @@ cd /d %~dp0..
 REM Set Environment Variables for Python
 set PORT=%PORT%
 set FRONTEND_PORT=%FRONTEND_PORT%
+set CORS_ORIGINS=http://localhost:%FRONTEND_PORT%,http://127.0.0.1:%FRONTEND_PORT%,http://localhost:%PORT%,http://127.0.0.1:%PORT%
 
 REM Open browser after 2 seconds
 start /min cmd /c "timeout /t 3 /nobreak > nul && start http://localhost:%PORT%"
