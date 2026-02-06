@@ -13,6 +13,7 @@ try:
 except ImportError:
     USE_POSTGRESQL = False
 
+
 def get_db_path():
     """Get database path, handling Vercel serverless environment."""
     custom_path = os.getenv('DATABASE_PATH')
@@ -21,11 +22,12 @@ def get_db_path():
 
     # Check if running on Vercel (serverless)
     if os.getenv('VERCEL') or os.getenv('AWS_LAMBDA_FUNCTION_NAME'):
-        # Force PostgreSQL on Vercel/Production if possible, 
+        # Force PostgreSQL on Vercel/Production if possible,
         # but keep SQLite as fallback to /tmp
         return '/tmp/yukyu.db'
 
     return 'yukyu.db'
+
 
 DB_NAME = get_db_path()
 DATABASE_URL = os.getenv('DATABASE_URL', f'sqlite:///{DB_NAME}')
@@ -35,6 +37,7 @@ if USE_POSTGRESQL:
     db_manager = ConnectionManager(DATABASE_URL)
 else:
     db_manager = None
+
 
 @contextmanager
 def get_db() -> Generator:
@@ -50,8 +53,10 @@ def get_db() -> Generator:
         finally:
             conn.close()
 
+
 def _get_param_placeholder() -> str:
     return '%s' if USE_POSTGRESQL else '?'
+
 
 def _convert_query_placeholders(query: str) -> str:
     if not USE_POSTGRESQL:

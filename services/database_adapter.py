@@ -3,11 +3,8 @@ Database Adapter - Abstraction Layer
 =====================================
 
 This module provides a unified interface for database operations.
-The database/ package now uses SQLAlchemy ORM internally, so this adapter
-delegates all calls to the database package.
-
-The USE_ORM flag is kept for backwards compatibility but the database/
-package already uses ORM (SessionLocal + SQLAlchemy models) for all operations.
+All calls delegate directly to the database/ package, which handles
+connections, queries, and transactions internally.
 
 Usage:
     from services.database_adapter import get_employees, approve_leave_request
@@ -16,14 +13,12 @@ Usage:
     approve_leave_request(request_id=123, approved_by="admin")
 
 Environment Variables:
-    USE_ORM=false   - Default (production). All calls go through database/ package.
-    LOG_LEVEL=DEBUG - Show which implementation each function uses
+    LOG_LEVEL=DEBUG - Show detailed logging for each function call
 """
 
 import os
 import logging
 from typing import Optional, List, Dict, Any
-from datetime import datetime
 from functools import wraps
 
 # Setup logging
@@ -31,19 +26,7 @@ logger = logging.getLogger(__name__)
 log_level = os.getenv("LOG_LEVEL", "INFO")
 logger.setLevel(getattr(logging, log_level, logging.INFO))
 
-# ============================================================================
-# FEATURE FLAG: USE_ORM
-# ============================================================================
-
-# USE_ORM flag kept for backwards compatibility.
-# The database/ package already uses SQLAlchemy ORM internally.
-USE_ORM = os.getenv("USE_ORM", "false").lower() in ("true", "1", "yes")
-
-# database_orm.py no longer exists - replaced by database/ package (which uses ORM).
-# All adapter functions now delegate to the database package directly.
-ORM_AVAILABLE = False
-
-logger.info(f"Database Adapter initialized. All calls delegate to database/ package (ORM-based).")
+logger.info("Database Adapter initialized. All calls delegate to database/ package.")
 
 
 # ============================================================================
@@ -57,24 +40,23 @@ import database
 # DECORATOR: Track implementation usage
 # ============================================================================
 
-def track_implementation(func_name: str, impl_type: str):
+def track_implementation(func_name: str):
     """
-    Decorator to track which implementation is being used.
+    Decorator to log function calls for debugging and monitoring.
 
     Args:
         func_name: Name of the logical function (e.g., "get_employees")
-        impl_type: Type of implementation ("orm" or "sql")
     """
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            logger.debug(f"[{impl_type.upper()}] Calling {func_name}() with args={args}, kwargs={kwargs}")
+            logger.debug("Calling %s() with args=%s, kwargs=%s", func_name, args, kwargs)
             try:
                 result = func(*args, **kwargs)
-                logger.debug(f"[{impl_type.upper()}] {func_name}() completed successfully")
+                logger.debug("%s() completed successfully", func_name)
                 return result
             except Exception as e:
-                logger.error(f"[{impl_type.upper()}] {func_name}() failed: {e}", exc_info=True)
+                logger.error("%s() failed: %s", func_name, e, exc_info=True)
                 raise
         return wrapper
     return decorator
@@ -94,19 +76,11 @@ def get_employees(year: Optional[int] = None, active_only: bool = False) -> List
 
     Returns:
         List of employee dictionaries
-
-    Implementation:
-        - ORM: database_orm.get_employees_orm()
-        - SQL: database.get_employees() + database.get_employees_enhanced()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] get_employees(year={year}, active_only={active_only})")
-        return database_orm.get_employees_orm(year=year)
-    else:
-        logger.debug(f"[SQL] get_employees(year={year}, active_only={active_only})")
-        if active_only:
-            return database.get_employees_enhanced(year=year, active_only=True)
-        return database.get_employees(year=year)
+    logger.debug("get_employees(year=%s, active_only=%s)", year, active_only)
+    if active_only:
+        return database.get_employees_enhanced(year=year, active_only=True)
+    return database.get_employees(year=year)
 
 
 def get_employee(employee_num: str, year: int) -> Optional[Dict[str, Any]]:
@@ -119,17 +93,9 @@ def get_employee(employee_num: str, year: int) -> Optional[Dict[str, Any]]:
 
     Returns:
         Employee dictionary or None if not found
-
-    Implementation:
-        - ORM: database_orm.get_employee_orm()
-        - SQL: database.get_employee_by_num_year()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] get_employee(employee_num={employee_num}, year={year})")
-        return database_orm.get_employee_orm(employee_num=employee_num, year=year)
-    else:
-        logger.debug(f"[SQL] get_employee(employee_num={employee_num}, year={year})")
-        return database.get_employee_by_num_year(employee_num=employee_num, year=year)
+    logger.debug("get_employee(employee_num=%s, year=%s)", employee_num, year)
+    return database.get_employee_by_num_year(employee_num=employee_num, year=year)
 
 
 def get_available_years() -> List[int]:
@@ -138,17 +104,9 @@ def get_available_years() -> List[int]:
 
     Returns:
         List of years (e.g., [2023, 2024, 2025])
-
-    Implementation:
-        - ORM: database_orm.get_available_years_orm()
-        - SQL: database.get_available_years()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug("[ORM] get_available_years()")
-        return database_orm.get_available_years_orm()
-    else:
-        logger.debug("[SQL] get_available_years()")
-        return database.get_available_years()
+    logger.debug("get_available_years()")
+    return database.get_available_years()
 
 
 def get_employees_enhanced(year: Optional[int] = None, active_only: bool = False) -> List[Dict[str, Any]]:
@@ -165,17 +123,9 @@ def get_employees_enhanced(year: Optional[int] = None, active_only: bool = False
         - employment_status (在職中/退職)
         - is_active (boolean)
         - kana (カナ name)
-
-    Implementation:
-        - ORM: database_orm.get_employees_enhanced_orm()
-        - SQL: database.get_employees_enhanced()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] get_employees_enhanced(year={year}, active_only={active_only})")
-        return database_orm.get_employees_enhanced_orm(year=year, active_only=active_only)
-    else:
-        logger.debug(f"[SQL] get_employees_enhanced(year={year}, active_only={active_only})")
-        return database.get_employees_enhanced(year=year, active_only=active_only)
+    logger.debug("get_employees_enhanced(year=%s, active_only=%s)", year, active_only)
+    return database.get_employees_enhanced(year=year, active_only=active_only)
 
 
 # ============================================================================
@@ -195,19 +145,9 @@ def save_employee(employee_data: Dict[str, Any]) -> None:
             - used: Days used
             - balance: Days remaining
             - year: Fiscal year
-
-    Implementation:
-        - ORM: Uses database_orm save operations (Phase 2)
-        - SQL: Uses database.save_employees()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] save_employee({employee_data.get('id')})")
-        # ORM implementation would go here in Phase 2
-        logger.warning("[ORM] save_employee not yet implemented in ORM. Falling back to SQL.")
-        database.save_employees([employee_data])
-    else:
-        logger.debug(f"[SQL] save_employee({employee_data.get('id')})")
-        database.save_employees([employee_data])
+    logger.debug("save_employee(%s)", employee_data.get('id'))
+    database.save_employees([employee_data])
 
 
 def save_employees(employees_data: List[Dict[str, Any]]) -> None:
@@ -216,23 +156,13 @@ def save_employees(employees_data: List[Dict[str, Any]]) -> None:
 
     Args:
         employees_data: List of employee data dictionaries
-
-    Implementation:
-        - ORM: Uses batch ORM operations (Phase 2)
-        - SQL: Uses database.save_employees()
     """
     if not employees_data:
         logger.warning("save_employees called with empty list")
         return
 
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] save_employees (batch, count={len(employees_data)})")
-        # ORM batch implementation would go here in Phase 2
-        logger.warning("[ORM] save_employees batch not yet implemented. Falling back to SQL.")
-        database.save_employees(employees_data)
-    else:
-        logger.debug(f"[SQL] save_employees (batch, count={len(employees_data)})")
-        database.save_employees(employees_data)
+    logger.debug("save_employees (batch, count=%d)", len(employees_data))
+    database.save_employees(employees_data)
 
 
 # ============================================================================
@@ -254,25 +184,13 @@ def get_leave_requests(
 
     Returns:
         List of leave request dictionaries
-
-    Implementation:
-        - ORM: database_orm.get_leave_requests_orm()
-        - SQL: database.get_leave_requests()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] get_leave_requests(status={status}, employee_num={employee_num}, year={year})")
-        return database_orm.get_leave_requests_orm(
-            status=status,
-            employee_num=employee_num,
-            year=year
-        )
-    else:
-        logger.debug(f"[SQL] get_leave_requests(status={status}, employee_num={employee_num}, year={year})")
-        return database.get_leave_requests(
-            status=status,
-            employee_num=employee_num,
-            year=year
-        )
+    logger.debug("get_leave_requests(status=%s, employee_num=%s, year=%s)", status, employee_num, year)
+    return database.get_leave_requests(
+        status=status,
+        employee_num=employee_num,
+        year=year
+    )
 
 
 def get_leave_request(request_id: int) -> Optional[Dict[str, Any]]:
@@ -284,22 +202,13 @@ def get_leave_request(request_id: int) -> Optional[Dict[str, Any]]:
 
     Returns:
         Leave request dictionary or None if not found
-
-    Implementation:
-        - ORM: database_orm.get_leave_request_orm()
-        - SQL: database.get_leave_requests() then filter
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] get_leave_request(request_id={request_id})")
-        return database_orm.get_leave_request_orm(request_id=str(request_id))
-    else:
-        logger.debug(f"[SQL] get_leave_request(request_id={request_id})")
-        # Fallback: query all and filter (not ideal for production)
-        all_requests = database.get_leave_requests()
-        for req in all_requests:
-            if req.get('id') == request_id:
-                return req
-        return None
+    logger.debug("get_leave_request(request_id=%s)", request_id)
+    all_requests = database.get_leave_requests()
+    for req in all_requests:
+        if req.get('id') == request_id:
+            return req
+    return None
 
 
 # ============================================================================
@@ -322,20 +231,9 @@ def approve_leave_request(request_id: int, approved_by: str) -> bool:
         - Calls fiscal_year.apply_lifo_deduction() to deduct days
         - Updates employee balance and usage_rate
         - Logs to audit trail
-
-    Implementation:
-        - ORM: database_orm.approve_leave_request_orm()
-        - SQL: database.approve_leave_request()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.info(f"[ORM] approve_leave_request(request_id={request_id}, approved_by={approved_by})")
-        return database_orm.approve_leave_request_orm(
-            request_id=str(request_id),
-            approved_by=approved_by
-        )
-    else:
-        logger.info(f"[SQL] approve_leave_request(request_id={request_id}, approved_by={approved_by})")
-        return database.approve_leave_request(request_id=request_id, approved_by=approved_by)
+    logger.info("approve_leave_request(request_id=%s, approved_by=%s)", request_id, approved_by)
+    return database.approve_leave_request(request_id=request_id, approved_by=approved_by)
 
 
 def reject_leave_request(request_id: int, approved_by: str) -> bool:
@@ -348,20 +246,9 @@ def reject_leave_request(request_id: int, approved_by: str) -> bool:
 
     Returns:
         True if successful, raises ValueError otherwise
-
-    Implementation:
-        - ORM: database_orm.reject_leave_request_orm()
-        - SQL: database.reject_leave_request()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.info(f"[ORM] reject_leave_request(request_id={request_id}, approved_by={approved_by})")
-        return database_orm.reject_leave_request_orm(
-            request_id=str(request_id),
-            approved_by=approved_by
-        )
-    else:
-        logger.info(f"[SQL] reject_leave_request(request_id={request_id}, approved_by={approved_by})")
-        return database.reject_leave_request(request_id=request_id, approved_by=approved_by)
+    logger.info("reject_leave_request(request_id=%s, approved_by=%s)", request_id, approved_by)
+    return database.reject_leave_request(request_id=request_id, approved_by=approved_by)
 
 
 # ============================================================================
@@ -383,23 +270,12 @@ def get_employee_yukyu_history(
 
     Returns:
         List of employee records for current year and previous year
-
-    Implementation:
-        - ORM: database_orm.get_employee_yukyu_history_orm()
-        - SQL: database.get_employee_yukyu_history()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] get_employee_yukyu_history(employee_num={employee_num}, current_year={current_year})")
-        return database_orm.get_employee_yukyu_history_orm(
-            employee_num=employee_num,
-            current_year=current_year
-        )
-    else:
-        logger.debug(f"[SQL] get_employee_yukyu_history(employee_num={employee_num}, current_year={current_year})")
-        return database.get_employee_yukyu_history(
-            employee_num=employee_num,
-            current_year=current_year
-        )
+    logger.debug("get_employee_yukyu_history(employee_num=%s, current_year=%s)", employee_num, current_year)
+    return database.get_employee_yukyu_history(
+        employee_num=employee_num,
+        current_year=current_year
+    )
 
 
 def get_employee_total_balance(employee_num: str, year: int) -> float:
@@ -412,23 +288,12 @@ def get_employee_total_balance(employee_num: str, year: int) -> float:
 
     Returns:
         Total remaining days
-
-    Implementation:
-        - ORM: database_orm.get_total_balance_orm()
-        - SQL: database.get_employee_total_balance()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] get_employee_total_balance(employee_num={employee_num}, year={year})")
-        return database_orm.get_total_balance_orm(
-            employee_num=employee_num,
-            year=year
-        )
-    else:
-        logger.debug(f"[SQL] get_employee_total_balance(employee_num={employee_num}, year={year})")
-        return database.get_employee_total_balance(
-            employee_num=employee_num,
-            year=year
-        )
+    logger.debug("get_employee_total_balance(employee_num=%s, year=%s)", employee_num, year)
+    return database.get_employee_total_balance(
+        employee_num=employee_num,
+        year=year
+    )
 
 
 # ============================================================================
@@ -450,25 +315,13 @@ def get_genzai(
 
     Returns:
         List of genzai employee dictionaries
-
-    Implementation:
-        - ORM: database_orm.get_genzai_orm()
-        - SQL: database.get_genzai()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] get_genzai(status={status}, year={year}, active_in_year={active_in_year})")
-        return database_orm.get_genzai_orm(
-            status=status,
-            year=year,
-            active_in_year=active_in_year
-        )
-    else:
-        logger.debug(f"[SQL] get_genzai(status={status}, year={year}, active_in_year={active_in_year})")
-        return database.get_genzai(
-            status=status,
-            year=year,
-            active_in_year=active_in_year
-        )
+    logger.debug("get_genzai(status=%s, year=%s, active_in_year=%s)", status, year, active_in_year)
+    return database.get_genzai(
+        status=status,
+        year=year,
+        active_in_year=active_in_year
+    )
 
 
 def save_genzai(genzai_data: List[Dict[str, Any]]) -> None:
@@ -477,22 +330,13 @@ def save_genzai(genzai_data: List[Dict[str, Any]]) -> None:
 
     Args:
         genzai_data: List of genzai employee data
-
-    Implementation:
-        - ORM: Uses batch ORM operations (Phase 2)
-        - SQL: database.save_genzai()
     """
     if not genzai_data:
         logger.warning("save_genzai called with empty list")
         return
 
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] save_genzai (batch, count={len(genzai_data)})")
-        logger.warning("[ORM] save_genzai not yet implemented. Falling back to SQL.")
-        database.save_genzai(genzai_data)
-    else:
-        logger.debug(f"[SQL] save_genzai (batch, count={len(genzai_data)})")
-        database.save_genzai(genzai_data)
+    logger.debug("save_genzai (batch, count=%d)", len(genzai_data))
+    database.save_genzai(genzai_data)
 
 
 # ============================================================================
@@ -514,25 +358,13 @@ def get_ukeoi(
 
     Returns:
         List of ukeoi employee dictionaries
-
-    Implementation:
-        - ORM: database_orm.get_ukeoi_orm()
-        - SQL: database.get_ukeoi()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] get_ukeoi(status={status}, year={year}, active_in_year={active_in_year})")
-        return database_orm.get_ukeoi_orm(
-            status=status,
-            year=year,
-            active_in_year=active_in_year
-        )
-    else:
-        logger.debug(f"[SQL] get_ukeoi(status={status}, year={year}, active_in_year={active_in_year})")
-        return database.get_ukeoi(
-            status=status,
-            year=year,
-            active_in_year=active_in_year
-        )
+    logger.debug("get_ukeoi(status=%s, year=%s, active_in_year=%s)", status, year, active_in_year)
+    return database.get_ukeoi(
+        status=status,
+        year=year,
+        active_in_year=active_in_year
+    )
 
 
 def save_ukeoi(ukeoi_data: List[Dict[str, Any]]) -> None:
@@ -541,22 +373,13 @@ def save_ukeoi(ukeoi_data: List[Dict[str, Any]]) -> None:
 
     Args:
         ukeoi_data: List of ukeoi employee data
-
-    Implementation:
-        - ORM: Uses batch ORM operations (Phase 2)
-        - SQL: database.save_ukeoi()
     """
     if not ukeoi_data:
         logger.warning("save_ukeoi called with empty list")
         return
 
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] save_ukeoi (batch, count={len(ukeoi_data)})")
-        logger.warning("[ORM] save_ukeoi not yet implemented. Falling back to SQL.")
-        database.save_ukeoi(ukeoi_data)
-    else:
-        logger.debug(f"[SQL] save_ukeoi (batch, count={len(ukeoi_data)})")
-        database.save_ukeoi(ukeoi_data)
+    logger.debug("save_ukeoi (batch, count=%d)", len(ukeoi_data))
+    database.save_ukeoi(ukeoi_data)
 
 
 # ============================================================================
@@ -578,25 +401,13 @@ def get_staff(
 
     Returns:
         List of staff employee dictionaries
-
-    Implementation:
-        - ORM: database_orm.get_staff_orm()
-        - SQL: database.get_staff()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] get_staff(status={status}, year={year}, active_in_year={active_in_year})")
-        return database_orm.get_staff_orm(
-            status=status,
-            year=year,
-            active_in_year=active_in_year
-        )
-    else:
-        logger.debug(f"[SQL] get_staff(status={status}, year={year}, active_in_year={active_in_year})")
-        return database.get_staff(
-            status=status,
-            year=year,
-            active_in_year=active_in_year
-        )
+    logger.debug("get_staff(status=%s, year=%s, active_in_year=%s)", status, year, active_in_year)
+    return database.get_staff(
+        status=status,
+        year=year,
+        active_in_year=active_in_year
+    )
 
 
 def save_staff(staff_data: List[Dict[str, Any]]) -> None:
@@ -605,22 +416,13 @@ def save_staff(staff_data: List[Dict[str, Any]]) -> None:
 
     Args:
         staff_data: List of staff employee data
-
-    Implementation:
-        - ORM: Uses batch ORM operations (Phase 2)
-        - SQL: database.save_staff()
     """
     if not staff_data:
         logger.warning("save_staff called with empty list")
         return
 
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] save_staff (batch, count={len(staff_data)})")
-        logger.warning("[ORM] save_staff not yet implemented. Falling back to SQL.")
-        database.save_staff(staff_data)
-    else:
-        logger.debug(f"[SQL] save_staff (batch, count={len(staff_data)})")
-        database.save_staff(staff_data)
+    logger.debug("save_staff (batch, count=%d)", len(staff_data))
+    database.save_staff(staff_data)
 
 
 # ============================================================================
@@ -642,25 +444,13 @@ def get_yukyu_usage_details(
 
     Returns:
         List of usage detail dictionaries
-
-    Implementation:
-        - ORM: database_orm.get_yukyu_usage_details_orm()
-        - SQL: database.get_yukyu_usage_details()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] get_yukyu_usage_details(employee_num={employee_num}, year={year}, month={month})")
-        return database_orm.get_yukyu_usage_details_orm(
-            employee_num=employee_num,
-            year=year,
-            month=month
-        )
-    else:
-        logger.debug(f"[SQL] get_yukyu_usage_details(employee_num={employee_num}, year={year}, month={month})")
-        return database.get_yukyu_usage_details(
-            employee_num=employee_num,
-            year=year,
-            month=month
-        )
+    logger.debug("get_yukyu_usage_details(employee_num=%s, year=%s, month=%s)", employee_num, year, month)
+    return database.get_yukyu_usage_details(
+        employee_num=employee_num,
+        year=year,
+        month=month
+    )
 
 
 def save_yukyu_usage_details(usage_details_list: List[Dict[str, Any]]) -> None:
@@ -675,21 +465,13 @@ def save_yukyu_usage_details(usage_details_list: List[Dict[str, Any]]) -> None:
             - year: Year extracted from use_date
             - month: Month extracted from use_date
             - days_used: Number of days (default 1.0)
-
-    Implementation:
-        - ORM: database_orm.save_yukyu_usage_details_orm()
-        - SQL: database.save_yukyu_usage_details()
     """
     if not usage_details_list:
         logger.warning("save_yukyu_usage_details called with empty list")
         return
 
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] save_yukyu_usage_details (batch, count={len(usage_details_list)})")
-        database_orm.save_yukyu_usage_details_orm(usage_details_list)
-    else:
-        logger.debug(f"[SQL] save_yukyu_usage_details (batch, count={len(usage_details_list)})")
-        database.save_yukyu_usage_details(usage_details_list)
+    logger.debug("save_yukyu_usage_details (batch, count=%d)", len(usage_details_list))
+    database.save_yukyu_usage_details(usage_details_list)
 
 
 # ============================================================================
@@ -710,18 +492,9 @@ def get_monthly_usage_summary(year: int) -> Dict[int, Dict[str, Any]]:
         - employee_count: Number of employees who used vacation
         - total_days: Total vacation days used
         - usage_count: Count of usage records
-
-    Implementation:
-        - ORM: Via raw SQL aggregation (Phase 2)
-        - SQL: database.get_monthly_usage_summary()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] get_monthly_usage_summary(year={year})")
-        logger.warning("[ORM] get_monthly_usage_summary not yet implemented. Falling back to SQL.")
-        return database.get_monthly_usage_summary(year=year)
-    else:
-        logger.debug(f"[SQL] get_monthly_usage_summary(year={year})")
-        return database.get_monthly_usage_summary(year=year)
+    logger.debug("get_monthly_usage_summary(year=%s)", year)
+    return database.get_monthly_usage_summary(year=year)
 
 
 def get_employee_usage_summary(employee_num: str, year: int) -> Optional[Dict[str, Any]]:
@@ -735,11 +508,8 @@ def get_employee_usage_summary(employee_num: str, year: int) -> Optional[Dict[st
     Returns:
         Summary dictionary with granted, used, balance, expired, usage_rate
         or None if not found
-
-    Implementation:
-        - SQL: database.get_employee_usage_summary()
     """
-    logger.debug(f"[SQL] get_employee_usage_summary(employee_num={employee_num}, year={year})")
+    logger.debug("get_employee_usage_summary(employee_num=%s, year=%s)", employee_num, year)
     return database.get_employee_usage_summary(employee_num=employee_num, year=year)
 
 
@@ -762,25 +532,13 @@ def get_audit_log(
 
     Returns:
         List of audit log dictionaries
-
-    Implementation:
-        - ORM: database_orm.get_audit_log_orm()
-        - SQL: database.get_audit_log()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] get_audit_log(entity_type={entity_type}, entity_id={entity_id}, limit={limit})")
-        return database_orm.get_audit_log_orm(
-            entity_type=entity_type,
-            entity_id=entity_id,
-            limit=limit
-        )
-    else:
-        logger.debug(f"[SQL] get_audit_log(entity_type={entity_type}, entity_id={entity_id}, limit={limit})")
-        return database.get_audit_log(
-            entity_type=entity_type,
-            entity_id=entity_id,
-            limit=limit
-        )
+    logger.debug("get_audit_log(entity_type=%s, entity_id=%s, limit=%s)", entity_type, entity_id, limit)
+    return database.get_audit_log(
+        entity_type=entity_type,
+        entity_id=entity_id,
+        limit=limit
+    )
 
 
 # ============================================================================
@@ -796,19 +554,9 @@ def get_notifications(user_id: str) -> List[Dict[str, Any]]:
 
     Returns:
         List of notification dictionaries
-
-    Implementation:
-        - ORM: database_orm.get_notifications_orm()
-        - SQL: Falls back to ORM for now (notifications feature)
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] get_notifications(user_id={user_id})")
-        return database_orm.get_notifications_orm(user_id=user_id)
-    else:
-        logger.debug(f"[SQL] get_notifications(user_id={user_id})")
-        if ORM_AVAILABLE:
-            return database_orm.get_notifications_orm(user_id=user_id)
-        return []
+    logger.debug("get_notifications(user_id=%s)", user_id)
+    return database.get_notifications(user_id=user_id)
 
 
 def get_read_notification_ids(user_id: str) -> set:
@@ -820,17 +568,9 @@ def get_read_notification_ids(user_id: str) -> set:
 
     Returns:
         Set of read notification IDs
-
-    Implementation:
-        - ORM: database_orm.get_read_notification_ids_orm()
-        - SQL: database.get_read_notification_ids()
     """
-    if USE_ORM and ORM_AVAILABLE:
-        logger.debug(f"[ORM] get_read_notification_ids(user_id={user_id})")
-        return database_orm.get_read_notification_ids_orm(user_id=user_id)
-    else:
-        logger.debug(f"[SQL] get_read_notification_ids(user_id={user_id})")
-        return database.get_read_notification_ids(user_id=user_id)
+    logger.debug("get_read_notification_ids(user_id=%s)", user_id)
+    return database.get_read_notification_ids(user_id=user_id)
 
 
 # ============================================================================
@@ -843,19 +583,15 @@ def get_implementation_status() -> Dict[str, Any]:
 
     Returns:
         Dictionary with:
-        - use_orm: Whether ORM is enabled
-        - orm_available: Whether ORM module is available
         - implementation: Current implementation name
         - database_type: SQLite or PostgreSQL
+        - log_level: Current log level
     """
     db_type = os.getenv("DATABASE_TYPE", "sqlite").lower()
 
     return {
-        "use_orm": USE_ORM,
-        "orm_available": ORM_AVAILABLE,
-        "implementation": "SQLAlchemy ORM (Phase 2)" if (USE_ORM and ORM_AVAILABLE) else "Raw SQL (database.py)",
+        "implementation": "database/ package (SQLAlchemy-backed)",
         "database_type": db_type,
-        "fallback_enabled": True,
         "log_level": log_level,
     }
 
@@ -865,7 +601,6 @@ def get_implementation_status() -> Dict[str, Any]:
 # ============================================================================
 
 if __name__ == "__main__":
-    # Test implementation status
     import json
     status = get_implementation_status()
     print("Database Adapter Status:")

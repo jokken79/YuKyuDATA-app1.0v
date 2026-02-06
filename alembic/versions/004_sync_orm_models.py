@@ -20,15 +20,12 @@ import sqlalchemy as sa
 
 
 revision = '004'
-down_revision = '003'
+down_revision = '003_add_fulltext_search'
 branch_labels = None
 depends_on = None
 
 
 def upgrade():
-    conn = op.get_bind()
-    db_type = conn.dialect.name
-
     # =============================================
     # EMPLOYEES: add missing columns
     # =============================================

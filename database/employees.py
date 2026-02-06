@@ -8,6 +8,7 @@ from orm import SessionLocal, Employee, GenzaiEmployee, UkeoiEmployee, StaffEmpl
 from .connection import USE_POSTGRESQL
 from services.crypto_utils import encrypt_field
 
+
 def save_employees(employees_data: List[Dict[str, Any]]):
     """Saves vacation data (employees table) using ORM UPSERT logic."""
     with SessionLocal() as session:
@@ -50,6 +51,7 @@ def save_employees(employees_data: List[Dict[str, Any]]):
             session.execute(stmt)
         session.commit()
 
+
 def save_employee_data(model_class, data: List[Dict[str, Any]]):
     """Generic function to save type-specific employee data using ORM UPSERT."""
     # Get valid column names from the ORM model
@@ -84,24 +86,24 @@ def save_employee_data(model_class, data: List[Dict[str, Any]]):
             session.execute(stmt)
         session.commit()
 
+
 def get_employees(year: Optional[int] = None) -> List[Dict[str, Any]]:
     """Retrieve employees with their Katakana name from specific tables."""
     with SessionLocal() as session:
         # We need a join to get Kana from Genzai/Ukeoi/Staff tables
         # For simplicity and performance, we'll fetch Employees and then enrich them
         # or use a proper SQLAlchemy join query.
-        
-        from sqlalchemy import or_
-        from orm.models.genzai_employee import GenzaiEmployee
-        from orm.models.ukeoi_employee import UkeoiEmployee
-        from orm.models.staff_employee import StaffEmployee
-        
+
+        from orm.models.genzai_employee import GenzaiEmployee as GenzaiEmp
+        from orm.models.ukeoi_employee import UkeoiEmployee as UkeoiEmp
+        from orm.models.staff_employee import StaffEmployee as StaffEmp
+
         query = session.query(Employee)
         if year:
             query = query.filter(Employee.year == year)
-        
+
         employees = query.order_by(Employee.usage_rate.desc()).all()
-        
+
         # Enrich with Kana
         result = []
         for emp in employees:
@@ -109,15 +111,18 @@ def get_employees(year: Optional[int] = None) -> List[Dict[str, Any]]:
             # Try to find kana in any of the specific tables
             # Proactive: Cache this or use a single join query for production
             kana_val = ""
-            g = session.query(GenzaiEmployee.kana).filter_by(employee_num=emp.employee_num).first()
-            if g: kana_val = g.kana
+            g = session.query(GenzaiEmp.kana).filter_by(employee_num=emp.employee_num).first()
+            if g:
+                kana_val = g.kana
             else:
-                u = session.query(UkeoiEmployee.kana).filter_by(employee_num=emp.employee_num).first()
-                if u: kana_val = u.kana
+                u = session.query(UkeoiEmp.kana).filter_by(employee_num=emp.employee_num).first()
+                if u:
+                    kana_val = u.kana
                 else:
-                    s = session.query(StaffEmployee.kana).filter_by(employee_num=emp.employee_num).first()
-                    if s: kana_val = s.kana
-            
+                    s = session.query(StaffEmp.kana).filter_by(employee_num=emp.employee_num).first()
+                    if s:
+                        kana_val = s.kana
+
             emp_dict['kana'] = kana_val
             result.append(emp_dict)
 

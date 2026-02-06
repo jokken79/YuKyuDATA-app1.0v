@@ -13,8 +13,6 @@ Migration Plan Phase 1.1 - Added logging for monitoring migration progress.
 """
 
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
-from datetime import datetime
 from typing import Dict
 import logging
 
@@ -82,8 +80,6 @@ class DeprecationHeaderMiddleware(BaseHTTPMiddleware):
 
     def _log_deprecated_usage(self, path: str, method: str, request):
         """Log usage of deprecated routes for monitoring migration progress."""
-        global _deprecated_usage_stats
-
         # Track request count
         key = f"{method}:{path}"
         _deprecated_usage_stats[key] = _deprecated_usage_stats.get(key, 0) + 1
@@ -107,31 +103,30 @@ def get_deprecated_usage_stats() -> Dict[str, int]:
 
 def reset_deprecated_usage_stats():
     """Reset usage statistics (useful for testing)."""
-    global _deprecated_usage_stats
     _deprecated_usage_stats.clear()
 
 
 class VersionHeaderMiddleware(BaseHTTPMiddleware):
     """
-    Middleware que agrega headers de versión API a todas las respuestas.
-    
+    Middleware que agrega headers de version API a todas las respuestas.
+
     También respeta el header Accept-Version del cliente si es proporcionado.
     """
-    
+
     async def dispatch(self, request, call_next):
         """Process request and add version information"""
-        
+
         # Get Accept-Version header from client (if provided)
         accept_version = request.headers.get("Accept-Version", "v1")
-        
+
         # Store in request state for use in endpoints
         request.state.api_version = accept_version
-        
+
         response = await call_next(request)
-        
+
         # Add version headers to response
         response.headers["API-Version"] = accept_version
         response.headers["API-Supported-Versions"] = "v0 (deprecated), v1"
         response.headers["X-API-Version"] = "v1"  # Current primary version
-        
+
         return response

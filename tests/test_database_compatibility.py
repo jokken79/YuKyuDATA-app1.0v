@@ -9,7 +9,6 @@ import pytest
 import os
 import sys
 from pathlib import Path
-from datetime import datetime
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -46,14 +45,25 @@ class TestEncryptionCompatibility:
     """Test that encryption works with both databases."""
 
     def test_encrypt_decrypt_consistency(self):
-        """Test that encryption/decryption works consistently."""
+        """Test that encryption/decryption works consistently.
+
+        When DATABASE_ENCRYPTION_KEY is set, encrypted value must differ from plaintext.
+        When not set, encryption is disabled and values pass through unchanged.
+        """
         test_value = "2000-01-15"
+        encryption_key = os.environ.get("DATABASE_ENCRYPTION_KEY", "")
 
         # Encrypt
         encrypted = encrypt_field(test_value)
-        assert encrypted != test_value
 
-        # Decrypt
+        if encryption_key:
+            # With key: encrypted output must differ from plaintext
+            assert encrypted != test_value, "Encrypted value should differ from plaintext"
+        else:
+            # Without key: encryption disabled, plaintext passthrough
+            assert encrypted == test_value, "Without encryption key, value should pass through"
+
+        # Decrypt (roundtrip)
         decrypted = decrypt_field(encrypted)
         assert decrypted == test_value
 
@@ -64,8 +74,7 @@ class TestEncryptionCompatibility:
 
     def test_encrypted_field_empty_string(self):
         """Test encryption handles empty strings."""
-        encrypted_empty = encrypt_field("")
-        # Should not raise
+        encrypt_field("")  # Should not raise
 
 
 class TestLegacyAliases:

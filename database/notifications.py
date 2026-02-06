@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from sqlalchemy import func, and_
 from orm import SessionLocal, Notification, NotificationRead
+
 
 def create_notification(user_id: str, title: str, message: str, type: str = 'info') -> Dict[str, Any]:
     """Create a new notification using ORM."""
@@ -19,6 +20,7 @@ def create_notification(user_id: str, title: str, message: str, type: str = 'inf
         session.refresh(notif)
         return notif.to_dict()
 
+
 def get_notifications(user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
     """Get notifications for a user, enriched with read status."""
     with SessionLocal() as session:
@@ -27,18 +29,19 @@ def get_notifications(user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
             NotificationRead.user_id == user_id
         ).all()
         read_id_set = {r[0] for r in read_ids}
-        
+
         notifications = session.query(Notification).filter(
             Notification.user_id == user_id
         ).order_by(Notification.created_at.desc()).limit(limit).all()
-        
+
         result = []
         for n in notifications:
             n_dict = n.to_dict()
             n_dict['is_read'] = n.id in read_id_set
             result.append(n_dict)
-            
+
         return result
+
 
 def mark_notification_as_read(user_id: str, notification_id: int):
     """Mark a notification as read using ORM."""
@@ -50,7 +53,7 @@ def mark_notification_as_read(user_id: str, notification_id: int):
                 NotificationRead.notification_id == notification_id
             )
         ).first()
-        
+
         if not existing:
             read_record = NotificationRead(
                 user_id=user_id,
@@ -61,6 +64,7 @@ def mark_notification_as_read(user_id: str, notification_id: int):
             )
             session.add(read_record)
             session.commit()
+
 
 def get_unread_count(user_id: str, all_ids: list = None) -> int:
     """Get count of unread notifications for a user.

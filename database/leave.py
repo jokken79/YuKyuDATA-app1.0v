@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from orm import SessionLocal, LeaveRequest, YukyuUsageDetail, Employee
 from .connection import USE_POSTGRESQL
 
+
 def save_leave_request(data: Dict[str, Any]) -> int:
     """Save a leave request using ORM."""
     with SessionLocal() as session:
@@ -29,20 +30,26 @@ def save_leave_request(data: Dict[str, Any]) -> int:
         session.refresh(leave_req)
         return leave_req.id
 
-def get_leave_requests(status: Optional[str] = None, employee_num: Optional[str] = None, year: Optional[int] = None) -> List[Dict[str, Any]]:
+
+def get_leave_requests(
+    status: Optional[str] = None,
+    employee_num: Optional[str] = None,
+    year: Optional[int] = None
+) -> List[Dict[str, Any]]:
     """Retrieve leave requests using ORM."""
     with SessionLocal() as session:
         query = session.query(LeaveRequest)
-        
+
         if status:
             query = query.filter(LeaveRequest.status == status)
         if employee_num:
             query = query.filter(LeaveRequest.employee_num == employee_num)
         if year:
             query = query.filter(LeaveRequest.year == year)
-            
+
         requests = query.order_by(LeaveRequest.created_at.desc()).all()
         return [req.to_dict() for req in requests]
+
 
 def save_yukyu_usage_details(usage_details_list: List[Dict[str, Any]]):
     """Saves yukyu usage details using ORM UPSERT logic."""

@@ -11,8 +11,7 @@ Características:
 from datetime import date, datetime
 from typing import Optional, Dict, List, Tuple
 
-# NOTE: get_db and USE_POSTGRESQL are imported locally in functions that need them
-# to avoid circular imports during module initialization
+from database import get_db, USE_POSTGRESQL
 
 # Tabla de otorgamiento según antigüedad (Ley Laboral Japonesa Art. 39)
 GRANT_TABLE = {
