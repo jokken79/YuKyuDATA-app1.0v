@@ -504,23 +504,19 @@
                     </div>
                     <!-- Type Filter Tabs -->
                     <div class="type-filter-tabs mb-lg flex gap-sm flex-wrap" id="type-filter-tabs">
-                        <button class="btn btn-glass type-tab active" data-type="all" data-action="ui.filterByType"
-                            data-type="all">
+                        <button class="btn btn-glass type-tab active" data-type="all" data-action="ui.filterByType">
                             <span class="tab-label">全員</span>
                             <span class="tab-count" id="count-all">0</span>
                         </button>
-                        <button class="btn btn-glass type-tab" data-type="genzai" data-action="ui.filterByType"
-                            data-type="genzai">
+                        <button class="btn btn-glass type-tab" data-type="genzai" data-action="ui.filterByType">
                             <span class="tab-label">派遣 Dispatch</span>
                             <span class="tab-count" id="count-genzai">0</span>
                         </button>
-                        <button class="btn btn-glass type-tab" data-type="ukeoi" data-action="ui.filterByType"
-                            data-type="ukeoi">
+                        <button class="btn btn-glass type-tab" data-type="ukeoi" data-action="ui.filterByType">
                             <span class="tab-label">請負 Contract</span>
                             <span class="tab-count" id="count-ukeoi">0</span>
                         </button>
-                        <button class="btn btn-glass type-tab" data-type="staff" data-action="ui.filterByType"
-                            data-type="staff">
+                        <button class="btn btn-glass type-tab" data-type="staff" data-action="ui.filterByType">
                             <span class="tab-label">社員 Staff</span>
                             <span class="tab-count" id="count-staff">0</span>
                         </button>
@@ -911,8 +907,8 @@
                                 <div class="form-section-title">📝 理由</div>
                                 <div class="form-group">
                                     <label for="leave-reason">理由 (Reason) - 任意</label>
-                                    <textarea class="input-glass w-full" id="leave-reason"
-                                        class="min-h-80 textarea-resizable" placeholder="私用、通院、旅行など..." maxlength="200"
+                                    <textarea class="input-glass w-full min-h-80 textarea-resizable" id="leave-reason"
+                                        placeholder="私用、通院、旅行など..." maxlength="200"
                                         oninput="App.requests.updateCharCounter()"
                                         aria-describedby="reason-char-counter"></textarea>
                                     <div class="char-counter" id="reason-char-counter">0 / 200</div>
@@ -1440,7 +1436,7 @@
                                 <button class="btn btn-glass" data-action="settings.viewAuditLog">
                                     📜 監査ログ
                                 </button>
-                                <button class="btn btn-glass" data-action="data.sync" class="bg-primary-light">
+                                <button class="btn btn-glass bg-primary-light" data-action="data.sync">
                                     ⚡ データ同期
                                 </button>
                             </div>
@@ -2023,7 +2019,7 @@
                 </div>
                 <div class="confirm-row" id="confirm-reason-row">
                     <span class="confirm-row-label">理由</span>
-                    <span class="confirm-row-value text-right" id="confirm-reason" class="max-w-200">-</span>
+                    <span class="confirm-row-value text-right max-w-200" id="confirm-reason">-</span>
                 </div>
             </div>
 
@@ -2209,29 +2205,29 @@
             </div>
 
             <!-- Warnings List (Expandable) -->
-            <div class="import-warnings-section" id="import-warnings-section" class="hidden">
+            <div class="import-warnings-section hidden" id="import-warnings-section">
                 <div class="import-warnings-header" data-action="importReport.toggleWarnings">
                     <span class="form-section-title">⚠️ 警告一覧</span>
                     <span class="import-warnings-toggle" id="import-warnings-toggle">▼</span>
                 </div>
-                <div class="import-warnings-list" id="import-warnings-list" class="hidden">
+                <div class="import-warnings-list hidden" id="import-warnings-list">
                     <!-- Warning items will be added dynamically -->
                 </div>
             </div>
 
             <!-- Errors List (Expandable) -->
-            <div class="import-errors-section" id="import-errors-section" class="hidden">
+            <div class="import-errors-section hidden" id="import-errors-section">
                 <div class="import-errors-header" data-action="importReport.toggleErrors">
                     <span class="form-section-title">❌ エラー一覧</span>
                     <span class="import-errors-toggle" id="import-errors-toggle">▼</span>
                 </div>
-                <div class="import-errors-list" id="import-errors-list" class="hidden">
+                <div class="import-errors-list hidden" id="import-errors-list">
                     <!-- Error items will be added dynamically -->
                 </div>
             </div>
 
             <!-- Problematic Employees (Optional) -->
-            <div class="import-problems-section" id="import-problems-section" class="hidden">
+            <div class="import-problems-section hidden" id="import-problems-section">
                 <div class="form-section-title">👤 要確認従業員</div>
                 <div class="import-problems-list" id="import-problems-list">
                     <!-- Problem employee items -->
@@ -2274,7 +2270,7 @@
                     <span class="form-section-title">👥 選択された従業員</span>
                     <span class="bulk-edit-toggle" id="bulk-edit-employees-toggle">▼</span>
                 </div>
-                <div class="bulk-edit-employees-list" id="bulk-edit-employees-list" class="max-h-150">
+                <div class="bulk-edit-employees-list max-h-150" id="bulk-edit-employees-list">
                     <!-- Employee chips will be added dynamically -->
                 </div>
             </div>
@@ -2290,7 +2286,7 @@
                             onchange="App.bulkEdit.toggleField('add_granted')">
                         <span>付与日数を追加</span>
                     </label>
-                    <div class="bulk-edit-input-group" id="bulk-edit-add-granted-group" class="hidden">
+                    <div class="bulk-edit-input-group hidden" id="bulk-edit-add-granted-group">
                         <span class="bulk-edit-prefix">+</span>
                         <input type="number" id="bulk-edit-add-granted" class="input-glass" min="0" max="20" step="0.5"
                             placeholder="0">
@@ -2305,7 +2301,7 @@
                             onchange="App.bulkEdit.toggleField('add_used')">
                         <span>使用日数を追加</span>
                     </label>
-                    <div class="bulk-edit-input-group" id="bulk-edit-add-used-group" class="hidden">
+                    <div class="bulk-edit-input-group hidden" id="bulk-edit-add-used-group">
                         <span class="bulk-edit-prefix">+</span>
                         <input type="number" id="bulk-edit-add-used" class="input-glass" min="0" max="40" step="0.5"
                             placeholder="0">
@@ -2320,7 +2316,7 @@
                             onchange="App.bulkEdit.toggleField('set_haken')">
                         <span>派遣先を変更</span>
                     </label>
-                    <div class="bulk-edit-input-group" id="bulk-edit-set-haken-group" class="hidden">
+                    <div class="bulk-edit-input-group hidden" id="bulk-edit-set-haken-group">
                         <select id="bulk-edit-set-haken" class="input-glass">
                             <option value="">派遣先を選択...</option>
                         </select>
@@ -2329,7 +2325,7 @@
             </div>
 
             <!-- Preview Section -->
-            <div class="bulk-edit-preview-section" id="bulk-edit-preview-section" class="hidden">
+            <div class="bulk-edit-preview-section hidden" id="bulk-edit-preview-section">
                 <div class="form-section-title">🔍 変更プレビュー</div>
                 <div class="bulk-edit-preview-list" id="bulk-edit-preview-list">
                     <!-- Preview items will be added dynamically -->
@@ -2337,7 +2333,7 @@
             </div>
 
             <!-- Warnings Section -->
-            <div class="bulk-edit-warnings-section" id="bulk-edit-warnings-section" class="hidden">
+            <div class="bulk-edit-warnings-section hidden" id="bulk-edit-warnings-section">
                 <div class="form-section-title text-warning">⚠️ 警告</div>
                 <div class="bulk-edit-warnings-list" id="bulk-edit-warnings-list">
                     <!-- Warning items -->
