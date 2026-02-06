@@ -19,8 +19,8 @@ def save_leave_request(data: Dict[str, Any]) -> int:
             leave_type=data.get('leave_type', 'full'),
             reason=data.get('reason'),
             status=data.get('status', 'PENDING'),
-            requested_at=data.get('requested_at') or datetime.now().isoformat(),
             year=data.get('year'),
+            hourly_wage=data.get('hourly_wage'),
             created_at=datetime.now(),
             updated_at=datetime.now()
         )

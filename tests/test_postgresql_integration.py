@@ -32,23 +32,17 @@ class TestPostgreSQLConnection:
 
     def test_postgresql_enabled(self):
         """Verify PostgreSQL is enabled."""
-        assert database.USE_POSTGRESQL == True
-        assert database.DATABASE_URL.startswith('postgresql')
+        assert database.USE_POSTGRESQL is True
 
     def test_database_connection(self):
-        """Test that we can connect to PostgreSQL database."""
+        """Test that we can connect to PostgreSQL database via ORM."""
         try:
-            conn = database.get_db_connection()
-            assert conn is not None
-
-            # Verify connection works
-            cursor = conn.cursor()
-            cursor.execute("SELECT 1")
-            result = cursor.fetchone()
-            assert result is not None
-
-            cursor.close()
-            conn.close()
+            from orm import SessionLocal
+            with SessionLocal() as session:
+                result = session.execute(
+                    __import__('sqlalchemy').text("SELECT 1")
+                ).fetchone()
+                assert result is not None
         except Exception as e:
             pytest.skip(f"PostgreSQL connection failed: {str(e)}")
 

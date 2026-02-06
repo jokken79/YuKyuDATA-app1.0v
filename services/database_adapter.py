@@ -2,26 +2,21 @@
 Database Adapter - Abstraction Layer
 =====================================
 
-This module provides a unified interface to switch between legacy raw SQL (database.py)
-and SQLAlchemy ORM (database_orm.py) implementations.
+This module provides a unified interface for database operations.
+The database/ package now uses SQLAlchemy ORM internally, so this adapter
+delegates all calls to the database package.
 
-Features:
-- Feature flag USE_ORM (from env var) to toggle implementations
-- Same function signatures for both implementations (backward compatible)
-- Comprehensive logging to track which implementation is used
-- Graceful fallback if ORM not available
-- Type hints for better IDE support
+The USE_ORM flag is kept for backwards compatibility but the database/
+package already uses ORM (SessionLocal + SQLAlchemy models) for all operations.
 
 Usage:
     from services.database_adapter import get_employees, approve_leave_request
 
-    # Code automatically uses either database.py or database_orm.py based on env var
     employees = get_employees(year=2025)
     approve_leave_request(request_id=123, approved_by="admin")
 
 Environment Variables:
-    USE_ORM=true    - Enable ORM implementation (Phase 2 migration)
-    USE_ORM=false   - Use legacy raw SQL (production default)
+    USE_ORM=false   - Default (production). All calls go through database/ package.
     LOG_LEVEL=DEBUG - Show which implementation each function uses
 """
 
@@ -40,29 +35,22 @@ logger.setLevel(getattr(logging, log_level, logging.INFO))
 # FEATURE FLAG: USE_ORM
 # ============================================================================
 
-# Default to False (production safety) - only enable explicitly in dev/testing
+# USE_ORM flag kept for backwards compatibility.
+# The database/ package already uses SQLAlchemy ORM internally.
 USE_ORM = os.getenv("USE_ORM", "false").lower() in ("true", "1", "yes")
 
-logger.info(f"Database Adapter initialized with USE_ORM={USE_ORM}")
-logger.info(f"Implementation: {'SQLAlchemy ORM (Phase 2)' if USE_ORM else 'Raw SQL (database.py)'}")
+# database_orm.py no longer exists - replaced by database/ package (which uses ORM).
+# All adapter functions now delegate to the database package directly.
+ORM_AVAILABLE = False
+
+logger.info(f"Database Adapter initialized. All calls delegate to database/ package (ORM-based).")
 
 
 # ============================================================================
-# IMPORTS - Conditional based on feature flag
+# IMPORTS
 # ============================================================================
 
 import database
-
-# Try to import ORM implementation if available
-try:
-    import database_orm
-    ORM_AVAILABLE = True
-    logger.debug("database_orm module successfully imported")
-except ImportError as e:
-    ORM_AVAILABLE = False
-    logger.warning(f"database_orm not available: {e}")
-    if USE_ORM:
-        logger.error("USE_ORM=true but database_orm module not found. Falling back to raw SQL.")
 
 
 # ============================================================================
