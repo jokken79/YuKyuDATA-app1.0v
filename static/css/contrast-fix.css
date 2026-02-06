@@ -1,0 +1,97 @@
+/* 
+ * CONTRAST RESCUE - Fixes Critical Visibility Issues
+ * Loaded LAST to override all broken themes
+ */
+
+/* 1. Define Missing Variables */
+:root {
+    --color-primary-900: #134e4a;
+    /* Dark Teal for headers */
+    --glass-border: rgba(0, 0, 0, 0.1);
+    /* Visible border for inputs */
+    --glass-highlight: rgba(255, 255, 255, 0.5);
+}
+
+/* 2. Force High Contrast for Light Mode (Default) */
+/* This handles the case where data-theme="dark" is NOT present (Light Mode) */
+:root:not([data-theme="dark"]),
+[data-theme="light"] {
+    --bg-base: #f0f2f5 !important;
+    --bg-surface: #ffffff !important;
+    --text-primary: #0f172a !important;
+    /* Proper Slate 900 Black */
+    --text-secondary: #334155 !important;
+    /* Slate 700 */
+    --text-tertiary: #475569 !important;
+    /* Slate 600 */
+    --border-subtle: rgba(0, 0, 0, 0.15) !important;
+
+    /* Kill invisible glass gradients in light mode */
+    --glass-panel: none !important;
+    --glass-bg: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* 3. Fix Generic Elements to ensure they use the variables */
+body {
+    color: var(--text-primary) !important;
+}
+
+/* 4. Fix Modal Visibility Specifically */
+.modal-container,
+#login-modal .modal-container {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+/* 5. Fix Input Visibility */
+.input-glass,
+input.form-control {
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    /* Dark text specifically for inputs */
+    border: 1px solid #cbd5e1 !important;
+    /* Slate 300 */
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.input-glass:focus,
+input.form-control:focus {
+    border-color: var(--primary) !important;
+    background-color: #ffffff !important;
+    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2) !important;
+}
+
+/* 6. Fix Text Gradient Visibility */
+.text-gradient {
+    background: linear-gradient(135deg, #0e7490 0%, #06b6d4 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    /* Fallback if clip fails */
+    color: #0e7490;
+}
+
+/* 7. Fix Card Visibility in Dashboard */
+.glass-panel {
+    background-color: var(--bg-surface) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+/* 8. Fix Stats Text */
+.stat-value {
+    color: var(--text-primary) !important;
+    text-shadow: none !important;
+    /* Remove shadow that might blur white text on white */
+}
+
+.stat-label {
+    color: var(--text-secondary) !important;
+}
+
+/* 9. Header Visibility */
+header.page-header {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+}

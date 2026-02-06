@@ -36,15 +36,16 @@
         href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
 
-    <!-- YuKyu Unified Design System (Single Source of Truth) -->
-    <link rel="stylesheet" href="/static/css/unified-design-system.css">
+    <!-- === NEW CLEAN DESIGN SYSTEM v3 === -->
+    <!-- Single source of truth - Clean Tech SaaS style -->
+    <link rel="stylesheet" href="/static/css/yukyu-design-v3.css">
 
-    <!-- Legacy Design Tokens - COMMENTED OUT: Conflicts with unified-design-system.css -->
-    <!-- Violet (#7C3AED) vs Cyan (#06b6d4) color conflict resolved -->
-    <!-- <link rel="stylesheet" href="/static/css/yukyu-tokens.css"> -->
-
-    <!-- NEXUS THEME - Hyper Modern Glass UI -->
-    <link rel="stylesheet" href="/static/css/nexus-theme/main.css">
+    <!-- LEGACY CSS - DISABLED (Conflicting styles) -->
+    <!-- <link rel="stylesheet" href="/static/css/unified-design-system.css"> -->
+    <!-- <link rel="stylesheet" href="/static/css/nexus-theme/main.css"> -->
+    <!-- <link rel="stylesheet" href="/static/css/ui-ux-fixes-2026.css"> -->
+    <!-- <link rel="stylesheet" href="/static/css/contrast-fix.css"> -->
+    <!-- <link rel="stylesheet" href="/static/css/sidebar-fix.css"> -->
 
     <!-- Libraries -->
     <!-- ApexCharts - Modern charting library -->
@@ -228,8 +229,9 @@
     <script type="module" src="/static/js/utils/auth-manager.js"></script>
     <script type="module" src="/static/js/components/login-modal.js"></script>
 
-    <!-- UI/UX Critical Fixes 2026 - Load LAST to override conflicts -->
-    <link rel="stylesheet" href="/static/css/ui-ux-fixes-2026.css">
+    <!-- LEGACY FIX CSS - DISABLED (now handled by yukyu-design-v3.css) -->
+    <!-- <link rel="stylesheet" href="/static/css/ui-ux-fixes-2026.css"> -->
+    <!-- <link rel="stylesheet" href="/static/css/contrast-fix.css"> -->
 </head>
 
 <body>

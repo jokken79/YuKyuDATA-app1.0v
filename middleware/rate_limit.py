@@ -71,60 +71,64 @@ class AdvancedRateLimitMiddleware(BaseHTTPMiddleware):
         self.exclude_paths = exclude_paths or ["/health", "/docs", "/redoc", "/favicon.ico"]
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        # Skip for excluded paths
-        if any(request.url.path.startswith(path) for path in self.exclude_paths):
-            return await call_next(request)
+        try:
+            # Skip for excluded paths
+            if any(request.url.path.startswith(path) for path in self.exclude_paths):
+                return await call_next(request)
 
-        # Skip in testing
-        if os.environ.get("TESTING") == "true":
-            return await call_next(request)
+            # Skip in testing
+            if os.environ.get("TESTING") == "true":
+                return await call_next(request)
 
-        # Identify client (IP or API Key/User if authenticated)
-        # Using IP as fallback
-        client_id = request.client.host if request.client else "unknown"
-        
-        # Route-specific limits (can be expanded)
-        limit = self.default_limit
-        window = self.default_window
-        
-        if "/api/auth/" in request.url.path:
-            limit = 10 # Strict login limits
-            window = 60
-        elif "/api/admin/" in request.url.path:
-            limit = 50
-        
-        key = f"rl:{client_id}:{request.url.path}" # Per-path limiting
-        # Or just per-client: key = f"rl:{client_id}"
-        
-        allowed, remaining, reset = self.storage.check_limit(key, limit, window)
-        
-        if not allowed:
-            logger.warning(f"Rate limit exceeded: {key}")
-            return JSONResponse(
-                status_code=429,
-                content={
-                    "status": "error",
-                    "code": "RATE_LIMIT_EXCEEDED",
-                    "message": "Too many requests. Please slow down.",
-                    "details": {
-                        "limit": limit,
-                        "reset_at_unix": reset,
-                        "retry_after_seconds": max(0, reset - int(time.time()))
+            # Identify client (IP or API Key/User if authenticated)
+            # Using IP as fallback
+            client_id = request.client.host if request.client else "unknown"
+            
+            # Route-specific limits (can be expanded)
+            limit = self.default_limit
+            window = self.default_window
+            
+            if "/api/auth/" in request.url.path:
+                limit = 10 # Strict login limits
+                window = 60
+            elif "/api/admin/" in request.url.path:
+                limit = 50
+            
+            key = f"rl:{client_id}:{request.url.path}" # Per-path limiting
+            
+            allowed, remaining, reset = self.storage.check_limit(key, limit, window)
+            
+            if not allowed:
+                logger.warning(f"Rate limit exceeded: {key}")
+                return JSONResponse(
+                    status_code=429,
+                    content={
+                        "status": "error",
+                        "code": "RATE_LIMIT_EXCEEDED",
+                        "message": "Too many requests. Please slow down.",
+                        "details": {
+                            "limit": limit,
+                            "reset_at_unix": reset,
+                            "retry_after_seconds": max(0, reset - int(time.time()))
+                        }
+                    },
+                    headers={
+                        "Retry-After": str(max(0, reset - int(time.time()))),
+                        "X-RateLimit-Limit": str(limit),
+                        "X-RateLimit-Remaining": "0",
+                        "X-RateLimit-Reset": str(reset)
                     }
-                },
-                headers={
-                    "Retry-After": str(max(0, reset - int(time.time()))),
-                    "X-RateLimit-Limit": str(limit),
-                    "X-RateLimit-Remaining": "0",
-                    "X-RateLimit-Reset": str(reset)
-                }
-            )
+                )
 
-        response = await call_next(request)
-        
-        # Add rate limit info to headers
-        response.headers["X-RateLimit-Limit"] = str(limit)
-        response.headers["X-RateLimit-Remaining"] = str(remaining)
-        response.headers["X-RateLimit-Reset"] = str(reset)
-        
-        return response
+            response = await call_next(request)
+            
+            # Add rate limit info to headers
+            response.headers["X-RateLimit-Limit"] = str(limit)
+            response.headers["X-RateLimit-Remaining"] = str(remaining)
+            response.headers["X-RateLimit-Reset"] = str(reset)
+            
+            return response
+        except Exception as e:
+            logger.error(f"Critical error in RateLimitMiddleware: {e}", exc_info=True)
+            # Fail open - allow request if rate limiter fails
+            return await call_next(request)
