@@ -203,6 +203,23 @@
     --sidebar-width-collapsed: 72px;
     --header-height: 64px;
     --content-max-width: 1400px;
+
+    /* === LEGACY COMPATIBILITY ALIASES === */
+    /* Maps old nexus-theme variable names to v4 tokens.
+       Used by inline <style> blocks in index.html (bulk-edit, import-result, edit-yukyu modals). */
+    --primary: var(--color-primary-500);
+    --primary-glow: rgba(6, 182, 212, 0.4);
+    --secondary: var(--color-primary-400);
+    --success: var(--color-success);
+    --warning: var(--color-warning);
+    --danger: var(--color-error);
+    --danger-dark: var(--color-error-dark);
+    --info: var(--color-info);
+    --border-color: var(--border-default);
+    --bg-secondary: var(--bg-sunken);
+    --bg-hover: var(--bg-elevated);
+    --glass-bg-dark: rgba(15, 23, 42, 0.8);
+    --glass-border: var(--border-default);
 }
 
 /* ========================================
@@ -241,6 +258,11 @@
     --color-warning-light: rgba(245, 158, 11, 0.15);
     --color-error-light: rgba(239, 68, 68, 0.15);
     --color-info-light: rgba(59, 130, 246, 0.15);
+
+    /* Legacy aliases - dark overrides */
+    --primary-glow: rgba(6, 182, 212, 0.2);
+    --glass-bg-dark: rgba(9, 9, 11, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.08);
 }
 
 /* ========================================
@@ -2390,4 +2412,203 @@ textarea {
         border: 1px solid #ddd;
         break-inside: avoid;
     }
+}
+
+/* ========================================
+   SAFE AREA INSETS (Notch devices)
+   ======================================== */
+.toast-container {
+    padding-top: max(var(--space-4), env(safe-area-inset-top));
+    padding-right: max(var(--space-4), env(safe-area-inset-right));
+}
+
+.sidebar {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+}
+
+/* ========================================
+   RESPONSIVE TABLE COLUMN PRIORITY
+   ======================================== */
+/* Hide low priority columns on tablets */
+@media (max-width: 1024px) {
+    .col-priority-3 {
+        display: none !important;
+    }
+}
+
+/* Hide medium priority columns on mobile */
+@media (max-width: 768px) {
+    .col-priority-2 {
+        display: none !important;
+    }
+
+    /* Card-based table layout on mobile */
+    .responsive-table thead {
+        display: none;
+    }
+
+    .responsive-table tbody,
+    .responsive-table tr {
+        display: block;
+    }
+
+    .responsive-table tr {
+        margin-bottom: var(--space-4);
+        padding: var(--space-4);
+        background: var(--bg-surface);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-default);
+    }
+
+    .responsive-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-2) 0;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .responsive-table td:last-child {
+        border-bottom: none;
+    }
+
+    .responsive-table td::before {
+        content: attr(data-label);
+        font-weight: var(--font-semibold);
+        color: var(--color-primary-500);
+        font-size: var(--text-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+}
+
+/* ========================================
+   TABLE SCROLL CONTAINER
+   ======================================== */
+.table-scroll-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+}
+
+.table-scroll-container table {
+    min-width: 600px;
+}
+
+/* Scroll indicator for Japanese UI */
+.table-scroll-container::before {
+    content: '\2190 \30B9\30AF\30ED\30FC\30EB \2192';
+    display: none;
+    text-align: center;
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    padding: var(--space-2);
+    background: rgba(6, 182, 212, 0.08);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-2);
+}
+
+@media (max-width: 768px) {
+    .table-scroll-container.has-overflow::before {
+        display: block;
+    }
+}
+
+/* ========================================
+   CONFIRM MODAL
+   ======================================== */
+.confirm-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-overlay);
+    backdrop-filter: blur(8px);
+    z-index: var(--z-modal);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--duration-base) var(--ease-out),
+                visibility var(--duration-base) var(--ease-out);
+}
+
+.confirm-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.confirm-modal-content {
+    background: var(--bg-surface);
+    border-radius: var(--radius-2xl);
+    border: 1px solid var(--border-default);
+    box-shadow: var(--shadow-2xl);
+    width: 90%;
+    max-width: 480px;
+    padding: var(--space-6);
+    transform: translateY(16px) scale(0.96);
+    opacity: 0;
+    transition: transform var(--duration-moderate) var(--ease-spring),
+                opacity var(--duration-moderate) var(--ease-out);
+}
+
+.confirm-modal.active .confirm-modal-content {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+[data-theme="dark"] .confirm-modal-content {
+    background: rgba(24, 24, 27, 0.95);
+    backdrop-filter: blur(20px);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.confirm-modal-title {
+    font-size: var(--text-lg);
+    font-weight: var(--font-bold);
+    color: var(--text-primary);
+    margin-bottom: var(--space-4);
+}
+
+.confirm-summary {
+    margin-bottom: var(--space-4);
+}
+
+.confirm-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.confirm-row:last-child {
+    border-bottom: none;
+}
+
+.confirm-row-label {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    font-weight: var(--font-medium);
+}
+
+.confirm-row-value {
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--text-primary);
+}
+
+.confirm-row-value.highlight {
+    color: var(--color-primary-500);
+    font-weight: var(--font-bold);
+}
+
+.confirm-actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+}
+
+.confirm-actions .btn {
+    flex: 1;
 }
