@@ -20,28 +20,39 @@ def save_employees(employees_data: List[Dict[str, Any]]):
                 'used': emp.get('used', 0.0),
                 'balance': emp.get('balance', 0.0),
                 'expired': emp.get('expired', 0.0),
+                'after_expiry': emp.get('afterExpiry', 0.0),
                 'usage_rate': emp.get('usageRate', 0.0),
+                'grant_date': emp.get('grantDate'),
+                'status': emp.get('status', ''),
+                'kana': emp.get('kana', ''),
+                'hire_date': emp.get('hireDate'),
                 'updated_at': datetime.now()
             }
+
+            # Unique key fields for conflict resolution
+            key_fields = ['employee_num', 'year', 'grant_date']
 
             if USE_POSTGRESQL:
                 stmt = pg_insert(Employee).values(**stmt_data)
                 stmt = stmt.on_conflict_do_update(
-                    constraint='uq_emp_year',
-                    set_={k: v for k, v in stmt_data.items() if k not in ['employee_num', 'year']}
+                    constraint='uq_emp_year_grant',
+                    set_={k: v for k, v in stmt_data.items() if k not in key_fields}
                 )
             else:
                 stmt = sqlite_insert(Employee).values(**stmt_data)
                 stmt = stmt.on_conflict_do_update(
-                    index_elements=['employee_num', 'year'],
-                    set_={k: v for k, v in stmt_data.items() if k not in ['employee_num', 'year']}
+                    index_elements=key_fields,
+                    set_={k: v for k, v in stmt_data.items() if k not in key_fields}
                 )
-            
+
             session.execute(stmt)
         session.commit()
 
 def save_employee_data(model_class, data: List[Dict[str, Any]]):
     """Generic function to save type-specific employee data using ORM UPSERT."""
+    # Get valid column names from the ORM model
+    valid_columns = {c.name for c in model_class.__table__.columns}
+
     with SessionLocal() as session:
         for emp in data:
             # Encrypt sensitive fields if present
@@ -49,22 +60,25 @@ def save_employee_data(model_class, data: List[Dict[str, Any]]):
                 emp['birth_date'] = encrypt_field(emp['birth_date'])
             if 'hourly_wage' in emp:
                 emp['hourly_wage'] = encrypt_field(str(emp['hourly_wage']))
-            
+
             emp['updated_at'] = datetime.now()
 
+            # Filter to only valid columns (prevents KeyError on mismatched fields)
+            filtered = {k: v for k, v in emp.items() if k in valid_columns}
+
             if USE_POSTGRESQL:
-                stmt = pg_insert(model_class).values(**emp)
+                stmt = pg_insert(model_class).values(**filtered)
                 stmt = stmt.on_conflict_do_update(
                     index_elements=['employee_num'],
-                    set_={k: v for k, v in emp.items() if k != 'employee_num'}
+                    set_={k: v for k, v in filtered.items() if k != 'employee_num'}
                 )
             else:
-                stmt = sqlite_insert(model_class).values(**emp)
+                stmt = sqlite_insert(model_class).values(**filtered)
                 stmt = stmt.on_conflict_do_update(
                     index_elements=['employee_num'],
-                    set_={k: v for k, v in emp.items() if k != 'employee_num'}
+                    set_={k: v for k, v in filtered.items() if k != 'employee_num'}
                 )
-            
+
             session.execute(stmt)
         session.commit()
 

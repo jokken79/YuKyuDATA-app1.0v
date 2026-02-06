@@ -54,21 +54,25 @@ def save_yukyu_usage_details(usage_details_list: List[Dict[str, Any]]):
                 'year': detail.get('year'),
                 'month': detail.get('month'),
                 'days_used': detail.get('days_used', 1.0),
+                'leave_type': detail.get('leave_type', 'full'),
+                'source': 'excel',
                 'updated_at': datetime.now()
             }
+
+            key_fields = ['employee_num', 'use_date']
 
             if USE_POSTGRESQL:
                 stmt = pg_insert(YukyuUsageDetail).values(**stmt_data)
                 stmt = stmt.on_conflict_do_update(
-                    index_elements=['employee_num', 'use_date'],
-                    set_={k: v for k, v in stmt_data.items() if k not in ['employee_num', 'use_date']}
+                    index_elements=key_fields,
+                    set_={k: v for k, v in stmt_data.items() if k not in key_fields}
                 )
             else:
                 stmt = sqlite_insert(YukyuUsageDetail).values(**stmt_data)
                 stmt = stmt.on_conflict_do_update(
-                    index_elements=['employee_num', 'use_date'],
-                    set_={k: v for k, v in stmt_data.items() if k not in ['employee_num', 'use_date']}
+                    index_elements=key_fields,
+                    set_={k: v for k, v in stmt_data.items() if k not in key_fields}
                 )
-            
+
             session.execute(stmt)
         session.commit()

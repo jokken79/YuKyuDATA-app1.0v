@@ -15,26 +15,25 @@ class StaffEmployee(BaseModel, Base):
 
     status = Column(String(20))  # 在職中, 退職
     employee_num = Column(String(12), unique=True, index=True)
-    dispatch_id = Column(String(50))
-    dispatch_name = Column(String(100))
-    department = Column(String(100))
-    line = Column(String(100))
-    job_content = Column(String(200))
+    office = Column(String(100))  # 事務所
     name = Column(String(100))
     kana = Column(String(100))
     gender = Column(String(10))
     nationality = Column(String(50))
     birth_date = Column(String(10))  # YYYY-MM-DD
     age = Column(Integer)
-    hourly_wage = Column(Float)
-    wage_revision = Column(String(10))  # YYYY-MM-DD
-    hire_date = Column(String(10))  # YYYY-MM-DD
-    leave_date = Column(String(10))  # YYYY-MM-DD
+    visa_expiry = Column(String(10))  # YYYY-MM-DD ビザ期限
+    visa_type = Column(String(50))  # ビザ種類
+    spouse = Column(String(20))  # 配偶者
+    postal_code = Column(String(10))  # 〒
+    address = Column(String(200))  # 住所
+    building = Column(String(100))  # 建物名
+    hire_date = Column(String(10))  # YYYY-MM-DD 入社日
+    leave_date = Column(String(10))  # YYYY-MM-DD 退社日
 
     __table_args__ = (
         Index('idx_staff_status', 'status'),
         Index('idx_staff_emp_num', 'employee_num'),
-        Index('idx_staff_dispatch', 'dispatch_id'),
     )
 
     def __repr__(self):
@@ -46,19 +45,19 @@ class StaffEmployee(BaseModel, Base):
             'id': self.id,
             'status': self.status,
             'employee_num': self.employee_num,
-            'dispatch_id': self.dispatch_id,
-            'dispatch_name': self.dispatch_name,
-            'department': self.department,
-            'line': self.line,
-            'job_content': self.job_content,
+            'office': self.office,
             'name': self.name,
             'kana': self.kana,
             'gender': self.gender,
             'nationality': self.nationality,
             'birth_date': self.birth_date,
             'age': self.age,
-            'hourly_wage': self.hourly_wage,
-            'wage_revision': self.wage_revision,
+            'visa_expiry': self.visa_expiry,
+            'visa_type': self.visa_type,
+            'spouse': self.spouse,
+            'postal_code': self.postal_code,
+            'address': self.address,
+            'building': self.building,
             'hire_date': self.hire_date,
             'leave_date': self.leave_date,
             'created_at': self.created_at.isoformat() if self.created_at else None,

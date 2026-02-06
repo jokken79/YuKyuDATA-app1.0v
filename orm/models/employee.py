@@ -8,21 +8,25 @@ class Employee(BaseModel, Base):
     """
     Employee vacation data with UUID primary key.
 
-    FASE 3 Migration: Changed from composite key {employee_num}_{year} to UUID.
-    Maintains unique constraint on (employee_num, year) for compatibility.
+    Unique constraint on (employee_num, year, grant_date) to preserve
+    all grant periods per employee per year.
 
     Attributes:
         id: UUID primary key
-        employee_num: Employee number (indexed, part of unique constraint)
-        year: Fiscal year (indexed, part of unique constraint)
+        employee_num: Employee number (indexed)
+        year: Fiscal year (indexed)
         name: Employee name
         haken: Workplace/dispatch location
-        granted: Days granted for the year
+        granted: Days granted for the period
         used: Days used
-        balance: Days remaining
-        expired: Days that expired
+        balance: End-of-period balance (期末残高)
+        expired: Days expired (時効数)
+        after_expiry: Balance after expiry (時効後残)
         usage_rate: Usage percentage
-        last_updated: Legacy field (kept for compatibility)
+        grant_date: Date when leave was granted (有給発生) YYYY-MM-DD
+        status: Employment status (在職中/退職)
+        kana: Katakana name (カナ)
+        hire_date: Hire date (入社日) YYYY-MM-DD
         created_at: Timestamp when record created
         updated_at: Timestamp when record updated
     """
@@ -37,15 +41,21 @@ class Employee(BaseModel, Base):
     used = Column(Float, default=0.0)
     balance = Column(Float, default=0.0)
     expired = Column(Float, default=0.0)
+    after_expiry = Column(Float, default=0.0)
     usage_rate = Column(Float, default=0.0)
+    grant_date = Column(String(10))  # YYYY-MM-DD
+    status = Column(String(20))  # 在職中, 退職
+    kana = Column(String(100))  # katakana name
+    hire_date = Column(String(10))  # YYYY-MM-DD
     last_updated = Column(String(50))  # Legacy field
 
-    # Unique constraint on (employee_num, year)
+    # Unique constraint on (employee_num, year, grant_date) to preserve all grant periods
     __table_args__ = (
-        UniqueConstraint('employee_num', 'year', name='uq_emp_year'),
+        UniqueConstraint('employee_num', 'year', 'grant_date', name='uq_emp_year_grant'),
         Index('idx_emp_year', 'employee_num', 'year'),
         Index('idx_emp_created', 'employee_num', 'created_at'),
         Index('idx_year_updated', 'year', 'updated_at'),
+        Index('idx_emp_status', 'status'),
     )
 
     def __repr__(self):
@@ -63,7 +73,12 @@ class Employee(BaseModel, Base):
             'used': self.used,
             'balance': self.balance,
             'expired': self.expired,
+            'after_expiry': self.after_expiry,
             'usage_rate': self.usage_rate,
+            'grant_date': self.grant_date,
+            'status': self.status,
+            'kana': self.kana,
+            'hire_date': self.hire_date,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }

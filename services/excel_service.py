@@ -256,17 +256,22 @@ def parse_excel_file(file_path):
         'balance': _find_obs_col(headers, ['期末残高', 'balance', 'remaining', '残高']),
         'expired': _find_obs_col(headers, ['時効数', 'expired', '期限切れ', '消滅']),
         'year': _find_obs_col(headers, ['年度', '年', 'year', '対象年度']),
-        'grant_date': _find_obs_col(headers, ['有給発生', '発生日', '付与日'])
+        'grant_date': _find_obs_col(headers, ['有給発生', '発生日', '付与日']),
+        'status': _find_obs_col(headers, ['在職中', '状態', 'status']),
+        'kana': _find_obs_col(headers, ['カナ', 'かな', 'kana']),
+        'hire_date': _find_obs_col(headers, ['入社日', '雇用日', 'hire_date']),
+        'after_expiry': _find_obs_col(headers, ['時効後残', '時効後', 'after_expiry']),
     }
     
     # Default year if column not found
     current_year = datetime.now().year
 
-    # ACCUMULATE BY EMPLOYEE (like v2.0) - Multiple rows for same employee are summed
     employee_summary = {}
+    row_counter = 0
 
     # Start reading from the row AFTER headers
     for row in sheet.iter_rows(min_row=header_row_idx + 1, values_only=True):
+        row_counter += 1
         if all(c is None for c in row):
             continue
 
@@ -309,19 +314,37 @@ def parse_excel_file(file_path):
         except (ValueError, TypeError):
             expired = 0.0
 
-        # Try to extract year from grant_date first (有給発生 column)
+        # Read after-expiry balance (時効後残)
+        try:
+            after_expiry = float(row[cols['after_expiry']]) if cols['after_expiry'] != -1 and row[cols['after_expiry']] is not None else 0.0
+        except (ValueError, TypeError):
+            after_expiry = 0.0
+
+        # Extract additional fields: status, kana, hire_date
+        status = str(row[cols['status']]) if cols['status'] != -1 and row[cols['status']] is not None else ""
+        kana = str(row[cols['kana']]) if cols['kana'] != -1 and row[cols['kana']] is not None else ""
+
+        hire_date_str = None
+        if cols['hire_date'] != -1 and row[cols['hire_date']] is not None:
+            hd_val = row[cols['hire_date']]
+            if hasattr(hd_val, 'strftime'):
+                hire_date_str = hd_val.strftime('%Y-%m-%d')
+            else:
+                hire_date_str = str(hd_val)
+
+        # Extract grant_date and year
         year = current_year
+        grant_date_str = None
         if cols['grant_date'] != -1 and row[cols['grant_date']] is not None:
             grant_date_value = row[cols['grant_date']]
             try:
-                # If it's already a datetime object
                 if hasattr(grant_date_value, 'year'):
                     year = grant_date_value.year
-                # If it's a string, try to parse it
+                    grant_date_str = grant_date_value.strftime('%Y-%m-%d')
                 elif isinstance(grant_date_value, str):
-                    # Try to extract year from date string
                     parsed_date = datetime.strptime(grant_date_value.split()[0], '%Y-%m-%d')
                     year = parsed_date.year
+                    grant_date_str = parsed_date.strftime('%Y-%m-%d')
             except (ValueError, AttributeError, IndexError):
                 pass
 
@@ -332,14 +355,22 @@ def parse_excel_file(file_path):
             except ValueError:
                 pass
 
-        # Create unique key: empNum + year
-        emp_key = f"{emp_num}_{year}"
+        # Unique key includes grant_date to preserve ALL grant periods
+        # (same employee can have 2+ grants in the same year)
+        # For rows without grant_date, generate a synthetic one using row position
+        if not grant_date_str:
+            grant_date_str = f"row-{row_counter}"
 
-        # NO ACCUMULATION - Each row with same empNum+year REPLACES the previous
-        # This prevents double counting when employee has multiple grant periods
-        # that might be incorrectly assigned to the same year
+        emp_key = f"{emp_num}_{year}_{grant_date_str}"
+        # Safety: if key collision (shouldn't happen with grant_date), append seq
+        if emp_key in employee_summary:
+            seq = 2
+            while f"{emp_key}_{seq}" in employee_summary:
+                seq += 1
+            emp_key = f"{emp_key}_{seq}"
+
         employee_summary[emp_key] = {
-            'id': emp_key,
+            'id': f"{emp_num}_{year}",
             'employeeNum': emp_num,
             'name': name,
             'haken': haken,
@@ -347,7 +378,12 @@ def parse_excel_file(file_path):
             'used': used,
             'balance': balance,
             'expired': expired,
-            'year': year
+            'afterExpiry': after_expiry,
+            'year': year,
+            'grantDate': grant_date_str,
+            'status': status,
+            'kana': kana,
+            'hireDate': hire_date_str,
         }
 
     # Convert summary dict to list and calculate usage rates
@@ -412,11 +448,7 @@ def parse_genzai_sheet(file_path):
             else:
                 birth_date = str(row[11])
 
-        # Generate ID
-        emp_id = f"genzai_{emp_num}"
-
         employee = {
-            'id': emp_id,
             'status': status,
             'employee_num': emp_num,
             'dispatch_id': str(row[2]) if row[2] is not None else "",
@@ -480,11 +512,7 @@ def parse_ukeoi_sheet(file_path):
             else:
                 birth_date = str(row[7])
 
-        # Generate ID
-        emp_id = f"ukeoi_{emp_num}"
-
         employee = {
-            'id': emp_id,
             'status': status,
             'employee_num': emp_num,
             'contract_business': str(row[2]) if row[2] is not None else "",
@@ -557,10 +585,7 @@ def parse_staff_sheet(file_path):
         hire_date = parse_date(row[15])
         leave_date = parse_date(row[16])
 
-        emp_id = f"staff_{emp_num}"
-
         employee = {
-            'id': emp_id,
             'status': status,
             'employee_num': emp_num,
             'office': str(row[2]) if row[2] is not None else "",
@@ -638,48 +663,30 @@ def parse_yukyu_usage_details(file_path):
         # Extract individual usage dates from columns R-BE
         for col_idx in range(date_start_col, date_end_col + 1):
             cell_value = sheet.cell(row=row_idx, column=col_idx).value
-            
+
             # Skip empty cells
             if cell_value is None:
                 continue
-            
-            # Parse date
-            use_date = None
-            
-            if isinstance(cell_value, datetime):
-                # It's already a datetime object
-                use_date = cell_value.strftime('%Y-%m-%d')
-                year = cell_value.year
-                month = cell_value.month
-            elif isinstance(cell_value, str):
-                # Try to parse string dates
-                # Format examples: "2025/7/1終業", "2025-3-1至1", etc.
-                try:
-                    # Remove Japanese text markers
-                    date_str = cell_value.replace('終業', '').replace('至', '').strip()
-                    
-                    # Try various date formats
-                    for fmt in ['%Y/%m/%d', '%Y-%m-%d', '%Y/%m/%d %H:%M:%S']:
-                        try:
-                            parsed_date = datetime.strptime(date_str, fmt)
-                            use_date = parsed_date.strftime('%Y-%m-%d')
-                            year = parsed_date.year
-                            month = parsed_date.month
-                            break
-                        except ValueError:
-                            continue
-                except:
-                    continue
-            
-            # If we successfully parsed a date, add it
-            if use_date:
+
+            # Detect leave type (full day, half day, hourly)
+            leave_type, days_used = detect_leave_type(cell_value)
+
+            # Parse date using the robust parser
+            parsed_date = parse_date_from_cell(cell_value)
+
+            if parsed_date and is_valid_date_for_yukyu(parsed_date):
+                use_date = parsed_date.strftime('%Y-%m-%d')
+                year = parsed_date.year
+                month = parsed_date.month
+
                 usage_details.append({
                     'employee_num': emp_num,
                     'name': name,
                     'use_date': use_date,
                     'year': year,
                     'month': month,
-                    'days_used': 1.0  # Default to 1 day per date
+                    'days_used': days_used,
+                    'leave_type': leave_type,
                 })
     
     wb.close()
