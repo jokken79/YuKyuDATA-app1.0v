@@ -26,19 +26,19 @@
     <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
     <link rel="apple-touch-icon" href="/static/icons/icon.svg">
 
-    <!-- Fonts -->
+    <!-- Fonts: Inter (UI) + JetBrains Mono (data) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- CDN preconnect for lazy-loaded libraries -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
         rel="stylesheet">
 
-    <!-- === NEW CLEAN DESIGN SYSTEM v3 === -->
-    <!-- Single source of truth - Clean Tech SaaS style -->
-    <link rel="stylesheet" href="/static/css/yukyu-design-v3.css">
+    <!-- === DESIGN SYSTEM v4 === -->
+    <!-- Single source of truth - Vercel/Linear/Raycast inspired -->
+    <link rel="stylesheet" href="/static/css/yukyu-design-v4.css">
 
     <!-- LEGACY CSS - DISABLED (Conflicting styles) -->
     <!-- <link rel="stylesheet" href="/static/css/unified-design-system.css"> -->
@@ -62,165 +62,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/themes/dark.css">
 
-    <style>
-        /* Custom Flatpickr Styles - Cyan/Glass Theme - PURE BLACK */
-        .flatpickr-calendar {
-            background: rgba(5, 5, 5, 0.98) !important;
-            backdrop-filter: blur(20px) saturate(180%) !important;
-            border: 1px solid rgba(6, 182, 212, 0.3) !important;
-            border-radius: 16px !important;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7),
-                0 0 0 1px rgba(6, 182, 212, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-        }
+    <!-- Flatpickr styles now in yukyu-design-v4.css -->
 
-        .flatpickr-months {
-            background: transparent !important;
-            border-bottom: 1px solid rgba(6, 182, 212, 0.2) !important;
-            padding: 10px 0 !important;
-        }
-
-        .flatpickr-current-month {
-            color: #06b6d4 !important;
-            font-weight: 600 !important;
-        }
-
-        .flatpickr-months .flatpickr-prev-month,
-        .flatpickr-months .flatpickr-next-month {
-            fill: #06b6d4 !important;
-            transition: all 0.2s ease !important;
-        }
-
-        .flatpickr-months .flatpickr-prev-month:hover,
-        .flatpickr-months .flatpickr-next-month:hover {
-            fill: #22d3ee !important;
-            transform: scale(1.1) !important;
-        }
-
-        .flatpickr-weekday {
-            color: #94a3b8 !important;
-            font-weight: 500 !important;
-            font-size: 0.85rem !important;
-        }
-
-        .flatpickr-day {
-            color: #e2e8f0 !important;
-            border-radius: 8px !important;
-            transition: all 0.2s ease !important;
-            border: none !important;
-        }
-
-        .flatpickr-day:hover {
-            background: rgba(6, 182, 212, 0.2) !important;
-            border-color: transparent !important;
-            transform: scale(1.05) !important;
-        }
-
-        .flatpickr-day.selected,
-        .flatpickr-day.startRange,
-        .flatpickr-day.endRange {
-            background: linear-gradient(135deg, #06b6d4, #0891b2) !important;
-            border-color: #06b6d4 !important;
-            color: #ffffff !important;
-            font-weight: 600 !important;
-            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4) !important;
-        }
-
-        .flatpickr-day.inRange {
-            background: rgba(6, 182, 212, 0.15) !important;
-            border-color: transparent !important;
-            box-shadow: none !important;
-        }
-
-        .flatpickr-day.today {
-            border: 2px solid #f472b6 !important;
-            color: #f472b6 !important;
-            font-weight: 600 !important;
-        }
-
-        .flatpickr-day.today:hover {
-            border-color: #f472b6 !important;
-            background: rgba(244, 114, 182, 0.2) !important;
-        }
-
-        .flatpickr-day.disabled,
-        .flatpickr-day.prevMonthDay,
-        .flatpickr-day.nextMonthDay {
-            color: #475569 !important;
-        }
-
-        .flatpickr-day.disabled:hover,
-        .flatpickr-day.prevMonthDay:hover,
-        .flatpickr-day.nextMonthDay:hover {
-            background: transparent !important;
-            cursor: not-allowed !important;
-            transform: none !important;
-        }
-
-        .numInputWrapper:hover {
-            background: rgba(6, 182, 212, 0.1) !important;
-        }
-
-        .flatpickr-monthDropdown-months,
-        .numInput {
-            background: rgba(5, 5, 5, 0.9) !important;
-            color: #06b6d4 !important;
-            border: 1px solid rgba(6, 182, 212, 0.3) !important;
-            border-radius: 6px !important;
-        }
-
-        .flatpickr-monthDropdown-months:hover,
-        .numInput:hover {
-            background: rgba(6, 182, 212, 0.15) !important;
-        }
-
-        .flatpickr-time {
-            border-top: 1px solid rgba(6, 182, 212, 0.2) !important;
-        }
-
-        .flatpickr-time input {
-            color: #06b6d4 !important;
-        }
-
-        .flatpickr-time input:hover,
-        .flatpickr-time input:focus {
-            background: rgba(6, 182, 212, 0.1) !important;
-        }
-
-        /* Glass effect enhancement */
-        .flatpickr-calendar::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg,
-                    rgba(6, 182, 212, 0.05) 0%,
-                    rgba(8, 145, 178, 0.03) 100%);
-            border-radius: 16px;
-            pointer-events: none;
-        }
-
-        /* Animation for calendar opening */
-        .flatpickr-calendar.open {
-            animation: flatpickrFadeIn 0.2s ease-out;
-        }
-
-        @keyframes flatpickrFadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-    </style>
-
-    <!-- Modern UI Enhancements 2025 -->
+    <!-- Modern UI Enhancements -->
     <script src="/static/js/modern-ui.js" defer></script>
     <script src="/static/js/modern-integration.js" defer></script>
 
@@ -266,8 +110,7 @@
                 <div class="nav-group">
                     <div class="nav-group-label">Main</div>
 
-                    <button class="nav-item active" data-view="dashboard" data-action="ui.switchView"
-                        data-view="dashboard" aria-label="Dashboard" aria-current="page" type="button">
+                    <button class="nav-item active" data-view="dashboard" data-action="ui.switchView" aria-label="Dashboard" aria-current="page" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -280,7 +123,7 @@
                         <span class="nav-text">Dashboard</span>
                     </button>
 
-                    <button class="nav-item" data-view="employees" data-action="ui.switchView" data-view="employees"
+                    <button class="nav-item" data-view="employees" data-action="ui.switchView"
                         aria-label="Employees" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -295,7 +138,7 @@
                         <span class="nav-badge" id="emp-count-badge-sidebar" aria-label="Total employees">0</span>
                     </button>
 
-                    <button class="nav-item" data-view="factories" data-action="ui.switchView" data-view="factories"
+                    <button class="nav-item" data-view="factories" data-action="ui.switchView"
                         aria-label="Factories" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -315,7 +158,7 @@
                 <div class="nav-group">
                     <div class="nav-group-label">Requests</div>
 
-                    <button class="nav-item" data-view="requests" data-action="ui.switchView" data-view="requests"
+                    <button class="nav-item" data-view="requests" data-action="ui.switchView"
                         aria-label="Request Leave" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -330,7 +173,7 @@
                         <span class="nav-text">申請 Request</span>
                     </button>
 
-                    <button class="nav-item" data-view="calendar" data-action="ui.switchView" data-view="calendar"
+                    <button class="nav-item" data-view="calendar" data-action="ui.switchView"
                         aria-label="Calendar" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -354,7 +197,7 @@
                 <div class="nav-group">
                     <div class="nav-group-label">Analytics</div>
 
-                    <button class="nav-item" data-view="compliance" data-action="ui.switchView" data-view="compliance"
+                    <button class="nav-item" data-view="compliance" data-action="ui.switchView"
                         aria-label="Compliance" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -366,7 +209,7 @@
                         <span class="nav-text">Compliance</span>
                     </button>
 
-                    <button class="nav-item" data-view="analytics" data-action="ui.switchView" data-view="analytics"
+                    <button class="nav-item" data-view="analytics" data-action="ui.switchView"
                         aria-label="Analytics" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -379,7 +222,7 @@
                         <span class="nav-text">分析 Analytics</span>
                     </button>
 
-                    <button class="nav-item" data-view="reports" data-action="ui.switchView" data-view="reports"
+                    <button class="nav-item" data-view="reports" data-action="ui.switchView"
                         aria-label="Monthly Reports" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -397,8 +240,7 @@
 
             <!-- Settings at bottom -->
             <div class="sidebar-footer">
-                <button class="nav-item nav-item-settings" data-view="settings" data-action="ui.switchView"
-                    data-view="settings" aria-label="Settings" type="button">
+                <button class="nav-item nav-item-settings" data-view="settings" data-action="ui.switchView" aria-label="Settings" type="button">
                     <span class="nav-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                             stroke-linecap="round" stroke-linejoin="round">
@@ -543,7 +385,7 @@
                     </div>
 
                     <!-- Employees Card -->
-                    <div class="glass-panel stat-card col-span-1" class="kpi-card-highlight" data-action="ui.switchView"
+                    <div class="glass-panel stat-card col-span-1 kpi-card-highlight"  data-action="ui.switchView"
                         data-view="employees">
                         <div class="stat-label">Employees</div>
                         <div class="stat-value count-up" id="kpi-total">-</div>
@@ -625,13 +467,13 @@
 
                 <!-- Charts Row -->
                 <div class="bento-grid">
-                    <div class="glass-panel col-span-2 p-md" class="h-400">
+                    <div class="glass-panel col-span-2 p-md h-400" >
                         <h3 class="stat-label mb-lg">Usage Distribution</h3>
                         <div class="chart-container-sm">
                             <div id="chart-distribution"></div>
                         </div>
                     </div>
-                    <div class="glass-panel col-span-2 p-md" class="h-400">
+                    <div class="glass-panel col-span-2 p-md h-400" >
                         <h3 class="stat-label mb-lg">Monthly Trends <span id="trends-year-label"></span></h3>
                         <div class="chart-container-sm">
                             <div id="chart-trends"></div>
@@ -656,7 +498,7 @@
                             </label>
                             <label for="search-input" class="sr-only">Search employees</label>
                             <input type="text" id="search-input" placeholder="Search by name, ID, or factory..."
-                                class="input-glass" class="w-300" oninput="App.ui.handleSearch(this.value)"
+                                class="input-glass w-300"  oninput="App.ui.handleSearch(this.value)"
                                 aria-label="Search employees by name, ID, or factory">
                         </div>
                     </div>
@@ -709,7 +551,7 @@
                     </div>
 
                     <!-- Summary Cards by Type -->
-                    <div class="bento-grid gap-md mb-lg" class="grid-4-cols">
+                    <div class="bento-grid gap-md mb-lg grid-4-cols" >
                         <div class="kpi-card info-card-cyan">
                             <div class="stat-label">派遣 使用日数</div>
                             <div class="stat-value" id="haken-used">0</div>
@@ -765,103 +607,103 @@
                                 <!-- Skeleton loading rows -->
                                 <tr class="skeleton-row">
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-60">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-60" >
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-100">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-100" >
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-50">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-50" >
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-120">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-120" >
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-40">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-40" >
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-40">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-40" >
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-40">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-40" >
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-50">
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr class="skeleton-row">
-                                    <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-55">
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-90">
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-45">
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-110">
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-35">
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-35">
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-35">
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-45">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-50" >
                                         </div>
                                     </td>
                                 </tr>
                                 <tr class="skeleton-row">
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-65">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-55" >
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-95">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-90" >
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-55">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-45" >
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-100">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-110" >
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-38">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-35" >
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-38">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-35" >
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-38">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-35" >
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text" class="skeleton skeleton-w-48">
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-45" >
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="skeleton-row">
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-65" >
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-95" >
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-55" >
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-100" >
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-38" >
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-38" >
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-38" >
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-48" >
                                         </div>
                                     </td>
                                 </tr>
@@ -873,7 +715,7 @@
 
             <!-- VIEW: FACTORIES -->
             <div class="view-section d-none" id="view-factories">
-                <div class="glass-panel p-md" class="h-600">
+                <div class="glass-panel p-md h-600" >
                     <h3 class="stat-label mb-lg">Usage by Factory</h3>
                     <div class="chart-container-lg">
                         <div id="chart-factories"></div>
@@ -1098,7 +940,7 @@
                             </button>
                         </div>
 
-                        <div id="pending-requests" class="overflow-y-auto" class="max-h-400">
+                        <div id="pending-requests" class="overflow-y-auto max-h-400" >
                             <div class="empty-state">
                                 Loading pending requests...
                             </div>
@@ -1155,28 +997,28 @@
                             </button>
                         </div>
 
-                        <div id="compliance-summary" class="d-grid gap-md mb-2xl" class="grid-4-cols">
+                        <div id="compliance-summary" class="d-grid gap-md mb-2xl grid-4-cols" >
                             <div class="stat-card text-center">
                                 <div class="stat-label">対象者</div>
                                 <div class="stat-value" id="comp-total">-</div>
                             </div>
-                            <div class="stat-card text-center" class="border-success">
+                            <div class="stat-card text-center border-success" >
                                 <div class="stat-label">達成</div>
                                 <div class="stat-value text-success" id="comp-compliant">-
                                 </div>
                             </div>
-                            <div class="stat-card text-center" class="border-warning">
+                            <div class="stat-card text-center border-warning" >
                                 <div class="stat-label">要注意</div>
                                 <div class="stat-value text-warning" id="comp-atrisk">-</div>
                             </div>
-                            <div class="stat-card text-center" class="border-danger">
+                            <div class="stat-card text-center border-danger" >
                                 <div class="stat-label">未達成</div>
                                 <div class="stat-value text-danger" id="comp-noncompliant">-
                                 </div>
                             </div>
                         </div>
 
-                        <div id="compliance-list" class="overflow-y-auto" class="max-h-300">
+                        <div id="compliance-list" class="overflow-y-auto max-h-300" >
                             <div class="empty-state">
                                 Click "チェック実行" to check compliance
                             </div>
@@ -1196,7 +1038,7 @@
                             </button>
                         </div>
 
-                        <div id="alerts-container" class="overflow-y-auto" class="max-h-400">
+                        <div id="alerts-container" class="overflow-y-auto max-h-400" >
                             <div class="empty-state">
                                 Loading alerts...
                             </div>
@@ -1222,7 +1064,7 @@
                         </div>
                     </div>
 
-                    <div id="ledger-container" class="overflow-auto" class="max-h-400">
+                    <div id="ledger-container" class="overflow-auto max-h-400" >
                         <div class="empty-state">
                             Click "表示" to load the annual ledger
                         </div>
@@ -1238,7 +1080,7 @@
                         <div class="flex-between mb-lg">
                             <div class="flex-center gap-md">
                                 <button class="btn btn-glass" data-action="calendar.prevMonth">◀</button>
-                                <h3 id="calendar-month-title" class="text-2xl text-center" class="min-w-200">
+                                <h3 id="calendar-month-title" class="text-2xl text-center min-w-200" >
                                     2025年 12月
                                 </h3>
                                 <button class="btn btn-glass" data-action="calendar.nextMonth">▶</button>
@@ -1280,7 +1122,7 @@
                             📋 選択日の詳細
                             <span id="selected-date-display" class="text-cyan ml-sm">-</span>
                         </h3>
-                        <div id="day-detail-container" class="overflow-y-auto" class="max-h-300">
+                        <div id="day-detail-container" class="overflow-y-auto max-h-300" >
                             <div class="empty-state">
                                 日付をクリックして詳細を表示
                             </div>
@@ -1291,7 +1133,7 @@
                     <div class="glass-panel col-span-2 p-md">
                         <h3 class="mb-lg text-lg">📊 月間サマリー</h3>
                         <div id="monthly-summary-container">
-                            <div class="d-grid gap-md" class="grid-2-cols">
+                            <div class="d-grid gap-md grid-2-cols" >
                                 <div class="stat-card text-center p-md">
                                     <div class="stat-label">休暇取得者数</div>
                                     <div class="stat-value text-2xl" id="cal-month-employees">-
@@ -1329,7 +1171,7 @@
                     </div>
 
                     <!-- Department Chart -->
-                    <div class="glass-panel col-span-2 p-md" class="h-400">
+                    <div class="glass-panel col-span-2 p-md h-400" >
                         <h3 class="stat-label mb-lg">部門別使用日数</h3>
                         <div class="chart-container-sm">
                             <canvas id="chart-department"></canvas>
@@ -1337,7 +1179,7 @@
                     </div>
 
                     <!-- Employee Type Chart -->
-                    <div class="glass-panel col-span-2 p-md" class="h-400">
+                    <div class="glass-panel col-span-2 p-md h-400" >
                         <h3 class="stat-label mb-lg">従業員タイプ別</h3>
                         <div class="chart-container-sm">
                             <canvas id="chart-emp-type"></canvas>
@@ -1347,13 +1189,13 @@
                     <!-- Top Users -->
                     <div class="glass-panel col-span-2 p-md">
                         <h3 class="stat-label mb-lg">🏆 Top 10 使用者</h3>
-                        <div id="top-users-list" class="overflow-y-auto" class="max-h-300"></div>
+                        <div id="top-users-list" class="overflow-y-auto max-h-300" ></div>
                     </div>
 
                     <!-- High Balance -->
                     <div class="glass-panel col-span-2 p-md">
                         <h3 class="stat-label mb-lg">⚠️ 残日数が多い従業員</h3>
-                        <div id="high-balance-list" class="overflow-y-auto" class="max-h-300"></div>
+                        <div id="high-balance-list" class="overflow-y-auto max-h-300" ></div>
                     </div>
 
                     <!-- Predictions -->
@@ -1364,7 +1206,7 @@
                                 更新</button>
                         </div>
                         <div id="predictions-container">
-                            <div class="d-grid gap-md mb-lg" class="grid-4-cols">
+                            <div class="d-grid gap-md mb-lg grid-4-cols" >
                                 <div class="stat-card text-center p-md">
                                     <div class="stat-label">現在月</div>
                                     <div id="pred-current-month" class="text-2xl font-bold">-
@@ -1379,7 +1221,7 @@
                                     <div id="pred-avg-monthly" class="text-2xl font-bold">-
                                     </div>
                                 </div>
-                                <div class="stat-card text-center p-md" class="border-danger">
+                                <div class="stat-card text-center p-md border-danger" >
                                     <div class="stat-label">5日未達成リスク</div>
                                     <div id="pred-at-risk" class="text-2xl font-bold text-danger">-
                                     </div>
@@ -1434,13 +1276,13 @@
                         <div id="monthly-selector" class="flex gap-md align-end mb-lg flex-wrap">
                             <div>
                                 <label for="report-year" class="sr-only">年度選択</label>
-                                <select id="report-year" class="input-glass" class="w-120"
+                                <select id="report-year" class="input-glass w-120" 
                                     onchange="App.reports.loadMonthList()" aria-label="年度を選択">
                                 </select>
                             </div>
                             <div>
                                 <label for="report-month" class="sr-only">月度選択</label>
-                                <select id="report-month" class="input-glass" class="w-120"
+                                <select id="report-month" class="input-glass w-120" 
                                     onchange="App.reports.loadReport()" aria-label="月度を選択">
                                     <option value="1">1月度</option>
                                     <option value="2">2月度</option>
@@ -1464,14 +1306,14 @@
                             <div class="flex gap-md align-end flex-wrap">
                                 <div>
                                     <label class="stat-label d-block mb-xs text-xs" for="report-start-date">開始日</label>
-                                    <input type="date" id="report-start-date" class="input-glass" class="w-160">
+                                    <input type="date" id="report-start-date" class="input-glass w-160" >
                                 </div>
                                 <div class="pb-md" aria-hidden="true">
                                     <span class="text-xl text-muted">〜</span>
                                 </div>
                                 <div>
                                     <label class="stat-label d-block mb-xs text-xs" for="report-end-date">終了日</label>
-                                    <input type="date" id="report-end-date" class="input-glass" class="w-160">
+                                    <input type="date" id="report-end-date" class="input-glass w-160" >
                                 </div>
                                 <button class="btn btn-primary" data-action="reports.loadCustomReport">🔍
                                     表示</button>
@@ -1508,7 +1350,7 @@
                     <!-- Employee List -->
                     <div class="glass-panel col-span-2 p-md">
                         <h3 class="stat-label mb-lg">👥 取得者一覧</h3>
-                        <div id="report-employee-list" class="overflow-y-auto" class="max-h-400">
+                        <div id="report-employee-list" class="overflow-y-auto max-h-400" >
                             <div class="empty-state">
                                 月を選択してレポートを表示
                             </div>
@@ -1518,7 +1360,7 @@
                     <!-- Factory Summary -->
                     <div class="glass-panel col-span-2 p-md">
                         <h3 class="stat-label mb-lg">🏭 派遣先別集計</h3>
-                        <div id="report-factory-list" class="overflow-y-auto" class="max-h-400">
+                        <div id="report-factory-list" class="overflow-y-auto max-h-400" >
                             <div class="empty-state">
                                 月を選択してレポートを表示
                             </div>
@@ -1528,7 +1370,7 @@
                     <!-- Daily Breakdown -->
                     <div class="glass-panel col-span-4 p-md">
                         <h3 class="stat-label mb-lg">📅 日別取得状況</h3>
-                        <div id="report-daily-grid" class="d-grid gap-sm overflow-y-auto" class="grid-auto-fill">
+                        <div id="report-daily-grid" class="d-grid gap-sm overflow-y-auto grid-auto-fill" >
                             <div class="empty-state col-span-full">
                                 月を選択してレポートを表示
                             </div>
@@ -1571,7 +1413,7 @@
                         <!-- System Status -->
                         <div>
                             <h4 class="stat-label mb-lg">システム状態</h4>
-                            <div id="system-status" class="d-grid gap-md" class="grid-3-cols-fixed">
+                            <div id="system-status" class="d-grid gap-md grid-3-cols-fixed" >
                                 <div class="stat-card text-center">
                                     <div class="stat-label">Database Size</div>
                                     <div class="stat-value" id="sys-db-size">-</div>
@@ -1623,7 +1465,7 @@
                         <!-- API Info -->
                         <div>
                             <h4 class="stat-label mb-lg">API情報</h4>
-                            <div class="p-md rounded text-sm" class="bg-code">
+                            <div class="p-md rounded text-sm bg-code" >
                                 <div class="text-muted">Base URL:</div>
                                 <div class="text-cyan">/api</div>
                                 <div class="text-muted mt-sm">Documentation:</div>
@@ -2202,7 +2044,7 @@
 
     <!-- Edit Yukyu Usage Modal (v2.1 - NEW) -->
     <div id="edit-yukyu-modal" class="confirm-modal">
-        <div class="confirm-modal-content" class="modal-sm">
+        <div class="confirm-modal-content modal-sm" >
             <div class="confirm-modal-title">
                 ✏️ 有給使用データを編集
             </div>
@@ -2247,7 +2089,7 @@
                             <option value="0.25">0.25日 (2時間)</option>
                         </select>
                     </div>
-                    <div class="form-group" class="flex-align-end">
+                    <div class="form-group flex-align-end" >
                         <button class="btn btn-primary w-full" data-action="editYukyu.addUsage">
                             追加
                         </button>
@@ -2283,7 +2125,7 @@
 
     <!-- Audit History Modal (v2.3 - NEW) -->
     <div id="audit-history-modal" class="confirm-modal">
-        <div class="confirm-modal-content" class="modal-lg">
+        <div class="confirm-modal-content modal-lg" >
             <div class="confirm-modal-title">
                 📜 変更履歴
             </div>
@@ -2309,7 +2151,7 @@
 
             <div id="audit-history-list" class="usage-list-container max-h-500">
                 <div class="text-center text-muted p-lg">
-                    <div class="spinner" class="margin-auto"></div>
+                    <div class="spinner margin-auto" ></div>
                     <p class="mt-md">履歴を読み込み中...</p>
                 </div>
             </div>
@@ -2324,7 +2166,7 @@
 
     <!-- Import Result Modal (v2.2 - NEW) -->
     <div id="import-result-modal" class="confirm-modal">
-        <div class="confirm-modal-content import-result-content" class="modal-md">
+        <div class="confirm-modal-content import-result-content modal-md" >
             <div class="confirm-modal-title" id="import-result-title">
                 <span id="import-result-icon">📊</span> インポート結果
             </div>
@@ -2410,7 +2252,7 @@
 
     <!-- Bulk Edit Modal (v2.3 - NEW) -->
     <div id="bulk-edit-modal" class="confirm-modal">
-        <div class="confirm-modal-content" class="modal-lg">
+        <div class="confirm-modal-content modal-lg" >
             <div class="confirm-modal-title">
                 <span class="bulk-edit-icon">✏️</span>
                 一括編集 (Bulk Edit)
