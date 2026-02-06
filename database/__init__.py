@@ -1,32 +1,156 @@
 from .connection import get_db, USE_POSTGRESQL
 from .init_db import init_db
-from .employees import save_employees, save_employee_data, get_employees
-from .leave import save_leave_request, get_leave_requests, save_yukyu_usage_details
-from .audit import log_audit_action, get_audit_logs
-from .notifications import create_notification, get_notifications, mark_notification_as_read, get_unread_count
+
+# Employees (vacation data)
+from .employees import (
+    save_employees,
+    save_employee_data,
+    get_employees,
+    get_employees_enhanced,
+    get_available_years,
+    get_employee_by_num_year,
+    update_employee,
+    reset_employees,
+    get_employee_yukyu_history,
+    get_employee_total_balance,
+    get_employee_usage_summary,
+    get_employee_hourly_wage,
+    recalculate_employee_from_details,
+    bulk_update_employees,
+    get_bulk_update_history,
+    revert_bulk_update,
+)
+
+# Genzai (dispatch employees)
+from .genzai import get_genzai, save_genzai, reset_genzai
+
+# Ukeoi (contract employees)
+from .ukeoi import get_ukeoi, save_ukeoi, reset_ukeoi
+
+# Staff (office employees)
+from .staff import get_staff, save_staff, reset_staff
+
+# Leave requests
+from .leave import (
+    save_leave_request,
+    get_leave_requests,
+    save_yukyu_usage_details,
+    create_leave_request,
+    approve_leave_request,
+    reject_leave_request,
+    cancel_leave_request,
+    validate_balance_limit,
+    revert_approved_request,
+)
+
+# Yukyu usage details
+from .yukyu import (
+    get_yukyu_usage_details,
+    get_usage_detail_by_id,
+    create_yukyu_usage_detail,
+    update_yukyu_usage_detail,
+    delete_yukyu_usage_detail,
+    get_monthly_usage_summary,
+)
+
+# Audit
+from .audit import log_audit_action, get_audit_logs, get_audit_stats, cleanup_audit_log
+
+# Backup
+from .backup import create_backup, list_backups, restore_backup
+
+# Notifications
+from .notifications import (
+    create_notification,
+    get_notifications,
+    mark_notification_as_read,
+    get_unread_count,
+    get_read_notification_ids,
+    mark_notification_read,
+    mark_all_notifications_read,
+)
+
+# Stats
 from .stats import get_dashboard_stats, get_workplace_distribution, get_employee_type_distribution
 
-# Legacy mapping for backwards compatibility
+# Legacy aliases for backwards compatibility
 log_action = log_audit_action
+log_audit = log_audit_action
+get_audit_log = get_audit_logs
 
 __all__ = [
-    'get_db', 
-    'USE_POSTGRESQL', 
+    # Connection
+    'get_db',
+    'USE_POSTGRESQL',
     'init_db',
-    'save_employees', 
-    'save_employee_data', 
+    # Employees
+    'save_employees',
+    'save_employee_data',
     'get_employees',
-    'save_leave_request', 
-    'get_leave_requests', 
+    'get_employees_enhanced',
+    'get_available_years',
+    'get_employee_by_num_year',
+    'update_employee',
+    'reset_employees',
+    'get_employee_yukyu_history',
+    'get_employee_total_balance',
+    'get_employee_usage_summary',
+    'get_employee_hourly_wage',
+    'recalculate_employee_from_details',
+    'bulk_update_employees',
+    'get_bulk_update_history',
+    'revert_bulk_update',
+    # Genzai
+    'get_genzai',
+    'save_genzai',
+    'reset_genzai',
+    # Ukeoi
+    'get_ukeoi',
+    'save_ukeoi',
+    'reset_ukeoi',
+    # Staff
+    'get_staff',
+    'save_staff',
+    'reset_staff',
+    # Leave requests
+    'save_leave_request',
+    'get_leave_requests',
     'save_yukyu_usage_details',
-    'log_action', 
-    'log_audit_action', 
+    'create_leave_request',
+    'approve_leave_request',
+    'reject_leave_request',
+    'cancel_leave_request',
+    'validate_balance_limit',
+    'revert_approved_request',
+    # Yukyu usage details
+    'get_yukyu_usage_details',
+    'get_usage_detail_by_id',
+    'create_yukyu_usage_detail',
+    'update_yukyu_usage_detail',
+    'delete_yukyu_usage_detail',
+    'get_monthly_usage_summary',
+    # Audit
+    'log_action',
+    'log_audit',
+    'log_audit_action',
     'get_audit_logs',
-    'create_notification', 
-    'get_notifications', 
-    'mark_notification_as_read', 
+    'get_audit_log',
+    'get_audit_stats',
+    'cleanup_audit_log',
+    # Backup
+    'create_backup',
+    'list_backups',
+    'restore_backup',
+    # Notifications
+    'create_notification',
+    'get_notifications',
+    'mark_notification_as_read',
     'get_unread_count',
-    'get_dashboard_stats', 
-    'get_workplace_distribution', 
-    'get_employee_type_distribution'
+    'get_read_notification_ids',
+    'mark_notification_read',
+    'mark_all_notifications_read',
+    # Stats
+    'get_dashboard_stats',
+    'get_workplace_distribution',
+    'get_employee_type_distribution',
 ]

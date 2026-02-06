@@ -24,8 +24,8 @@ class UkeoiRepository(BaseRepository[UkeoiEmployee]):
             UkeoiEmployee.status == '在職中'
         ).offset(skip).limit(limit).all()
 
-    def get_by_dispatch(self, dispatch_id: str) -> List[UkeoiEmployee]:
-        """Get employees by dispatch."""
+    def get_by_contract_business(self, contract_business: str) -> List[UkeoiEmployee]:
+        """Get employees by contract business."""
         return self.session.query(UkeoiEmployee).filter(
-            UkeoiEmployee.dispatch_id == dispatch_id
+            UkeoiEmployee.contract_business == contract_business
         ).all()
