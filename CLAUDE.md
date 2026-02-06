@@ -65,7 +65,7 @@ alembic downgrade -1                              # Rollback ultimo cambio
 | Stack | Tecnologia |
 |-------|------------|
 | Backend | FastAPI 0.109+ / SQLite / PostgreSQL / PyJWT 2.8+ |
-| ORM | SQLAlchemy 2.0+ (migracion en progreso - FASE 2) |
+| ORM | SQLAlchemy 2.0+ (database/ usa ORM internamente) |
 | Frontend | Vanilla JS (ES6) + Chart.js + ApexCharts |
 | Testing | Pytest (54 test files) + Jest (22 test files) + Playwright |
 | Build | Webpack 5.91+ / Babel / PostCSS |
@@ -113,7 +113,7 @@ ORM Layer (orm/)                  SQLAlchemy 2.0 models (12 modelos)
 | `models/` | 9 modelos Pydantic (employee, vacation, user...) |
 | `orm/models/` | 12 modelos SQLAlchemy ORM |
 | `repositories/` | 11 repositorios (patron Repository) |
-| `database/` | Paquete modular de acceso a datos (9 modulos) |
+| `database/` | Paquete modular de acceso a datos (12 modulos, 60+ funciones) |
 | `config/` | Configuracion del sistema (secrets_validation, security) |
 | `exceptions/` | Excepciones personalizadas |
 | `utils/` | 7 utilidades (logger, pagination, file_validator, audit_logger...) |
@@ -123,7 +123,7 @@ ORM Layer (orm/)                  SQLAlchemy 2.0 models (12 modelos)
 | `terraform/` | Infraestructura como codigo (IaC) |
 | `scripts/` | Scripts de deployment y automatizacion (46 archivos) |
 | `.claude/skills/` | 18+ skills especializados para Claude |
-| `alembic/` | Migraciones de base de datos (4 versiones) |
+| `alembic/` | Migraciones de base de datos (5 versiones) |
 
 ### Estructura de Rutas (Endpoints API)
 
@@ -205,8 +205,9 @@ GRANT_TABLE = {
 
 ## Database Design
 
-### Patron ID Compuesto
-Tabla `employees` usa `{employee_num}_{year}` como PK (ej: `001_2025`).
+### Primary Keys
+Todas las tablas usan **UUID** como PK (generado por `BaseModel` en `orm/models/base.py`).
+Tabla `employees` tiene UniqueConstraint en `(employee_num, year, grant_date)` para preservar todos los periodos de otorgamiento.
 
 ### Tablas Principales
 | Tabla | Proposito |
@@ -218,49 +219,57 @@ Tabla `employees` usa `{employee_num}_{year}` como PK (ej: `001_2025`).
 | `leave_requests` | Solicitudes (workflow: PENDING -> APPROVED/REJECTED) |
 | `audit_log` | Trail completo de cambios |
 | `notifications` | Sistema de notificaciones |
-| `yukyu_usage_detail` | Detalle de uso de vacaciones |
+| `yukyu_usage_details` | Detalle de uso de vacaciones (campo: `use_date`, NO `usage_date`) |
 
 ### Database Package (Actual)
 
-El acceso a datos esta modularizado en el paquete `database/`:
+El acceso a datos esta modularizado en el paquete `database/` con 12 modulos y 60+ funciones exportadas:
 
 ```
 database/
-+-- __init__.py       # Re-exports publicos (get_db, init_db, save_employees...)
-+-- connection.py     # get_db(), USE_POSTGRESQL flag
++-- __init__.py       # Re-exports publicos (60+ funciones)
++-- connection.py     # get_db(), USE_POSTGRESQL flag, SessionLocal
 +-- init_db.py        # Inicializacion de tablas
-+-- employees.py      # save_employees, save_employee_data, get_employees
-+-- leave.py          # save_leave_request, get_leave_requests, save_yukyu_usage_details
-+-- audit.py          # log_audit_action, get_audit_logs
-+-- notifications.py  # create_notification, get_notifications, mark_notification_as_read
++-- employees.py      # 16 funciones: save/get/update/reset employees, bulk ops, history
++-- genzai.py         # get_genzai, save_genzai, reset_genzai (派遣社員)
++-- ukeoi.py          # get_ukeoi, save_ukeoi, reset_ukeoi (請負社員)
++-- staff.py          # get_staff, save_staff, reset_staff (事務所)
++-- leave.py          # 9 funciones: CRUD leave requests, approve/reject/cancel/revert
++-- yukyu.py          # 6 funciones: CRUD usage details, monthly summary
++-- audit.py          # log_audit_action, get_audit_logs (filtros avanzados), stats, cleanup
++-- notifications.py  # 7 funciones: CRUD notifications, read tracking
++-- backup.py         # create_backup, list_backups, restore_backup (SQLite)
 +-- stats.py          # get_dashboard_stats, get_workplace_distribution
 ```
+
+**Constraint importante:** Employee unique = `(employee_num, year, grant_date)`, NO solo `(employee_num, year)`.
 
 Uso en el codigo:
 ```python
 # Importar desde el paquete (NO desde archivos individuales)
 import database
-from database import get_db, init_db, save_employees
+from database import get_employees, approve_leave_request, get_genzai
 
-# Conexion segura - SIEMPRE usar context manager
-with get_db() as conn:
-    c = conn.cursor()
-    c.execute("SELECT * FROM employees WHERE year = ?", (2025,))
+# Las funciones usan ORM (SessionLocal) internamente
+employees = database.get_employees(year=2025)
+database.approve_leave_request(request_id, approved_by="admin")
+genzai = database.get_genzai(status="在職中")
 ```
 
-### Database Adapter (FASE 2)
+### Database Adapter
 
-`services/database_adapter.py` proporciona una capa de abstraccion para migrar de SQL raw a ORM:
+`services/database_adapter.py` proporciona una capa de abstraccion que delega todas las llamadas al paquete `database/`:
 
 ```python
 from services.database_adapter import get_employees, approve_leave_request
 
-# El codigo usa automaticamente SQL raw o ORM segun el flag USE_ORM
+# Todas las llamadas van al paquete database/ (que usa ORM internamente)
 employees = get_employees(year=2025)
 ```
 
-- **`USE_ORM=false`** (default, produccion): Usa SQL raw via `database/`
-- **`USE_ORM=true`** (desarrollo): Usa SQLAlchemy ORM via `database_orm.py`
+> **Nota:** El flag `USE_ORM` y las rutas a `database_orm.py` ya no aplican.
+> El paquete `database/` ya usa SQLAlchemy ORM (SessionLocal) para todas las operaciones.
+> El adapter mantiene compatibilidad hacia atras pero internamente todo va a `database/`.
 
 ### ORM Models
 
@@ -281,11 +290,12 @@ orm/models/
 
 ### Alembic Migrations
 
-4 migraciones versionadas en `alembic/versions/`:
+5 migraciones versionadas en `alembic/versions/`:
 - `001_initial_schema.py` - Esquema base
 - `001_initial_uuid_schema.py` - Esquema con UUIDs
 - `002_convert_to_uuid_schema.py` - Conversion a UUIDs
 - `003_add_fulltext_search.py` - Full-text search PostgreSQL
+- `004_sync_orm_models.py` - Sync con modelos ORM actuales (employees: grant_date/status/kana/hire_date/after_expiry, ukeoi: contract_business, staff: office/visa/address, yukyu: use_date rename + name/month)
 
 ### Patrones de Codigo SQL
 ```python
@@ -469,10 +479,10 @@ import { UnifiedStateBridge } from '/static/src/legacy-bridge/unified-state-brid
 ### CSS Design System
 | Archivo | Proposito |
 |---------|-----------|
+| `yukyu-design-v4.css` | Design System v4 - Zinc palette, Clean Tech SaaS (ACTUAL) |
+| `yukyu-tokens.css` | Design tokens (colores, espaciado, tipografia) |
+| `login-modal.css` | Estilos del modal de login (rediseñado v4) |
 | `unified-design-system.css` | Sistema de disenio unificado (Cyan #06b6d4) |
-| `yukyu-tokens.css` | Design tokens (colores, espaciado) |
-| `yukyu-design-v3.css` | Clean Tech SaaS design v3 |
-| `login-modal.css` | Estilos del modal de login |
 | `ui-ux-fixes-2026.css` | Fixes UI/UX 2026 |
 | `sidebar-fix.css` | Fix sidebar |
 | `contrast-fix.css` | Fix contraste accesibilidad |
@@ -794,47 +804,37 @@ git push origin feature-branch
 
 **FASE 1 (Completada):** Modelos SQLAlchemy ORM creados en `orm/models/` (12 modelos)
 
-**FASE 2 (Completada):** Database Adapter implementado
-- `services/database_adapter.py` - Capa de abstraccion con feature flag `USE_ORM`
-- El paquete `database/` reemplazo al monolitico `database.py` original
-- 9 modulos especializados: connection, employees, leave, audit, notifications, stats, init_db
+**FASE 2 (Completada):** Database Package completo
+- `database/` con 12 modulos y 60+ funciones exportadas (todas las rutas cubiertas)
+- `services/database_adapter.py` delega al paquete `database/`
+- Modulos: connection, init_db, employees, genzai, ukeoi, staff, leave, yukyu, audit, notifications, backup, stats
 
 **FASE 3 (Completada):** Legacy Bridge para frontend
 - `static/src/legacy-bridge/` - Puente entre app.js legacy y componentes modernos
 - `unified-bridge.js` + `unified-state-bridge.js`
 - Permite migrar gradualmente features de app.js a componentes ES6
 
-### Cuando Usar ORM vs Legacy
+### Como Usar la Capa de Datos
 
-**Usar Database Adapter (recomendado para codigo nuevo):**
+**Opcion 1 - Importar directamente del paquete (recomendado):**
+```python
+import database
+
+employees = database.get_employees(year=2025)
+database.approve_leave_request(request_id, approved_by="admin")
+genzai = database.get_genzai(status="在職中")
+years = database.get_available_years()
+```
+
+**Opcion 2 - Via Database Adapter (compatibilidad):**
 ```python
 from services.database_adapter import get_employees, approve_leave_request
 
-# Automaticamente selecciona SQL raw o ORM segun USE_ORM
 employees = get_employees(year=2025)
 ```
 
-**Usar Database Package (para features existentes):**
-```python
-from database import get_db
-
-def existing_feature():
-    with get_db() as conn:
-        c = conn.cursor()
-        c.execute("SELECT * FROM employees WHERE ...")
-```
-
-### Criterio de Migracion
-- **Si la funcion ya existe:** Mantener como esta, usar `database/`
-- **Si es feature nueva:** Usar `services/database_adapter.py`
-- **Objetivo futuro:** Consolidar todo a ORM via el adapter
-
-### Roadmap
-```
-2026-Q2: Consolidar queries comunes a ORM via adapter
-2026-Q3: Deprecar funciones legacy en database/
-2026-Q4: Full ORM migration
-```
+> **IMPORTANTE:** Ambas opciones usan ORM (SessionLocal) internamente.
+> No existe mas SQL raw. El paquete `database/` ES la implementacion ORM.
 
 ---
 
@@ -994,7 +994,7 @@ git commit -m "message"  # Los hooks se ejecutan de nuevo
 
 ## Common Pitfalls
 
-1. **ID Compuesto:** Employees usan `{emp_num}_{year}` como PK, no solo `emp_num`
+1. **Unique Constraint:** Employees usan `(employee_num, year, grant_date)` como UK, no solo `(emp_num, year)`
 2. **Periodo Fiscal:** 21日〜20日, no mes calendario
 3. **LIFO Deduction:** Dias mas nuevos se deducen primero
 4. **Excel Headers:** El parser detecta headers dinamicamente, no asumir posicion fija
@@ -1004,48 +1004,57 @@ git commit -m "message"  # Los hooks se ejecutan de nuevo
 8. **SQL Tables:** Usar ALLOWED_TABLES whitelist para prevenir injection
 9. **localStorage:** Envolver JSON.parse en try-catch para manejar corrupcion
 10. **Database imports:** Importar desde `database` (paquete), NO buscar `database.py` en raiz
-11. **Database adapter:** Para codigo nuevo, preferir `services/database_adapter.py`
+11. **Database adapter:** `database/` y adapter son equivalentes (ambos usan ORM)
+12. **YukyuUsageDetail:** Campo es `use_date` (NO `usage_date` - fue renombrado)
+13. **Ukeoi ORM:** Usa `contract_business` (NO `dispatch_id` - fue eliminado)
+14. **Staff ORM:** Usa `office` (NO `department` - fue eliminado)
+15. **AuditLog mapping:** audit.py mapea entity_type->table_name, entity_id->record_id, old_value->old_values, new_value->new_values, additional_info->reason
+16. **Excel sheet principal:** `作業者データ　有給` (worksheets[0]), NO Sheet1
+17. **Half-day detection:** Usar `detect_leave_type()` + `parse_date_from_cell()` de excel_service.py
+18. **grant_date None:** Algunos empleados no tienen grant_date - se usa clave sintetica `row-N`
 
 ---
 
 ## Recent Changes (2026-02)
 
-### Design System v3 - Clean Tech SaaS
-- Nuevo sistema de disenio `yukyu-design-v3.css`
-- Estetica Clean Tech SaaS
+### Database Package Completo (60+ funciones)
+- 5 modulos nuevos: `genzai.py`, `ukeoi.py`, `staff.py`, `yukyu.py`, `backup.py`
+- 4 modulos expandidos: `employees.py` (+15 funciones), `leave.py` (+6), `audit.py` (+3), `notifications.py` (+3)
+- 42/42 funciones llamadas por routes ahora implementadas
+- Aliases legacy: `log_audit`, `log_action`, `get_audit_log` para compatibilidad
+- Alembic migration 004: sync schema con modelos ORM actuales
 
-### FASE 3 Completada - Legacy Bridge
-- `static/src/legacy-bridge/` con 6 archivos
-- `unified-bridge.js` + `unified-state-bridge.js`
-- Permite migrar features de app.js a componentes modernos gradualmente
+### Excel Parser Fixes (3 bugs criticos)
+- **Data loss fix:** Clave unica cambiada de `(emp_num, year)` a `(emp_num, year, grant_date)` - recuperados 413 registros (14.5%)
+- **Half-day fix:** 163 entradas 半休 ahora cuentan 0.5 dias (no 1.0) - 81.5 dias ya no se sobrecontaban
+- **ORM model sync:** Ukeoi=contract_business, Staff=office/visa/etc, YukyuUsageDetail=use_date
+- 6 columnas nuevas parseadas: status, kana, hire_date, after_expiry, grant_date, leave_type
 
-### FASE 2 Completada - Database Adapter
-- `services/database_adapter.py` con feature flag USE_ORM
-- Paquete modular `database/` reemplazo al monolitico database.py original
-- Fallback graceful si ORM no disponible
+### Design System v4 - Zinc + Cyan
+- `yukyu-design-v4.css` reemplaza v3
+- Paleta Zinc (fondos), Cyan (#06b6d4) primario, Inter font
+- Login modal rediseñado
+- Archivos legacy movidos a `LIXO/`
 
-### API v0 -> v1 Migration Completada
-- Todos los endpoints migrados a `routes/v1/`
-- Router modularizado por dominio
+### Project Structure Reorganization
+- 42 archivos reorganizados segun mejores practicas
+- Scripts movidos a `scripts/{analysis,debug,fixes,data,utils,windows}/`
+- Docs movidos a `docs/`
+- Debug output y backups a `LIXO/`
 
-### Security Audit Fixes (P0-P2)
-- **P0 CRITICAL:** SQL Injection prevention con ALLOWED_TABLES whitelist
-- **P1 UI/UX:** Paleta Cyan unificada (#06b6d4), accesibilidad WCAG
-- **P2 Code Quality:** DRY con `_execute_search()` helper
+### Repository Fixes
+- `ukeoi_repository.py`: `get_by_dispatch()` -> `get_by_contract_business()`
+- `staff_repository.py`: `get_by_department()` -> `get_by_office()`
+- `database_adapter.py`: eliminada referencia muerta a `database_orm`
 
-### Features
-- Katakana Display (カナ junto a nombres)
-- Dynamic Username en audit trail
-- Fiscal Year Indicator visual (21日〜20日)
-- Full-text Search PostgreSQL (ILIKE)
-- UIStates component (loading/empty/error/skeleton)
-- PWA Enhancement (sw-enhanced.js)
-
-### Code Quality
+### Previous Changes
+- FASE 3 Legacy Bridge completada (`static/src/legacy-bridge/`)
+- API v0 -> v1 migracion completada
+- Security Audit P0-P2 fixes (SQL Injection, Cyan palette, DRY)
+- Features: Katakana, Dynamic Username, Fiscal Year Indicator, Full-text Search, UIStates, PWA
 - CSS legacy cleanup: -13,884 lineas
 - Agent system: timeout per-agent, circuit breaker
 - Pre-commit hooks automatizados
-- Elite agent system agregado
 
 ---
 
@@ -1183,7 +1192,7 @@ wb = load_workbook('有給休暇管理.xlsm')
 
 ## Notes
 
-- Los directorios `basuraa/` y `ThemeTheBestJpkken/` contienen codigo legacy y estan excluidos de CI/CD
+- Los directorios `basuraa/`, `ThemeTheBestJpkken/` y `LIXO/` contienen codigo legacy y estan excluidos de CI/CD
 - Los modales usan `visibility: hidden` por defecto, clase `.active` para mostrar
 - El directorio `.agent/skills/` contiene 187 ejemplos de skills (no parte del core)
 - Storybook disponible para documentacion de componentes: `npm run storybook`
