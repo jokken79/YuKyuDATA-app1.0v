@@ -38,8 +38,8 @@ from services.auth import (
 )
 from config.security import settings, validate_security_config
 from config.secrets_validation import validate_secrets, print_secrets_status
+from middleware.rate_limit import AdvancedRateLimitMiddleware, InMemoryStorage
 from middleware.security_headers import (
-    RateLimitMiddleware,
     SecurityHeadersMiddleware,
     RequestLoggingMiddleware,
     AuthenticationLoggingMiddleware
@@ -219,7 +219,7 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,  # Changed to True to allow cookies/auth headers if needed
     allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"],
-    allow_headers=["*"],     # Allow all headers including Authorization
+    allow_headers=["Content-Type", "Authorization", "X-CSRF-Token", "Accept-Language"],
 )
 
 # Add security middlewares
@@ -235,10 +235,10 @@ app.add_middleware(
     security_headers=settings.security_headers
 )
 app.add_middleware(
-    RateLimitMiddleware,
-    max_requests=settings.rate_limit_requests,
-    window_seconds=settings.rate_limit_window_seconds,
-    # ✅ FIX 2: /api/auth/login is now rate limited (5/min in RATE_LIMITS config)
+    AdvancedRateLimitMiddleware,
+    storage=InMemoryStorage(),
+    default_limit=settings.rate_limit_requests,
+    default_window=settings.rate_limit_window_seconds,
     exclude_paths=["/health", "/docs", "/redoc", "/openapi.json", "/", "/static"]
 )
 

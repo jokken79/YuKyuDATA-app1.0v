@@ -1,0 +1,11 @@
+{
+  "context_servers": {
+    "antigravity-agents": {
+      "command": {
+        "path": "python",
+        "args": [".agent/mcp/agents-server-v2.py"]
+      },
+      "settings": {}
+    }
+  }
+}

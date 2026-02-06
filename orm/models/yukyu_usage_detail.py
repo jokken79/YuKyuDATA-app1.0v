@@ -1,10 +1,7 @@
 """YukyuUsageDetail ORM Model - Individual Leave Dates"""
 
 from sqlalchemy import Column, String, Float, Integer, Index, ForeignKey
-from sqlalchemy.orm import declarative_base
-from orm.models.base import BaseModel
-
-Base = declarative_base()
+from orm.models.base import Base, BaseModel
 
 
 class YukyuUsageDetail(BaseModel, Base):

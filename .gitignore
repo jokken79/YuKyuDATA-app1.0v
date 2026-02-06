@@ -58,3 +58,4 @@ static/asset-manifest.txt
 # ===========================================
 storybook-static/
 *storybook.log
+.env

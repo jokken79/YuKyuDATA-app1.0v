@@ -17,7 +17,43 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 # Acceder
 http://localhost:8000        # App
-http://localhost:8000/docs   # Swagger UI
+http://localhost:8000/docs   # Swagger UI (OpenAPI)
+```
+
+---
+
+## Development Commands
+
+```bash
+# Tests
+pytest tests/ -v                              # Todos los tests
+pytest tests/ -v --cov=. --cov-report=html   # Con coverage
+pytest tests/test_fiscal_year.py -v           # Tests críticos fiscal
+pytest tests/test_api.py::test_sync_employees # Test individual
+pytest tests/ -k "test_name" -v               # Filtrar por nombre
+npx jest                                      # Frontend unit tests
+npx jest --coverage                           # Frontend coverage
+npx playwright test                           # E2E tests
+
+# Lint & Format
+npm run lint:js                               # ESLint (auto-fix)
+npm run lint:css                              # Stylelint (auto-fix)
+npm run lint                                  # Ambos
+
+# Build
+npm run build                                 # Webpack producción
+npm run build:dev                             # Webpack desarrollo
+npm run build:watch                           # Webpack modo watch
+
+# Docker
+docker-compose -f docker-compose.dev.yml up -d      # Desarrollo
+docker-compose -f docker-compose.secure.yml up -d   # Máxima seguridad
+docker-compose -f docker-compose.prod.yml up -d     # Producción optimizada
+
+# Database Migrations
+alembic revision --autogenerate -m "description"  # Crear nueva migración
+alembic upgrade head                              # Aplicar migrations
+alembic downgrade -1                              # Rollback último cambio
 ```
 
 ---
@@ -36,31 +72,6 @@ http://localhost:8000/docs   # Swagger UI
 **Data Sources (deben existir en raíz):**
 - `有給休暇管理.xlsm` - Master de vacaciones
 - `【新】社員台帳(UNS)T　2022.04.05～.xlsm` - Registro empleados (hojas: DBGenzaiX, DBUkeoiX, DBStaffX)
-
----
-
-## Development Commands
-
-```bash
-# Tests
-pytest tests/ -v                              # Todos
-pytest tests/test_fiscal_year.py -v           # Tests críticos fiscal
-pytest tests/test_api.py::test_sync_employees # Test individual
-npx jest                                      # Frontend unit tests
-npx playwright test                           # E2E
-
-# Lint
-npm run lint:js                               # ESLint
-npm run lint:css                              # Stylelint
-
-# Build
-npm run build                                 # Webpack production
-
-# Docker
-docker-compose -f docker-compose.dev.yml up -d      # Desarrollo
-docker-compose -f docker-compose.secure.yml up -d   # Producción (máxima seguridad)
-docker-compose -f docker-compose.prod.yml up -d     # Producción optimizada
-```
 
 ---
 
@@ -101,6 +112,55 @@ Data Layer (database.py)          SQLite/PostgreSQL, backup, audit log
 | `static/js/` | Legacy SPA (app.js - 3,701 líneas) |
 | `.claude/skills/` | 15+ skills especializados para Claude |
 | `alembic/` | Migraciones de base de datos |
+
+### Estructura de Rutas (Endpoints API)
+
+Los endpoints están organizados en `routes/v1/` por dominio:
+
+```
+routes/v1/
+├── auth.py                 # Login, logout, refresh tokens
+├── employees.py            # CRUD empleados, búsqueda
+├── genzai.py              # Empleados de despacho (派遣社員)
+├── ukeoi.py               # Empleados contratistas (請負社員)
+├── staff.py               # Personal de oficina
+├── leave_requests.py      # Solicitudes de vacaciones workflow
+├── compliance.py          # Verificación 労働基準法 39条
+├── compliance_advanced.py # Reportes avanzados de cumplimiento
+├── fiscal.py              # Cálculos fiscal year
+├── analytics.py           # Analytics y dashboards
+├── reports.py             # Reportes mensuales/anuales
+├── export.py              # Exportación Excel/PDF
+├── calendar.py            # Calendar events
+├── notifications.py       # Sistema de notificaciones
+├── health.py              # Health checks
+├── system.py              # Estado del sistema
+├── yukyu.py               # Sync desde Excel
+├── github.py              # Integración GitHub
+└── __init__.py            # Inicialización router principal
+```
+
+**Cómo agregar un nuevo endpoint:**
+1. Crear archivo en `routes/v1/nombre.py`
+2. Definir router: `router = APIRouter(prefix="/api/nombre", tags=["nombre"])`
+3. Importar en `routes/v1/__init__.py`: `from .nombre import router`
+4. El router se registra automáticamente en `main.py`
+
+### Patrón Repository
+
+Cada tabla principal tiene un repositorio en `repositories/`:
+- Encapsula acceso a datos (queries SQL)
+- Maneja transacciones y context managers
+- Interfaz consistente con métodos: `get()`, `list()`, `create()`, `update()`, `delete()`
+
+Ejemplo de uso en services:
+```python
+from repositories.employee_repository import EmployeeRepository
+
+def get_employee(emp_num: str, year: int):
+    repo = EmployeeRepository()
+    return repo.get(emp_num, year)  # Usa context manager internamente
+```
 
 ---
 
@@ -262,31 +322,56 @@ GET  /api/health/detailed
 
 ## Frontend Architecture
 
-### Arquitectura Dual
-| Sistema | Ubicación | Estado |
-|---------|-----------|--------|
-| **Legacy** | `static/js/app.js` | Activo (producción, 3,701 líneas) |
-| **Modern** | `static/src/` | Disponible para nuevas features (41 archivos) |
+### Arquitectura Dual: Legacy vs Modern
+
+| Aspecto | Legacy (app.js) | Modern (static/src/) |
+|---------|---|---|
+| **Ubicación** | `static/js/app.js` | `static/src/` |
+| **Líneas de código** | 3,701 líneas | 41 archivos, modular |
+| **Patrón** | SPA monolítico | Componentes ES6 |
+| **Estado** | Activo en producción | Disponible para nuevas features |
+| **Cuándo usar** | Bugs/mantención en features existentes | Nuevas features o refactoring |
+
+**Decisión Rápida:**
+- ¿La feature/bug ya existe en app.js? → Edita `static/js/app.js`
+- ¿Es una feature completamente nueva? → Usa componentes de `static/src/`
+- ¿No estás seguro? → Busca en ambas ubicaciones
 
 ### Componentes Modernos (17)
+
+Ubicación: `static/src/components/`
+
 ```javascript
 import { Modal, Alert, Table, Form, Button, Input,
          Select, Card, Badge, Tooltip, Pagination,
          DatePicker, Loader, UIStates } from '/static/src/components/index.js';
 
+// Ejemplo de uso
 Alert.success('保存しました');
 Alert.error('エラーが発生しました');
+
+// Componente Modal
+const modal = new Modal({
+    title: '確認',
+    content: 'よろしいですか？',
+    actions: [
+        { label: 'キャンセル', action: () => modal.close() },
+        { label: '了解', action: () => confirm() }
+    ]
+});
 ```
 
-### Frontend Pages (8)
+### Estructura Frontend
+
+**Pages (8):**
 - Dashboard, Employees, LeaveRequests, Analytics
 - Compliance, Settings, Notifications
 
-### Frontend Managers (7)
+**Managers (7):**
 - DashboardManager, EmployeesManager, LeaveRequestsManager
 - AnalyticsManager, ComplianceManager, PageCoordinator
 
-### Legacy Modules (12)
+**Legacy Modules (12):**
 | Módulo | Propósito |
 |--------|-----------|
 | `theme-manager.js` | Gestión de temas (dark/light) |
@@ -454,9 +539,167 @@ markers =
     e2e: End-to-end tests
 ```
 
+### Ejecutar Tests con Cobertura
+
+```bash
+# Coverage total
+pytest tests/ -v --cov=. --cov-report=html
+
+# Ver reporte en navegador
+open htmlcov/index.html  # macOS
+start htmlcov\index.html # Windows
+
+# Coverage por módulo
+pytest tests/test_api.py --cov=routes --cov-report=term-missing
+
+# Debuggear test que falla
+pytest tests/test_api.py::test_sync_employees -v -s  # -s muestra prints
+pytest tests/test_fiscal_year.py -v --tb=long         # Stack trace completo
+pytest tests/test_api.py -v --pdb                     # Abre debugger en fallo
+```
+
 ### Coverage Target
 - Backend: 80%+ (actual ~98% paths críticos)
 - Frontend: Jest coverage configurado
+
+### Debugging Tests
+```python
+# En un test fallido, usa estas técnicas:
+
+# 1. Print debugging
+def test_example():
+    result = some_function()
+    print(f"Debug: {result}")  # Verlo con pytest -s
+    assert result == expected
+
+# 2. Breakpoint (Python 3.7+)
+def test_example():
+    result = some_function()
+    breakpoint()  # Se abre pdb interactivo
+    assert result == expected
+
+# 3. pytest fixtures para debugging
+def test_example(capfd):
+    some_function()
+    captured = capfd.readouterr()  # Captura stdout/stderr
+    assert "expected" in captured.out
+```
+
+---
+
+## Before Committing
+
+### Pre-commit Hooks
+
+Este proyecto tiene pre-commit hooks configurados que se ejecutan **automáticamente** antes de cada commit:
+
+```bash
+# Los hooks verifican:
+- Trailing whitespace (espacios al final de líneas)
+- EOF fixer (archivo termina con newline)
+- YAML/JSON syntax validation
+- Archivos grandes > 1MB (evitar commits accidentales)
+- Secrets detection (API keys, contraseñas)
+- No console.log en código producción
+```
+
+### Si un Hook Falla
+
+```bash
+# 1. El commit se rechaza, ver el error
+# 2. Arreglar el problema según el mensaje
+
+# Ejemplos comunes:
+
+# Trailing whitespace
+→ Editar archivo y remover espacios al final de líneas
+
+# Archivo JSON/YAML inválido
+→ Validar sintaxis: python -m json.tool archivo.json
+
+# Archivo demasiado grande
+→ Usar Git LFS: git lfs track "*.xlsm"
+
+# Secrets detectado
+→ NO commitar credenciales. Usar variables de entorno o .env.example
+
+# Console.log en producción
+→ Remover console.log o usar método diferente de logging
+
+# 3. Stage los cambios y re-intentar commit
+git add .
+git commit -m "message"
+```
+
+### Bypass (Usar con Cuidado)
+```bash
+# SOLO si estás seguro de qué haces:
+git commit --no-verify -m "message"
+
+# No es recomendado - los hooks existen por una razón
+```
+
+### Antes de Hacer Push
+```bash
+# 1. Asegurar que tests pasen
+pytest tests/ -v
+
+# 2. Lint y format
+npm run lint
+
+# 3. Ver commits que se van a pushear
+git log origin/main..HEAD
+
+# 4. Finalmente push
+git push origin feature-branch
+```
+
+---
+
+## ORM Migration Status (Phase 2)
+
+### Estado Actual (Enero 2026)
+- **Fase 1 (Completada):** Modelos SQLAlchemy ORM creados en `orm/models/`
+- **Fase 2 (En Progreso):** Migración del código legacy a ORM
+  - `database.py` (5,732 líneas) sigue siendo la fuente principal
+  - `database_orm.py` proporciona wrapper ORM alternativo (31 KB)
+  - Alembic migrations configurado pero parcialmente usado
+
+### Cuándo Usar ORM vs Legacy
+
+**Usar ORM (`database_orm.py`):**
+```python
+# Nuevas features que no existen en database.py
+from database_orm import SessionLocal, Employee
+
+def get_new_feature():
+    session = SessionLocal()
+    employees = session.query(Employee).filter(...).all()
+    session.close()
+```
+
+**Usar Legacy (`database.py`):**
+```python
+# Features existentes, bugs, mantención
+from database import get_db
+
+def existing_feature():
+    with get_db() as conn:
+        c = conn.cursor()
+        c.execute("SELECT * FROM employees WHERE ...")
+```
+
+### Criterio de Migración
+- **Si la función ya existe en database.py:** No migrar ahora, mantener como está
+- **Si es feature nueva:** Considera usar ORM
+- **Duplicación de código:** El objetivo es consolidar eventualmente a un solo pattern
+
+### Roadmap Futuro
+```
+2026-Q2: Finalizar Phase 2 (consolidar queries comunes a ORM)
+2026-Q3: Deprecate database.py legacy functions
+2026-Q4: Full ORM migration
+```
 
 ---
 
@@ -501,33 +744,104 @@ markers =
 ## Conventions
 
 ### Idiomas
-- **Código:** Inglés (variables, funciones)
-- **UI:** Japonés (labels, mensajes)
+- **Código:** Inglés (variables, funciones, docstrings)
+- **UI:** Japonés (labels, mensajes, validaciones)
 - **Documentación:** Castellano
-- **Commits:** Conventional commits en inglés (`feat:`, `fix:`, `docs:`, `refactor:`)
+- **Commits:** Conventional commits en inglés
 
-### Git
-- Branch principal: `main`
-- Features: `claude/feature-name-{sessionId}`
+### Commit Convention
+```bash
+# Formato: type(scope): description
+# type: feat | fix | docs | refactor | perf | test | chore | style
 
-### Código
-```python
-# Python - Type hints recomendados
-def get_employee(emp_num: str, year: int) -> Optional[Employee]:
-    ...
-
-# Docstrings en inglés para funciones públicas
-def calculate_granted_days(seniority: float) -> int:
-    """Calculate vacation days granted based on seniority years."""
-    ...
+feat(employees): add katakana display
+fix(auth): jwt token refresh logic
+docs(claude): improve architecture section
+refactor(search): consolidate query builders
+perf(dashboard): optimize chart rendering
 ```
 
-```javascript
-// JavaScript - camelCase para variables/funciones
-const employeeData = await fetchEmployeeData(empNum, year);
+**Scope (opcional pero recomendado):**
+- `employees`, `genzai`, `ukeoi`, `staff`
+- `auth`, `compliance`, `fiscal`, `reports`
+- `database`, `frontend`, `api`, `ui`
 
-// Uso de módulos ES6
-import { Alert } from '/static/src/components/index.js';
+### Git Workflow
+```bash
+# Branch principal
+main  # Producción, PR-merged
+
+# Crear feature branch
+git checkout -b feat/feature-name
+git checkout -b fix/bug-description
+git checkout -b refactor/module-name
+
+# Opcional: agregar session ID si usas Claude Code
+git checkout -b claude/feature-name-{sessionId}
+```
+
+### Código Python
+```python
+# Type hints obligatorios para funciones públicas
+def get_employee(emp_num: str, year: int) -> Optional[Employee]:
+    """Calculate vacation days granted based on seniority years.
+
+    Args:
+        emp_num: Employee number (e.g., '001')
+        year: Fiscal year
+
+    Returns:
+        Employee object or None if not found
+    """
+    ...
+
+# Variables con nombres descriptivos
+employee_data = {}
+fiscal_year_start = date(2025, 4, 1)
+
+# NO usar nombres cortos ambiguos
+emp = {}  # ❌
+fy = 2025  # ❌
+```
+
+### Código JavaScript
+```javascript
+// camelCase para variables y funciones
+const employeeData = await fetchEmployeeData(empNum, year);
+const calculateVacationBalance = (granted, used) => granted - used;
+
+// CONST por defecto, LET solo cuando necesario cambiar
+const maxVacationDays = 40;  // ✅
+const userId = user.id;       // ✅
+
+// Módulos ES6
+import { Alert, Modal } from '/static/src/components/index.js';
+import { fetchAPI } from '/static/src/services/data-service.js';
+
+// NO usar var (legacy)
+var data = {};  // ❌
+```
+
+### Directorio Naming
+- Directorios: `snake_case` (routes, services, models)
+- Archivos Python: `snake_case` (employee_repository.py, fiscal_year.py)
+- Archivos JS: `kebab-case` (data-service.js, auth-manager.js) o `camelCase` (components)
+- Clases: `PascalCase` (EmployeeRepository, AuthService)
+
+### PR/Commits que Fallan
+Si los pre-commit hooks rechazan tu commit:
+
+```bash
+# Ver qué falló
+git status
+
+# Arreglar problemas
+npm run lint  # Auto-fix linting issues
+# O editar manualmente los archivos
+
+# Re-commit
+git add .
+git commit -m "message"  # Los hooks se ejecutan de nuevo
 ```
 
 ---
@@ -545,57 +859,176 @@ import { Alert } from '/static/src/components/index.js';
 
 ---
 
-## Recent Changes (2026-01)
+## Recent Changes (2026-01-20)
 
-### Security Audit Fixes (P0-P2)
+### Security Audit Fixes (P0-P2) ✅
 - **P0 CRITICAL:** SQL Injection prevention con ALLOWED_TABLES whitelist en SearchService
+  - Todas las búsquedas verifican tabla contra whitelist
+  - Queries parametrizadas obligatorias
 - **P1 UI/UX:** Paleta Cyan unificada (#06b6d4), accesibilidad WCAG
+  - Sistema de diseño unificado: `unified-design-system.css`
+  - Soporte completo Light Mode + Dark Mode
 - **P2 Code Quality:** DRY con `_execute_search()` helper, manejo de localStorage corrupto
+  - Consolidación de lógica de búsqueda
+  - Try-catch wrappers para JSON.parse
 
 ### New Features
-- **Katakana Display:** Muestra カナ junto a nombres de empleados
-- **Dynamic Username:** Username real en audit trail de aprobaciones
-- **Fiscal Year Indicator:** Indicador visual en historial de uso
-- **Full-text Search:** Soporte PostgreSQL en search_service.py
+- **Katakana Display:** Muestra カナ junto a nombres de empleados (hiring name)
+- **Dynamic Username:** Username real en audit trail de aprobaciones (no "Unknown User")
+- **Fiscal Year Indicator:** Indicador visual en historial de uso (21日〜20日)
+- **Full-text Search:** Soporte PostgreSQL en search_service.py (ILIKE queries)
+- **Component System:** UIStates (loading/empty/error/skeleton) para estados consistentes
+- **PWA Enhancement:** Service Workers mejorados (sw-enhanced.js)
+
+### Code Quality (2026-01)
+- Limpieza CSS legacy: -13,884 líneas removidas
+- Agent system improvements: timeout per-agent, circuit breaker
+- Pre-commit hooks automatizados
+- Consolidación de estado frontend (singleton pattern)
 
 ---
 
 ## Troubleshooting
 
-### Puerto en uso
+### Puerto en Uso
 ```bash
 # Windows
 netstat -ano | findstr :8000
 taskkill /PID <PID> /F
 
-# Linux
+# macOS/Linux
 lsof -i :8000
 kill -9 <PID>
+
+# O simplemente cambiar puerto en uvicorn
+python -m uvicorn main:app --port 8001
 ```
 
-### Excel no se puede leer
-- Verificar que el archivo existe en la raíz
-- Verificar nombre exacto (caracteres japoneses)
-- Cerrar Excel si está abierto
-
-### CSRF token inválido
-- Recargar la página para obtener nuevo token
-- Verificar header X-CSRF-Token en requests
-
-### JWT Token expirado
-- El frontend debe usar refresh token automáticamente
-- Verificar auth-manager.js para lógica de refresh
-
-### Database migrations
+### Excel no se puede Leer
 ```bash
-# Crear nueva migración
-alembic revision --autogenerate -m "description"
+# Verificar archivo existe con nombre exacto
+ls *.xlsm  # Mostrar archivos Excel en directorio raíz
 
-# Aplicar migraciones
-alembic upgrade head
+# Verificar codificación (requiere caracteres japoneses)
+# Archivos esperados:
+# - 有給休暇管理.xlsm
+# - 【新】社員台帳(UNS)T　2022.04.05～.xlsm
 
-# Rollback
-alembic downgrade -1
+# Soluciones:
+# 1. Cerrar Excel si está abierto (lock de archivo)
+# 2. Copiar archivo a raíz exacta: D:\YuKyuDATA-app1.0v\
+# 3. Renombrar si tiene caracteres especiales incorrectos
+# 4. Verificar en logs del servidor: ERROR reading Excel
+```
+
+### CSRF Token Inválido
+```
+Error: "CSRF token invalid"
+Solución:
+1. Recargar página (obtiene nuevo token CSRF)
+2. Si persiste: Limpiar cookies/localStorage
+3. Verificar header X-CSRF-Token en POST requests
+4. En frontend, verificar csrf-token.js está cargado
+```
+
+### JWT Token Expirado
+```
+Error: "Token expired" o 401 Unauthorized
+Solución:
+1. El frontend debe usar refresh token automáticamente
+2. Si sigue fallando: Logout + Login nuevamente
+3. Verificar en console: auth-manager.js ejecuta refresh
+4. Logs: POST /api/auth/refresh debe devolver 200
+```
+
+### Tests Fallando
+```bash
+# Test específico falla localmente
+pytest tests/test_fiscal_year.py::test_calculate_granted_days -v -s
+
+# Check si es issue de BD
+# Asegurar que database test está limpio
+rm yukyu.db  # Recrear BD en memoria para tests
+
+# Fixtures no encontradas
+pytest --fixtures  # Listar todas las fixtures
+
+# PostgreSQL requerido pero no disponible
+pytest -m "not skip_without_postgres"  # Saltarse tests que requieren PG
+```
+
+### Lint Falla en Commit
+```bash
+# ESLint rechaza código
+npm run lint:js  # Auto-fix automático
+
+# Si sigue fallando
+npm run lint:js -- --debug  # Ver detalles
+
+# CSS issues
+npm run lint:css  # Auto-fix
+
+# YAML/JSON syntax
+python -m json.tool archivo.json  # Validar JSON
+```
+
+### Problemas de Conexión a BD
+```bash
+# SQLite (por defecto)
+# Verificar archivo existe: yukyu.db
+ls -la yukyu.db
+
+# PostgreSQL
+# Verificar conexión
+psql postgresql://user:pass@localhost:5432/yukyu -c "SELECT 1"
+
+# En logs: "could not connect to server"
+# Soluciones:
+# 1. Verificar DATABASE_URL correcto en .env
+# 2. Iniciar servicio PostgreSQL
+# 3. Verificar credenciales usuario/contraseña
+```
+
+### Node Modules Corruptos
+```bash
+# Volver a instalar dependencias
+rm -rf node_modules package-lock.json
+npm install
+
+# Limpiar cache npm
+npm cache clean --force
+npm install
+```
+
+### Charset Issues (Caracteres Japoneses)
+```python
+# En Python, asegurar UTF-8
+import sys
+print(sys.getdefaultencoding())  # Debe ser 'utf-8'
+
+# En Excel parser
+from openpyxl import load_workbook
+wb = load_workbook('有給休暇管理.xlsm')
+
+# En database.py, verificar:
+# CREATE TABLE employees (...) CHARSET=utf8mb4;
+```
+
+### Performance Lento
+```bash
+# Debuggear queries lentas
+# 1. Habilitar query logging en database.py
+# 2. Ver qué query demora más
+# 3. Considerar índices (ALTER TABLE ... ADD INDEX)
+
+# Frontend lento
+# 1. Ver bundle size: npm run build:analyze
+# 2. Check en DevTools: Performance tab
+# 3. Buscar N+1 queries en API responses
+
+# Startup lento
+# 1. Migrar a PostgreSQL (SQLite más lento)
+# 2. Reducir tamaño de database (backup antiguo)
 ```
 
 ---
@@ -605,4 +1038,6 @@ alembic downgrade -1
 - Los directorios `basuraa/` y `ThemeTheBestJpkken/` contienen código legacy y están excluidos de CI/CD
 - Los modales usan `visibility: hidden` por defecto, clase `.active` para mostrar
 - El directorio `.agent/skills/` contiene 184+ ejemplos de skills (no parte del core)
-- Storybook disponible para documentación de componentes (`npm run storybook`)
+- Storybook disponible para documentación de componentes: `npm run storybook`
+- El archivo `.mcp.json` configura context para Claude Code
+- Todos los secretos (JWT_SECRET_KEY, DATABASE_ENCRYPTION_KEY) deben estar en .env, NUNCA en código

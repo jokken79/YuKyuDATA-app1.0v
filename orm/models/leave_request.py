@@ -1,12 +1,9 @@
 """LeaveRequest ORM Model - Leave Request Workflow"""
 
 from sqlalchemy import Column, String, Float, Integer, DateTime, Index, Enum
-from sqlalchemy.orm import declarative_base
-from orm.models.base import BaseModel
-from datetime import datetime
+from orm.models.base import Base, BaseModel
+import datetime
 import enum
-
-Base = declarative_base()
 
 
 class LeaveStatus(str, enum.Enum):

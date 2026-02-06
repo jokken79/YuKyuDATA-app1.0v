@@ -1,11 +1,8 @@
 """NotificationRead ORM Model - Notification Read Status"""
 
-from sqlalchemy import Column, String, DateTime, Index, UniqueConstraint
-from sqlalchemy.orm import declarative_base
-from orm.models.base import BaseModel
 from datetime import datetime
-
-Base = declarative_base()
+from sqlalchemy import Column, String, DateTime, Index, UniqueConstraint
+from orm.models.base import Base, BaseModel
 
 
 class NotificationRead(BaseModel, Base):

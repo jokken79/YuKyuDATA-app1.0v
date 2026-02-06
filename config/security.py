@@ -2,7 +2,7 @@
 # Configuración centralizada de seguridad para YuKyuDATA
 
 from pydantic_settings import BaseSettings
-from typing import Optional, List, Dict, Tuple, ClassVar
+from typing import Optional, List, Dict, Tuple, ClassVar, Union
 import os
 from datetime import timedelta
 
@@ -66,7 +66,7 @@ class SecuritySettings(BaseSettings):
     # ============================================
     # CORS & HTTP
     # ============================================
-    cors_origins: List[str] = [
+    cors_origins: Union[List[str], str] = [
         "http://localhost:3000",
         "http://localhost:8000",
     ]

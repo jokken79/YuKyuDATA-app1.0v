@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "antigravity-agents": {
+      "command": "python",
+      "args": [".agent/mcp/agents-server-v2.py"],
+      "description": "96 agentes autonomos Antigravity como herramientas MCP"
+    }
+  }
+}

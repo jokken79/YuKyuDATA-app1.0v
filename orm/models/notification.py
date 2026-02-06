@@ -1,10 +1,7 @@
 """Notification ORM Model - System Notifications"""
 
 from sqlalchemy import Column, String, Integer, Index
-from sqlalchemy.orm import declarative_base
-from orm.models.base import BaseModel
-
-Base = declarative_base()
+from orm.models.base import Base, BaseModel
 
 
 class Notification(BaseModel, Base):

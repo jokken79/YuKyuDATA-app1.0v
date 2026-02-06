@@ -1,10 +1,7 @@
 """AuditLog ORM Model - Complete Audit Trail"""
 
 from sqlalchemy import Column, String, Index
-from sqlalchemy.orm import declarative_base
-from orm.models.base import BaseModel
-
-Base = declarative_base()
+from orm.models.base import Base, BaseModel
 
 
 class AuditLog(BaseModel, Base):

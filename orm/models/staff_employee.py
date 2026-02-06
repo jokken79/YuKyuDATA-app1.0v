@@ -1,10 +1,7 @@
 """StaffEmployee ORM Model - Office Staff"""
 
 from sqlalchemy import Column, String, Float, Integer, Index
-from sqlalchemy.orm import declarative_base
-from orm.models.base import BaseModel
-
-Base = declarative_base()
+from orm.models.base import Base, BaseModel
 
 
 class StaffEmployee(BaseModel, Base):

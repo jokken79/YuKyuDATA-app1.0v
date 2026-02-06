@@ -671,6 +671,9 @@ const App = {
         // Initialize internationalization (i18n)
         this.i18n.init();
 
+        // Initialize Router (Hash-based)
+        this.router.init();
+
         // Initialize Calendar
         if (this.calendar) {
             this.calendar.init();
@@ -681,6 +684,29 @@ const App = {
 
         this.ui.hideLoading();
         this.events.setupListeners();
+    },
+
+    // ========================================
+    // ROUTER MODULE (Hash-based)
+    // ========================================
+    router: {
+        init() {
+            window.addEventListener('hashchange', () => this.handleRouting());
+            // Initial routing
+            if (window.location.hash) {
+                this.handleRouting();
+            } else {
+                // Default to dashboard
+                window.location.hash = 'dashboard';
+            }
+        },
+
+        handleRouting() {
+            const hash = window.location.hash.substring(1);
+            if (hash) {
+                App.ui.switchView(hash);
+            }
+        }
     },
 
     // ========================================
@@ -1020,6 +1046,14 @@ const App = {
         },
 
         switchView(viewName) {
+            if (!viewName) return;
+
+            // Update Hash if different (for deep linking)
+            if (window.location.hash !== `#${viewName}`) {
+                window.location.hash = viewName;
+                return; // Router will trigger switchView again
+            }
+
             // Hide all views
             document.querySelectorAll('.view-section').forEach(el => {
                 el.classList.remove('active');

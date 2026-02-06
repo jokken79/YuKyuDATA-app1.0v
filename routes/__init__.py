@@ -35,9 +35,6 @@ from .responses import (
 # Dependencies module (shared authentication/authorization helpers)
 from .dependencies import (
     get_current_user,
-    get_current_user_optional,
-    get_db_connection,
-    verify_csrf_token,
 )
 
 __all__ = [
@@ -56,7 +53,4 @@ __all__ = [
     "forbidden_response",
     # Dependencies
     "get_current_user",
-    "get_current_user_optional",
-    "get_db_connection",
-    "verify_csrf_token",
 ]

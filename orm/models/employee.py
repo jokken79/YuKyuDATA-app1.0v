@@ -1,12 +1,7 @@
 """Employee ORM Model - Vacation Data"""
 
 from sqlalchemy import Column, String, Float, Integer, DateTime, Index, UniqueConstraint
-from sqlalchemy.orm import declarative_base
-from orm.models.base import BaseModel
-from datetime import datetime
-import uuid
-
-Base = declarative_base()
+from orm.models.base import Base, BaseModel
 
 
 class Employee(BaseModel, Base):
