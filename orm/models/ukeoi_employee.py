@@ -15,11 +15,7 @@ class UkeoiEmployee(BaseModel, Base):
 
     status = Column(String(20))  # 在職中, 退職
     employee_num = Column(String(12), unique=True, index=True)
-    dispatch_id = Column(String(50))
-    dispatch_name = Column(String(100))
-    department = Column(String(100))
-    line = Column(String(100))
-    job_content = Column(String(200))
+    contract_business = Column(String(200))  # 請負業務
     name = Column(String(100))
     kana = Column(String(100))
     gender = Column(String(10))
@@ -28,13 +24,10 @@ class UkeoiEmployee(BaseModel, Base):
     age = Column(Integer)
     hourly_wage = Column(Float)
     wage_revision = Column(String(10))  # YYYY-MM-DD
-    hire_date = Column(String(10))  # YYYY-MM-DD
-    leave_date = Column(String(10))  # YYYY-MM-DD
 
     __table_args__ = (
         Index('idx_ukeoi_status', 'status'),
         Index('idx_ukeoi_emp_num', 'employee_num'),
-        Index('idx_ukeoi_dispatch', 'dispatch_id'),
     )
 
     def __repr__(self):
@@ -46,11 +39,7 @@ class UkeoiEmployee(BaseModel, Base):
             'id': self.id,
             'status': self.status,
             'employee_num': self.employee_num,
-            'dispatch_id': self.dispatch_id,
-            'dispatch_name': self.dispatch_name,
-            'department': self.department,
-            'line': self.line,
-            'job_content': self.job_content,
+            'contract_business': self.contract_business,
             'name': self.name,
             'kana': self.kana,
             'gender': self.gender,
@@ -59,8 +48,6 @@ class UkeoiEmployee(BaseModel, Base):
             'age': self.age,
             'hourly_wage': self.hourly_wage,
             'wage_revision': self.wage_revision,
-            'hire_date': self.hire_date,
-            'leave_date': self.leave_date,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }

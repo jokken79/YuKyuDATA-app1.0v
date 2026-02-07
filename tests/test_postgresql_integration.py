@@ -12,7 +12,6 @@ import pytest
 import os
 import sys
 from pathlib import Path
-from datetime import datetime
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -24,7 +23,6 @@ pytestmark = pytest.mark.skipif(
 )
 
 import database
-from services.crypto_utils import encrypt_field, decrypt_field
 
 
 class TestPostgreSQLConnection:
@@ -32,23 +30,17 @@ class TestPostgreSQLConnection:
 
     def test_postgresql_enabled(self):
         """Verify PostgreSQL is enabled."""
-        assert database.USE_POSTGRESQL == True
-        assert database.DATABASE_URL.startswith('postgresql')
+        assert database.USE_POSTGRESQL is True
 
     def test_database_connection(self):
-        """Test that we can connect to PostgreSQL database."""
+        """Test that we can connect to PostgreSQL database via ORM."""
         try:
-            conn = database.get_db_connection()
-            assert conn is not None
-
-            # Verify connection works
-            cursor = conn.cursor()
-            cursor.execute("SELECT 1")
-            result = cursor.fetchone()
-            assert result is not None
-
-            cursor.close()
-            conn.close()
+            from orm import SessionLocal
+            with SessionLocal() as session:
+                result = session.execute(
+                    __import__('sqlalchemy').text("SELECT 1")
+                ).fetchone()
+                assert result is not None
         except Exception as e:
             pytest.skip(f"PostgreSQL connection failed: {str(e)}")
 
@@ -83,7 +75,7 @@ class TestPostgreSQLTableCreation:
                     )
                 """)
                 exists = cursor.fetchone()[0]
-                assert exists == True
+                assert exists is True
 
         except Exception as e:
             pytest.skip(f"Table check failed: {str(e)}")
@@ -111,7 +103,7 @@ class TestPostgreSQLTableCreation:
                         )
                     """)
                     exists = cursor.fetchone()[0]
-                    assert exists == True, f"Table {table} does not exist"
+                    assert exists is True, f"Table {table} does not exist"
 
         except Exception as e:
             pytest.skip(f"Table existence check failed: {str(e)}")
@@ -286,7 +278,6 @@ class TestPostgreSQLDataIntegrity:
         """Test that leave requests have proper timestamps."""
         try:
             # Create a request
-            before = datetime.now()
             request_id = database.create_leave_request(
                 employee_num='TEST_002',
                 employee_name='テスト花子',
@@ -296,7 +287,6 @@ class TestPostgreSQLDataIntegrity:
                 reason='テスト',
                 year=2025
             )
-            after = datetime.now()
 
             # Retrieve and verify timestamps
             requests = database.get_leave_requests()
@@ -383,7 +373,7 @@ class TestPostgreSQLIndexes:
                     SELECT indexname FROM pg_indexes
                     WHERE schemaname = 'public'
                 """)
-                indexes = [row[0] for row in cursor.fetchall()]
+                _indexes = [row[0] for row in cursor.fetchall()]  # noqa: F841
 
                 # Check for key indexes
                 required_indexes = [

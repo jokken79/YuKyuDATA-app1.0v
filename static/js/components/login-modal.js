@@ -1,9 +1,19 @@
 /**
- * Login Modal Component
- * Premium login interface with validation and error handling
+ * Login Modal Component - YuKyuDATA Design System v4
+ * Premium authentication interface with validation and error handling
+ * Uses SVG icons (no FontAwesome dependency)
  */
 
 import authManager from '../utils/auth-manager.js';
+
+const ICONS = {
+    user: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    lock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    eye: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+    eyeOff: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-off-icon" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
+    check: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    spinner: '<span class="btn-spinner"></span>'
+};
 
 class LoginModal {
     constructor() {
@@ -12,125 +22,102 @@ class LoginModal {
         this.init();
     }
 
-    /**
-     * Initialize the modal
-     */
     init() {
         this.createModal();
         this.attachEventListeners();
 
-        // Listen for login required events
         window.addEventListener('auth:loginRequired', () => {
             this.show();
         });
     }
 
-    /**
-     * Create modal HTML structure
-     */
     createModal() {
         const modalHTML = `
-            <div id="login-modal" class="modal-overlay" style="display: none;">
+            <div id="login-modal-component" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="login-modal-component-title">
                 <div class="modal-container">
-                    <div class="modal-header">
-                        <h2>
-                            <i class="fas fa-lock"></i>
-                            Iniciar Sesión
-                        </h2>
-                        <button class="modal-close" aria-label="Cerrar">
-                            <i class="fas fa-times"></i>
-                        </button>
+                    <div class="login-branding">
+                        <div class="login-logo" aria-hidden="true">有</div>
+                        <h2 id="login-modal-component-title" class="login-title">YuKyuDATA</h2>
+                        <p class="login-subtitle">有給休暇管理システム</p>
                     </div>
-                    
-                    <div class="modal-body">
-                        <form id="login-form" autocomplete="off">
-                            <div class="form-group">
-                                <label for="login-username">
-                                    <i class="fas fa-user"></i>
-                                    Usuario
-                                </label>
-                                <input 
-                                    type="text" 
-                                    id="login-username" 
-                                    name="username"
+
+                    <form id="login-form-component" class="login-form" autocomplete="off">
+                        <div class="form-group">
+                            <label for="login-username-component" class="form-label">
+                                ${ICONS.user}
+                                Username
+                            </label>
+                            <input
+                                type="text"
+                                id="login-username-component"
+                                name="username"
+                                class="form-control"
+                                placeholder="Enter your username"
+                                required
+                                autocomplete="username"
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="login-password-component" class="form-label">
+                                ${ICONS.lock}
+                                Password
+                            </label>
+                            <div class="password-input-wrapper">
+                                <input
+                                    type="password"
+                                    id="login-password-component"
+                                    name="password"
                                     class="form-control"
-                                    placeholder="Ingrese su usuario"
+                                    placeholder="Enter your password"
                                     required
-                                    autocomplete="username"
+                                    autocomplete="current-password"
                                 />
-                            </div>
-
-                            <div class="form-group">
-                                <label for="login-password">
-                                    <i class="fas fa-key"></i>
-                                    Contraseña
-                                </label>
-                                <div class="password-input-wrapper">
-                                    <input 
-                                        type="password" 
-                                        id="login-password" 
-                                        name="password"
-                                        class="form-control"
-                                        placeholder="Ingrese su contraseña"
-                                        required
-                                        autocomplete="current-password"
-                                    />
-                                    <button 
-                                        type="button" 
-                                        class="toggle-password"
-                                        aria-label="Mostrar/Ocultar contraseña"
-                                    >
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div id="login-error" class="alert alert-error" style="display: none;">
-                                <i class="fas fa-exclamation-circle"></i>
-                                <span class="error-message"></span>
-                            </div>
-
-                            <div class="form-actions">
-                                <button type="submit" class="btn btn-primary btn-block" id="login-submit">
-                                    <i class="fas fa-sign-in-alt"></i>
-                                    Iniciar Sesión
+                                <button
+                                    type="button"
+                                    class="toggle-password"
+                                    aria-label="Toggle password visibility"
+                                    tabindex="-1"
+                                >
+                                    ${ICONS.eye}
+                                    ${ICONS.eyeOff}
                                 </button>
                             </div>
+                        </div>
 
-                            <div class="dev-credentials" style="display: none;">
-                                <small class="text-muted">
-                                    <strong>Credenciales de desarrollo:</strong><br>
-                                    Admin: <code>admin</code> / <code>admin123456</code><br>
-                                    Usuario: <code>demo</code> / <code>demo123456</code>
-                                </small>
-                            </div>
-                        </form>
-                    </div>
+                        <div id="login-error-component" class="alert alert-error" style="display: none;">
+                            <span class="error-message"></span>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn-login" id="login-submit-component">
+                                <span class="btn-text">Log In</span>
+                                <span class="btn-spinner d-none"></span>
+                            </button>
+                        </div>
+
+                        <div class="dev-credentials" style="display: none;">
+                            <strong>Development Mode</strong><br>
+                            <code>Check server console for credentials</code>
+                        </div>
+                    </form>
                 </div>
             </div>
         `;
 
-        // Insert modal into DOM
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = modalHTML;
         document.body.appendChild(tempDiv.firstElementChild);
 
-        this.modal = document.getElementById('login-modal');
+        this.modal = document.getElementById('login-modal-component');
 
-        // Show dev credentials if in debug mode
         if (localStorage.getItem('yukyu_debug') === 'true') {
-            this.modal.querySelector('.dev-credentials').style.display = 'block';
+            const devCreds = this.modal.querySelector('.dev-credentials');
+            if (devCreds) devCreds.style.display = 'block';
         }
     }
 
-    /**
-     * Attach event listeners
-     */
     attachEventListeners() {
-        // Close button
-        const closeBtn = this.modal.querySelector('.modal-close');
-        closeBtn.addEventListener('click', () => this.hide());
-
         // Click outside to close
         this.modal.addEventListener('click', (e) => {
             if (e.target === this.modal) {
@@ -147,150 +134,120 @@ class LoginModal {
 
         // Password toggle
         const togglePassword = this.modal.querySelector('.toggle-password');
-        const passwordInput = this.modal.querySelector('#login-password');
+        const passwordInput = this.modal.querySelector('[id$="-password-component"]');
 
-        togglePassword.addEventListener('click', () => {
-            const type = passwordInput.type === 'password' ? 'text' : 'password';
-            passwordInput.type = type;
-
-            const icon = togglePassword.querySelector('i');
-            icon.classList.toggle('fa-eye');
-            icon.classList.toggle('fa-eye-slash');
-        });
+        if (togglePassword && passwordInput) {
+            togglePassword.addEventListener('click', () => {
+                const isPassword = passwordInput.type === 'password';
+                passwordInput.type = isPassword ? 'text' : 'password';
+                togglePassword.querySelector('.eye-icon').style.display = isPassword ? 'none' : '';
+                togglePassword.querySelector('.eye-off-icon').style.display = isPassword ? '' : 'none';
+            });
+        }
 
         // Form submission
-        const form = this.modal.querySelector('#login-form');
+        const form = this.modal.querySelector('form');
         form.addEventListener('submit', (e) => this.handleSubmit(e));
     }
 
-    /**
-     * Handle form submission
-     */
     async handleSubmit(e) {
         e.preventDefault();
 
-        const username = this.modal.querySelector('#login-username').value.trim();
-        const password = this.modal.querySelector('#login-password').value;
-        const submitBtn = this.modal.querySelector('#login-submit');
-        const errorDiv = this.modal.querySelector('#login-error');
+        const username = this.modal.querySelector('[name="username"]').value.trim();
+        const password = this.modal.querySelector('[name="password"]').value;
+        const submitBtn = this.modal.querySelector('.btn-login');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnSpinner = submitBtn.querySelector('.btn-spinner');
 
-        // Validate inputs
         if (!username || !password) {
-            this.showError('Por favor complete todos los campos');
+            this.showError('Please fill in all fields');
             return;
         }
 
         // Show loading state
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Iniciando sesión...';
+        btnText.textContent = 'Signing in...';
+        btnSpinner.classList.remove('d-none');
         this.hideError();
 
         try {
-            // Attempt login
             const result = await authManager.login(username, password);
 
             if (result.success) {
-                // Success
                 this.showSuccess();
                 setTimeout(() => {
                     this.hide();
                     this.resetForm();
 
-                    // Trigger login success event
                     window.dispatchEvent(new CustomEvent('auth:loginSuccess', {
                         detail: { user: authManager.getCurrentUser() }
                     }));
 
-                    // Reload page to update UI
                     window.location.reload();
                 }, 1000);
             } else {
-                // Error
-                this.showError(result.error || 'Credenciales inválidas');
+                this.showError(result.error || 'Invalid credentials');
             }
         } catch (error) {
-            this.showError('Error de conexión. Intente nuevamente.');
-            console.error('Login error:', error);
+            this.showError('Connection error. Please try again.');
         } finally {
-            // Reset button state
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Iniciar Sesión';
+            btnText.textContent = 'Log In';
+            btnSpinner.classList.add('d-none');
         }
     }
 
-    /**
-     * Show error message
-     */
     showError(message) {
-        const errorDiv = this.modal.querySelector('#login-error');
+        const errorDiv = this.modal.querySelector('.alert-error');
         const errorMessage = errorDiv.querySelector('.error-message');
 
         errorMessage.textContent = message;
         errorDiv.style.display = 'flex';
 
-        // Shake animation
         errorDiv.classList.add('shake');
         setTimeout(() => errorDiv.classList.remove('shake'), 500);
     }
 
-    /**
-     * Hide error message
-     */
     hideError() {
-        const errorDiv = this.modal.querySelector('#login-error');
-        errorDiv.style.display = 'none';
+        const errorDiv = this.modal.querySelector('.alert-error');
+        if (errorDiv) errorDiv.style.display = 'none';
     }
 
-    /**
-     * Show success message
-     */
     showSuccess() {
-        const form = this.modal.querySelector('#login-form');
+        const form = this.modal.querySelector('form');
         form.innerHTML = `
-            <div class="alert alert-success text-center">
-                <i class="fas fa-check-circle fa-3x mb-3"></i>
-                <h3>¡Bienvenido!</h3>
-                <p>Inicio de sesión exitoso</p>
+            <div class="login-success">
+                <div class="login-success-icon">${ICONS.check}</div>
+                <h3>Welcome!</h3>
+                <p>Login successful</p>
             </div>
         `;
     }
 
-    /**
-     * Reset form to initial state
-     */
     resetForm() {
-        const form = this.modal.querySelector('#login-form');
-        if (form) {
+        const form = this.modal.querySelector('form');
+        if (form && form.reset) {
             form.reset();
             this.hideError();
         }
     }
 
-    /**
-     * Show modal
-     */
     show() {
-        this.modal.style.display = 'flex';
+        this.modal.classList.add('active');
         this.isOpen = true;
 
-        // Focus on username input
         setTimeout(() => {
-            this.modal.querySelector('#login-username').focus();
-        }, 100);
+            const usernameInput = this.modal.querySelector('[name="username"]');
+            if (usernameInput) usernameInput.focus();
+        }, 150);
 
-        // Prevent body scroll
         document.body.style.overflow = 'hidden';
     }
 
-    /**
-     * Hide modal
-     */
     hide() {
-        this.modal.style.display = 'none';
+        this.modal.classList.remove('active');
         this.isOpen = false;
         this.resetForm();
-
-        // Restore body scroll
         document.body.style.overflow = '';
     }
 }

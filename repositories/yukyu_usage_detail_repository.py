@@ -26,7 +26,7 @@ class YukyuUsageDetailRepository(BaseRepository[YukyuUsageDetail]):
                 YukyuUsageDetail.employee_num == employee_num,
                 YukyuUsageDetail.year == year
             )
-        ).order_by(YukyuUsageDetail.usage_date).offset(skip).limit(limit).all()
+        ).order_by(YukyuUsageDetail.use_date).offset(skip).limit(limit).all()
 
     def get_by_date_range(
         self,
@@ -40,10 +40,10 @@ class YukyuUsageDetailRepository(BaseRepository[YukyuUsageDetail]):
             and_(
                 YukyuUsageDetail.employee_num == employee_num,
                 YukyuUsageDetail.year == year,
-                YukyuUsageDetail.usage_date >= start_date,
-                YukyuUsageDetail.usage_date <= end_date
+                YukyuUsageDetail.use_date >= start_date,
+                YukyuUsageDetail.use_date <= end_date
             )
-        ).order_by(YukyuUsageDetail.usage_date).all()
+        ).order_by(YukyuUsageDetail.use_date).all()
 
     def get_total_days_used(
         self,

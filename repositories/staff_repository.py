@@ -24,8 +24,8 @@ class StaffRepository(BaseRepository[StaffEmployee]):
             StaffEmployee.status == '在職中'
         ).offset(skip).limit(limit).all()
 
-    def get_by_department(self, department: str) -> List[StaffEmployee]:
-        """Get employees by department."""
+    def get_by_office(self, office: str) -> List[StaffEmployee]:
+        """Get employees by office."""
         return self.session.query(StaffEmployee).filter(
-            StaffEmployee.department == department
+            StaffEmployee.office == office
         ).all()
