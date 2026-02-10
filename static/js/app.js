@@ -1673,9 +1673,9 @@ const App = {
 
                     // Colores para diferenciar años fiscales
                     const fiscalYearColors = {
-                        [new Date().getFullYear()]: '#10b981',     // Current FY - Emerald
-                        [new Date().getFullYear() - 1]: '#06b6d4', // Last FY - Cyan
-                        [new Date().getFullYear() - 2]: '#64748b', // 2 years ago - Slate
+                        [new Date().getFullYear()]: '#10b981',                      // Current FY - Emerald
+                        [new Date().getFullYear() - 1]: 'var(--color-primary-500)', // Last FY - Trust Blue
+                        [new Date().getFullYear() - 2]: '#64748b',                 // 2 years ago - Slate
                     };
                     const defaultColor = '#94a3b8'; // Older years - Gray
 
@@ -1692,14 +1692,14 @@ const App = {
                                             <span style="background: ${fyColor}; color: #fff; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: bold;">${fiscalYear}年度</span>
                                             <span style="color: #e2e8f0;">${u.date}</span>
                                         </div>
-                                        <span style="color: #06b6d4; font-weight: bold;">${u.days}日</span>
+                                        <span style="color: var(--color-primary-500); font-weight: bold;">${u.days}日</span>
                                     </div>
                                 `}).join('')}
                             </div>
                             <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; font-size: 0.7rem;">
                                 <span style="color: #94a3b8;">凡例:</span>
                                 <span style="color: #10b981;">● 今年度</span>
-                                <span style="color: #06b6d4;">● 昨年度</span>
+                                <span style="color: var(--color-primary-500);">● 昨年度</span>
                                 <span style="color: #64748b;">● 2年前</span>
                             </div>
                         </div>
@@ -1902,7 +1902,7 @@ const App = {
                     }
                 },
                 labels: ['0-25%', '26-50%', '51-75%', '76-100%'],
-                colors: ['#cbd5e1', '#67e8f9', '#06b6d4', '#0e7490'],
+                colors: ['var(--gray-300)', 'var(--color-info-light)', 'var(--color-primary-500)', 'var(--color-primary-700)'],
                 legend: {
                     position: 'right',
                     labels: {
@@ -2027,17 +2027,17 @@ const App = {
                         left: 0,
                         blur: 15,
                         opacity: 0.2,
-                        color: '#06b6d4'
+                        color: 'var(--color-primary-500)'
                     }
                 },
-                colors: ['#06b6d4'],
+                colors: ['var(--color-primary-500)'],
                 fill: {
                     type: 'gradient',
                     gradient: {
                         shade: 'dark',
                         type: 'vertical',
                         shadeIntensity: 0.5,
-                        gradientToColors: ['#0e7490'],
+                        gradientToColors: ['var(--color-primary-700)'],
                         opacityFrom: 0.7,
                         opacityTo: 0.2,
                         stops: [0, 100]
@@ -2046,14 +2046,14 @@ const App = {
                 stroke: {
                     curve: 'smooth',
                     width: 3,
-                    colors: ['#06b6d4']
+                    colors: ['var(--color-primary-500)']
                 },
                 dataLabels: {
                     enabled: false
                 },
                 markers: {
                     size: 5,
-                    colors: ['#06b6d4'],
+                    colors: ['var(--color-primary-500)'],
                     strokeColors: '#fff',
                     strokeWidth: 2,
                     hover: {
@@ -2148,7 +2148,7 @@ const App = {
                     labels: ['Haken (Dispatch)', 'Ukeoi (Contract)', 'Staff'],
                     datasets: [{
                         data: typeData.data,
-                        backgroundColor: ['#06b6d4', '#0891b2', '#0e7490'],
+                        backgroundColor: ['var(--color-primary-500)', 'var(--color-primary-400)', 'var(--color-primary-700)'],
                         borderWidth: 0
                     }]
                 },
@@ -2268,7 +2268,7 @@ const App = {
                         distributed: true
                     }
                 },
-                colors: ['#06b6d4', '#0891b2', '#0e7490', '#155e75', '#164e63',
+                colors: ['var(--color-primary-500)', 'var(--color-primary-400)', 'var(--color-primary-700)', 'var(--color-primary-800)', 'var(--color-primary-900)',
                     '#3b82f6', '#10b981', '#f59e0b', '#64748b', '#475569'],
                 dataLabels: {
                     enabled: true,
@@ -4074,7 +4074,7 @@ const App = {
                         label: '使用日数',
                         data: data.map(d => d.total_used),
                         backgroundColor: 'rgba(6, 182, 212, 0.5)',
-                        borderColor: '#06b6d4',
+                        borderColor: 'var(--color-primary-500)',
                         borderWidth: 1,
                         borderRadius: 4
                     }]
@@ -4106,7 +4106,7 @@ const App = {
                     labels: Object.keys(typeStats),
                     datasets: [{
                         data: Object.values(typeStats).map(v => v.used),
-                        backgroundColor: ['#06b6d4', '#0891b2', '#0e7490'],
+                        backgroundColor: ['var(--color-primary-500)', 'var(--color-primary-400)', 'var(--color-primary-700)'],
                         borderWidth: 0
                     }]
                 },
@@ -4279,7 +4279,7 @@ const App = {
                             label: `${currentYear}年`,
                             data: currentValues,
                             backgroundColor: 'rgba(6, 182, 212, 0.5)',
-                            borderColor: '#06b6d4',
+                            borderColor: 'var(--color-primary-500)',
                             borderWidth: 1,
                             borderRadius: 4
                         }
@@ -4356,7 +4356,7 @@ const App = {
                         {
                             label: '月次使用',
                             data: usageData,
-                            borderColor: '#06b6d4',
+                            borderColor: 'var(--color-primary-500)',
                             backgroundColor: 'rgba(6, 182, 212, 0.1)',
                             fill: true,
                             tension: 0.4,
@@ -4366,7 +4366,7 @@ const App = {
                         {
                             label: '累積使用',
                             data: cumulativeData,
-                            borderColor: '#0891b2',
+                            borderColor: 'var(--color-primary-400)',
                             backgroundColor: 'transparent',
                             borderDash: [5, 5],
                             tension: 0.4,
