@@ -323,16 +323,16 @@ export class Alert {
       }
 
       .toast.info {
-        border-color: rgba(6, 182, 212, 0.3);
+        border-color: rgba(37, 99, 235, 0.3);
       }
 
       .toast.info .toast-icon {
-        background: rgba(6, 182, 212, 0.2);
-        color: #06b6d4;
+        background: rgba(37, 99, 235, 0.2);
+        color: #2563eb;
       }
 
       .toast.info .toast-progress {
-        background: linear-gradient(90deg, #06b6d4, #0891b2);
+        background: linear-gradient(90deg, #2563eb, #1d4ed8);
       }
 
       /* Light theme */
@@ -425,8 +425,8 @@ export class Alert {
       }
 
       .confirm-icon.info {
-        background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(8, 145, 178, 0.1));
-        color: #06b6d4;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(8, 145, 178, 0.1));
+        color: #2563eb;
       }
 
       .confirm-icon.warning {
@@ -489,13 +489,13 @@ export class Alert {
       }
 
       .confirm-btn-confirm {
-        background: linear-gradient(135deg, #06b6d4, #0891b2);
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
         color: #000000;
       }
 
       .confirm-btn-confirm:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(6, 182, 212, 0.4);
+        box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
       }
 
       .confirm-btn-danger {

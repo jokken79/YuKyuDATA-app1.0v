@@ -270,9 +270,9 @@ function injectBadgeStyles() {
     }
 
     .badge-primary {
-      background: rgba(6, 182, 212, 0.2);
-      color: #06b6d4;
-      border: 1px solid rgba(6, 182, 212, 0.3);
+      background: rgba(37, 99, 235, 0.2);
+      color: #2563eb;
+      border: 1px solid rgba(37, 99, 235, 0.3);
     }
 
     /* Light theme */
@@ -296,7 +296,7 @@ function injectBadgeStyles() {
 
     [data-theme="light"] .badge-info {
       background: rgba(14, 116, 144, 0.12);
-      color: #0e7490;
+      color: #1e40af;
       border-color: rgba(14, 116, 144, 0.25);
     }
 
@@ -308,7 +308,7 @@ function injectBadgeStyles() {
 
     [data-theme="light"] .badge-primary {
       background: rgba(8, 145, 178, 0.12);
-      color: #0891b2;
+      color: #1d4ed8;
       border-color: rgba(8, 145, 178, 0.25);
     }
 
@@ -346,7 +346,7 @@ function injectBadgeStyles() {
     }
 
     [data-theme="dark"] .badge-primary {
-      box-shadow: 0 0 12px rgba(6, 182, 212, 0.3);
+      box-shadow: 0 0 12px rgba(37, 99, 235, 0.3);
     }
 
     /* Reduced motion */

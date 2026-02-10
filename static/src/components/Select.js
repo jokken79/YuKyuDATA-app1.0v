@@ -155,8 +155,8 @@ export class Select {
       }
 
       .select-trigger:focus-visible {
-        border-color: var(--color-primary, #06b6d4);
-        box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+        border-color: var(--color-primary, #2563eb);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
       }
 
       .select-trigger:disabled {
@@ -169,7 +169,7 @@ export class Select {
       }
 
       .select-trigger.is-open {
-        border-color: var(--color-primary, #06b6d4);
+        border-color: var(--color-primary, #2563eb);
         border-bottom-left-radius: 0;
         border-bottom-right-radius: 0;
       }
@@ -272,7 +272,7 @@ export class Select {
       }
 
       .select-search-input:focus-visible {
-        border-color: var(--color-primary, #06b6d4);
+        border-color: var(--color-primary, #2563eb);
       }
 
       .select-search-input::placeholder {
@@ -303,8 +303,8 @@ export class Select {
       }
 
       .select-option.is-selected {
-        background: rgba(6, 182, 212, 0.15);
-        color: var(--color-primary, #06b6d4);
+        background: rgba(37, 99, 235, 0.15);
+        color: var(--color-primary, #2563eb);
       }
 
       .select-option.is-disabled {
@@ -318,7 +318,7 @@ export class Select {
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--color-primary, #06b6d4);
+        color: var(--color-primary, #2563eb);
         opacity: 0;
       }
 
@@ -372,10 +372,10 @@ export class Select {
         align-items: center;
         gap: 0.25rem;
         padding: 0.25rem 0.5rem;
-        background: rgba(6, 182, 212, 0.2);
+        background: rgba(37, 99, 235, 0.2);
         border-radius: 6px;
         font-size: var(--font-size-xs, 0.75rem);
-        color: var(--color-primary, #06b6d4);
+        color: var(--color-primary, #2563eb);
       }
 
       .select-tag-remove {

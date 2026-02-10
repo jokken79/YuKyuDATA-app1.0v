@@ -119,10 +119,10 @@ export class Visualizations {
                 labelEl.textContent = '優秀 - Excelente';
                 labelEl.style.color = 'var(--success)';
             } else if (complianceRate >= 50) {
-                labelEl.textContent = '注意 - Atención';
+                labelEl.textContent = '注愁E- Atención';
                 labelEl.style.color = 'var(--warning)';
             } else {
-                labelEl.textContent = '要改善 - Mejorar';
+                labelEl.textContent = '要改喁E- Mejorar';
                 labelEl.style.color = 'var(--danger)';
             }
         }
@@ -276,7 +276,7 @@ export class ChartManager {
                 }
             },
             labels: ['0-25%', '26-50%', '51-75%', '76-100%'],
-            colors: ['#cbd5e1', '#67e8f9', '#06b6d4', '#0e7490'],
+            colors: ['#cbd5e1', '#93c5fd', '#2563eb', '#1e40af'],
             legend: {
                 position: 'right',
                 labels: { colors: '#64748b' },
@@ -364,27 +364,27 @@ export class ChartManager {
                     left: 0,
                     blur: 15,
                     opacity: 0.2,
-                    color: '#06b6d4'
+                    color: '#2563eb'
                 }
             },
-            colors: ['#06b6d4'],
+            colors: ['#2563eb'],
             fill: {
                 type: 'gradient',
                 gradient: {
                     shade: 'dark',
                     type: 'vertical',
                     shadeIntensity: 0.5,
-                    gradientToColors: ['#0e7490'],
+                    gradientToColors: ['#1e40af'],
                     opacityFrom: 0.7,
                     opacityTo: 0.2,
                     stops: [0, 100]
                 }
             },
-            stroke: { curve: 'smooth', width: 3, colors: ['#06b6d4'] },
+            stroke: { curve: 'smooth', width: 3, colors: ['#2563eb'] },
             dataLabels: { enabled: false },
             markers: {
                 size: 5,
-                colors: ['#06b6d4'],
+                colors: ['#2563eb'],
                 strokeColors: '#fff',
                 strokeWidth: 2,
                 hover: { size: 7 }
@@ -455,7 +455,7 @@ export class ChartManager {
                 labels: ['Haken (Dispatch)', 'Ukeoi (Contract)', 'Staff'],
                 datasets: [{
                     data: typeData.data,
-                    backgroundColor: ['#06b6d4', '#0891b2', '#0e7490'],
+                    backgroundColor: ['#2563eb', '#1d4ed8', '#1e40af'],
                     borderWidth: 0
                 }]
             },
@@ -562,7 +562,7 @@ export class ChartManager {
                     distributed: true
                 }
             },
-            colors: ['#06b6d4', '#0891b2', '#0e7490', '#155e75', '#164e63',
+            colors: ['#2563eb', '#1d4ed8', '#1e40af', '#155e75', '#164e63',
                 '#3b82f6', '#10b981', '#f59e0b', '#64748b', '#475569'],
             dataLabels: {
                 enabled: true,

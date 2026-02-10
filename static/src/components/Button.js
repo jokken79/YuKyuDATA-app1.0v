@@ -253,14 +253,14 @@ function injectButtonStyles() {
 
     /* Variants */
     .btn-primary {
-      background: linear-gradient(135deg, var(--color-primary, #06b6d4), var(--color-secondary, #0891b2));
+      background: linear-gradient(135deg, var(--color-primary, #2563eb), var(--color-secondary, #1d4ed8));
       color: #000;
-      box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
     }
 
     .btn-primary:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(6, 182, 212, 0.4);
+      box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
     }
 
     .btn-primary:active {

@@ -106,13 +106,13 @@ export const CHART_COLORS = {
     // Distribution chart
     distribution: {
         high: '#22c55e',    // 10+ days
-        medium: '#06b6d4',  // 5-10 days
+        medium: '#2563eb',  // 5-10 days
         low: '#f59e0b',     // 1-5 days
         zero: '#ef4444'     // 0 days
     },
     // Employee types
     types: {
-        haken: '#06b6d4',   // Dispatch
+        haken: '#2563eb',   // Dispatch
         ukeoi: '#22c55e',   // Contract
         staff: '#f59e0b'    // Staff
     }

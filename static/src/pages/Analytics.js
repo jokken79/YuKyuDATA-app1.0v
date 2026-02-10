@@ -117,8 +117,8 @@ export function renderDepartmentChart(deptStats) {
             datasets: [{
                 label: 'Days Used',
                 data: data.map(d => d.total_used),
-                backgroundColor: 'rgba(6, 182, 212, 0.5)',
-                borderColor: '#06b6d4',
+                backgroundColor: 'rgba(37, 99, 235, 0.5)',
+                borderColor: '#2563eb',
                 borderWidth: 1,
                 borderRadius: 4
             }]
@@ -259,7 +259,7 @@ export async function loadPredictions(year) {
                         <div style="font-size: 0.8rem; color: var(--muted);">Year-End Balance</div>
                         <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning);">${p.projected_balance?.toFixed(0) || '-'} days</div>
                     </div>
-                    <div style="padding: 1rem; background: rgba(6, 182, 212, 0.1); border-radius: 8px; text-align: center;">
+                    <div style="padding: 1rem; background: rgba(37, 99, 235, 0.1); border-radius: 8px; text-align: center;">
                         <div style="font-size: 0.8rem; color: var(--muted);">Trend</div>
                         <div style="font-size: 1.5rem; font-weight: 700; color: var(--info);">${p.trend || '-'}</div>
                     </div>

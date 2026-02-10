@@ -32,11 +32,11 @@
         "type": "color"
       },
       "primary": {
-        "value": "#06b6d4",
+        "value": "#2563eb",
         "type": "color"
       },
       "primary-glow": {
-        "value": "#06b6d4",
+        "value": "#2563eb",
         "type": "color"
       },
       "primary-foreground": {
@@ -50,13 +50,13 @@
         "type": "color"
       },
       "secondary": {
-        "value": "#0891b2",
+        "value": "#1d4ed8",
         "type": "color"
       }
     },
     "other": {
       "accent": {
-        "value": "#22d3ee",
+        "value": "#60a5fa",
         "type": "color"
       },
       "success": {
@@ -92,7 +92,7 @@
         "type": "color"
       },
       "neon-cyan": {
-        "value": "#06b6d4",
+        "value": "#2563eb",
         "type": "color"
       },
       "neon-dark": {

@@ -578,7 +578,7 @@ function showConfirmModal({ title, message, confirmText = '確認', cancelText =
             success: { btn: '#10b981', btnHover: '#059669' },
             danger: { btn: '#ef4444', btnHover: '#dc2626' },
             warning: { btn: '#f59e0b', btnHover: '#d97706' },
-            info: { btn: '#06b6d4', btnHover: '#0891b2' }
+            info: { btn: '#2563eb', btnHover: '#1d4ed8' }
         };
         const color = colors[type] || colors.info;
 

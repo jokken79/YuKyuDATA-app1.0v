@@ -179,7 +179,7 @@ export class DataTable {
 
       .data-table th.sorted .sort-icon {
         opacity: 1;
-        color: var(--color-primary, #06b6d4);
+        color: var(--color-primary, #2563eb);
       }
 
       .data-table th.sorted.desc .sort-icon {
@@ -200,7 +200,7 @@ export class DataTable {
       }
 
       .data-table.hoverable tbody tr:hover {
-        background: rgba(6, 182, 212, 0.05);
+        background: rgba(37, 99, 235, 0.05);
       }
 
       .data-table.bordered td,
@@ -209,7 +209,7 @@ export class DataTable {
       }
 
       .data-table tbody tr.selected {
-        background: rgba(6, 182, 212, 0.1);
+        background: rgba(37, 99, 235, 0.1);
       }
 
       .data-table tbody tr.clickable {
@@ -225,7 +225,7 @@ export class DataTable {
         width: 18px;
         height: 18px;
         cursor: pointer;
-        accent-color: var(--color-primary, #06b6d4);
+        accent-color: var(--color-primary, #2563eb);
       }
 
       /* Empty state */
@@ -263,7 +263,7 @@ export class DataTable {
         width: 32px;
         height: 32px;
         border: 3px solid rgba(255, 255, 255, 0.1);
-        border-top-color: var(--color-primary, #06b6d4);
+        border-top-color: var(--color-primary, #2563eb);
         border-radius: 50%;
         animation: table-spin 0.8s linear infinite;
       }
@@ -350,7 +350,7 @@ export class DataTable {
       }
 
       .pagination-page.active {
-        background: var(--color-primary, #06b6d4);
+        background: var(--color-primary, #2563eb);
         color: #000;
         font-weight: 600;
       }
@@ -377,7 +377,7 @@ export class DataTable {
       .page-size-select:focus-visible {
         outline: var(--focus-outline, 3px solid var(--color-primary));
         outline-offset: 2px;
-        border-color: var(--color-primary, #06b6d4);
+        border-color: var(--color-primary, #2563eb);
       }
 
       /* Light theme */
@@ -401,7 +401,7 @@ export class DataTable {
       }
 
       [data-theme="light"] .data-table.hoverable tbody tr:hover {
-        background: rgba(6, 182, 212, 0.05);
+        background: rgba(37, 99, 235, 0.05);
       }
 
       [data-theme="light"] .pagination-btn,

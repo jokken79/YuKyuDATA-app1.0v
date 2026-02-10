@@ -1,10 +1,10 @@
 {
-  "name": "YuKyuDATA - 有給管理システム",
+  "name": "YuKyuDATA - 有給管琁E��スチE��",
   "short_name": "YuKyu",
-  "description": "Employee Vacation Management System - 有給休暇管理システム",
+  "description": "Employee Vacation Management System - 有給休暇管琁E��スチE��",
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#06b6d4",
+  "theme_color": "#2563eb",
   "background_color": "#09090b",
   "orientation": "any",
   "scope": "/",

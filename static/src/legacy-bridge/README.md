@@ -398,7 +398,7 @@ console.assert(container.innerHTML.includes('Test'), 'Component rendered');
 
 El bridge respeta el design system YuKyu v5.4:
 
-- **Paleta:** Amber (#f59e0b), Cyan (#0891b2), Teal (#14b8a6)
+- **Paleta:** Amber (#f59e0b), Cyan (#1d4ed8), Teal (#14b8a6)
 - **Tipografía:** Noto Sans JP + system fonts
 - **Espaciado:** Sistema 4px
 - **Accesibilidad:** WCAG AA compliance

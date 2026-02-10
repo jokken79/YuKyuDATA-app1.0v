@@ -375,9 +375,9 @@ function injectInputStyles() {
     }
 
     .input:focus-visible {
-      border-color: var(--color-primary, #06b6d4);
+      border-color: var(--color-primary, #2563eb);
       background: rgba(0, 0, 0, 0.3);
-      box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
     }
 
     .input:disabled {

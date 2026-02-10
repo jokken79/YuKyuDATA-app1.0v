@@ -257,7 +257,7 @@ function injectLoaderStyles() {
       flex-direction: column;
       align-items: center;
       gap: 0.75rem;
-      --loader-color: var(--color-primary, #06b6d4);
+      --loader-color: var(--color-primary, #2563eb);
     }
 
     /* Spinner */

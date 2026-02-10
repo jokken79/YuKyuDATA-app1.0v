@@ -325,9 +325,9 @@ function injectCardStyles() {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(8, 145, 178, 0.1));
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(8, 145, 178, 0.1));
       border-radius: 12px;
-      color: var(--color-primary, #06b6d4);
+      color: var(--color-primary, #2563eb);
       flex-shrink: 0;
     }
 
@@ -449,9 +449,9 @@ function injectCardStyles() {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(8, 145, 178, 0.1));
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(8, 145, 178, 0.1));
       border-radius: 14px;
-      color: var(--color-primary, #06b6d4);
+      color: var(--color-primary, #2563eb);
       flex-shrink: 0;
     }
 

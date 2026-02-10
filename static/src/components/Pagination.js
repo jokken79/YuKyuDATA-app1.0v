@@ -421,7 +421,7 @@ function injectPaginationStyles() {
     }
 
     .pagination-page.is-active {
-      background: linear-gradient(135deg, var(--color-primary, #06b6d4), var(--color-secondary, #0891b2));
+      background: linear-gradient(135deg, var(--color-primary, #2563eb), var(--color-secondary, #1d4ed8));
       color: #000;
       font-weight: 600;
     }
@@ -458,7 +458,7 @@ function injectPaginationStyles() {
     .pagination-size-select:focus-visible {
       outline: var(--focus-outline, 3px solid var(--color-primary));
       outline-offset: 2px;
-      border-color: var(--color-primary, #06b6d4);
+      border-color: var(--color-primary, #2563eb);
     }
 
     .pagination-jumper {
@@ -480,7 +480,7 @@ function injectPaginationStyles() {
 
     .pagination-jumper-input:focus-visible {
       outline: none;
-      border-color: var(--color-primary, #06b6d4);
+      border-color: var(--color-primary, #2563eb);
     }
 
     .pagination-jumper-input::-webkit-inner-spin-button,

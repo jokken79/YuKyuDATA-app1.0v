@@ -199,9 +199,9 @@ export class Form {
       }
 
       .form-control:focus-visible {
-        border-color: var(--color-primary, #06b6d4);
+        border-color: var(--color-primary, #2563eb);
         background: rgba(0, 0, 0, 0.3);
-        box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
       }
 
       .form-control:disabled {
@@ -252,7 +252,7 @@ export class Form {
         width: 18px;
         height: 18px;
         cursor: pointer;
-        accent-color: var(--color-primary, #06b6d4);
+        accent-color: var(--color-primary, #2563eb);
       }
 
       .form-check-label {
