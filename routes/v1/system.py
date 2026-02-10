@@ -34,8 +34,11 @@ _excel_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="system_e
 # ============================================
 
 @router.get("/cache-stats")
-async def get_cache_statistics():
-    """Get cache statistics."""
+async def get_cache_statistics(user: CurrentUser = Depends(get_current_user)):
+    """
+    Get cache statistics.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+    """
     try:
         stats = get_cache_stats()
         return {"status": "success", "cache_stats": stats}
@@ -143,10 +146,13 @@ async def get_audit_log_list(
     start_date: str = None,
     end_date: str = None,
     limit: int = Query(default=100, ge=1, le=1000),
-    offset: int = Query(default=0, ge=0)
+    offset: int = Query(default=0, ge=0),
+    user: CurrentUser = Depends(get_current_user)
 ):
     """
     Get audit log entries with optional filters.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+
     Obtiene entradas del audit log con filtros opcionales.
     """
     try:
@@ -174,8 +180,11 @@ async def get_audit_log_list(
 
 
 @router.get("/audit-log/{entity_type}/{entity_id}")
-async def get_entity_audit_history(entity_type: str, entity_id: str):
-    """Get audit history for a specific entity."""
+async def get_entity_audit_history(entity_type: str, entity_id: str, user: CurrentUser = Depends(get_current_user)):
+    """
+    Get audit history for a specific entity.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+    """
     try:
         logs = database.get_audit_logs(
             entity_type=entity_type,
@@ -196,8 +205,15 @@ async def get_entity_audit_history(entity_type: str, entity_id: str):
 
 
 @router.get("/audit-log/user/{user_id}")
-async def get_user_audit_history(user_id: str, limit: int = 50):
-    """Get audit history for a specific user."""
+async def get_user_audit_history(
+    user_id: str = Query(..., min_length=1, max_length=100),
+    limit: int = Query(50, ge=1, le=500),
+    user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Get audit history for a specific user.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+    """
     try:
         logs = database.get_audit_logs(user_id=user_id, limit=limit)
 
@@ -213,8 +229,11 @@ async def get_user_audit_history(user_id: str, limit: int = 50):
 
 
 @router.get("/audit-log/stats")
-async def get_audit_log_stats():
-    """Get audit log statistics."""
+async def get_audit_log_stats(user: CurrentUser = Depends(get_current_user)):
+    """
+    Get audit log statistics.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+    """
     try:
         stats = database.get_audit_stats()
         return {
@@ -256,8 +275,11 @@ async def cleanup_audit_log(
 # ============================================
 
 @router.get("/orchestrator/status")
-async def get_orchestrator_status():
-    """Get orchestrator status."""
+async def get_orchestrator_status(user: CurrentUser = Depends(get_current_user)):
+    """
+    Get orchestrator status.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+    """
     try:
         from agents.orchestrator import get_orchestrator
         orchestrator = get_orchestrator()
@@ -269,8 +291,14 @@ async def get_orchestrator_status():
 
 
 @router.get("/orchestrator/history")
-async def get_orchestrator_history(limit: int = 20):
-    """Get orchestrator execution history."""
+async def get_orchestrator_history(
+    limit: int = Query(20, ge=1, le=500),
+    user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Get orchestrator execution history.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+    """
     try:
         from agents.orchestrator import get_orchestrator
         orchestrator = get_orchestrator()
@@ -286,9 +314,14 @@ async def get_orchestrator_history(limit: int = 20):
 
 
 @router.post("/orchestrator/run-compliance-check/{year}")
-async def run_orchestrator_compliance_check(year: int):
+async def run_orchestrator_compliance_check(
+    year: int = Query(..., ge=2000, le=2100),
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Run compliance check via orchestrator.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+
     Ejecuta verificacion de compliance via orchestrator.
     """
     try:
@@ -310,8 +343,11 @@ async def run_orchestrator_compliance_check(year: int):
 # ============================================
 
 @router.get("/system/snapshot")
-async def get_system_snapshot():
-    """Get current system snapshot."""
+async def get_system_snapshot(user: CurrentUser = Depends(get_current_user)):
+    """
+    Get current system snapshot.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+    """
     try:
         from agents.documentor import get_documentor
         documentor = get_documentor()
@@ -323,8 +359,14 @@ async def get_system_snapshot():
 
 
 @router.get("/system/audit-log")
-async def get_system_audit_log(limit: int = 50):
-    """Get recent system audit log entries."""
+async def get_system_audit_log(
+    limit: int = Query(50, ge=1, le=500),
+    user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Get recent system audit log entries.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+    """
     try:
         from agents.documentor import get_documentor
         documentor = get_documentor()
@@ -340,9 +382,14 @@ async def get_system_audit_log(limit: int = 50):
 
 
 @router.get("/system/activity-report")
-async def get_activity_report(days: int = 7):
+async def get_activity_report(
+    days: int = Query(7, ge=1, le=365),
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Generate an activity report for the last N days.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+
     Genera un reporte de actividad para los ultimos N dias.
     """
     try:
@@ -359,6 +406,147 @@ async def get_activity_report(days: int = 7):
         return {"status": "success", "report": report.to_dict()}
     except Exception as e:
         logger.error(f"Failed to get activity report: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+# ============================================
+# PERFORMANCE OPTIMIZATION ENDPOINTS (BUG #26-32)
+# ============================================
+
+@router.get("/performance/index-recommendations")
+async def get_index_recommendations(user: CurrentUser = Depends(get_admin_user)):
+    """
+    ✅ FIX (BUG #26): Get database index recommendations
+
+    Returns SQL statements for recommended indices to improve performance.
+    Requires admin authentication.
+    """
+    try:
+        from services.performance_optimizer import get_index_recommendations
+        recommendations = get_index_recommendations()
+        return {
+            "status": "success",
+            "message": "Index recommendations generated",
+            "recommendations": recommendations
+        }
+    except Exception as e:
+        logger.error(f"Failed to get index recommendations: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/performance/slow-queries")
+async def analyze_slow_queries(user: CurrentUser = Depends(get_admin_user)):
+    """
+    ✅ FIX (BUG #28): Analyze slow queries
+
+    Returns analysis of performance bottlenecks.
+    Requires admin authentication.
+    """
+    try:
+        from services.performance_optimizer import (
+            analyze_slow_queries,
+            get_query_optimization_hints
+        )
+        slow = analyze_slow_queries()
+        hints = get_query_optimization_hints()
+        return {
+            "status": "success",
+            "slow_queries": slow,
+            "optimization_hints": hints
+        }
+    except Exception as e:
+        logger.error(f"Failed to analyze slow queries: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/maintenance/cleanup-sessions")
+async def cleanup_expired_sessions(
+    days_old: int = Query(30, ge=1, le=365),
+    user: CurrentUser = Depends(get_admin_user)
+):
+    """
+    ✅ FIX (BUG #29): Clean up expired sessions and tokens
+
+    Removes sessions and CSRF tokens older than N days.
+    Requires admin authentication.
+    """
+    try:
+        from services.performance_optimizer import cleanup_expired_sessions
+        cleaned = cleanup_expired_sessions(days_old)
+        logger.info(f"Cleanup sessions executed by {user.username}: {cleaned} records deleted")
+        return {
+            "status": "success",
+            "cleaned_count": cleaned,
+            "days_threshold": days_old
+        }
+    except Exception as e:
+        logger.error(f"Failed to cleanup sessions: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/maintenance/cleanup-backups")
+async def cleanup_old_backups(
+    keep: int = Query(10, ge=1, le=100),
+    user: CurrentUser = Depends(get_admin_user)
+):
+    """
+    ✅ FIX (BUG #29): Clean up old database backups
+
+    Keeps only the N most recent backups.
+    Requires admin authentication.
+    """
+    try:
+        from services.performance_optimizer import cleanup_old_backups
+        deleted = cleanup_old_backups(keep)
+        logger.info(f"Cleanup backups executed by {user.username}: {deleted} backups deleted")
+        return {
+            "status": "success",
+            "deleted_count": deleted,
+            "backups_kept": keep
+        }
+    except Exception as e:
+        logger.error(f"Failed to cleanup backups: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/maintenance/optimize-memory")
+async def optimize_memory(user: CurrentUser = Depends(get_admin_user)):
+    """
+    ✅ FIX (BUG #30): Optimize memory usage
+
+    Forces garbage collection and clears unnecessary caches.
+    Requires admin authentication.
+    """
+    try:
+        from services.performance_optimizer import optimize_memory
+        result = optimize_memory()
+        logger.info(f"Memory optimization executed by {user.username}: {result['garbage_collected']} objects collected")
+        return {
+            "status": "success",
+            "optimization_result": result
+        }
+    except Exception as e:
+        logger.error(f"Failed to optimize memory: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/performance/optimization-report")
+async def get_optimization_report(user: CurrentUser = Depends(get_admin_user)):
+    """
+    ✅ FIX (BUG #26-32): Generate comprehensive optimization report
+
+    Returns analysis of all optimization opportunities and current metrics.
+    Requires admin authentication.
+    """
+    try:
+        from services.performance_optimizer import generate_optimization_report
+        report = await generate_optimization_report()
+        return {
+            "status": "success",
+            "report": report
+        }
+    except Exception as e:
+        logger.error(f"Failed to generate optimization report: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

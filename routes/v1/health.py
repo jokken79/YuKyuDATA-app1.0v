@@ -3,7 +3,7 @@ Health & Status Routes
 Endpoints de salud del sistema y estado del proyecto
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import HTMLResponse
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
@@ -16,6 +16,8 @@ from ..dependencies import (
     FISCAL_CONFIG,
     DEFAULT_EXCEL_PATH,
     EMPLOYEE_REGISTRY_PATH,
+    get_current_user,
+    CurrentUser,
 )
 
 router = APIRouter(tags=["Health"])
@@ -193,11 +195,13 @@ async def health_check_detailed():
 
 
 @router.get("/api/db-status")
-async def get_db_status():
+async def get_db_status(user: CurrentUser = Depends(get_current_user)):
     """
     Return current database status.
-    Useful for debugging and verifying data persistence.
+    ✅ FIX (BUG #13): Agregada autenticación requerida
+       Endpoint sensible - expone rutas de archivos y conteos
 
+    Useful for debugging and verifying data persistence.
     Retorna el estado actual de la base de datos.
     """
     try:
@@ -211,6 +215,7 @@ async def get_db_status():
 
         return {
             "status": "success",
+            "requested_by": user.username,
             "database": {
                 "employees_count": len(employees),
                 "genzai_count": len(genzai),
@@ -231,9 +236,10 @@ async def get_db_status():
             "message": "データは正常に保存されています" if len(employees) > 0 else "データベースは空です - Syncボタンを押してください"
         }
     except Exception as e:
+        logger.error(f"DB status error: {str(e)}", exc_info=True)
         return {
             "status": "error",
-            "message": str(e)
+            "message": "Internal server error"  # ✅ No exponer detalles en prod
         }
 
 
@@ -259,11 +265,13 @@ async def app_info():
 
 
 @router.get("/api/project-status")
-async def get_project_status():
+async def get_project_status(user: CurrentUser = Depends(get_current_user)):
     """
     Return complete project status for the dashboard.
-    Includes: version, commits, TODOs, features, DB status, system, errors.
+    ✅ FIX (BUG #14): Agregada autenticación requerida
+       Endpoint sensible - expone estado interno del sistema
 
+    Includes: version, commits, TODOs, features, DB status, system, errors.
     Retorna el estado completo del proyecto para el dashboard.
     """
     try:
@@ -366,11 +374,13 @@ async def get_project_status():
             }
         }
     except Exception as e:
-        logger.error(f"Error getting project status: {e}")
+        logger.error(f"Error getting project status: {e}", exc_info=True)
+        # ✅ FIX (BUG #23): No exponer detalles de error en producción
         return {
             "status": "error",
-            "message": str(e),
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "message": "Internal server error",  # No exponer detalles
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "requested_by": user.username
         }
 
 

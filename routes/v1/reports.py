@@ -38,9 +38,9 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
 
 @router.get("/custom")
 async def get_custom_report_data(
-    year: int,
-    month: Optional[int] = None,
-    haken: Optional[str] = None,
+    year: int = Query(..., ge=2000, le=2100),
+    month: Optional[int] = Query(None, ge=1, le=12),
+    haken: Optional[str] = Query(None, max_length=100),
     active_only: bool = True,
     user: CurrentUser = Depends(get_current_user)
 ):
@@ -92,8 +92,8 @@ async def get_custom_report_data(
 
 @router.get("/monthly/{year}/{month}")
 async def get_monthly_report_data(
-    year: int,
-    month: int,
+    year: int = Query(..., ge=2000, le=2100),
+    month: int = Query(..., ge=1, le=12),
     user: CurrentUser = Depends(get_current_user)
 ):
     """
@@ -135,7 +135,7 @@ async def get_monthly_report_data(
 
 @router.get("/monthly-list/{year}")
 async def get_monthly_reports_list(
-    year: int,
+    year: int = Query(..., ge=2000, le=2100),
     user: CurrentUser = Depends(get_current_user)
 ):
     """
@@ -178,8 +178,8 @@ async def get_monthly_reports_list(
 
 @router.get("/employee/{employee_num}/pdf")
 async def get_employee_pdf_report(
-    employee_num: str,
-    year: Optional[int] = None,
+    employee_num: str = Query(..., min_length=1, max_length=10),
+    year: Optional[int] = Query(None, ge=2000, le=2100),
     user: CurrentUser = Depends(get_current_user)
 ):
     """
@@ -208,7 +208,7 @@ async def get_employee_pdf_report(
 
 @router.get("/annual/{year}/pdf")
 async def get_annual_pdf_report(
-    year: int,
+    year: int = Query(..., ge=2000, le=2100),
     user: CurrentUser = Depends(get_current_user)
 ):
     """
@@ -234,8 +234,8 @@ async def get_annual_pdf_report(
 
 @router.get("/monthly/{year}/{month}/pdf")
 async def get_monthly_pdf_report(
-    year: int,
-    month: int,
+    year: int = Query(..., ge=2000, le=2100),
+    month: int = Query(..., ge=1, le=12),
     user: CurrentUser = Depends(get_current_user)
 ):
     """
@@ -261,7 +261,7 @@ async def get_monthly_pdf_report(
 
 @router.get("/compliance/{year}/pdf")
 async def get_compliance_pdf_report(
-    year: int,
+    year: int = Query(..., ge=2000, le=2100),
     user: CurrentUser = Depends(get_current_user)
 ):
     """

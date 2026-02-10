@@ -29,12 +29,15 @@ router = APIRouter(prefix="/yukyu", tags=["Yukyu Details"])
 
 @router.get("/usage-details")
 async def get_usage_details(
-    employee_num: Optional[str] = None,
-    year: Optional[int] = None,
-    month: Optional[int] = None
+    employee_num: Optional[str] = Query(None, min_length=1, max_length=10),
+    year: Optional[int] = Query(None, ge=2000, le=2100),
+    month: Optional[int] = Query(None, ge=1, le=12),
+    user: CurrentUser = Depends(get_current_user)
 ):
     """
     Get yukyu usage details with optional filters.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+
     Obtiene detalles de uso de vacaciones con filtros opcionales.
     """
     try:
@@ -54,9 +57,14 @@ async def get_usage_details(
 
 
 @router.get("/monthly-summary/{year}")
-async def get_monthly_summary(year: int):
+async def get_monthly_summary(
+    year: int = Query(..., ge=2000, le=2100),
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get monthly usage summary for a year.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+
     Obtiene resumen mensual de uso para un ano.
     """
     try:
@@ -72,9 +80,14 @@ async def get_monthly_summary(year: int):
 
 
 @router.get("/kpi-stats/{year}")
-async def get_kpi_stats(year: int):
+async def get_kpi_stats(
+    year: int = Query(..., ge=2000, le=2100),
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get KPI statistics for a year.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+
     Obtiene estadisticas KPI para un ano.
     """
     try:
@@ -105,9 +118,15 @@ async def get_kpi_stats(year: int):
 
 
 @router.get("/by-employee-type/{year}")
-async def get_usage_by_employee_type(year: int, active_only: bool = True):
+async def get_usage_by_employee_type(
+    year: int = Query(..., ge=2000, le=2100),
+    active_only: bool = True,
+    user: CurrentUser = Depends(get_current_user)
+):
     """
     Get usage statistics broken down by employee type.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+
     Obtiene estadisticas de uso desglosadas por tipo de empleado.
     """
     try:
@@ -166,9 +185,11 @@ async def get_usage_by_employee_type(year: int, active_only: bool = True):
 
 
 @router.get("/employee-summary/{employee_num}/{year}")
-async def get_employee_summary(employee_num: str, year: int):
+async def get_employee_summary(employee_num: str, year: int, user: CurrentUser = Depends(get_current_user)):
     """
     Get detailed usage summary for a specific employee.
+    ✅ FIX (BUG #15): Agregada autenticación requerida
+
     Obtiene resumen detallado de uso para un empleado especifico.
     """
     try:

@@ -63,6 +63,24 @@ RATE_LIMITS = {
     # Compliance checks
     'api/compliance': {'requests': 20, 'window': 60},
     'api/expiring-soon': {'requests': 20, 'window': 60},
+
+    # ✅ FIX (BUG #16-18): Rate limiting en endpoints sensibles
+    # Yukyu endpoints - limitado (acceso a datos de vacaciones sensibles)
+    'yukyu/usage-details': {'requests': 20, 'window': 60},       # 20 req/min
+    'yukyu/monthly-summary': {'requests': 15, 'window': 60},
+    'yukyu/kpi-stats': {'requests': 15, 'window': 60},
+    'yukyu/by-employee-type': {'requests': 15, 'window': 60},
+    'yukyu/employee-summary': {'requests': 20, 'window': 60},
+
+    # System & Audit endpoints - muy restrictivos (acceso a logs sensibles)
+    'cache-stats': {'requests': 10, 'window': 60},               # 10 req/min
+    'audit-log': {'requests': 15, 'window': 60},                 # 15 req/min para listado
+    'orchestrator/status': {'requests': 20, 'window': 60},       # 20 req/min para status
+    'orchestrator/history': {'requests': 10, 'window': 60},      # 10 req/min
+    'orchestrator/run-compliance-check': {'requests': 5, 'window': 60},  # 5 req/min
+    'system/snapshot': {'requests': 10, 'window': 60},
+    'system/audit-log': {'requests': 15, 'window': 60},
+    'system/activity-report': {'requests': 5, 'window': 60},
 }
 
 
