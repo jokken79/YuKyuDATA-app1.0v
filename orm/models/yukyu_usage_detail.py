@@ -1,6 +1,6 @@
 """YukyuUsageDetail ORM Model - Individual Leave Dates"""
 
-from sqlalchemy import Column, String, Float, Integer, Index, ForeignKey
+from sqlalchemy import Column, String, Float, Integer, Index, ForeignKey, UniqueConstraint
 from orm.models.base import Base, BaseModel
 
 
@@ -36,9 +36,9 @@ class YukyuUsageDetail(BaseModel, Base):
     source = Column(String(50), default="excel")  # excel, manual, api
 
     __table_args__ = (
+        UniqueConstraint('employee_num', 'use_date', name='uq_usage_emp_date'),
         Index('idx_usage_emp_year', 'employee_num', 'year'),
         Index('idx_usage_date', 'use_date'),
-        Index('idx_usage_emp_date', 'employee_num', 'use_date'),
     )
 
     def __repr__(self):

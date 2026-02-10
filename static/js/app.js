@@ -382,6 +382,9 @@ const App = {
                 form.reset();
                 App.ui.showToast('success', 'Logged in successfully');
 
+                // Reload data after successful login
+                App.data.fetchEmployees(App.state.year);
+
             } catch (err) {
                 console.error(err);
                 errorEl.style.display = 'block';
@@ -816,7 +819,7 @@ const App = {
                 let url = `${App.config.apiBase}/employees?enhanced=true&active_only=${activeOnly}`;
                 if (App.state.year) url += `&year=${App.state.year}`;
 
-                const res = await fetch(url);
+                const res = await App.auth.fetchWithAuth(url);
 
                 if (!res.ok) {
                     const errorText = await res.text().catch(() => '');
@@ -897,9 +900,14 @@ const App = {
             } catch (err) {
                 // Only show error if this is still the current request
                 if (requestId === this._fetchRequestId) {
-                    console.error(err);
                     const msg = (err && err.message) ? err.message : String(err);
-                    App.ui.showToast('error', `Failed to load data: ${msg}`);
+                    // Don't show error toast for auth-related issues (login modal handles it)
+                    if (msg.includes('Authentication required') || msg.includes('Session expired')) {
+                        console.debug('fetchEmployees: auth required, waiting for login');
+                    } else {
+                        console.error(err);
+                        App.ui.showToast('error', `Failed to load data: ${msg}`);
+                    }
                 }
             }
         },
@@ -1168,7 +1176,7 @@ const App = {
 
             try {
                 if (App.state.year) {
-                    const res = await fetch(`${App.config.apiBase}/yukyu/kpi-stats/${App.state.year}`);
+                    const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/yukyu/kpi-stats/${App.state.year}`);
                     const kpi_res = await res.json();
                     if (kpi_res.status === 'success' && kpi_res.kpi) {
                         used = App.utils.safeNumber(kpi_res.kpi.total_used);
@@ -1615,7 +1623,7 @@ const App = {
 
             // Obtener datos completos del empleado
             try {
-                const res = await fetch(`${App.config.apiBase}/employees/${id}/leave-info`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/employees/${id}/leave-info`);
                 const json = await res.json();
 
                 if (json.status !== 'success') {
@@ -1977,7 +1985,7 @@ const App = {
             let trendsData = Array(12).fill(0);
             try {
                 if (App.state.year) {
-                    const res = await fetch(`${App.config.apiBase}/yukyu/monthly-summary/${App.state.year}`);
+                    const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/yukyu/monthly-summary/${App.state.year}`);
                     const json = await res.json();
                     if (json.data) {
                         json.data.forEach(m => {
@@ -2120,7 +2128,7 @@ const App = {
             let typeData = { labels: ['Haken', 'Ukeoi', 'Staff'], data: [0, 0, 0] };
             try {
                 if (App.state.year) {
-                    const res = await fetch(`${App.config.apiBase}/yukyu/by-employee-type/${App.state.year}`);
+                    const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/yukyu/by-employee-type/${App.state.year}`);
                     // API returns generic format, check if json is correct
                     const json = await res.json();
 
@@ -2175,7 +2183,7 @@ const App = {
             let sorted = [];
             try {
                 const year = App.state.year || new Date().getFullYear();
-                const res = await fetch(`${App.config.apiBase}/analytics/top10-active/${year}`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/analytics/top10-active/${year}`);
                 const json = await res.json();
                 if (json.status === 'success' && json.data) {
                     sorted = json.data;
@@ -2508,7 +2516,7 @@ const App = {
 
         async loadFactories() {
             try {
-                const res = await fetch(`${App.config.apiBase}/factories?status=在職中`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/factories?status=在職中`);
                 const json = await res.json();
 
                 // API returns { factories: [...] } not { data: [...] }
@@ -2632,7 +2640,7 @@ const App = {
 
         async selectEmployee(empNum) {
             try {
-                const res = await fetch(`${App.config.apiBase}/employees/${empNum}/leave-info`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/employees/${empNum}/leave-info`);
                 const json = await res.json();
 
                 if (json.employee) {
@@ -3149,7 +3157,7 @@ const App = {
 
             App.ui.showLoading();
             try {
-                const res = await fetch(`${App.config.apiBase}/leave-requests`, {
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/leave-requests`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -3229,7 +3237,7 @@ const App = {
 
         async loadPending() {
             try {
-                const res = await fetch(`${App.config.apiBase}/leave-requests?status=PENDING`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/leave-requests?status=PENDING`);
                 const json = await res.json();
 
                 const container = document.getElementById('pending-requests');
@@ -3292,7 +3300,7 @@ const App = {
 
         async loadHistory() {
             try {
-                const res = await fetch(`${App.config.apiBase}/leave-requests`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/leave-requests`);
                 const json = await res.json();
 
                 const tbody = document.getElementById('requests-history');
@@ -3359,7 +3367,7 @@ const App = {
         async approve(requestId) {
             App.ui.showLoading();
             try {
-                const res = await fetch(`${App.config.apiBase}/leave-requests/${requestId}/approve`, {
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/leave-requests/${requestId}/approve`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ approved_by: 'Manager' })
@@ -3383,7 +3391,7 @@ const App = {
         async reject(requestId) {
             App.ui.showLoading();
             try {
-                const res = await fetch(`${App.config.apiBase}/leave-requests/${requestId}/reject`, {
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/leave-requests/${requestId}/reject`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ rejected_by: 'Manager' })
@@ -3423,7 +3431,7 @@ const App = {
 
             App.ui.showLoading();
             try {
-                const res = await fetch(`${App.config.apiBase}/leave-requests/${requestId}`, {
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/leave-requests/${requestId}`, {
                     method: 'DELETE'
                 });
 
@@ -3463,7 +3471,7 @@ const App = {
 
             App.ui.showLoading();
             try {
-                const res = await fetch(`${App.config.apiBase}/leave-requests/${requestId}/revert`, {
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/leave-requests/${requestId}/revert`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reverted_by: 'Manager' })
@@ -3495,7 +3503,7 @@ const App = {
         async create() {
             App.ui.showLoading();
             try {
-                const res = await fetch(`${App.config.apiBase}/backup`, { method: 'POST' });
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/backup`, { method: 'POST' });
                 const json = await res.json();
 
                 if (!res.ok) throw new Error(json.detail || 'Backup failed');
@@ -3512,7 +3520,7 @@ const App = {
 
         async list() {
             try {
-                const res = await fetch(`${App.config.apiBase}/backups`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/backups`);
                 const json = await res.json();
                 return json.backups || [];
             } catch (e) {
@@ -3541,7 +3549,7 @@ const App = {
 
             App.ui.showLoading();
             try {
-                const res = await fetch(`${App.config.apiBase}/backup/restore`, {
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/backup/restore`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ filename })
@@ -3629,7 +3637,7 @@ const App = {
             App.ui.showLoading();
 
             try {
-                const res = await fetch(`${App.config.apiBase}/compliance/5day-check/${year}`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/compliance/5day-check/${year}`);
                 const json = await res.json();
 
                 // Update summary cards
@@ -3678,7 +3686,7 @@ const App = {
 
         async loadAlerts() {
             try {
-                const res = await fetch(`${App.config.apiBase}/compliance/alerts`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/compliance/alerts`);
                 const json = await res.json();
 
                 const container = document.getElementById('alerts-container');
@@ -3713,7 +3721,7 @@ const App = {
             App.ui.showLoading();
 
             try {
-                const res = await fetch(`${App.config.apiBase}/compliance/annual-ledger/${year}`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/compliance/annual-ledger/${year}`);
                 const json = await res.json();
 
                 const container = document.getElementById('ledger-container');
@@ -3768,7 +3776,7 @@ const App = {
             App.ui.showLoading();
 
             try {
-                const res = await fetch(`${App.config.apiBase}/compliance/export-ledger/${year}?format=${format}`, {
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/compliance/export-ledger/${year}?format=${format}`, {
                     method: 'POST'
                 });
                 const json = await res.json();
@@ -3791,7 +3799,7 @@ const App = {
     settings: {
         async loadSnapshot() {
             try {
-                const res = await fetch(`${App.config.apiBase}/system/snapshot`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/system/snapshot`);
                 const json = await res.json();
 
                 if (json.snapshot) {
@@ -3813,7 +3821,7 @@ const App = {
         async viewAuditLog() {
             App.ui.showLoading();
             try {
-                const res = await fetch(`${App.config.apiBase}/system/audit-log?limit=50`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/system/audit-log?limit=50`);
                 const json = await res.json();
 
                 let content = '<div style="max-height: 400px; overflow-y: auto;">';
@@ -3860,7 +3868,7 @@ const App = {
         async loadEvents() {
             App.ui.showLoading();
             try {
-                const res = await fetch(`${App.config.apiBase}/calendar/events?year=${this.currentYear}&month=${this.currentMonth}`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/calendar/events?year=${this.currentYear}&month=${this.currentMonth}`);
                 const json = await res.json();
                 this.events = json.events || [];
                 this.renderCalendar();
@@ -4022,7 +4030,7 @@ const App = {
             App.ui.showLoading();
 
             try {
-                const res = await fetch(`${App.config.apiBase}/analytics/dashboard/${year}`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/analytics/dashboard/${year}`);
                 const json = await res.json();
 
                 // Update summary cards
@@ -4163,7 +4171,7 @@ const App = {
             const year = App.state.year || new Date().getFullYear();
 
             try {
-                const res = await fetch(`${App.config.apiBase}/analytics/predictions/${year}`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/analytics/predictions/${year}`);
                 const json = await res.json();
 
                 document.getElementById('pred-current-month').innerText = json.current_month + '月';
@@ -4205,7 +4213,7 @@ const App = {
             App.ui.showLoading();
 
             try {
-                const res = await fetch(`${App.config.apiBase}/export/excel?export_type=${type}&year=${year}`, {
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/export/excel?export_type=${type}&year=${year}`, {
                     method: 'POST'
                 });
                 const json = await res.json();
@@ -4229,8 +4237,8 @@ const App = {
 
             try {
                 const [currentRes, previousRes] = await Promise.all([
-                    fetch(`${App.config.apiBase}/analytics/dashboard/${currentYear}`),
-                    fetch(`${App.config.apiBase}/analytics/dashboard/${previousYear}`)
+                    App.auth.fetchWithAuth(`${App.config.apiBase}/analytics/dashboard/${currentYear}`),
+                    App.auth.fetchWithAuth(`${App.config.apiBase}/analytics/dashboard/${previousYear}`)
                 ]);
 
                 const currentData = await currentRes.json();
@@ -4328,7 +4336,7 @@ const App = {
             const year = App.state.year || new Date().getFullYear();
 
             try {
-                const res = await fetch(`${App.config.apiBase}/analytics/monthly-trend/${year}`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/analytics/monthly-trend/${year}`);
                 const data = await res.json();
                 this.renderMonthlyTrend(data);
             } catch (e) {
@@ -4509,7 +4517,7 @@ const App = {
                     ? `export_type=monthly_report&year=${data.year}&month=${data.month}`
                     : `export_type=custom_report&start_date=${data.startDate}&end_date=${data.endDate}`;
 
-                const res = await fetch(`${App.config.apiBase}/export/excel?${params}`, { method: 'POST' });
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/export/excel?${params}`, { method: 'POST' });
                 const json = await res.json();
 
                 if (json.status === 'success') {
@@ -4544,7 +4552,7 @@ const App = {
             App.ui.showLoading();
 
             try {
-                const res = await fetch(`${App.config.apiBase}/reports/custom?start_date=${startDate}&end_date=${endDate}`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/reports/custom?start_date=${startDate}&end_date=${endDate}`);
                 const json = await res.json();
 
                 if (json.status !== 'success') {
@@ -4582,7 +4590,7 @@ const App = {
             App.ui.showLoading();
 
             try {
-                const res = await fetch(`${App.config.apiBase}/reports/monthly-list/${this.currentYear}`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/reports/monthly-list/${this.currentYear}`);
                 const json = await res.json();
 
                 const tbody = document.getElementById('report-year-summary');
@@ -4633,7 +4641,7 @@ const App = {
             App.ui.showLoading();
 
             try {
-                const res = await fetch(`${App.config.apiBase}/reports/monthly/${this.currentYear}/${this.currentMonth}`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/reports/monthly/${this.currentYear}/${this.currentMonth}`);
                 const json = await res.json();
 
                 // Update period display
@@ -5119,7 +5127,7 @@ const App = {
             try {
                 const year = App.state.year || new Date().getFullYear();
                 // filter_by_year=true filtra empleados activos durante ese año (入社日 <= año AND (退社日 IS NULL OR 退社日 >= año))
-                const res = await fetch(`${App.config.apiBase}/employees/by-type?year=${year}&active_only=${this.activeOnly}&filter_by_year=true`);
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/employees/by-type?year=${year}&active_only=${this.activeOnly}&filter_by_year=true`);
                 const json = await res.json();
 
                 if (json.status === 'success') {
@@ -5270,7 +5278,7 @@ App.editYukyu = {
 
         try {
             // Cargar datos del empleado
-            const res = await fetch(`${App.config.apiBase}/yukyu/employee-summary/${employeeNum}/${this.currentYear}`);
+            const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/yukyu/employee-summary/${employeeNum}/${this.currentYear}`);
 
             if (!res.ok) {
                 const err = await res.json();
@@ -5530,7 +5538,7 @@ App.editYukyu = {
         try {
             // 1. Procesar eliminaciones
             for (const id of this.pendingChanges.deletes) {
-                const res = await fetch(`${App.config.apiBase}/yukyu/usage-details/${id}`, {
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/yukyu/usage-details/${id}`, {
                     method: 'DELETE'
                 });
                 if (!res.ok) throw new Error(`Failed to delete record ${id}`);
@@ -5538,7 +5546,7 @@ App.editYukyu = {
 
             // 2. Procesar actualizaciones
             for (const update of this.pendingChanges.updates) {
-                const res = await fetch(`${App.config.apiBase}/yukyu/usage-details/${update.id}`, {
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/yukyu/usage-details/${update.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ days_used: update.days_used })
@@ -5548,7 +5556,7 @@ App.editYukyu = {
 
             // 3. Procesar nuevos registros
             for (const add of this.pendingChanges.adds) {
-                const res = await fetch(`${App.config.apiBase}/yukyu/usage-details`, {
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/yukyu/usage-details`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -6176,7 +6184,7 @@ App.auditHistory = {
         document.getElementById('audit-history-modal').classList.add('active');
 
         try {
-            const res = await fetch(`${App.config.apiBase}/audit-log/${entityType}/${entityId}`);
+            const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/audit-log/${entityType}/${entityId}`);
 
             if (!res.ok) {
                 const err = await res.json();
@@ -6589,7 +6597,7 @@ App.bulkEdit = {
 
         try {
             App.ui.showLoading();
-            const response = await fetch(`${App.config.apiBase}/employees/bulk-update/preview`, {
+            const response = await App.auth.fetchWithAuth(`${App.config.apiBase}/employees/bulk-update/preview`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ employee_nums: employeeNums, year, updates })
@@ -6697,7 +6705,7 @@ App.bulkEdit = {
 
         try {
             App.ui.showLoading();
-            const response = await fetch(`${App.config.apiBase}/employees/bulk-update`, {
+            const response = await App.auth.fetchWithAuth(`${App.config.apiBase}/employees/bulk-update`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ employee_nums: employeeNums, year, updates })
@@ -6922,7 +6930,7 @@ App.batchImport = {
                 const formData = new FormData();
                 formData.append('file', file);
 
-                const response = await fetch(`${App.config.apiBase}/upload`, {
+                const response = await App.auth.fetchWithAuth(`${App.config.apiBase}/upload`, {
                     method: 'POST',
                     body: formData
                 });
@@ -7033,7 +7041,7 @@ App.reports = {
         try {
             App.ui.showLoading('年次管理簿を生成中...');
 
-            const response = await fetch(`${App.config.apiBase}/reports/annual/${year}/pdf`);
+            const response = await App.auth.fetchWithAuth(`${App.config.apiBase}/reports/annual/${year}/pdf`);
 
             if (!response.ok) {
                 const error = await response.json();
@@ -7063,7 +7071,7 @@ App.reports = {
         try {
             App.ui.showLoading('月次レポートを生成中...');
 
-            const response = await fetch(`${App.config.apiBase}/reports/monthly/${year}/${month}/pdf`);
+            const response = await App.auth.fetchWithAuth(`${App.config.apiBase}/reports/monthly/${year}/${month}/pdf`);
 
             if (!response.ok) {
                 const error = await response.json();
@@ -7092,7 +7100,7 @@ App.reports = {
         try {
             App.ui.showLoading('コンプライアンスレポートを生成中...');
 
-            const response = await fetch(`${App.config.apiBase}/reports/compliance/${year}/pdf`);
+            const response = await App.auth.fetchWithAuth(`${App.config.apiBase}/reports/compliance/${year}/pdf`);
 
             if (!response.ok) {
                 const error = await response.json();
@@ -7121,7 +7129,7 @@ App.reports = {
         try {
             App.ui.showLoading('カスタムレポートを生成中...');
 
-            const response = await fetch(`${App.config.apiBase}/reports/custom/pdf`, {
+            const response = await App.auth.fetchWithAuth(`${App.config.apiBase}/reports/custom/pdf`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(config)
@@ -7477,7 +7485,7 @@ App.calendar = {
 
             // source='all' to get both requests and excel usage
             // The backend endpoint is /api/calendar/events
-            const response = await fetch(`${App.config.apiBase}/calendar/events?year=${year}&month=${month}&source=all`);
+            const response = await App.auth.fetchWithAuth(`${App.config.apiBase}/calendar/events?year=${year}&month=${month}&source=all`);
             const json = await response.json();
             App.ui.hideLoading();
 
