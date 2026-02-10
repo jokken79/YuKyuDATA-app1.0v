@@ -51,6 +51,7 @@ from .yukyu import (
     update_yukyu_usage_detail,
     delete_yukyu_usage_detail,
     get_monthly_usage_summary,
+    reset_yukyu_usage_details,
 )
 
 # Audit
@@ -93,7 +94,7 @@ from .csrf_tokens import (
 )
 
 # Stats
-from .stats import get_dashboard_stats, get_workplace_distribution, get_employee_type_distribution
+from .stats import get_dashboard_stats, get_workplace_distribution, get_employee_type_distribution, get_table_counts
 
 # Legacy aliases for backwards compatibility
 log_action = log_audit_action
@@ -151,6 +152,7 @@ __all__ = [
     'update_yukyu_usage_detail',
     'delete_yukyu_usage_detail',
     'get_monthly_usage_summary',
+    'reset_yukyu_usage_details',
     # Audit
     'log_action',
     'log_audit',
@@ -185,4 +187,5 @@ __all__ = [
     'get_dashboard_stats',
     'get_workplace_distribution',
     'get_employee_type_distribution',
+    'get_table_counts',
 ]

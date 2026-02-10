@@ -8,13 +8,26 @@ from pathlib import Path
 from fastapi import UploadFile, HTTPException
 from typing import Optional
 
-# Try to import magic, but don't fail if missing (fallback mode)
-try:
-    import magic
-    MAGIC_AVAILABLE = True
-except ImportError:
+# Try to import magic, but don't fail if missing or hanging (fallback mode)
+# On some Windows environments, `import magic` hangs searching for libmagic DLL
+import threading
+magic = None
+MAGIC_AVAILABLE = False
+
+def _try_import_magic():
+    global magic, MAGIC_AVAILABLE
+    try:
+        import magic as _magic
+        magic = _magic
+        MAGIC_AVAILABLE = True
+    except (ImportError, OSError):
+        pass
+
+_t = threading.Thread(target=_try_import_magic, daemon=True)
+_t.start()
+_t.join(timeout=3)  # 3 second timeout
+if not MAGIC_AVAILABLE:
     magic = None
-    MAGIC_AVAILABLE = False
 
 # MIME types permitidos para archivos Excel
 ALLOWED_MIME_TYPES = {

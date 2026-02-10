@@ -32,6 +32,7 @@ from .genzai import router as genzai_router
 from .ukeoi import router as ukeoi_router
 from .staff import router as staff_router
 from .github import router as github_router
+from .data_management import router as data_management_router
 
 # Create v1 router
 router_v1 = APIRouter(prefix="/api/v1", tags=["API v1"])
@@ -55,5 +56,6 @@ router_v1.include_router(notifications_router, tags=["Notifications v1"])
 router_v1.include_router(system_router, tags=["System v1"])
 router_v1.include_router(health_router, tags=["Health v1"])
 router_v1.include_router(github_router, tags=["GitHub v1"])
+router_v1.include_router(data_management_router, tags=["Data Management v1"])
 
 __all__ = ['router_v1']

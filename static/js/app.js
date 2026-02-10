@@ -682,6 +682,11 @@ const App = {
             this.calendar.init();
         }
 
+        // Initialize Data Management
+        if (this.dataManagement) {
+            this.dataManagement.init();
+        }
+
         // Fetch initial data
         this.data.fetchEmployees();
 
@@ -1100,6 +1105,7 @@ const App = {
                 'compliance': 'コンプライアンス',
                 'analytics': '詳細分析',
                 'reports': '月次レポート (21日〜20日)',
+                'datamanagement': 'データ管理',
                 'settings': 'システム設定'
             };
             document.getElementById('page-title').innerText = titleMap[viewName] || 'Dashboard';
@@ -1152,6 +1158,10 @@ const App = {
 
             if (viewName === 'reports') {
                 App.reports.init();
+            }
+
+            if (viewName === 'datamanagement') {
+                App.dataManagement.loadTableCounts();
             }
 
             if (viewName === 'settings') {
@@ -3791,6 +3801,226 @@ const App = {
                 App.ui.hideLoading();
             }
         }
+    },
+
+    // ========================================
+    // DATA MANAGEMENT MODULE
+    // ========================================
+    dataManagement: {
+        init() {
+            this.setupDropZones();
+            this.setupFileInputs();
+            this.setupActions();
+        },
+
+        setupDropZones() {
+            const zones = document.querySelectorAll('.dm-upload-zone');
+            zones.forEach(zone => {
+                zone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    zone.classList.add('dm-drag-over');
+                });
+                zone.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    zone.classList.remove('dm-drag-over');
+                });
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    zone.classList.remove('dm-drag-over');
+                    const file = e.dataTransfer.files[0];
+                    if (file) {
+                        const type = zone.dataset.type;
+                        this.processFile(file, type);
+                    }
+                });
+            });
+        },
+
+        setupFileInputs() {
+            document.querySelectorAll('.dm-browse-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const inputId = btn.dataset.input;
+                    document.getElementById(inputId).click();
+                });
+            });
+
+            document.getElementById('dm-file-yukyu')?.addEventListener('change', (e) => {
+                if (e.target.files[0]) this.processFile(e.target.files[0], 'yukyu');
+                e.target.value = '';
+            });
+            document.getElementById('dm-file-shaintaicho')?.addEventListener('change', (e) => {
+                if (e.target.files[0]) this.processFile(e.target.files[0], 'shaintaicho');
+                e.target.value = '';
+            });
+        },
+
+        setupActions() {
+            document.getElementById('dm-reset-all')?.addEventListener('click', () => this.resetAll());
+        },
+
+        async processFile(file, type) {
+            const zone = document.getElementById(`dm-zone-${type}`);
+            const status = document.getElementById(`dm-status-${type}`);
+            if (!zone || !status) return;
+
+            zone.classList.remove('dm-success', 'dm-error');
+            zone.classList.add('dm-uploading');
+            status.className = 'dm-zone-status loading';
+            status.textContent = 'アップロード中...';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('type', type);
+
+                const res = await App.auth.fetchWithAuth(
+                    `${App.config.apiBase}/data-management/upload`,
+                    { method: 'POST', body: formData }
+                );
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail || `HTTP ${res.status}`);
+                }
+
+                const json = await res.json();
+                zone.classList.remove('dm-uploading');
+                zone.classList.add('dm-success');
+                status.className = 'dm-zone-status success';
+
+                const r = json.result || {};
+                if (type === 'yukyu') {
+                    status.textContent = `従業員: ${r.employees || 0}件 / 使用明細: ${r.usage_details || 0}件`;
+                } else {
+                    status.textContent = `現在: ${r.genzai || 0} / 請負: ${r.ukeoi || 0} / Staff: ${r.staff || 0}`;
+                }
+
+                this.loadTableCounts();
+
+                setTimeout(() => zone.classList.remove('dm-success'), 4000);
+            } catch (err) {
+                zone.classList.remove('dm-uploading');
+                zone.classList.add('dm-error');
+                status.className = 'dm-zone-status error';
+                status.textContent = `エラー: ${err.message}`;
+                setTimeout(() => zone.classList.remove('dm-error'), 4000);
+            }
+        },
+
+        async loadTableCounts() {
+            try {
+                const res = await App.auth.fetchWithAuth(`${App.config.apiBase}/data-management/table-counts`);
+                if (!res.ok) return;
+                const json = await res.json();
+                this.renderTableList(json.counts || {});
+            } catch (err) {
+                // silent - table counts are non-critical
+            }
+        },
+
+        renderTableList(counts) {
+            const tbody = document.getElementById('dm-table-body');
+            if (!tbody) return;
+
+            const tableLabels = {
+                'employees': { name: '従業員 (employees)', icon: '👤' },
+                'genzai': { name: '現在社員 (genzai)', icon: '🏭' },
+                'ukeoi': { name: '請負社員 (ukeoi)', icon: '📋' },
+                'staff': { name: 'スタッフ (staff)', icon: '🏢' },
+                'yukyu_usage_details': { name: '使用明細 (usage details)', icon: '📊' },
+            };
+
+            const uniqueEmployees = counts['employees_unique'] || 0;
+
+            let html = '';
+            let total = 0;
+            for (const [key, label] of Object.entries(tableLabels)) {
+                const count = counts[key] || 0;
+                total += count;
+                const countDisplay = key === 'employees' && uniqueEmployees > 0
+                    ? `${uniqueEmployees.toLocaleString()} 名 <span style="opacity:0.5;font-size:0.85em">(${count.toLocaleString()} 件)</span>`
+                    : `${count.toLocaleString()}`;
+                html += `<tr>
+                    <td>${label.icon} ${App.utils.escapeHtml(label.name)}</td>
+                    <td class="dm-count">${countDisplay}</td>
+                    <td><button class="btn-reset-sm" data-action="dm.resetTable" data-table="${key}" ${count === 0 ? 'disabled' : ''}>リセット</button></td>
+                </tr>`;
+            }
+            html += `<tr style="border-top:2px solid var(--border-color,#3f3f46)">
+                <td><strong>合計</strong></td>
+                <td class="dm-count"><strong>${total.toLocaleString()}</strong></td>
+                <td></td>
+            </tr>`;
+
+            tbody.innerHTML = html;
+
+            // Bind reset buttons via event delegation
+            tbody.querySelectorAll('[data-action="dm.resetTable"]').forEach(btn => {
+                btn.addEventListener('click', () => this.resetTable(btn.dataset.table));
+            });
+        },
+
+        async resetTable(tableName) {
+            const tableLabels = {
+                'employees': '従業員',
+                'genzai': '現在社員',
+                'ukeoi': '請負社員',
+                'staff': 'スタッフ',
+                'yukyu_usage_details': '使用明細',
+            };
+            const label = tableLabels[tableName] || tableName;
+
+            if (!confirm(`「${label}」テーブルの全データを削除しますか？\nこの操作は元に戻せません。`)) return;
+
+            try {
+                const res = await App.auth.fetchWithAuth(
+                    `${App.config.apiBase}/data-management/reset/${tableName}`,
+                    { method: 'DELETE' }
+                );
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail || `HTTP ${res.status}`);
+                }
+
+                const json = await res.json();
+                alert(`${label}: ${json.deleted_count || 0}件 削除しました`);
+                this.loadTableCounts();
+            } catch (err) {
+                alert(`リセットエラー: ${err.message}`);
+            }
+        },
+
+        async resetAll() {
+            if (!confirm('全テーブルのデータを削除しますか？\nこの操作は元に戻せません。')) return;
+
+            const tables = ['employees', 'genzai', 'ukeoi', 'staff', 'yukyu_usage_details'];
+            const results = [];
+
+            for (const table of tables) {
+                try {
+                    const res = await App.auth.fetchWithAuth(
+                        `${App.config.apiBase}/data-management/reset/${table}`,
+                        { method: 'DELETE' }
+                    );
+                    if (res.ok) {
+                        const json = await res.json();
+                        results.push(`${table}: ${json.deleted_count || 0}件`);
+                    } else {
+                        results.push(`${table}: エラー`);
+                    }
+                } catch {
+                    results.push(`${table}: エラー`);
+                }
+            }
+
+            alert('リセット完了:\n' + results.join('\n'));
+            this.loadTableCounts();
+        },
     },
 
     // ========================================

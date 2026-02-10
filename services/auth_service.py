@@ -306,8 +306,13 @@ class AuthService:
         else:
             expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
+        # Get user role from users_db
+        user_data = self.users_db.get(username, {})
+        role = user_data.get("role", "user")
+
         to_encode = {
             "sub": username,
+            "role": role,
             "exp": expire,
             "type": "access",
             "iat": datetime.now(timezone.utc)

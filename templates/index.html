@@ -241,8 +241,20 @@
                 </div>
             </div>
 
-            <!-- Settings at bottom -->
+            <!-- Data Management + Settings at bottom -->
             <div class="sidebar-footer">
+                <button class="nav-item" data-view="datamanagement" data-action="ui.switchView"
+                    aria-label="Data Management" type="button">
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                    </span>
+                    <span class="nav-text">データ管理</span>
+                </button>
                 <button class="nav-item nav-item-settings" data-view="settings" data-action="ui.switchView"
                     aria-label="Settings" type="button">
                     <span class="nav-icon" aria-hidden="true">
@@ -1586,6 +1598,73 @@
                 </div>
             </div>
 
+            <!-- VIEW: DATA MANAGEMENT -->
+            <div class="view-section d-none" id="view-datamanagement">
+                <div class="glass-panel p-lg">
+                    <h3 class="mb-2xl text-xl">データ管理 Data Management</h3>
+
+                    <!-- Upload Zones -->
+                    <div class="dm-upload-grid">
+                        <!-- Zone 1: Yukyu Excel -->
+                        <div class="dm-upload-zone" id="dm-zone-yukyu" data-type="yukyu">
+                            <div class="dm-zone-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                </svg>
+                            </div>
+                            <div class="dm-zone-title">有給休暇管理</div>
+                            <div class="dm-zone-desc">従業員データ + 使用明細をパース</div>
+                            <div class="dm-zone-hint">.xlsm / .xlsx をドラッグ＆ドロップ</div>
+                            <input type="file" id="dm-file-yukyu" accept=".xlsx,.xlsm,.xls" style="display:none">
+                            <button class="btn btn-sm btn-outline dm-browse-btn" data-input="dm-file-yukyu">ファイル選択</button>
+                            <div class="dm-zone-status" id="dm-status-yukyu"></div>
+                        </div>
+
+                        <!-- Zone 2: Shaintaicho Excel -->
+                        <div class="dm-upload-zone" id="dm-zone-shaintaicho" data-type="shaintaicho">
+                            <div class="dm-zone-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                            </div>
+                            <div class="dm-zone-title">社員台帳</div>
+                            <div class="dm-zone-desc">現在・請負・スタッフ 3シートをパース</div>
+                            <div class="dm-zone-hint">.xlsm / .xlsx をドラッグ＆ドロップ</div>
+                            <input type="file" id="dm-file-shaintaicho" accept=".xlsx,.xlsm,.xls" style="display:none">
+                            <button class="btn btn-sm btn-outline dm-browse-btn" data-input="dm-file-shaintaicho">ファイル選択</button>
+                            <div class="dm-zone-status" id="dm-status-shaintaicho"></div>
+                        </div>
+                    </div>
+
+                    <!-- Database Table Management -->
+                    <h4 class="mt-2xl mb-lg stat-label">データベース管理</h4>
+                    <div class="dm-table-container">
+                        <table class="dm-table">
+                            <thead>
+                                <tr>
+                                    <th>テーブル</th>
+                                    <th>レコード数</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dm-table-body">
+                                <tr><td colspan="3" class="text-center">読み込み中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="dm-actions mt-lg">
+                        <button class="btn btn-danger btn-sm" id="dm-reset-all">全テーブルリセット</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- VIEW: SETTINGS -->
             <div class="view-section d-none" id="view-settings">
                 <div class="glass-panel p-lg">
@@ -1799,7 +1878,7 @@
         });
     </script>
 
-    <script src="/static/js/app.js?v=20260210-1"></script>
+    <script src="/static/js/app.js?v=20260210-3"></script>
 
     <!-- FASE 4.2: Modern Component Integration Bridge (Non-Breaking) -->
     <script src="/static/js/modern-integration.js?v=20260117" defer></script>
@@ -3122,6 +3201,147 @@
         .usage-item.pending-update {
             background: rgba(59, 130, 246, 0.1);
         }
+    </style>
+
+    <!-- Data Management Styles -->
+    <style>
+        .dm-upload-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        @media (max-width: 768px) {
+            .dm-upload-grid { grid-template-columns: 1fr; }
+        }
+        .dm-upload-zone {
+            border: 2px dashed var(--border-color, #3f3f46);
+            border-radius: 12px;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            background: var(--bg-secondary, rgba(39,39,42,0.5));
+            position: relative;
+        }
+        .dm-upload-zone:hover,
+        .dm-upload-zone.dm-drag-over {
+            border-color: var(--color-primary, #06b6d4);
+            background: var(--bg-tertiary, rgba(6,182,212,0.05));
+            transform: translateY(-2px);
+        }
+        .dm-upload-zone.dm-drag-over {
+            box-shadow: 0 0 0 3px rgba(6,182,212,0.2);
+        }
+        .dm-upload-zone.dm-uploading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        .dm-upload-zone.dm-success {
+            border-color: #22c55e;
+            background: rgba(34,197,94,0.05);
+        }
+        .dm-upload-zone.dm-error {
+            border-color: #ef4444;
+            background: rgba(239,68,68,0.05);
+        }
+        .dm-zone-icon {
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary, #a1a1aa);
+        }
+        .dm-zone-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary, #fafafa);
+            margin-bottom: 0.25rem;
+        }
+        .dm-zone-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary, #a1a1aa);
+            margin-bottom: 0.5rem;
+        }
+        .dm-zone-hint {
+            font-size: 0.75rem;
+            color: var(--text-tertiary, #71717a);
+            margin-bottom: 1rem;
+        }
+        .dm-browse-btn {
+            font-size: 0.8rem;
+            padding: 0.35rem 1rem;
+        }
+        .dm-zone-status {
+            margin-top: 0.75rem;
+            font-size: 0.8rem;
+            min-height: 1.2em;
+        }
+        .dm-zone-status.success { color: #22c55e; }
+        .dm-zone-status.error { color: #ef4444; }
+        .dm-zone-status.loading { color: var(--color-primary, #06b6d4); }
+
+        .dm-table-container {
+            border: 1px solid var(--border-color, #3f3f46);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .dm-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .dm-table th {
+            background: var(--bg-tertiary, rgba(39,39,42,0.8));
+            padding: 0.65rem 1rem;
+            text-align: left;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary, #a1a1aa);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .dm-table td {
+            padding: 0.65rem 1rem;
+            border-top: 1px solid var(--border-color, #27272a);
+            font-size: 0.875rem;
+        }
+        .dm-table tr:hover td {
+            background: var(--bg-tertiary, rgba(39,39,42,0.3));
+        }
+        .dm-table .dm-count {
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+            color: var(--color-primary, #06b6d4);
+        }
+        .dm-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+        .btn-danger {
+            background: #dc2626;
+            color: #fff;
+            border: none;
+            padding: 0.45rem 1rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-reset-sm {
+            background: transparent;
+            border: 1px solid #dc2626;
+            color: #dc2626;
+            padding: 0.25rem 0.65rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-reset-sm:hover {
+            background: #dc2626;
+            color: #fff;
+        }
+        .btn-reset-sm:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 
     <!-- Login Modal -->

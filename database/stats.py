@@ -1,6 +1,6 @@
 from typing import Dict, Any, List
 from sqlalchemy import func, and_
-from orm import SessionLocal, Employee, LeaveRequest, GenzaiEmployee, UkeoiEmployee, StaffEmployee
+from orm import SessionLocal, Employee, LeaveRequest, GenzaiEmployee, UkeoiEmployee, StaffEmployee, YukyuUsageDetail
 
 
 def get_dashboard_stats(year: int) -> Dict[str, Any]:
@@ -59,4 +59,17 @@ def get_employee_type_distribution() -> Dict[str, int]:
             'genzai': session.query(func.count(GenzaiEmployee.id)).scalar() or 0,
             'ukeoi': session.query(func.count(UkeoiEmployee.id)).scalar() or 0,
             'staff': session.query(func.count(StaffEmployee.id)).scalar() or 0
+        }
+
+
+def get_table_counts() -> Dict[str, Any]:
+    """Get row counts for all main data tables."""
+    with SessionLocal() as session:
+        return {
+            'employees': session.query(func.count(Employee.id)).scalar() or 0,
+            'employees_unique': session.query(func.count(func.distinct(Employee.employee_num))).scalar() or 0,
+            'genzai': session.query(func.count(GenzaiEmployee.id)).scalar() or 0,
+            'ukeoi': session.query(func.count(UkeoiEmployee.id)).scalar() or 0,
+            'staff': session.query(func.count(StaffEmployee.id)).scalar() or 0,
+            'yukyu_usage_details': session.query(func.count(YukyuUsageDetail.id)).scalar() or 0,
         }

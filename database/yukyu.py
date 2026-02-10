@@ -118,3 +118,12 @@ def get_monthly_usage_summary(year: int) -> List[Dict[str, Any]]:
                 'usage_count': row.usage_count,
             })
         return summary
+
+
+def reset_yukyu_usage_details() -> int:
+    """Delete all yukyu usage detail records. Returns count of deleted rows."""
+    with SessionLocal() as session:
+        count = session.query(YukyuUsageDetail).count()
+        session.query(YukyuUsageDetail).delete()
+        session.commit()
+        return count
