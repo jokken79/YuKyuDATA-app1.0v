@@ -178,7 +178,7 @@ async def get_monthly_reports_list(
 
 @router.get("/employee/{employee_num}/pdf")
 async def get_employee_pdf_report(
-    employee_num: str = Query(..., min_length=1, max_length=10),
+    employee_num: str,
     year: Optional[int] = Query(None, ge=2000, le=2100),
     user: CurrentUser = Depends(get_current_user)
 ):
@@ -208,7 +208,7 @@ async def get_employee_pdf_report(
 
 @router.get("/annual/{year}/pdf")
 async def get_annual_pdf_report(
-    year: int = Query(..., ge=2000, le=2100),
+    year: int,
     user: CurrentUser = Depends(get_current_user)
 ):
     """
@@ -234,8 +234,8 @@ async def get_annual_pdf_report(
 
 @router.get("/monthly/{year}/{month}/pdf")
 async def get_monthly_pdf_report(
-    year: int = Query(..., ge=2000, le=2100),
-    month: int = Query(..., ge=1, le=12),
+    year: int,
+    month: int,
     user: CurrentUser = Depends(get_current_user)
 ):
     """
@@ -261,7 +261,7 @@ async def get_monthly_pdf_report(
 
 @router.get("/compliance/{year}/pdf")
 async def get_compliance_pdf_report(
-    year: int = Query(..., ge=2000, le=2100),
+    year: int,
     user: CurrentUser = Depends(get_current_user)
 ):
     """
