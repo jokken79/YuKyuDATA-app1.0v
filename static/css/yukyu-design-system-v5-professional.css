@@ -252,8 +252,7 @@ body {
 /* ╔════════════════════════════════════════╗
    ║  PROBLEM 10: DARK MODE - COMPLETE      ║
    ╚════════════════════════════════════════╝ */
-@media (prefers-color-scheme: dark) {
-    :root {
+[data-theme="dark"] {
         /* Dark Mode Surfaces */
         --bg-app: #0f172a;
         --bg-surface: #1e293b;
@@ -286,7 +285,6 @@ body {
         --color-warning-light: rgba(245, 158, 11, 0.15);
         --color-error-light: rgba(239, 68, 68, 0.15);
         --color-info-light: rgba(59, 130, 246, 0.15);
-    }
 }
 
 /* ========================================

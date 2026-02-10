@@ -27,17 +27,17 @@
 :root {
     /* === COLOR SYSTEM === */
 
-    /* Primary: Cyan - Trust, clarity, technology */
-    --color-primary-50: #ecfeff;
-    --color-primary-100: #cffafe;
-    --color-primary-200: #a5f3fc;
-    --color-primary-300: #67e8f9;
-    --color-primary-400: #22d3ee;
+    /* Primary: Blue - Trust, clarity, technology */
+    --color-primary-50: #eff6ff;
+    --color-primary-100: #dbeafe;
+    --color-primary-200: #bfdbfe;
+    --color-primary-300: #93c5fd;
+    --color-primary-400: #60a5fa;
     --color-primary-500: #2563eb;
-    --color-primary-600: #0891b2;
-    --color-primary-700: #0e7490;
-    --color-primary-800: #155e75;
-    --color-primary-900: #164e63;
+    --color-primary-600: #1d4ed8;
+    --color-primary-700: #1e40af;
+    --color-primary-800: #1e3a8a;
+    --color-primary-900: #172554;
 
     /* Accent: Violet - For highlights and CTAs */
     --color-accent-400: #a78bfa;
