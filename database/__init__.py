@@ -70,6 +70,19 @@ from .notifications import (
     mark_all_notifications_read,
 )
 
+# Refresh Tokens
+from .refresh_tokens import (
+    init_refresh_tokens_table,
+    store_refresh_token,
+    get_refresh_token_by_hash,
+    revoke_refresh_token,
+    revoke_all_user_refresh_tokens,
+    is_refresh_token_valid,
+    cleanup_expired_refresh_tokens,
+    get_user_active_refresh_tokens,
+    get_refresh_token_stats,
+)
+
 # CSRF Tokens
 from .csrf_tokens import (
     init_csrf_tokens_table,
@@ -158,6 +171,16 @@ __all__ = [
     'get_read_notification_ids',
     'mark_notification_read',
     'mark_all_notifications_read',
+    # Refresh Tokens
+    'init_refresh_tokens_table',
+    'store_refresh_token',
+    'get_refresh_token_by_hash',
+    'revoke_refresh_token',
+    'revoke_all_user_refresh_tokens',
+    'is_refresh_token_valid',
+    'cleanup_expired_refresh_tokens',
+    'get_user_active_refresh_tokens',
+    'get_refresh_token_stats',
     # Stats
     'get_dashboard_stats',
     'get_workplace_distribution',

@@ -68,6 +68,7 @@ from orm.models.notification import Notification
 from orm.models.notification_read import NotificationRead
 from orm.models.audit_log import AuditLog
 from orm.models.user import User
+from orm.models.refresh_token import RefreshToken
 
 __all__ = [
     'Base',
@@ -84,4 +85,5 @@ __all__ = [
     'NotificationRead',
     'AuditLog',
     'User',
+    'RefreshToken',
 ]
