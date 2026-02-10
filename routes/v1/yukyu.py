@@ -58,7 +58,7 @@ async def get_usage_details(
 
 @router.get("/monthly-summary/{year}")
 async def get_monthly_summary(
-    year: int = Query(..., ge=2000, le=2100),
+    year: int,
     user: CurrentUser = Depends(get_current_user)
 ):
     """
@@ -81,7 +81,7 @@ async def get_monthly_summary(
 
 @router.get("/kpi-stats/{year}")
 async def get_kpi_stats(
-    year: int = Query(..., ge=2000, le=2100),
+    year: int,
     user: CurrentUser = Depends(get_current_user)
 ):
     """
@@ -119,7 +119,7 @@ async def get_kpi_stats(
 
 @router.get("/by-employee-type/{year}")
 async def get_usage_by_employee_type(
-    year: int = Query(..., ge=2000, le=2100),
+    year: int,
     active_only: bool = True,
     user: CurrentUser = Depends(get_current_user)
 ):

@@ -206,7 +206,7 @@ async def get_entity_audit_history(entity_type: str, entity_id: str, user: Curre
 
 @router.get("/audit-log/user/{user_id}")
 async def get_user_audit_history(
-    user_id: str = Query(..., min_length=1, max_length=100),
+    user_id: str,
     limit: int = Query(50, ge=1, le=500),
     user: CurrentUser = Depends(get_current_user)
 ):
@@ -315,7 +315,7 @@ async def get_orchestrator_history(
 
 @router.post("/orchestrator/run-compliance-check/{year}")
 async def run_orchestrator_compliance_check(
-    year: int = Query(..., ge=2000, le=2100),
+    year: int,
     user: CurrentUser = Depends(get_current_user)
 ):
     """

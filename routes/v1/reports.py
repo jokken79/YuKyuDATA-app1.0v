@@ -92,8 +92,8 @@ async def get_custom_report_data(
 
 @router.get("/monthly/{year}/{month}")
 async def get_monthly_report_data(
-    year: int = Query(..., ge=2000, le=2100),
-    month: int = Query(..., ge=1, le=12),
+    year: int,
+    month: int,
     user: CurrentUser = Depends(get_current_user)
 ):
     """
@@ -135,7 +135,7 @@ async def get_monthly_report_data(
 
 @router.get("/monthly-list/{year}")
 async def get_monthly_reports_list(
-    year: int = Query(..., ge=2000, le=2100),
+    year: int,
     user: CurrentUser = Depends(get_current_user)
 ):
     """

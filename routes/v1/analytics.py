@@ -102,7 +102,7 @@ async def get_factories(
 
 @router.get("/analytics/top10-active/{year}")
 async def get_top10_active_users(
-    year: int = Query(..., ge=2000, le=2100),
+    year: int,
     user: CurrentUser = Depends(get_current_user)
 ):
     """
@@ -152,7 +152,7 @@ async def get_top10_active_users(
 
 @router.get("/analytics/high-balance-active/{year}")
 async def get_high_balance_active(
-    year: int = Query(..., ge=2000, le=2100),
+    year: int,
     min_balance: float = Query(20, ge=0, le=100),
     user: CurrentUser = Depends(get_current_user)
 ):
@@ -199,7 +199,7 @@ async def get_high_balance_active(
 
 @router.get("/analytics/dashboard/{year}")
 async def get_dashboard_analytics(
-    year: int = Query(..., ge=2000, le=2100),
+    year: int,
     user: CurrentUser = Depends(get_current_user)
 ):
     """
@@ -272,7 +272,7 @@ async def get_dashboard_analytics(
 
 @router.get("/analytics/monthly-trend/{year}")
 async def get_monthly_trend(
-    year: int = Query(..., ge=2000, le=2100),
+    year: int,
     user: CurrentUser = Depends(get_current_user)
 ):
     """
@@ -302,7 +302,7 @@ async def get_monthly_trend(
 
 @router.get("/analytics/predictions/{year}")
 async def get_usage_predictions(
-    year: int = Query(..., ge=2000, le=2100),
+    year: int,
     user: CurrentUser = Depends(get_current_user)
 ):
     """
