@@ -3,7 +3,7 @@
 from typing import TypeVar, Generic, List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import select, desc
-from datetime import datetime
+from datetime import datetime, timezone
 
 T = TypeVar('T')
 
@@ -63,7 +63,7 @@ class BaseRepository(Generic[T]):
 
         # Update timestamp
         if hasattr(entity, 'updated_at'):
-            entity.updated_at = datetime.utcnow()
+            entity.updated_at = datetime.now(timezone.utc)
 
         self.session.flush()
         return entity

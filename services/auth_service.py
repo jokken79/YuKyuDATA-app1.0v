@@ -11,7 +11,7 @@ import uuid
 import os
 import json
 import bcrypt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict
 from fastapi import HTTPException, status
 from pydantic import BaseModel
@@ -77,11 +77,15 @@ class TokenData(BaseModel):
 
 
 class TokenPair(BaseModel):
-    """Par de tokens (access + refresh)"""
+    """Par de tokens (access + refresh) + datos de usuario"""
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int  # segundos hasta expiracion del access token
+    # User info for frontend
+    username: Optional[str] = None
+    role: Optional[str] = None
+    user_id: Optional[str] = None
 
 
 class AuthService:
@@ -171,9 +175,9 @@ class AuthService:
 
             warnings.warn(
                 f"\n⚠️  MODO DESARROLLO - Usuarios temporales creados:\n"
-                f"   admin / {dev_admin_pass}\n"
-                f"   manager / {dev_manager_pass}\n"
-                f"   Configura USERS_JSON o USERS_FILE para producción.",
+                f"   admin / ******** (configurar DEV_ADMIN_PASSWORD)\n"
+                f"   manager / ******** (configurar DEV_MANAGER_PASSWORD)\n"
+                f"   Usa USERS_JSON o USERS_FILE para producción.",
                 RuntimeWarning
             )
 
@@ -298,15 +302,15 @@ class AuthService:
             Token JWT codificado
         """
         if expires_delta:
-            expire = datetime.utcnow() + expires_delta
+            expire = datetime.now(timezone.utc) + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
         to_encode = {
             "sub": username,
             "exp": expire,
             "type": "access",
-            "iat": datetime.utcnow()
+            "iat": datetime.now(timezone.utc)
         }
 
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -333,14 +337,14 @@ class AuthService:
         # Generar ID unico para el token
         token_id = str(uuid.uuid4())
 
-        expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
 
         to_encode = {
             "sub": username,
             "exp": expire,
             "type": "refresh",
             "jti": token_id,  # JWT ID para identificacion unica
-            "iat": datetime.utcnow()
+            "iat": datetime.now(timezone.utc)
         }
 
         refresh_token = jwt.encode(to_encode, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
@@ -374,15 +378,21 @@ class AuthService:
             ip_address: IP del cliente (opcional)
 
         Returns:
-            TokenPair con access_token y refresh_token
+            TokenPair con access_token, refresh_token y datos de usuario
         """
         access_token = self.create_access_token(username)
         refresh_token = self.create_refresh_token(username, user_agent, ip_address)
+        
+        # Obtener datos del usuario para la respuesta
+        user_data = self.users_db.get(username, {})
 
         return TokenPair(
             access_token=access_token,
             refresh_token=refresh_token,
-            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60  # Convertir a segundos
+            expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Convertir a segundos
+            username=username,
+            role=user_data.get("role", "user"),
+            user_id=username  # Using username as user_id
         )
 
     def verify_access_token(self, token: str) -> dict:

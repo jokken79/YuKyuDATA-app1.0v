@@ -2,7 +2,7 @@
 
 from sqlalchemy import Column, DateTime, String
 from sqlalchemy.orm import declarative_base
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 import uuid as uuid_module
 
@@ -20,8 +20,8 @@ class BaseModel:
     """
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid_module.uuid4()))
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     def to_dict(self):
         """Convert model to dictionary for serialization."""

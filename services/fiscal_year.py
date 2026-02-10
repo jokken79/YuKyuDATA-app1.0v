@@ -8,10 +8,15 @@ Características:
 - Tabla de otorgamiento según antigüedad (Ley Laboral Japonesa)
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional, Dict, List, Tuple
 
-from database import get_db, USE_POSTGRESQL
+from database.connection import get_db, USE_POSTGRESQL
+from database.audit import log_audit_action
+from orm import SessionLocal
+from orm.models.employee import Employee
+from orm.models.leave_request import LeaveRequest
+from sqlalchemy import and_
 
 # Tabla de otorgamiento según antigüedad (Ley Laboral Japonesa Art. 39)
 GRANT_TABLE = {
@@ -133,7 +138,12 @@ def get_fiscal_year_period(fiscal_year: int) -> Tuple[str, str]:
 
 def process_year_end_carryover(from_year: int, to_year: int) -> Dict:
     """
-    Procesa el carry-over de fin de año fiscal.
+    Procesa el carry-over de fin de año fiscal usando ORM con row-level locking.
+
+    ✅ FIX (BUG #5): Migrado de SQL raw (get_db) a ORM (SessionLocal)
+       - Usa row-level locking (.with_for_update()) para prevenir race conditions
+       - Genera UUIDs en lugar de malformed IDs ("{emp_num}_{to_year}")
+       - Mantiene transaccionalidad y auditoría completa
 
     - Copia balances no usados del año anterior al nuevo año
     - Elimina registros mayores a 2 años (vencidos)
@@ -146,6 +156,10 @@ def process_year_end_carryover(from_year: int, to_year: int) -> Dict:
     Returns:
         Dict con estadísticas del proceso
     """
+    from orm.models.employee import Employee
+    from orm import SessionLocal
+    import uuid
+
     stats = {
         'employees_processed': 0,
         'days_carried_over': 0.0,
@@ -154,76 +168,111 @@ def process_year_end_carryover(from_year: int, to_year: int) -> Dict:
         'errors': []
     }
 
-    with get_db() as conn:
+    with SessionLocal() as session:
         try:
-            conn.execute("BEGIN TRANSACTION")
-            c = conn.cursor()
+            # 1. Obtener empleados con balance positivo del año que termina (con lock)
+            employees_with_balance = session.query(Employee).filter(
+                and_(
+                    Employee.year == from_year,
+                    Employee.balance > 0
+                )
+            ).with_for_update().all()  # 🔒 Row-level lock
 
-            # 1. Obtener empleados con balance positivo del año que termina
-            employees_with_balance = c.execute(_prepare_query('''
-                SELECT employee_num, name, balance, granted, used, year
-                FROM employees
-                WHERE year = ? AND balance > 0
-            '''), (from_year,)).fetchall()
+            max_carry = FISCAL_CONFIG['max_accumulated_days']
 
             for emp in employees_with_balance:
-                emp_num = emp['employee_num']
-                carry_over = float(emp['balance'])
+                emp_num = emp.employee_num
+                carry_over = float(emp.balance or 0)
 
                 # Aplicar máximo de carry-over
-                max_carry = FISCAL_CONFIG['max_accumulated_days']
                 if carry_over > max_carry:
                     stats['days_expired'] += carry_over - max_carry
                     carry_over = max_carry
 
                 # 2. Verificar si ya existe registro del nuevo año
-                existing = c.execute(_prepare_query('''
-                    SELECT id, granted, used, balance FROM employees
-                    WHERE employee_num = ? AND year = ?
-                '''), (emp_num, to_year)).fetchone()
+                existing = session.query(Employee).filter(
+                    and_(
+                        Employee.employee_num == emp_num,
+                        Employee.year == to_year
+                    )
+                ).with_for_update().first()  # 🔒 Lock
 
                 if existing:
                     # Sumar carry-over al balance existente
-                    new_balance = float(existing['balance']) + carry_over
+                    old_balance = existing.balance or 0
+                    new_balance = old_balance + carry_over
                     new_balance = min(new_balance, max_carry)
 
-                    c.execute(_prepare_query('''
-                        UPDATE employees
-                        SET balance = ?, last_updated = ?
-                        WHERE id = ?
-                    '''), (new_balance, datetime.now().isoformat(), existing['id']))
+                    existing.balance = new_balance
+                    existing.updated_at = datetime.now(timezone.utc)
+
+                    # Auditar cambio
+                    log_audit_action(
+                        action='YEAR_END_CARRYOVER_UPDATE',
+                        entity_type='employees',
+                        entity_id=existing.id,
+                        old_value={'balance': old_balance},
+                        new_value={'balance': new_balance},
+                        reason=f'Year-end carryover from {from_year} to {to_year}',
+                        performed_by='system'
+                    )
                 else:
-                    # Crear nuevo registro con carry-over
-                    new_id = f"{emp_num}_{to_year}"
-                    c.execute(_prepare_query('''
-                        INSERT INTO employees
-                        (id, employee_num, name, granted, used, balance, year, last_updated)
-                        VALUES (?, ?, ?, 0, 0, ?, ?, ?)
-                    '''), (new_id, emp_num, emp['name'], carry_over, to_year,
-                          datetime.now().isoformat()))
+                    # Crear nuevo registro con carry-over (FIX: UUID en lugar de malformed ID)
+                    new_emp = Employee(
+                        id=str(uuid.uuid4()),  # ✅ UUID válido en lugar de "{emp_num}_{to_year}"
+                        employee_num=emp_num,
+                        name=emp.name,
+                        granted=0,
+                        used=0,
+                        balance=carry_over,
+                        year=to_year,
+                        status=emp.status,
+                        kana=emp.kana,
+                        hire_date=emp.hire_date,
+                        updated_at=datetime.now(timezone.utc)
+                    )
+                    session.add(new_emp)
+
+                    # Auditar creación
+                    log_audit_action(
+                        action='YEAR_END_CARRYOVER_NEW',
+                        entity_type='employees',
+                        entity_id=new_emp.id,
+                        old_value={},
+                        new_value={'balance': carry_over, 'year': to_year},
+                        reason=f'Year-end carryover from {from_year} to {to_year}',
+                        performed_by='system'
+                    )
 
                 stats['employees_processed'] += 1
                 stats['days_carried_over'] += carry_over
 
-            # 3. Marcar/eliminar días expirados (más de 2 años)
+            # 3. Marcar días expirados (más de 2 años)
             expiry_year = to_year - FISCAL_CONFIG['max_carry_over_years']
-            expired = c.execute(_prepare_query('''
-                SELECT employee_num, balance FROM employees
-                WHERE year <= ? AND balance > 0
-            '''), (expiry_year,)).fetchall()
+            expired = session.query(Employee).filter(
+                and_(
+                    Employee.year <= expiry_year,
+                    Employee.balance > 0
+                )
+            ).with_for_update().all()  # 🔒 Lock
 
             for exp in expired:
-                stats['days_expired'] += float(exp['balance'])
+                stats['days_expired'] += float(exp.balance or 0)
 
             # 4. Eliminar registros muy antiguos (más de 3 años para auditoría)
             retention_year = to_year - FISCAL_CONFIG['ledger_retention_years']
-            c.execute(_prepare_query('DELETE FROM employees WHERE year < ?'), (retention_year,))
-            stats['records_deleted'] = c.rowcount
+            records_to_delete = session.query(Employee).filter(
+                Employee.year < retention_year
+            ).with_for_update().all()
 
-            conn.commit()
+            stats['records_deleted'] = len(records_to_delete)
+            for record in records_to_delete:
+                session.delete(record)
+
+            session.commit()
 
         except Exception as e:
-            conn.rollback()
+            session.rollback()
             stats['errors'].append(str(e))
             raise
 
@@ -288,7 +337,8 @@ def get_employee_balance_breakdown(employee_num: str, year: int) -> Dict:
 def apply_lifo_deduction(employee_num: str, days_to_use: float, current_year: int, performed_by: str = "system", reason: str = "Leave request deduction") -> Dict:
     """
     Aplica deducción de días usando lógica LIFO (primero los más nuevos).
-    REGISTRA TODAS LAS OPERACIONES EN fiscal_year_audit_log para cumplimiento legal.
+    Usa ORM con row-level locking para prevenir race conditions.
+    REGISTRA TODAS LAS OPERACIONES EN audit_log para cumplimiento legal.
 
     Args:
         employee_num: Número de empleado
@@ -303,13 +353,11 @@ def apply_lifo_deduction(employee_num: str, days_to_use: float, current_year: in
     breakdown = get_employee_balance_breakdown(employee_num, current_year)
     remaining = days_to_use
     deductions = []
-    timestamp = datetime.now().isoformat()
+    timestamp = datetime.now(timezone.utc).isoformat()
 
-    with get_db() as conn:
+    with SessionLocal() as session:
         try:
-            conn.execute("BEGIN TRANSACTION")
-            c = conn.cursor()
-
+            # Procesar deducción LIFO
             for item in breakdown['lifo_order']:
                 if remaining <= 0:
                     break
@@ -318,51 +366,62 @@ def apply_lifo_deduction(employee_num: str, days_to_use: float, current_year: in
                 to_deduct = min(available, remaining)
 
                 if to_deduct > 0:
-                    # Obtener balance antes para auditoría
-                    emp_before = c.execute(_prepare_query('''
-                        SELECT balance, used FROM employees
-                        WHERE employee_num = ? AND year = ?
-                    '''), (employee_num, item['year'])).fetchone()
+                    # ✅ FIX: Row-level lock (FOR UPDATE) - previene race conditions
+                    emp = session.query(Employee).filter(
+                        and_(
+                            Employee.employee_num == employee_num,
+                            Employee.year == item['year'],
+                            Employee.grant_date == item.get('grant_date')
+                        )
+                    ).with_for_update().first()
 
-                    balance_before = float(emp_before['balance']) if emp_before and emp_before['balance'] else 0
-                    used_before = float(emp_before['used']) if emp_before and emp_before['used'] else 0
+                    if not emp:
+                        continue
 
-                    # Actualizar balance de ese año
-                    c.execute(_prepare_query('''
-                        UPDATE employees
-                        SET used = used + ?,
-                            balance = balance - ?,
-                            last_updated = ?
-                        WHERE employee_num = ? AND year = ?
-                    '''), (to_deduct, to_deduct, timestamp,
-                          employee_num, item['year']))
+                    # Guardar balance anterior para auditoría
+                    balance_before = emp.balance or 0
+                    used_before = emp.used or 0
 
-                    balance_after = balance_before - to_deduct
+                    # Actualizar usando ORM
+                    emp.used = (emp.used or 0) + to_deduct
+                    emp.balance = (emp.granted or 0) - emp.used
+                    emp.updated_at = datetime.now(timezone.utc)
 
                     # Auditar en audit_log (tabla estándar)
                     try:
-                        c.execute(_prepare_query('''
-                            INSERT INTO audit_log
-                            (action, details, performed_by, timestamp)
-                            VALUES (?, ?, ?, ?)
-                        '''), ('LIFO_DEDUCTION',
-                              f"{employee_num} {item['year']}: {to_deduct} days",
-                              performed_by, timestamp))
-                    except Exception:
-                        pass  # Si audit_log no existe, continuar sin error
+                        log_audit_action(
+                            action='LIFO_DEDUCTION',
+                            entity_type='employees',
+                            entity_id=emp.id,
+                            old_value={
+                                'balance': balance_before,
+                                'used': used_before
+                            },
+                            new_value={
+                                'balance': emp.balance,
+                                'used': emp.used
+                            },
+                            reason=reason,
+                            performed_by=performed_by
+                        )
+                    except Exception as e:
+                        # Si audit_log falla, continuar sin error pero log el problema
+                        import logging
+                        logging.error(f"Failed to audit LIFO deduction: {e}")
 
                     deductions.append({
                         'year': item['year'],
                         'days_deducted': to_deduct,
                         'balance_before': balance_before,
-                        'balance_after': balance_after
+                        'balance_after': emp.balance
                     })
                     remaining -= to_deduct
 
-            conn.commit()
+            # Commit transacción (libera los locks aquí)
+            session.commit()
 
         except Exception as e:
-            conn.rollback()
+            session.rollback()
             raise
 
     return {
@@ -554,6 +613,12 @@ def auto_designate_5_days(employee_num: str, year: int, performed_by: str = "sys
     """
     Designa automáticamente 5 días si empleado tiene 10+ días y no los ha usado.
 
+    ✅ FIX (BUG #6): Migrado de SQL raw + tabla inexistente (official_leave_designation)
+       a LeaveRequest con status='DESIGNATED' en ORM
+       - Usa SessionLocal + ORM models
+       - Crea registros LeaveRequest en lugar de tabla inexistente
+       - Usa log_audit_action() para auditoría consistente
+
     Requisito legal: 年5日の取得義務 (obligación de 5 días anuales)
 
     Args:
@@ -564,31 +629,30 @@ def auto_designate_5_days(employee_num: str, year: int, performed_by: str = "sys
     Returns:
         Dict con resultado de designación
     """
-    with get_db() as conn:
-        try:
-            conn.execute("BEGIN TRANSACTION")
-            c = conn.cursor()
+    from orm.models.leave_request import LeaveRequest
+    import uuid
 
-            # 1. Obtener balance actual
-            emp = c.execute(_prepare_query('''
-                SELECT id, employee_num, name, granted, used, balance, year
-                FROM employees
-                WHERE employee_num = ? AND year = ?
-            '''), (employee_num, year)).fetchone()
+    with SessionLocal() as session:
+        try:
+            # 1. Obtener balance actual (con lock)
+            emp = session.query(Employee).filter(
+                and_(
+                    Employee.employee_num == employee_num,
+                    Employee.year == year
+                )
+            ).with_for_update().first()  # 🔒 Row-level lock
 
             if not emp:
-                conn.rollback()
                 return {
                     'success': False,
                     'error': f'Employee {employee_num} not found for year {year}'
                 }
 
-            total_granted = float(emp['granted']) if emp['granted'] else 0
-            used = float(emp['used']) if emp['used'] else 0
+            total_granted = float(emp.granted or 0)
+            used = float(emp.used or 0)
 
             # 2. Verificar elegibilidad
             if total_granted < FISCAL_CONFIG['minimum_days_for_obligation']:
-                conn.rollback()
                 return {
                     'success': False,
                     'reason': 'Employee exempt - less than 10 days granted',
@@ -599,38 +663,48 @@ def auto_designate_5_days(employee_num: str, year: int, performed_by: str = "sys
             remaining_required = max(0, FISCAL_CONFIG['minimum_annual_use'] - used)
 
             if remaining_required <= 0:
-                conn.rollback()
                 return {
                     'success': False,
                     'reason': 'Employee already compliant',
                     'used': used
                 }
 
-            # 4. Designar los días (crear registros en official_leave_designation)
-            designation_date = datetime.now().isoformat()
+            # 4. Designar los días creando LeaveRequest con status='DESIGNATED'
+            # (en lugar de tabla inexistente official_leave_designation)
+            today = date.today()
+            year_end = date(year, 12, 31)  # Designación válida hasta fin de año
 
-            c.execute(_prepare_query('''
-                INSERT INTO official_leave_designation
-                (employee_num, year, designated_date, days, reason, designated_by, designated_at, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            '''), (employee_num, year, designation_date, remaining_required,
-                  'Legal 5-day requirement (年5日の取得義務)',
-                  performed_by, designation_date, 'CONFIRMED'))
+            designation_req = LeaveRequest(
+                id=str(uuid.uuid4()),
+                employee_num=employee_num,
+                employee_name=emp.name,
+                start_date=today.isoformat(),
+                end_date=year_end.isoformat(),
+                days_requested=remaining_required,
+                hours_requested=0.0,
+                leave_type='full',
+                reason='Legal 5-day requirement (年5日の取得義務) - Official Designation',
+                status='DESIGNATED',  # ✅ Status especial para designaciones legales
+                year=year,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+                approver=performed_by,
+                approved_at=datetime.now(timezone.utc)
+            )
+            session.add(designation_req)
 
-            # 5. Registrar en audit_log
-            c.execute(_prepare_query('''
-                INSERT INTO fiscal_year_audit_log
-                (action, employee_num, year, days_affected, balance_before, balance_after,
-                 performed_by, reason, timestamp)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            '''), ('DESIGNATE_5DAYS', employee_num, year, remaining_required,
-                  float(emp['balance']) if emp['balance'] else 0,
-                  float(emp['balance']) if emp['balance'] else 0,  # Balance no cambia, es una designación
-                  performed_by,
-                  'Legal 5-day requirement - official designation',
-                  designation_date))
+            # 5. Registrar auditoría
+            log_audit_action(
+                action='DESIGNATE_5DAYS',
+                entity_type='leave_requests',
+                entity_id=designation_req.id,
+                old_value={'compliance_status': 'non_compliant', 'used': used, 'required': FISCAL_CONFIG['minimum_annual_use']},
+                new_value={'compliance_status': 'designated', 'days_designated': remaining_required},
+                reason='Legal 5-day requirement - official designation (年5日の取得義務)',
+                performed_by=performed_by
+            )
 
-            conn.commit()
+            session.commit()
 
             return {
                 'success': True,
@@ -638,12 +712,13 @@ def auto_designate_5_days(employee_num: str, year: int, performed_by: str = "sys
                 'year': year,
                 'days_designated': remaining_required,
                 'used_so_far': used,
-                'designation_date': designation_date,
+                'designation_date': today.isoformat(),
+                'leave_request_id': designation_req.id,
                 'reason': 'Legal 5-day requirement (年5日の取得義務)'
             }
 
         except Exception as e:
-            conn.rollback()
+            session.rollback()
             return {
                 'success': False,
                 'error': str(e)

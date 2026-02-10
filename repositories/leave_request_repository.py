@@ -120,23 +120,23 @@ class LeaveRequestRepository(BaseRepository[LeaveRequest]):
 
     def approve(self, id: str, approver: str) -> Optional[LeaveRequest]:
         """Approve a leave request."""
-        from datetime import datetime
+        from datetime import datetime, timezone
         request = self.get_by_id(id)
         if request:
             request.status = LeaveStatus.APPROVED
             request.approver = approver
-            request.approved_at = datetime.utcnow()
+            request.approved_at = datetime.now(timezone.utc)
             self.session.flush()
         return request
 
     def reject(self, id: str, approver: str) -> Optional[LeaveRequest]:
         """Reject a leave request."""
-        from datetime import datetime
+        from datetime import datetime, timezone
         request = self.get_by_id(id)
         if request:
             request.status = LeaveStatus.REJECTED
             request.approver = approver
-            request.approved_at = datetime.utcnow()
+            request.approved_at = datetime.now(timezone.utc)
             self.session.flush()
         return request
 

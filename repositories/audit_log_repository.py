@@ -106,8 +106,8 @@ class AuditLogRepository(BaseRepository[AuditLog]):
 
     def get_recent(self, days: int = 7, skip: int = 0, limit: int = 100) -> List[AuditLog]:
         """Get recent audit logs (last N days)."""
-        from datetime import datetime, timedelta
-        start_date = datetime.utcnow() - timedelta(days=days)
+        from datetime import datetime, timedelta, timezone
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         return self.session.query(AuditLog).filter(
             AuditLog.created_at >= start_date
@@ -115,8 +115,8 @@ class AuditLogRepository(BaseRepository[AuditLog]):
 
     def purge_older_than(self, days: int = 90) -> int:
         """Delete audit logs older than N days."""
-        from datetime import datetime, timedelta
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        from datetime import datetime, timedelta, timezone
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         count = self.session.query(AuditLog).filter(
             AuditLog.created_at < cutoff_date

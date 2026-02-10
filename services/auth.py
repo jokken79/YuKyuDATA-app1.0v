@@ -1,7 +1,19 @@
 """
-Secure Authentication Module for YuKyuDATA
-Handles JWT generation, verification, and role-based access control
+DEPRECATED: Authentication Module for YuKyuDATA
+
+⚠️  WARNING: This module is deprecated and will be removed in v2.0.
+    Use services.auth_service.AuthService instead.
+
+This file is kept for backwards compatibility only.
+New code should import from services.auth_service.
 """
+
+import warnings
+warnings.warn(
+    "services.auth is deprecated, use services.auth_service.AuthService instead",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 import jwt
 import hashlib

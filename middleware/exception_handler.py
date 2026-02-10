@@ -16,7 +16,7 @@ Features:
 import logging
 import traceback
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from fastapi import Request, HTTPException
@@ -86,7 +86,7 @@ def create_error_response(
         "error": error,
         "message": message,
         "request_id": request_id,
-        "timestamp": datetime.utcnow().isoformat() + "Z"
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
     if details is not None:

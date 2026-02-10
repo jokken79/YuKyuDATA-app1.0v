@@ -7,7 +7,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import redis
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 import logging
 
@@ -99,7 +99,7 @@ class RateLimitManager:
                 "limit": max_requests,
                 "current": current_count,
                 "remaining": max(0, max_requests - current_count),
-                "reset_at": datetime.utcnow() + timedelta(seconds=window_seconds),
+                "reset_at": datetime.now(timezone.utc) + timedelta(seconds=window_seconds),
             }
 
             allowed = current_count <= max_requests
@@ -122,7 +122,7 @@ class RateLimitManager:
     ) -> tuple[bool, Dict]:
         """Verificación en memoria (fallback)"""
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         if key not in self.in_memory:
             self.in_memory[key] = {

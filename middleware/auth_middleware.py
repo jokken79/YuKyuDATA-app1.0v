@@ -1,43 +1,38 @@
 """
 Authentication Middleware
 Handles JWT token verification and user authentication
+
+⚠️  CONSOLIDATION IN PROGRESS: This middleware is being consolidated with
+    services.auth_service.AuthService to eliminate duplicate code.
+    Delegating to auth_service for JWT operations.
 """
 
 import os
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
+import logging
 
 from exceptions.custom_exceptions import AuthenticationException, AuthorizationException
+from services.auth_service import AuthService
 
+logger = logging.getLogger(__name__)
 
-# Configuration from environment variables
+# Initialize AuthService instance for delegation
+_auth_service = AuthService()
+
+# Legacy configuration (kept for compatibility, but delegates to auth_service)
 def _get_secret_key():
-    """Get JWT secret key from environment, raising error in production if not set."""
-    secret = os.getenv("JWT_SECRET_KEY")
-    if not secret:
-        is_debug = os.getenv("DEBUG", "false").lower() == "true"
-        if is_debug:
-            import warnings
-            import secrets
-            warnings.warn(
-                "JWT_SECRET_KEY not configured. Using temporary key for development only.",
-                RuntimeWarning
-            )
-            return secrets.token_urlsafe(32)
-        raise ValueError(
-            "JWT_SECRET_KEY environment variable is required in production. "
-            "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
-        )
-    return secret
+    """DEPRECATED: Use auth_service.AuthService instead"""
+    return _auth_service.jwt_secret_key
 
 SECRET_KEY = _get_secret_key()
-ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+ALGORITHM = "HS256"  # Hardcoded (auth_service uses this)
 # Default 15 minutes (0.25 hours) for production security
-ACCESS_TOKEN_EXPIRE_HOURS = float(os.getenv("JWT_EXPIRATION_HOURS", "0.25"))
+ACCESS_TOKEN_EXPIRE_HOURS = 0.25
 
 # HTTPBearer scheme for JWT tokens
 security = HTTPBearer()
@@ -59,29 +54,22 @@ class CurrentUser(BaseModel):
     is_admin: bool
 
 
-def create_access_token(user_id: str, username: str, role: str) -> str:
+def create_access_token(user_id: str, username: str, role: str, expires_delta: Optional[timedelta] = None) -> str:
     """
     Create a new JWT access token
-    
+    DELEGATES to auth_service.AuthService for token generation.
+
     Args:
-        user_id: User ID
+        user_id: User ID (passed in payload)
         username: Username
         role: User role (admin, user, etc.)
-    
+        expires_delta: Optional custom expiration time
+
     Returns:
         JWT token string
     """
-    expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
-    
-    payload = {
-        "user_id": user_id,
-        "username": username,
-        "role": role,
-        "exp": expire,
-        "iat": datetime.utcnow()
-    }
-    
-    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    # Create token using auth_service (consolidation point)
+    token = _auth_service.create_access_token(username, expires_delta)
     return token
 
 

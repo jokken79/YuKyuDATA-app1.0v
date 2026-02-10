@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 import uuid
 from sqlalchemy import func, and_, distinct
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from orm import SessionLocal, Employee, GenzaiEmployee, UkeoiEmployee, StaffEmployee
+from orm import SessionLocal, Employee, GenzaiEmployee, UkeoiEmployee, StaffEmployee, AuditLog
 from .connection import USE_POSTGRESQL
 from services.crypto_utils import encrypt_field
 
@@ -88,41 +88,51 @@ def save_employee_data(model_class, data: List[Dict[str, Any]]):
 
 
 def get_employees(year: Optional[int] = None) -> List[Dict[str, Any]]:
-    """Retrieve employees with their Katakana name from specific tables."""
+    """Retrieve employees with their Katakana name using efficient ORM joins (NOT N+1).
+
+    ✅ FIX (BUG #8): Migrated from N+1 queries (1 + N lookups) to 2 queries total:
+       - 1 query for Employee records
+       - 1 query each for Genzai, Ukeoi, Staff lookups (bulk load, not per-employee)
+    This reduces database round-trips from O(N) to O(1).
+    """
+    from orm.models.genzai_employee import GenzaiEmployee as GenzaiEmp
+    from orm.models.ukeoi_employee import UkeoiEmployee as UkeoiEmp
+    from orm.models.staff_employee import StaffEmployee as StaffEmp
+
     with SessionLocal() as session:
-        # We need a join to get Kana from Genzai/Ukeoi/Staff tables
-        # For simplicity and performance, we'll fetch Employees and then enrich them
-        # or use a proper SQLAlchemy join query.
-
-        from orm.models.genzai_employee import GenzaiEmployee as GenzaiEmp
-        from orm.models.ukeoi_employee import UkeoiEmployee as UkeoiEmp
-        from orm.models.staff_employee import StaffEmployee as StaffEmp
-
+        # Query 1: Fetch Employee records
         query = session.query(Employee)
         if year:
             query = query.filter(Employee.year == year)
 
         employees = query.order_by(Employee.usage_rate.desc()).all()
 
-        # Enrich with Kana
+        # ✅ FIX: Bulk-load kana lookup maps (3 queries total, not 1 + 3N)
+        genzai_kana = {
+            row.employee_num: row.kana
+            for row in session.query(GenzaiEmp.employee_num, GenzaiEmp.kana).all()
+        }
+        ukeoi_kana = {
+            row.employee_num: row.kana
+            for row in session.query(UkeoiEmp.employee_num, UkeoiEmp.kana).all()
+        }
+        staff_kana = {
+            row.employee_num: row.kana
+            for row in session.query(StaffEmp.employee_num, StaffEmp.kana).all()
+        }
+
+        # Enrich with Kana using lookup dicts (O(1) per employee)
         result = []
         for emp in employees:
             emp_dict = emp.to_dict()
-            # Try to find kana in any of the specific tables
-            # Proactive: Cache this or use a single join query for production
-            kana_val = ""
-            g = session.query(GenzaiEmp.kana).filter_by(employee_num=emp.employee_num).first()
-            if g:
-                kana_val = g.kana
-            else:
-                u = session.query(UkeoiEmp.kana).filter_by(employee_num=emp.employee_num).first()
-                if u:
-                    kana_val = u.kana
-                else:
-                    s = session.query(StaffEmp.kana).filter_by(employee_num=emp.employee_num).first()
-                    if s:
-                        kana_val = s.kana
 
+            # Check lookup dicts (no more queries!)
+            kana_val = (
+                genzai_kana.get(emp.employee_num) or
+                ukeoi_kana.get(emp.employee_num) or
+                staff_kana.get(emp.employee_num) or
+                ""
+            )
             emp_dict['kana'] = kana_val
             result.append(emp_dict)
 
@@ -458,11 +468,104 @@ def revert_bulk_update(
     operation_id: str,
     reverted_by: str = 'system'
 ) -> Dict[str, Any]:
-    """Revert a bulk update operation (placeholder - needs audit trail)."""
-    return {
+    """
+    Revert a bulk update operation using audit trail.
+
+    ✅ FIX (BUG #7): Implementada lógica real de revert
+       - Busca registros de auditoría con operation_id
+       - Restaura old_value para cada registro
+       - Crea registros de auditoría para la reversión
+       - Devuelve estadísticas correctas (no siempre 0)
+
+    Args:
+        operation_id: ID de operación bulk a revertir
+        reverted_by: Usuario que realiza la reversión
+
+    Returns:
+        Dict con estadísticas de reversión
+    """
+    from orm import AuditLog
+
+    result = {
         'success': True,
+        'operation_id': operation_id,
         'reverted_count': 0,
         'errors': [],
-        'reverted_at': datetime.now().isoformat(),
-        'message': 'Revert requires audit trail records for the operation'
+        'reverted_at': datetime.now(timezone.utc).isoformat(),
     }
+
+    with SessionLocal() as session:
+        try:
+            # 1. Buscar todos los registros de auditoría para esta operación bulk
+            bulk_records = session.query(AuditLog).filter(
+                and_(
+                    AuditLog.action == 'BULK_UPDATE',
+                    AuditLog.additional_info.contains(operation_id) if operation_id else False
+                )
+            ).with_for_update().all()  # 🔒 Lock
+
+            if not bulk_records:
+                result['message'] = f'No bulk update records found for operation {operation_id}'
+                return result
+
+            # 2. Revertir cada registro
+            for audit_record in bulk_records:
+                try:
+                    entity_id = audit_record.entity_id
+                    old_values = audit_record.old_value or {}
+
+                    # Obtener el registro del empleado
+                    emp = session.query(Employee).filter(
+                        Employee.id == entity_id
+                    ).with_for_update().first()
+
+                    if not emp:
+                        result['errors'].append(f'Employee {entity_id} not found')
+                        continue
+
+                    # Restaurar valores antiguos
+                    if 'granted' in old_values:
+                        emp.granted = old_values['granted']
+                    if 'used' in old_values:
+                        emp.used = old_values['used']
+                    if 'balance' in old_values:
+                        emp.balance = old_values['balance']
+                    if 'haken' in old_values:
+                        emp.haken = old_values['haken']
+
+                    # Recalcular balance si es necesario
+                    if emp.granted and emp.used:
+                        emp.balance = emp.granted - emp.used
+                        if emp.granted > 0:
+                            emp.usage_rate = round((emp.used / emp.granted) * 100, 1)
+
+                    emp.updated_at = datetime.now(timezone.utc)
+
+                    # Registrar reverción en auditoría
+                    revert_record = AuditLog(
+                        id=str(uuid.uuid4()),
+                        action='REVERT_BULK_UPDATE',
+                        entity_type='employees',
+                        entity_id=entity_id,
+                        old_value=audit_record.new_value,  # Lo que fue (nuevo -> viejo)
+                        new_value=old_values,  # Lo que es ahora (viejo -> nuevo)
+                        timestamp=datetime.now(timezone.utc),
+                        performed_by=reverted_by,
+                        reason=f'Revert bulk update operation {operation_id}'
+                    )
+                    session.add(revert_record)
+
+                    result['reverted_count'] += 1
+
+                except Exception as e:
+                    result['errors'].append(f'Error reverting {entity_id}: {str(e)}')
+
+            session.commit()
+            result['success'] = len(result['errors']) == 0
+
+        except Exception as e:
+            session.rollback()
+            result['success'] = False
+            result['errors'].append(f'Transaction error: {str(e)}')
+
+    return result

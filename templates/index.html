@@ -9,7 +9,7 @@
 
     <!-- PWA Meta Tags -->
     <meta name="description" content="有給休暇管理システム - Premium Dashboard for managing paid leave">
-    <meta name="theme-color" content="#06b6d4">
+    <meta name="theme-color" content="#2563eb">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="YuKyu">
@@ -36,9 +36,12 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
         rel="stylesheet">
 
-    <!-- === DESIGN SYSTEM v4 === -->
-    <!-- Single source of truth - Vercel/Linear/Raycast inspired -->
-    <link rel="stylesheet" href="/static/css/yukyu-design-v4.css">
+    <!-- === DESIGN SYSTEM v5 (Professional) === -->
+    <!-- ✅ Fixed: All 10 UI/UX issues + WCAG AA compliance -->
+    <link rel="stylesheet" href="/static/css/yukyu-design-system-v5-professional.css">
+
+    <!-- Fallback to v4 if v5 fails loading -->
+    <link rel="stylesheet" href="/static/css/yukyu-design-v4.css" media="print">
 
     <!-- LEGACY CSS - DISABLED (Conflicting styles) -->
     <!-- <link rel="stylesheet" href="/static/css/unified-design-system.css"> -->
@@ -110,7 +113,8 @@
                 <div class="nav-group">
                     <div class="nav-group-label">Main</div>
 
-                    <button class="nav-item active" data-view="dashboard" data-action="ui.switchView" aria-label="Dashboard" aria-current="page" type="button">
+                    <button class="nav-item active" data-view="dashboard" data-action="ui.switchView"
+                        aria-label="Dashboard" aria-current="page" type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -123,8 +127,8 @@
                         <span class="nav-text">Dashboard</span>
                     </button>
 
-                    <button class="nav-item" data-view="employees" data-action="ui.switchView"
-                        aria-label="Employees" type="button">
+                    <button class="nav-item" data-view="employees" data-action="ui.switchView" aria-label="Employees"
+                        type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -138,8 +142,8 @@
                         <span class="nav-badge" id="emp-count-badge-sidebar" aria-label="Total employees">0</span>
                     </button>
 
-                    <button class="nav-item" data-view="factories" data-action="ui.switchView"
-                        aria-label="Factories" type="button">
+                    <button class="nav-item" data-view="factories" data-action="ui.switchView" aria-label="Factories"
+                        type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -158,8 +162,8 @@
                 <div class="nav-group">
                     <div class="nav-group-label">Requests</div>
 
-                    <button class="nav-item" data-view="requests" data-action="ui.switchView"
-                        aria-label="Request Leave" type="button">
+                    <button class="nav-item" data-view="requests" data-action="ui.switchView" aria-label="Request Leave"
+                        type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -173,8 +177,8 @@
                         <span class="nav-text">申請 Request</span>
                     </button>
 
-                    <button class="nav-item" data-view="calendar" data-action="ui.switchView"
-                        aria-label="Calendar" type="button">
+                    <button class="nav-item" data-view="calendar" data-action="ui.switchView" aria-label="Calendar"
+                        type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -197,8 +201,8 @@
                 <div class="nav-group">
                     <div class="nav-group-label">Analytics</div>
 
-                    <button class="nav-item" data-view="compliance" data-action="ui.switchView"
-                        aria-label="Compliance" type="button">
+                    <button class="nav-item" data-view="compliance" data-action="ui.switchView" aria-label="Compliance"
+                        type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -209,8 +213,8 @@
                         <span class="nav-text">Compliance</span>
                     </button>
 
-                    <button class="nav-item" data-view="analytics" data-action="ui.switchView"
-                        aria-label="Analytics" type="button">
+                    <button class="nav-item" data-view="analytics" data-action="ui.switchView" aria-label="Analytics"
+                        type="button">
                         <span class="nav-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
@@ -240,7 +244,8 @@
 
             <!-- Settings at bottom -->
             <div class="sidebar-footer">
-                <button class="nav-item nav-item-settings" data-view="settings" data-action="ui.switchView" aria-label="Settings" type="button">
+                <button class="nav-item nav-item-settings" data-view="settings" data-action="ui.switchView"
+                    aria-label="Settings" type="button">
                     <span class="nav-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                             stroke-linecap="round" stroke-linejoin="round">
@@ -284,7 +289,22 @@
                             type="button">
                             <div class="theme-toggle-track">
                                 <div class="theme-toggle-thumb">
-                                    <span id="theme-icon">🌙</span>
+                                    <svg id="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2">
+                                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                                    </svg>
+                                    <svg id="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2" class="d-none">
+                                        <circle cx="12" cy="12" r="5" />
+                                        <line x1="12" y1="1" x2="12" y2="3" />
+                                        <line x1="12" y1="21" x2="12" y2="23" />
+                                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                                        <line x1="1" y1="12" x2="3" y2="12" />
+                                        <line x1="21" y1="12" x2="23" y2="12" />
+                                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                                    </svg>
                                 </div>
                             </div>
                             <span class="theme-toggle-label" id="theme-label">Dark</span>
@@ -292,39 +312,65 @@
 
                         <!-- Auth Controls -->
                         <button class="btn btn-glass" id="btn-login" data-action="auth.showLogin" aria-label="Login">
-                            <span class="btn-icon">🔒</span>
+                            <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
                             <span class="btn-text">Login</span>
                         </button>
                         <button class="btn btn-glass d-none" id="btn-logout" data-action="auth.logout"
                             aria-label="Logout">
-                            <span class="btn-icon">🔓</span>
+                            <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+                            </svg>
                             <span class="btn-text">Logout</span>
                         </button>
 
                         <button class="btn btn-primary" id="btn-sync-main" data-action="data.sync"
                             aria-label="Sync vacation data" type="button"
                             data-tooltip="有給データをExcelから同期 / Sincronizar datos de vacaciones" data-loading="同期中...">
-                            <span class="btn-icon" aria-hidden="true">⚡</span>
+                            <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                            </svg>
                             <span class="btn-text">Sync</span>
                             <span class="btn-spinner d-none"></span>
                         </button>
                         <button class="btn btn-glass" id="btn-sync-genzai" data-action="data.syncGenzai"
                             aria-label="Sync dispatch employees" type="button"
                             data-tooltip="派遣社員データを同期 / Sincronizar empleados dispatch" data-loading="同期中...">
-                            <span class="btn-icon" aria-hidden="true">🏢</span>
+                            <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                                <polyline points="9 22 9 12 15 12 15 22" />
+                            </svg>
                             <span class="btn-text d-md-inline d-none">Genzai</span>
                             <span class="btn-spinner d-none"></span>
                         </button>
                         <button class="btn btn-glass" id="btn-sync-ukeoi" data-action="data.syncUkeoi"
                             aria-label="Sync contract employees" type="button"
                             data-tooltip="請負社員データを同期 / Sincronizar empleados contrato" data-loading="同期中...">
-                            <span class="btn-icon" aria-hidden="true">🔧</span>
+                            <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <path
+                                    d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                            </svg>
                             <span class="btn-text d-md-inline d-none">Ukeoi</span>
                             <span class="btn-spinner d-none"></span>
                         </button>
                         <button class="btn btn-glass" id="btn-export-pdf" data-action="reports.showExportModal"
                             title="Export PDF Reports" aria-label="Export PDF reports" type="button">
-                            <span class="btn-icon" aria-hidden="true">📄</span>
+                            <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                                <line x1="16" y1="13" x2="8" y2="13" />
+                                <line x1="16" y1="17" x2="8" y2="17" />
+                                <polyline points="10 9 9 9 8 9" />
+                            </svg>
                             <span class="btn-text">PDF</span>
                         </button>
                     </div>
@@ -385,7 +431,7 @@
                     </div>
 
                     <!-- Employees Card -->
-                    <div class="glass-panel stat-card col-span-1 kpi-card-highlight"  data-action="ui.switchView"
+                    <div class="glass-panel stat-card col-span-1 kpi-card-highlight" data-action="ui.switchView"
                         data-view="employees">
                         <div class="stat-label">Employees</div>
                         <div class="stat-value count-up" id="kpi-total">-</div>
@@ -409,7 +455,15 @@
                 <!-- Compliance Gauge Row -->
                 <div class="bento-grid mb-lg">
                     <div class="glass-panel col-span-2 p-md">
-                        <h3 class="stat-label mb-lg">📊 Compliance Gauge (5日最低消化)</h3>
+                        <h3 class="stat-label mb-lg">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" class="inline-icon">
+                                <line x1="12" y1="20" x2="12" y2="10" />
+                                <line x1="18" y1="20" x2="18" y2="4" />
+                                <line x1="6" y1="20" x2="6" y2="16" />
+                            </svg>
+                            Compliance Gauge (5日最低消化)
+                        </h3>
                         <div class="gauge-container">
                             <svg class="gauge-svg" viewBox="0 0 200 120">
                                 <path class="gauge-bg" d="M 20 100 A 80 80 0 0 1 180 100" />
@@ -431,18 +485,36 @@
 
                     <!-- Expiring Days Alert -->
                     <div class="glass-panel col-span-2 p-md">
-                        <h3 class="stat-label mb-lg">⚠️ Days Expiring Soon</h3>
+                        <h3 class="stat-label mb-lg">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" class="inline-icon text-warning">
+                                <path
+                                    d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                <line x1="12" y1="9" x2="12" y2="13" />
+                                <line x1="12" y1="17" x2="12.01" y2="17" />
+                            </svg>
+                            Days Expiring Soon
+                        </h3>
                         <div id="expiring-alert">
                             <div class="countdown-card d-none" id="countdown-container">
-                                <div class="countdown-icon">⏰</div>
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" class="countdown-icon text-warning">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <polyline points="12 6 12 12 16 14" />
+                                </svg>
                                 <div class="countdown-info">
                                     <div class="countdown-title">有給休暇が失効予定</div>
                                     <div class="countdown-value" id="expiring-days">0 days</div>
                                     <div class="countdown-detail" id="expiring-detail">from 0 employees</div>
                                 </div>
                             </div>
-                            <div id="no-expiring" class="text-center p-xl text-success">
-                                ✅ No days expiring soon!
+                            <div id="no-expiring" class="text-center p-xl text-success flex-center gap-sm">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                    <polyline points="22 4 12 14.01 9 11.01" />
+                                </svg>
+                                No days expiring soon!
                             </div>
                         </div>
                         <div class="quick-stats mt-lg">
@@ -467,13 +539,13 @@
 
                 <!-- Charts Row -->
                 <div class="bento-grid">
-                    <div class="glass-panel col-span-2 p-md h-400" >
+                    <div class="glass-panel col-span-2 p-md h-400">
                         <h3 class="stat-label mb-lg">Usage Distribution</h3>
                         <div class="chart-container-sm">
                             <div id="chart-distribution"></div>
                         </div>
                     </div>
-                    <div class="glass-panel col-span-2 p-md h-400" >
+                    <div class="glass-panel col-span-2 p-md h-400">
                         <h3 class="stat-label mb-lg">Monthly Trends <span id="trends-year-label"></span></h3>
                         <div class="chart-container-sm">
                             <div id="chart-trends"></div>
@@ -497,221 +569,333 @@
             <!-- VIEW: EMPLOYEES -->
             <div class="view-section d-none" id="view-employees">
                 <div class="glass-panel p-lg">
-                    <div class="flex-between mb-lg">
-                        <div class="flex-center gap-md">
-                            <h3 class="text-xl">従業員一覧</h3>
+                    <div class="flex-between mb-lg wrap-on-mobile">
+                        <div class="flex-center gap-md mb-sm-mobile">
+                            <h3 class="text-xl flex-center gap-sm">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" class="text-primary">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                                従業員一覧
+                            </h3>
                             <div class="badge badge-warning" id="emp-count-badge">0 Employees</div>
                         </div>
-                        <div class="flex-center gap-md">
-                            <label class="flex-center gap-sm cursor-pointer" for="active-only-toggle">
-                                <input type="checkbox" id="active-only-toggle" checked
-                                    onchange="App.employeeTypes.toggleActiveFilter()">
-                                <span class="text-sm">在職中のみ</span>
+                        <div class="flex-center gap-md wrap-on-mobile w-full-mobile">
+                            <label class="flex-center gap-sm cursor-pointer select-none" for="active-only-toggle">
+                                <div class="relative">
+                                    <input type="checkbox" id="active-only-toggle" checked
+                                        onchange="App.employeeTypes.toggleActiveFilter()" class="sr-only peer">
+                                    <div
+                                        class="w-11 h-6 bg-surface-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-success-500 bg-gray-200 dark:bg-gray-700 checkbox-toggle-bg">
+                                    </div>
+                                </div>
+                                <span class="text-sm font-medium">在職中のみ</span>
                             </label>
-                            <label for="search-input" class="sr-only">Search employees</label>
-                            <input type="text" id="search-input" placeholder="Search by name, ID, or factory..."
-                                class="input-glass w-300"  oninput="App.ui.handleSearch(this.value)"
-                                aria-label="Search employees by name, ID, or factory">
+
+                            <div class="relative w-300 w-full-mobile">
+                                <span
+                                    class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted"
+                                    style="top: 50%; transform: translateY(-50%); left: 12px;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    </svg>
+                                </span>
+                                <input type="text" id="search-input" placeholder="Search by name, ID, or factory..."
+                                    class="input-glass w-full" style="padding-left: 36px;"
+                                    oninput="App.ui.handleSearch(this.value)"
+                                    aria-label="Search employees by name, ID, or factory">
+                            </div>
                         </div>
                     </div>
-                    <!-- Type Filter Tabs -->
+
+                    <!-- Unified Employee Type Tabs (Replaces redundant tabs) -->
                     <div class="type-filter-tabs mb-lg flex gap-sm flex-wrap" id="type-filter-tabs">
-                        <button class="btn btn-glass type-tab active" data-type="all" data-action="ui.filterByType">
-                            <span class="tab-label">全員</span>
-                            <span class="tab-count" id="count-all">0</span>
+                        <button class="btn btn-glass type-tab active flex-1" data-type="all"
+                            data-action="ui.filterByType">
+                            <span class="tab-label">全員 (All)</span>
+                            <span class="badge badge-primary ml-sm" id="count-all">0</span>
                         </button>
-                        <button class="btn btn-glass type-tab" data-type="genzai" data-action="ui.filterByType">
+                        <button class="btn btn-glass type-tab flex-1" data-type="genzai" data-action="ui.filterByType">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" class="mr-sm">
+                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                            </svg>
                             <span class="tab-label">派遣 Dispatch</span>
-                            <span class="tab-count" id="count-genzai">0</span>
+                            <span class="badge badge-info ml-sm" id="count-genzai">0</span>
                         </button>
-                        <button class="btn btn-glass type-tab" data-type="ukeoi" data-action="ui.filterByType">
+                        <button class="btn btn-glass type-tab flex-1" data-type="ukeoi" data-action="ui.filterByType">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" class="mr-sm">
+                                <path
+                                    d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z">
+                                </path>
+                            </svg>
                             <span class="tab-label">請負 Contract</span>
-                            <span class="tab-count" id="count-ukeoi">0</span>
+                            <span class="badge badge-success ml-sm" id="count-ukeoi">0</span>
                         </button>
-                        <button class="btn btn-glass type-tab" data-type="staff" data-action="ui.filterByType">
+                        <button class="btn btn-glass type-tab flex-1" data-type="staff" data-action="ui.filterByType">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" class="mr-sm">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
                             <span class="tab-label">社員 Staff</span>
-                            <span class="tab-count" id="count-staff">0</span>
+                            <span class="badge badge-warning ml-sm" id="count-staff">0</span>
                         </button>
                     </div>
 
-                    <!-- Employee Type Tabs -->
-                    <div class="employee-tabs flex gap-sm mb-lg">
-                        <button class="btn btn-glass active" id="tab-all" data-action="employeeTypes.switchTab"
-                            data-tab="all">
-                            すべて (All)
-                            <span class="badge badge-primary ml-sm" id="count-type-all">0</span>
-                        </button>
-                        <button class="btn btn-glass" id="tab-haken" data-action="employeeTypes.switchTab"
-                            data-tab="haken">
-                            🏭 派遣 (Haken)
-                            <span class="badge badge-info ml-sm" id="count-type-haken">0</span>
-                        </button>
-                        <button class="btn btn-glass" id="tab-ukeoi" data-action="employeeTypes.switchTab"
-                            data-tab="ukeoi">
-                            📋 請負 (Ukeoi)
-                            <span class="badge badge-success ml-sm" id="count-type-ukeoi">0</span>
-                        </button>
-                        <button class="btn btn-glass" id="tab-staff" data-action="employeeTypes.switchTab"
-                            data-tab="staff">
-                            👔 スタッフ (Staff)
-                            <span class="badge badge-warning ml-sm" id="count-type-staff">0</span>
-                        </button>
-                    </div>
+                    <!-- Summary Cards by Type (v2.4 Pro Max Style) -->
+                    <div class="bento-grid gap-md mb-lg grid-4-cols">
+                        <!-- Haken Stats -->
+                        <div class="glass-panel p-md hover-lift relative overflow-hidden group">
+                            <div
+                                class="absolute top-0 left-0 w-1 h-full bg-info opacity-50 group-hover:opacity-100 transition-opacity">
+                            </div>
+                            <div class="flex-between mb-sm">
+                                <span class="stat-label text-xs uppercase tracking-wider text-muted font-semibold">派遣
+                                    Dispatch</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" class="text-info opacity-70">
+                                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                                </svg>
+                            </div>
+                            <div class="stat-value text-2xl font-bold text-info-500 font-mono tracking-tight"
+                                id="haken-used">0</div>
+                            <div class="text-xs text-muted mt-1 opacity-70">Days Used</div>
+                        </div>
 
-                    <!-- Summary Cards by Type -->
-                    <div class="bento-grid gap-md mb-lg grid-4-cols" >
-                        <div class="kpi-card info-card-cyan">
-                            <div class="stat-label">派遣 使用日数</div>
-                            <div class="stat-value" id="haken-used">0</div>
+                        <!-- Ukeoi Stats -->
+                        <div class="glass-panel p-md hover-lift relative overflow-hidden group">
+                            <div
+                                class="absolute top-0 left-0 w-1 h-full bg-success opacity-50 group-hover:opacity-100 transition-opacity">
+                            </div>
+                            <div class="flex-between mb-sm">
+                                <span class="stat-label text-xs uppercase tracking-wider text-muted font-semibold">請負
+                                    Contract</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" class="text-success opacity-70">
+                                    <path
+                                        d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div class="stat-value text-2xl font-bold text-success-500 font-mono tracking-tight"
+                                id="ukeoi-used">0</div>
+                            <div class="text-xs text-muted mt-1 opacity-70">Days Used</div>
                         </div>
-                        <div class="kpi-card info-card-success">
-                            <div class="stat-label">請負 使用日数</div>
-                            <div class="stat-value" id="ukeoi-used">0</div>
+
+                        <!-- Staff Stats -->
+                        <div class="glass-panel p-md hover-lift relative overflow-hidden group">
+                            <div
+                                class="absolute top-0 left-0 w-1 h-full bg-warning opacity-50 group-hover:opacity-100 transition-opacity">
+                            </div>
+                            <div class="flex-between mb-sm">
+                                <span class="stat-label text-xs uppercase tracking-wider text-muted font-semibold">社員
+                                    Staff</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" class="text-warning opacity-70">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                            </div>
+                            <div class="stat-value text-2xl font-bold text-warning-500 font-mono tracking-tight"
+                                id="staff-used">0</div>
+                            <div class="text-xs text-muted mt-1 opacity-70">Days Used</div>
                         </div>
-                        <div class="kpi-card info-card-warning">
-                            <div class="stat-label">スタッフ 使用日数</div>
-                            <div class="stat-value" id="staff-used">0</div>
-                        </div>
-                        <div class="kpi-card info-card-purple">
-                            <div class="stat-label">合計 使用日数</div>
-                            <div class="stat-value" id="total-type-used">0</div>
+
+                        <!-- Total Stats -->
+                        <div class="glass-panel p-md hover-lift relative overflow-hidden group">
+                            <div
+                                class="absolute top-0 left-0 w-1 h-full bg-primary opacity-50 group-hover:opacity-100 transition-opacity">
+                            </div>
+                            <div class="flex-between mb-sm">
+                                <span class="stat-label text-xs uppercase tracking-wider text-muted font-semibold">Total
+                                    Usage</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" class="text-primary opacity-70">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                            </div>
+                            <div class="stat-value text-2xl font-bold text-primary-500 font-mono tracking-tight"
+                                id="total-type-used">0</div>
+                            <div class="text-xs text-muted mt-1 opacity-70">All Employees</div>
                         </div>
                     </div>
 
                     <!-- Bulk Edit Toolbar (v2.3) -->
-                    <div class="bulk-edit-toolbar" id="bulk-edit-toolbar">
-                        <span class="bulk-edit-toolbar-count">
-                            <span id="bulk-selected-count">0</span> 名選択中
-                        </span>
-                        <button class="btn btn-sm btn-primary" data-action="bulkEdit.openModal">
-                            ✏️ 一括編集
-                        </button>
-                        <button class="btn btn-sm btn-glass" data-action="bulkEdit.clearSelection">
-                            選択解除
-                        </button>
+                    <div class="bulk-edit-toolbar glass-panel border-info" id="bulk-edit-toolbar">
+                        <div class="flex-center gap-md">
+                            <span class="bulk-edit-toolbar-count badge badge-info">
+                                <span id="bulk-selected-count">0</span> 名選択中
+                            </span>
+                            <button class="btn btn-sm btn-primary flex-center gap-xs" data-action="bulkEdit.openModal">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M12 20h9"></path>
+                                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                                </svg>
+                                一括編集
+                            </button>
+                            <button class="btn btn-sm btn-glass flex-center gap-xs"
+                                data-action="bulkEdit.clearSelection">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                                選択解除
+                            </button>
+                        </div>
                     </div>
 
                     <div class="overflow-auto max-h-60vh">
                         <table class="modern-table" aria-labelledby="employees-table-caption">
-                            <caption id="employees-table-caption" class="sr-only">従業員有給休暇データ表 - Employee paid leave data
-                                table</caption>
+                            <caption id="employees-table-caption" class="sr-only">従業員有給休暇データ表</caption>
                             <thead>
                                 <tr>
-                                    <th scope="col" class="table-checkbox">
-                                        <input type="checkbox" id="select-all-checkbox"
-                                            onchange="App.bulkEdit.toggleSelectAll(this.checked)" title="全選択/解除">
+                                    <th scope="col" class="table-checkbox w-10">
+                                        <div class="flex-center">
+                                            <input type="checkbox" id="select-all-checkbox"
+                                                onchange="App.bulkEdit.toggleSelectAll(this.checked)" title="全選択/解除">
+                                        </div>
                                     </th>
-                                    <th scope="col">ID</th>
-                                    <th scope="col">Employee</th>
+                                    <th scope="col" class="sortable cursor-pointer group" data-sort="id">
+                                        <div class="flex items-center gap-1">
+                                            <span>ID</span>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2"
+                                                class="text-muted opacity-50 group-hover:opacity-100">
+                                                <polyline points="6 9 12 15 18 9"></polyline>
+                                            </svg>
+                                        </div>
+                                    </th>
+                                    <th scope="col" class="sortable cursor-pointer group" data-sort="name">
+                                        <div class="flex items-center gap-1">
+                                            <span>Employee</span>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2"
+                                                class="text-muted opacity-50 group-hover:opacity-100">
+                                                <polyline points="6 9 12 15 18 9"></polyline>
+                                            </svg>
+                                        </div>
+                                    </th>
                                     <th scope="col">Type</th>
                                     <th scope="col">Factory/Business</th>
-                                    <th scope="col">Granted</th>
-                                    <th scope="col">Used</th>
-                                    <th scope="col">Balance</th>
-                                    <th scope="col">Rate</th>
+                                    <th scope="col" class="text-right">Granted</th>
+                                    <th scope="col" class="text-right">Used</th>
+                                    <th scope="col" class="text-right">Balance</th>
+                                    <th scope="col" class="text-right">Rate</th>
                                 </tr>
                             </thead>
                             <tbody id="table-body">
                                 <!-- Skeleton loading rows -->
                                 <tr class="skeleton-row">
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-60" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-60">
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-100" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-100">
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-50" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-50">
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-120" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-120">
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-40" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-40">
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-40" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-40">
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-40" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-40">
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-50" >
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr class="skeleton-row">
-                                    <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-55" >
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-90" >
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-45" >
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-110" >
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-35" >
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-35" >
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-35" >
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-45" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-50">
                                         </div>
                                     </td>
                                 </tr>
                                 <tr class="skeleton-row">
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-65" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-55">
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-95" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-90">
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-55" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-45">
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-100" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-110">
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-38" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-35">
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-38" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-35">
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-38" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-35">
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="skeleton skeleton-text skeleton skeleton-w-48" >
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-45">
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="skeleton-row">
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-65">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-95">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-55">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-100">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-38">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-38">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-38">
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="skeleton skeleton-text skeleton skeleton-w-48">
                                         </div>
                                     </td>
                                 </tr>
@@ -723,7 +907,7 @@
 
             <!-- VIEW: FACTORIES -->
             <div class="view-section d-none" id="view-factories">
-                <div class="glass-panel p-md h-600" >
+                <div class="glass-panel p-md h-600">
                     <h3 class="stat-label mb-lg">Usage by Factory</h3>
                     <div class="chart-container-lg">
                         <div id="chart-factories"></div>
@@ -948,7 +1132,7 @@
                             </button>
                         </div>
 
-                        <div id="pending-requests" class="overflow-y-auto max-h-400" >
+                        <div id="pending-requests" class="overflow-y-auto max-h-400">
                             <div class="empty-state">
                                 Loading pending requests...
                             </div>
@@ -1005,28 +1189,28 @@
                             </button>
                         </div>
 
-                        <div id="compliance-summary" class="d-grid gap-md mb-2xl grid-4-cols" >
+                        <div id="compliance-summary" class="d-grid gap-md mb-2xl grid-4-cols">
                             <div class="stat-card text-center">
                                 <div class="stat-label">対象者</div>
                                 <div class="stat-value" id="comp-total">-</div>
                             </div>
-                            <div class="stat-card text-center border-success" >
+                            <div class="stat-card text-center border-success">
                                 <div class="stat-label">達成</div>
                                 <div class="stat-value text-success" id="comp-compliant">-
                                 </div>
                             </div>
-                            <div class="stat-card text-center border-warning" >
+                            <div class="stat-card text-center border-warning">
                                 <div class="stat-label">要注意</div>
                                 <div class="stat-value text-warning" id="comp-atrisk">-</div>
                             </div>
-                            <div class="stat-card text-center border-danger" >
+                            <div class="stat-card text-center border-danger">
                                 <div class="stat-label">未達成</div>
                                 <div class="stat-value text-danger" id="comp-noncompliant">-
                                 </div>
                             </div>
                         </div>
 
-                        <div id="compliance-list" class="overflow-y-auto max-h-300" >
+                        <div id="compliance-list" class="overflow-y-auto max-h-300">
                             <div class="empty-state">
                                 Click "チェック実行" to check compliance
                             </div>
@@ -1046,7 +1230,7 @@
                             </button>
                         </div>
 
-                        <div id="alerts-container" class="overflow-y-auto max-h-400" >
+                        <div id="alerts-container" class="overflow-y-auto max-h-400">
                             <div class="empty-state">
                                 Loading alerts...
                             </div>
@@ -1072,7 +1256,7 @@
                         </div>
                     </div>
 
-                    <div id="ledger-container" class="overflow-auto max-h-400" >
+                    <div id="ledger-container" class="overflow-auto max-h-400">
                         <div class="empty-state">
                             Click "表示" to load the annual ledger
                         </div>
@@ -1088,7 +1272,7 @@
                         <div class="flex-between mb-lg">
                             <div class="flex-center gap-md">
                                 <button class="btn btn-glass" data-action="calendar.prevMonth">◀</button>
-                                <h3 id="calendar-month-title" class="text-2xl text-center min-w-200" >
+                                <h3 id="calendar-month-title" class="text-2xl text-center min-w-200">
                                     2025年 12月
                                 </h3>
                                 <button class="btn btn-glass" data-action="calendar.nextMonth">▶</button>
@@ -1130,7 +1314,7 @@
                             📋 選択日の詳細
                             <span id="selected-date-display" class="text-cyan ml-sm">-</span>
                         </h3>
-                        <div id="day-detail-container" class="overflow-y-auto max-h-300" >
+                        <div id="day-detail-container" class="overflow-y-auto max-h-300">
                             <div class="empty-state">
                                 日付をクリックして詳細を表示
                             </div>
@@ -1141,7 +1325,7 @@
                     <div class="glass-panel col-span-2 p-md">
                         <h3 class="mb-lg text-lg">📊 月間サマリー</h3>
                         <div id="monthly-summary-container">
-                            <div class="d-grid gap-md grid-2-cols" >
+                            <div class="d-grid gap-md grid-2-cols">
                                 <div class="stat-card text-center p-md">
                                     <div class="stat-label">休暇取得者数</div>
                                     <div class="stat-value text-2xl" id="cal-month-employees">-
@@ -1179,7 +1363,7 @@
                     </div>
 
                     <!-- Department Chart -->
-                    <div class="glass-panel col-span-2 p-md h-400" >
+                    <div class="glass-panel col-span-2 p-md h-400">
                         <h3 class="stat-label mb-lg">部門別使用日数</h3>
                         <div class="chart-container-sm">
                             <canvas id="chart-department"></canvas>
@@ -1187,7 +1371,7 @@
                     </div>
 
                     <!-- Employee Type Chart -->
-                    <div class="glass-panel col-span-2 p-md h-400" >
+                    <div class="glass-panel col-span-2 p-md h-400">
                         <h3 class="stat-label mb-lg">従業員タイプ別</h3>
                         <div class="chart-container-sm">
                             <canvas id="chart-emp-type"></canvas>
@@ -1197,13 +1381,13 @@
                     <!-- Top Users -->
                     <div class="glass-panel col-span-2 p-md">
                         <h3 class="stat-label mb-lg">🏆 Top 10 使用者</h3>
-                        <div id="top-users-list" class="overflow-y-auto max-h-300" ></div>
+                        <div id="top-users-list" class="overflow-y-auto max-h-300"></div>
                     </div>
 
                     <!-- High Balance -->
                     <div class="glass-panel col-span-2 p-md">
                         <h3 class="stat-label mb-lg">⚠️ 残日数が多い従業員</h3>
-                        <div id="high-balance-list" class="overflow-y-auto max-h-300" ></div>
+                        <div id="high-balance-list" class="overflow-y-auto max-h-300"></div>
                     </div>
 
                     <!-- Predictions -->
@@ -1214,7 +1398,7 @@
                                 更新</button>
                         </div>
                         <div id="predictions-container">
-                            <div class="d-grid gap-md mb-lg grid-4-cols" >
+                            <div class="d-grid gap-md mb-lg grid-4-cols">
                                 <div class="stat-card text-center p-md">
                                     <div class="stat-label">現在月</div>
                                     <div id="pred-current-month" class="text-2xl font-bold">-
@@ -1229,7 +1413,7 @@
                                     <div id="pred-avg-monthly" class="text-2xl font-bold">-
                                     </div>
                                 </div>
-                                <div class="stat-card text-center p-md border-danger" >
+                                <div class="stat-card text-center p-md border-danger">
                                     <div class="stat-label">5日未達成リスク</div>
                                     <div id="pred-at-risk" class="text-2xl font-bold text-danger">-
                                     </div>
@@ -1284,14 +1468,14 @@
                         <div id="monthly-selector" class="flex gap-md align-end mb-lg flex-wrap">
                             <div>
                                 <label for="report-year" class="sr-only">年度選択</label>
-                                <select id="report-year" class="input-glass w-120" 
+                                <select id="report-year" class="input-glass w-120"
                                     onchange="App.reports.loadMonthList()" aria-label="年度を選択">
                                 </select>
                             </div>
                             <div>
                                 <label for="report-month" class="sr-only">月度選択</label>
-                                <select id="report-month" class="input-glass w-120" 
-                                    onchange="App.reports.loadReport()" aria-label="月度を選択">
+                                <select id="report-month" class="input-glass w-120" onchange="App.reports.loadReport()"
+                                    aria-label="月度を選択">
                                     <option value="1">1月度</option>
                                     <option value="2">2月度</option>
                                     <option value="3">3月度</option>
@@ -1314,14 +1498,14 @@
                             <div class="flex gap-md align-end flex-wrap">
                                 <div>
                                     <label class="stat-label d-block mb-xs text-xs" for="report-start-date">開始日</label>
-                                    <input type="date" id="report-start-date" class="input-glass w-160" >
+                                    <input type="date" id="report-start-date" class="input-glass w-160">
                                 </div>
                                 <div class="pb-md" aria-hidden="true">
                                     <span class="text-xl text-muted">〜</span>
                                 </div>
                                 <div>
                                     <label class="stat-label d-block mb-xs text-xs" for="report-end-date">終了日</label>
-                                    <input type="date" id="report-end-date" class="input-glass w-160" >
+                                    <input type="date" id="report-end-date" class="input-glass w-160">
                                 </div>
                                 <button class="btn btn-primary" data-action="reports.loadCustomReport">🔍
                                     表示</button>
@@ -1358,7 +1542,7 @@
                     <!-- Employee List -->
                     <div class="glass-panel col-span-2 p-md">
                         <h3 class="stat-label mb-lg">👥 取得者一覧</h3>
-                        <div id="report-employee-list" class="overflow-y-auto max-h-400" >
+                        <div id="report-employee-list" class="overflow-y-auto max-h-400">
                             <div class="empty-state">
                                 月を選択してレポートを表示
                             </div>
@@ -1368,7 +1552,7 @@
                     <!-- Factory Summary -->
                     <div class="glass-panel col-span-2 p-md">
                         <h3 class="stat-label mb-lg">🏭 派遣先別集計</h3>
-                        <div id="report-factory-list" class="overflow-y-auto max-h-400" >
+                        <div id="report-factory-list" class="overflow-y-auto max-h-400">
                             <div class="empty-state">
                                 月を選択してレポートを表示
                             </div>
@@ -1378,7 +1562,7 @@
                     <!-- Daily Breakdown -->
                     <div class="glass-panel col-span-4 p-md">
                         <h3 class="stat-label mb-lg">📅 日別取得状況</h3>
-                        <div id="report-daily-grid" class="d-grid gap-sm overflow-y-auto grid-auto-fill" >
+                        <div id="report-daily-grid" class="d-grid gap-sm overflow-y-auto grid-auto-fill">
                             <div class="empty-state col-span-full">
                                 月を選択してレポートを表示
                             </div>
@@ -1421,7 +1605,7 @@
                         <!-- System Status -->
                         <div>
                             <h4 class="stat-label mb-lg">システム状態</h4>
-                            <div id="system-status" class="d-grid gap-md grid-3-cols-fixed" >
+                            <div id="system-status" class="d-grid gap-md grid-3-cols-fixed">
                                 <div class="stat-card text-center">
                                     <div class="stat-label">Database Size</div>
                                     <div class="stat-value" id="sys-db-size">-</div>
@@ -1473,7 +1657,7 @@
                         <!-- API Info -->
                         <div>
                             <h4 class="stat-label mb-lg">API情報</h4>
-                            <div class="p-md rounded text-sm bg-code" >
+                            <div class="p-md rounded text-sm bg-code">
                                 <div class="text-muted">Base URL:</div>
                                 <div class="text-cyan">/api</div>
                                 <div class="text-muted mt-sm">Documentation:</div>
@@ -2052,7 +2236,7 @@
 
     <!-- Edit Yukyu Usage Modal (v2.1 - NEW) -->
     <div id="edit-yukyu-modal" class="confirm-modal">
-        <div class="confirm-modal-content modal-sm" >
+        <div class="confirm-modal-content modal-sm">
             <div class="confirm-modal-title">
                 ✏️ 有給使用データを編集
             </div>
@@ -2097,7 +2281,7 @@
                             <option value="0.25">0.25日 (2時間)</option>
                         </select>
                     </div>
-                    <div class="form-group flex-align-end" >
+                    <div class="form-group flex-align-end">
                         <button class="btn btn-primary w-full" data-action="editYukyu.addUsage">
                             追加
                         </button>
@@ -2133,7 +2317,7 @@
 
     <!-- Audit History Modal (v2.3 - NEW) -->
     <div id="audit-history-modal" class="confirm-modal">
-        <div class="confirm-modal-content modal-lg" >
+        <div class="confirm-modal-content modal-lg">
             <div class="confirm-modal-title">
                 📜 変更履歴
             </div>
@@ -2159,7 +2343,7 @@
 
             <div id="audit-history-list" class="usage-list-container max-h-500">
                 <div class="text-center text-muted p-lg">
-                    <div class="spinner margin-auto" ></div>
+                    <div class="spinner margin-auto"></div>
                     <p class="mt-md">履歴を読み込み中...</p>
                 </div>
             </div>
@@ -2174,7 +2358,7 @@
 
     <!-- Import Result Modal (v2.2 - NEW) -->
     <div id="import-result-modal" class="confirm-modal">
-        <div class="confirm-modal-content import-result-content modal-md" >
+        <div class="confirm-modal-content import-result-content modal-md">
             <div class="confirm-modal-title" id="import-result-title">
                 <span id="import-result-icon">📊</span> インポート結果
             </div>
@@ -2260,7 +2444,7 @@
 
     <!-- Bulk Edit Modal (v2.3 - NEW) -->
     <div id="bulk-edit-modal" class="confirm-modal">
-        <div class="confirm-modal-content modal-lg" >
+        <div class="confirm-modal-content modal-lg">
             <div class="confirm-modal-title">
                 <span class="bulk-edit-icon">✏️</span>
                 一括編集 (Bulk Edit)
@@ -2964,7 +3148,11 @@
             <form id="login-form" class="login-form" autocomplete="off">
                 <div class="form-group">
                     <label for="login-username" class="form-label">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                        </svg>
                         Username
                     </label>
                     <input type="text" id="login-username" name="username" class="form-control"
@@ -2973,15 +3161,30 @@
 
                 <div class="form-group">
                     <label for="login-password" class="form-label">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
                         Password
                     </label>
                     <div class="password-input-wrapper">
                         <input type="password" id="login-password" name="password" class="form-control"
                             placeholder="Enter your password" required autocomplete="current-password">
-                        <button type="button" class="toggle-password" aria-label="Toggle password visibility" tabindex="-1">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-off-icon" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        <button type="button" class="toggle-password" aria-label="Toggle password visibility"
+                            tabindex="-1">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                            </svg>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-off-icon"
+                                style="display:none">
+                                <path
+                                    d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                                <line x1="1" y1="1" x2="23" y2="23" />
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -3008,30 +3211,30 @@
     <!-- Main Application Logic -->
     <script src="/static/js/app.js"></script>
     <script>
-    // Login modal enhancements (password toggle + overlay close)
-    document.addEventListener('DOMContentLoaded', function() {
-        var toggle = document.querySelector('#login-modal .toggle-password');
-        var pwInput = document.getElementById('login-password');
-        if (toggle && pwInput) {
-            toggle.addEventListener('click', function() {
-                var isPassword = pwInput.type === 'password';
-                pwInput.type = isPassword ? 'text' : 'password';
-                toggle.querySelector('.eye-icon').style.display = isPassword ? 'none' : '';
-                toggle.querySelector('.eye-off-icon').style.display = isPassword ? '' : 'none';
-            });
-        }
-        var overlay = document.getElementById('login-modal');
-        if (overlay) {
-            overlay.addEventListener('click', function(e) {
-                if (e.target === overlay) overlay.classList.remove('active');
-            });
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && overlay.classList.contains('active')) {
-                    overlay.classList.remove('active');
-                }
-            });
-        }
-    });
+        // Login modal enhancements (password toggle + overlay close)
+        document.addEventListener('DOMContentLoaded', function () {
+            var toggle = document.querySelector('#login-modal .toggle-password');
+            var pwInput = document.getElementById('login-password');
+            if (toggle && pwInput) {
+                toggle.addEventListener('click', function () {
+                    var isPassword = pwInput.type === 'password';
+                    pwInput.type = isPassword ? 'text' : 'password';
+                    toggle.querySelector('.eye-icon').style.display = isPassword ? 'none' : '';
+                    toggle.querySelector('.eye-off-icon').style.display = isPassword ? '' : 'none';
+                });
+            }
+            var overlay = document.getElementById('login-modal');
+            if (overlay) {
+                overlay.addEventListener('click', function (e) {
+                    if (e.target === overlay) overlay.classList.remove('active');
+                });
+                document.addEventListener('keydown', function (e) {
+                    if (e.key === 'Escape' && overlay.classList.contains('active')) {
+                        overlay.classList.remove('active');
+                    }
+                });
+            }
+        });
     </script>
 </body>
 

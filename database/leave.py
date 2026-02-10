@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from sqlalchemy import and_
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -34,9 +34,26 @@ def save_leave_request(data: Dict[str, Any]) -> int:
 def get_leave_requests(
     status: Optional[str] = None,
     employee_num: Optional[str] = None,
-    year: Optional[int] = None
-) -> List[Dict[str, Any]]:
-    """Retrieve leave requests using ORM."""
+    year: Optional[int] = None,
+    skip: Optional[int] = None,
+    limit: Optional[int] = None
+) -> Any:
+    """Retrieve leave requests with optional pagination support.
+
+    ✅ FIX (BUG #12): Added skip/limit parameters to prevent loading entire dataset.
+    Backward compatible: returns list if skip/limit not specified, dict if specified.
+
+    Args:
+        status: Filter by request status (PENDING, APPROVED, etc.)
+        employee_num: Filter by employee number
+        year: Filter by fiscal year
+        skip: Number of records to skip (optional, for pagination)
+        limit: Max records per page (optional, for pagination, max 1000)
+
+    Returns:
+        List[Dict] if skip/limit not specified (backward compatible)
+        Dict with 'requests', 'total', 'skip', 'limit', 'has_more' if pagination requested
+    """
     with SessionLocal() as session:
         query = session.query(LeaveRequest)
 
@@ -47,8 +64,26 @@ def get_leave_requests(
         if year:
             query = query.filter(LeaveRequest.year == year)
 
-        requests = query.order_by(LeaveRequest.created_at.desc()).all()
-        return [req.to_dict() for req in requests]
+        # Check if pagination is requested
+        if skip is not None or limit is not None:
+            # ✅ Pagination mode: return dict with metadata
+            skip = skip or 0
+            limit = min(limit or 100, 1000)  # Safety: limit max page size
+
+            total = query.count()
+            requests = query.order_by(LeaveRequest.created_at.desc()).offset(skip).limit(limit).all()
+
+            return {
+                'requests': [req.to_dict() for req in requests],
+                'total': total,
+                'skip': skip,
+                'limit': limit,
+                'has_more': (skip + limit) < total
+            }
+        else:
+            # ✅ Backward compatible mode: return list (old behavior)
+            requests = query.order_by(LeaveRequest.created_at.desc()).all()
+            return [req.to_dict() for req in requests]
 
 
 def save_yukyu_usage_details(usage_details_list: List[Dict[str, Any]]):
@@ -122,36 +157,51 @@ def create_leave_request(
 
 
 def approve_leave_request(request_id, approved_by: str) -> bool:
-    """Approve a leave request and deduct days from employee balance."""
+    """
+    Approve a leave request and deduct days using proper LIFO logic.
+
+    ✅ FIX: Now uses apply_lifo_deduction() for correct LIFO handling across
+    multiple grant_date periods (includes carry-over from previous years).
+    """
     with SessionLocal() as session:
+        # ✅ FIX: Row-level lock (FOR UPDATE) to prevent race conditions
         leave_req = session.query(LeaveRequest).filter(
             LeaveRequest.id == str(request_id)
-        ).first()
+        ).with_for_update().first()
+
         if not leave_req:
             raise ValueError(f"Leave request {request_id} not found")
         if leave_req.status != 'PENDING':
             raise ValueError(f"Leave request {request_id} is not PENDING (current: {leave_req.status})")
 
+        # Update leave request status
         leave_req.status = 'APPROVED'
         leave_req.approver = approved_by
-        leave_req.approved_at = datetime.now()
-        leave_req.updated_at = datetime.now()
+        leave_req.approved_at = datetime.now(timezone.utc)
+        leave_req.updated_at = datetime.now(timezone.utc)
 
-        # Deduct days from employee balance (simple deduction from first matching record)
-        emp = session.query(Employee).filter(
-            and_(
-                Employee.employee_num == leave_req.employee_num,
-                Employee.year == leave_req.year
+        # ✅ FIX: Use apply_lifo_deduction() for correct LIFO logic
+        # This handles multiple grant_date periods and carry-over correctly
+        from services.fiscal_year import apply_lifo_deduction
+
+        deduction_result = apply_lifo_deduction(
+            employee_num=leave_req.employee_num,
+            days_to_use=leave_req.days_requested,
+            current_year=leave_req.year,
+            performed_by=approved_by,
+            reason=f"Approved leave request {request_id}"
+        )
+
+        if not deduction_result['success']:
+            # Insufficient balance - reject the approval
+            session.rollback()
+            raise ValueError(
+                f"Insufficient vacation balance. "
+                f"Requested: {leave_req.days_requested} days, "
+                f"Available: {deduction_result['total_deducted']} days"
             )
-        ).order_by(Employee.grant_date.desc()).first()
 
-        if emp:
-            emp.used = (emp.used or 0) + leave_req.days_requested
-            emp.balance = (emp.granted or 0) - emp.used
-            if emp.granted and emp.granted > 0:
-                emp.usage_rate = round(emp.used / emp.granted * 100, 1)
-            emp.updated_at = datetime.now()
-
+        # Commit the leave request update
         session.commit()
         return True
 

@@ -3,7 +3,7 @@ Leave Requests Routes
 Endpoints de solicitudes de vacaciones
 """
 
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends, Query
 from typing import Optional
 from datetime import datetime
 
@@ -115,19 +115,43 @@ async def create_leave_request(
 async def get_leave_requests_list(
     status: str = None,
     employee_num: str = None,
-    year: int = None
+    year: int = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000)
 ):
     """
-    Get list of leave requests with optional filters.
-    Obtiene lista de solicitudes con filtros opcionales.
+    Get list of leave requests with optional filters and pagination.
+    Obtiene lista de solicitudes con filtros opcionales y paginación.
+
+    ✅ FIX (BUG #12): Agregadas query parameters skip/limit para paginación
+    (evita cargar todo el dataset en memoria)
     """
     try:
-        requests = database.get_leave_requests(
+        result = database.get_leave_requests(
             status=status,
             employee_num=employee_num,
-            year=year
+            year=year,
+            skip=skip,
+            limit=limit
         )
-        return {"status": "success", "data": requests, "count": len(requests)}
+
+        # Handle both old and new return formats
+        if isinstance(result, dict):
+            # Paginated response
+            return {
+                "status": "success",
+                "data": result['requests'],
+                "count": len(result['requests']),
+                "total": result['total'],
+                "pagination": {
+                    "skip": result['skip'],
+                    "limit": result['limit'],
+                    "has_more": result['has_more']
+                }
+            }
+        else:
+            # Legacy list response
+            return {"status": "success", "data": result, "count": len(result)}
     except Exception as e:
         logger.error(f"Failed to get leave requests: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")

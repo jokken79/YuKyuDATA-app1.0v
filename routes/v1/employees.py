@@ -26,6 +26,7 @@ from ..dependencies import (
 )
 from services import excel_service
 from services.search_service import SearchService
+from utils.file_validator import validate_excel_file, sanitize_filename
 
 # Import centralized Pydantic models
 from models import EmployeeUpdate, BulkUpdateRequest, BulkUpdatePreview
@@ -242,17 +243,28 @@ async def upload_excel(
     user: CurrentUser = Depends(get_current_user)
 ):
     """
-    Upload and process Excel file.
-    Carga y procesa archivo Excel.
+    Upload and process Excel file with comprehensive validation.
+    Carga y procesa archivo Excel con validación completa.
+
+    ✅ FIX (BUG #11): Agrega validación de:
+       - Tamaño máximo de archivo (50 MB)
+       - Extensión permitida (.xlsx, .xlsm, .xls)
+       - MIME type real del archivo
+       - Magic bytes (firma del archivo)
+       - Sanitización del nombre de archivo
     """
     try:
-        if not file.filename.endswith(('.xlsx', '.xlsm', '.xls')):
-            raise HTTPException(status_code=400, detail="File must be an Excel file")
+        # ✅ FIX: Validación completa de archivo (BUG #11)
+        # Verifica: tamaño, extensión, MIME type, magic bytes, sanitización
+        file_content = await validate_excel_file(file)
 
-        # Save uploaded file
-        upload_path = UPLOAD_DIR / file.filename
+        # Sanitizar nombre de archivo
+        sanitized_name = sanitize_filename(file.filename)
+        upload_path = UPLOAD_DIR / sanitized_name
+
+        # Guardar archivo validado
         with open(upload_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(file_content)
 
         # Parse the file
         loop = asyncio.get_event_loop()
@@ -278,6 +290,8 @@ async def upload_excel(
 
         log_sync_event("UPLOAD_EXCEL", {
             "filename": file.filename,
+            "sanitized_filename": sanitized_name,
+            "file_size_bytes": len(file_content),
             "count": len(data),
             "user": user.username if user else None
         })
@@ -286,7 +300,8 @@ async def upload_excel(
             "status": "success",
             "message": f"Uploaded and synced {len(data)} employees",
             "count": len(data),
-            "usage_details_count": len(usage_details)
+            "usage_details_count": len(usage_details),
+            "file_validated": True
         }
     except HTTPException:
         raise

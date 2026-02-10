@@ -45,10 +45,10 @@ class UserRepository(BaseRepository[User]):
 
     def update_last_login(self, user_id: str, ip_address: str) -> Optional[User]:
         """Update last login timestamp."""
-        from datetime import datetime
+        from datetime import datetime, timezone
         user = self.get_by_id(user_id)
         if user:
-            user.last_login = datetime.utcnow().isoformat()
+            user.last_login = datetime.now(timezone.utc).isoformat()
             user.last_login_ip = ip_address
             user.failed_login_attempts = 0
             self.session.flush()

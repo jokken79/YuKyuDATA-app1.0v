@@ -98,7 +98,7 @@ class NotificationRepository(BaseRepository[Notification]):
         """Mark specific notification as read for user using NotificationRead."""
         try:
             # Create or update NotificationRead record
-            from datetime import datetime
+            from datetime import datetime, timezone
             read_record = self.session.query(NotificationRead).filter(
                 and_(
                     NotificationRead.user_id == user_id,
@@ -110,7 +110,7 @@ class NotificationRepository(BaseRepository[Notification]):
                 read_record = NotificationRead(
                     user_id=user_id,
                     notification_id=notification_id,
-                    read_at=datetime.utcnow()
+                    read_at=datetime.now(timezone.utc)
                 )
                 self.session.add(read_record)
 

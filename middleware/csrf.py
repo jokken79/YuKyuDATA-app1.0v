@@ -18,6 +18,8 @@ from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
+from orm import SessionLocal
+from database.csrf_tokens import validate_csrf_token as validate_csrf_token_db
 
 logger = logging.getLogger(__name__)
 
@@ -124,11 +126,36 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
                 }
             )
 
-        # Token exists and has valid format - allow request
-        # Note: In a stateful implementation, we would validate against stored tokens
-        # For stateless CSRF, the presence of a properly formatted token is sufficient
-        # because attackers cannot read the token from another origin due to CORS
-        return await call_next(request)
+        # Validate token against database (stateful CSRF protection)
+        try:
+            with SessionLocal() as session:
+                is_valid, reason = validate_csrf_token_db(session, csrf_token, mark_used=True)
+
+            if not is_valid:
+                logger.warning(
+                    f"CSRF token validation failed ({reason}) for {request.method} {path} "
+                    f"from IP: {request.client.host if request.client else 'unknown'}"
+                )
+                return JSONResponse(
+                    status_code=403,
+                    content={
+                        "detail": f"CSRF token validation failed: {reason}",
+                        "error_code": "CSRF_TOKEN_INVALID"
+                    }
+                )
+
+            # Token is valid - allow request
+            return await call_next(request)
+
+        except Exception as e:
+            logger.error(f"CSRF validation error: {e}")
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "detail": "CSRF token validation error",
+                    "error_code": "CSRF_VALIDATION_ERROR"
+                }
+            )
 
 
 def generate_csrf_token() -> str:
