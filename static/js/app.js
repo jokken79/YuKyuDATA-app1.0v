@@ -1902,7 +1902,7 @@ const App = {
                     }
                 },
                 labels: ['0-25%', '26-50%', '51-75%', '76-100%'],
-                colors: ['var(--gray-300)', 'var(--color-info-light)', 'var(--color-primary-500)', 'var(--color-primary-700)'],
+                colors: ['#cbd5e1', '#93c5fd', '#2563eb', '#1e40af'],
                 legend: {
                     position: 'right',
                     labels: {
@@ -2027,17 +2027,17 @@ const App = {
                         left: 0,
                         blur: 15,
                         opacity: 0.2,
-                        color: 'var(--color-primary-500)'
+                        color: '#2563eb'
                     }
                 },
-                colors: ['var(--color-primary-500)'],
+                colors: ['#2563eb'],
                 fill: {
                     type: 'gradient',
                     gradient: {
                         shade: 'dark',
                         type: 'vertical',
                         shadeIntensity: 0.5,
-                        gradientToColors: ['var(--color-primary-700)'],
+                        gradientToColors: ['#1e40af'],
                         opacityFrom: 0.7,
                         opacityTo: 0.2,
                         stops: [0, 100]
@@ -2046,14 +2046,14 @@ const App = {
                 stroke: {
                     curve: 'smooth',
                     width: 3,
-                    colors: ['var(--color-primary-500)']
+                    colors: ['#2563eb']
                 },
                 dataLabels: {
                     enabled: false
                 },
                 markers: {
                     size: 5,
-                    colors: ['var(--color-primary-500)'],
+                    colors: ['#2563eb'],
                     strokeColors: '#fff',
                     strokeWidth: 2,
                     hover: {
@@ -2148,7 +2148,7 @@ const App = {
                     labels: ['Haken (Dispatch)', 'Ukeoi (Contract)', 'Staff'],
                     datasets: [{
                         data: typeData.data,
-                        backgroundColor: ['var(--color-primary-500)', 'var(--color-primary-400)', 'var(--color-primary-700)'],
+                        backgroundColor: ['#2563eb', '#60a5fa', '#1e40af'],
                         borderWidth: 0
                     }]
                 },
@@ -2268,7 +2268,7 @@ const App = {
                         distributed: true
                     }
                 },
-                colors: ['var(--color-primary-500)', 'var(--color-primary-400)', 'var(--color-primary-700)', 'var(--color-primary-800)', 'var(--color-primary-900)',
+                colors: ['#2563eb', '#60a5fa', '#1e40af', '#1e3a8a', '#172554',
                     '#3b82f6', '#10b981', '#f59e0b', '#64748b', '#475569'],
                 dataLabels: {
                     enabled: true,
@@ -4073,8 +4073,8 @@ const App = {
                     datasets: [{
                         label: '使用日数',
                         data: data.map(d => d.total_used),
-                        backgroundColor: 'rgba(6, 182, 212, 0.5)',
-                        borderColor: 'var(--color-primary-500)',
+                        backgroundColor: 'rgba(37, 99, 235, 0.5)',
+                        borderColor: '#2563eb',
                         borderWidth: 1,
                         borderRadius: 4
                     }]
@@ -4106,7 +4106,7 @@ const App = {
                     labels: Object.keys(typeStats),
                     datasets: [{
                         data: Object.values(typeStats).map(v => v.used),
-                        backgroundColor: ['var(--color-primary-500)', 'var(--color-primary-400)', 'var(--color-primary-700)'],
+                        backgroundColor: ['#2563eb', '#60a5fa', '#1e40af'],
                         borderWidth: 0
                     }]
                 },
@@ -4278,8 +4278,8 @@ const App = {
                         {
                             label: `${currentYear}年`,
                             data: currentValues,
-                            backgroundColor: 'rgba(6, 182, 212, 0.5)',
-                            borderColor: 'var(--color-primary-500)',
+                            backgroundColor: 'rgba(37, 99, 235, 0.5)',
+                            borderColor: '#2563eb',
                             borderWidth: 1,
                             borderRadius: 4
                         }
@@ -4356,8 +4356,8 @@ const App = {
                         {
                             label: '月次使用',
                             data: usageData,
-                            borderColor: 'var(--color-primary-500)',
-                            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                            borderColor: '#2563eb',
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
                             fill: true,
                             tension: 0.4,
                             pointRadius: 4,
@@ -4366,7 +4366,7 @@ const App = {
                         {
                             label: '累積使用',
                             data: cumulativeData,
-                            borderColor: 'var(--color-primary-400)',
+                            borderColor: '#60a5fa',
                             backgroundColor: 'transparent',
                             borderDash: [5, 5],
                             tension: 0.4,

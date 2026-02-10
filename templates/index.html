@@ -36,12 +36,11 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
         rel="stylesheet">
 
-    <!-- === DESIGN SYSTEM v5 (Professional) === -->
-    <!-- ✅ Fixed: All 10 UI/UX issues + WCAG AA compliance -->
+    <!-- === CSS LOADING ORDER === -->
+    <!-- 1. v4: Layout, components, sidebar, grid (base styles) -->
+    <link rel="stylesheet" href="/static/css/yukyu-design-v4.css">
+    <!-- 2. v5: Design tokens override (colors, typography, shadows) -->
     <link rel="stylesheet" href="/static/css/yukyu-design-system-v5-professional.css">
-
-    <!-- Fallback to v4 if v5 fails loading -->
-    <link rel="stylesheet" href="/static/css/yukyu-design-v4.css" media="print">
 
     <!-- LEGACY CSS - DISABLED (Conflicting styles) -->
     <!-- <link rel="stylesheet" href="/static/css/unified-design-system.css"> -->
@@ -553,17 +552,8 @@
                     </div>
                 </div>
 
-                <!-- Authorship -->
-                <div class="bento-grid mt-lg">
-                    <div class="glass-panel col-span-4 p-md">
-                        <h3 class="stat-label mb-sm">🖋️ Autoría</h3>
-                        <p class="text-muted text-sm">
-                            Este panel fue concebido, diseñado y mantenido como una herramienta premium para el
-                            seguimiento de vacaciones. La autoría reconoce el esfuerzo continuo por mantener claridad,
-                            precisión de datos y una experiencia elegante para el equipo.
-                        </p>
-                    </div>
-                </div>
+                <!-- Footer spacer -->
+                <div class="mb-lg"></div>
             </div>
 
             <!-- VIEW: EMPLOYEES -->
@@ -2110,7 +2100,7 @@
             align-items: center;
             gap: 8px;
             padding: 12px 20px;
-            background: linear-gradient(135deg, #06b6d4, #0891b2);
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
             color: white;
             border: none;
             border-radius: 12px;
@@ -2118,13 +2108,13 @@
             font-size: 14px;
             cursor: pointer;
             z-index: 9998;
-            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4);
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
             transition: all 0.3s ease;
         }
 
         .pwa-install-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(6, 182, 212, 0.5);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
         }
 
         .pwa-install-btn .install-icon {
@@ -2173,7 +2163,7 @@
 
         /* Light mode adjustments for PWA elements */
         [data-theme="light"] .pwa-install-btn {
-            box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
         }
     </style>
 
@@ -2558,7 +2548,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 1rem;
-            background: rgba(6, 182, 212, 0.1);
+            background: rgba(37, 99, 235, 0.1);
             border-radius: 8px;
             margin-bottom: 1rem;
         }
@@ -2600,8 +2590,8 @@
             align-items: center;
             gap: 0.5rem;
             padding: 0.25rem 0.75rem;
-            background: rgba(6, 182, 212, 0.2);
-            border: 1px solid rgba(6, 182, 212, 0.3);
+            background: rgba(37, 99, 235, 0.2);
+            border: 1px solid rgba(37, 99, 235, 0.3);
             border-radius: 20px;
             font-size: 0.85rem;
         }
@@ -2729,8 +2719,8 @@
             align-items: center;
             gap: 1rem;
             padding: 0.75rem 1rem;
-            background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(6, 182, 212, 0.1));
-            border: 1px solid rgba(6, 182, 212, 0.3);
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(37, 99, 235, 0.1));
+            border: 1px solid rgba(37, 99, 235, 0.3);
             border-radius: 8px;
             margin-bottom: 1rem;
         }
@@ -2817,7 +2807,7 @@
         }
 
         .import-stat-total {
-            border-color: rgba(6, 182, 212, 0.3);
+            border-color: rgba(37, 99, 235, 0.3);
         }
 
         .import-stat-success {

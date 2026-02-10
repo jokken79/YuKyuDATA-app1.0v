@@ -33,7 +33,7 @@
     --color-primary-200: #a5f3fc;
     --color-primary-300: #67e8f9;
     --color-primary-400: #22d3ee;
-    --color-primary-500: #06b6d4;
+    --color-primary-500: #2563eb;
     --color-primary-600: #0891b2;
     --color-primary-700: #0e7490;
     --color-primary-800: #155e75;
@@ -196,8 +196,8 @@
     --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.04);
 
     /* Colored shadows for interactive elements */
-    --shadow-primary: 0 4px 14px -2px rgba(6, 182, 212, 0.25);
-    --shadow-primary-lg: 0 8px 25px -4px rgba(6, 182, 212, 0.3);
+    --shadow-primary: 0 4px 14px -2px rgba(37, 99, 235, 0.25);
+    --shadow-primary-lg: 0 8px 25px -4px rgba(37, 99, 235, 0.3);
     --shadow-error: 0 4px 14px -2px rgba(239, 68, 68, 0.2);
     --shadow-success: 0 4px 14px -2px rgba(16, 185, 129, 0.2);
 
@@ -237,7 +237,7 @@
     /* Maps old nexus-theme variable names to v4 tokens.
        Used by inline <style> blocks in index.html (bulk-edit, import-result, edit-yukyu modals). */
     --primary: var(--color-primary-500);
-    --primary-glow: rgba(6, 182, 212, 0.4);
+    --primary-glow: rgba(37, 99, 235, 0.4);
     --secondary: var(--color-primary-400);
     --success: var(--color-success);
     --warning: var(--color-warning);
@@ -279,8 +279,8 @@
     --shadow-2xl: 0 24px 48px rgba(0, 0, 0, 0.6);
     --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.3);
 
-    --shadow-primary: 0 4px 14px -2px rgba(6, 182, 212, 0.2), 0 0 0 1px rgba(6, 182, 212, 0.1);
-    --shadow-primary-lg: 0 8px 25px -4px rgba(6, 182, 212, 0.25);
+    --shadow-primary: 0 4px 14px -2px rgba(37, 99, 235, 0.2), 0 0 0 1px rgba(37, 99, 235, 0.1);
+    --shadow-primary-lg: 0 8px 25px -4px rgba(37, 99, 235, 0.25);
 
     /* Semantic adjustments for dark */
     --color-success-light: rgba(16, 185, 129, 0.15);
@@ -289,7 +289,7 @@
     --color-info-light: rgba(59, 130, 246, 0.15);
 
     /* Legacy aliases - dark overrides */
-    --primary-glow: rgba(6, 182, 212, 0.2);
+    --primary-glow: rgba(37, 99, 235, 0.2);
     --glass-bg-dark: rgba(9, 9, 11, 0.8);
     --glass-border: rgba(255, 255, 255, 0.08);
 }
@@ -317,7 +317,7 @@ body {
 
 /* Selection */
 ::selection {
-    background: rgba(6, 182, 212, 0.2);
+    background: rgba(37, 99, 235, 0.2);
     color: var(--text-primary);
 }
 
@@ -445,7 +445,7 @@ body {
 }
 
 [data-theme="dark"] .nav-item.active {
-    background: rgba(6, 182, 212, 0.1);
+    background: rgba(37, 99, 235, 0.1);
     color: var(--color-primary-400);
 }
 
@@ -505,7 +505,7 @@ body {
 }
 
 [data-theme="dark"] .nav-badge {
-    background: rgba(6, 182, 212, 0.15);
+    background: rgba(37, 99, 235, 0.15);
     color: var(--color-primary-300);
 }
 
@@ -625,7 +625,7 @@ body {
 .year-dropdown:focus {
     outline: none;
     border-color: var(--color-primary-500);
-    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.12);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 /* ========================================
@@ -652,12 +652,12 @@ body {
 
 .glow-hover:hover {
     box-shadow: var(--shadow-primary);
-    border-color: rgba(6, 182, 212, 0.2);
+    border-color: rgba(37, 99, 235, 0.2);
 }
 
 [data-theme="dark"] .glow-hover:hover {
     box-shadow: var(--shadow-primary);
-    border-color: rgba(6, 182, 212, 0.15);
+    border-color: rgba(37, 99, 235, 0.15);
 }
 
 /* ========================================
@@ -1017,7 +1017,7 @@ select:focus,
 textarea:focus {
     outline: none;
     border-color: var(--color-primary-500);
-    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .input-glass::placeholder,
@@ -1192,7 +1192,7 @@ textarea {
 }
 
 [data-theme="dark"] .badge-primary {
-    background: rgba(6, 182, 212, 0.15);
+    background: rgba(37, 99, 235, 0.15);
     color: var(--color-primary-300);
 }
 
@@ -1396,7 +1396,7 @@ textarea {
 }
 
 [data-theme="dark"] .progress-step.active {
-    background: rgba(6, 182, 212, 0.1);
+    background: rgba(37, 99, 235, 0.1);
     color: var(--color-primary-400);
 }
 
@@ -1536,22 +1536,22 @@ textarea {
 .bg-cyan-highlight {
     padding: var(--space-4);
     background: var(--color-primary-50);
-    border: 1px solid rgba(6, 182, 212, 0.15);
+    border: 1px solid rgba(37, 99, 235, 0.15);
     border-radius: var(--radius-xl);
 }
 
 [data-theme="dark"] .bg-cyan-highlight {
-    background: rgba(6, 182, 212, 0.08);
-    border-color: rgba(6, 182, 212, 0.12);
+    background: rgba(37, 99, 235, 0.08);
+    border-color: rgba(37, 99, 235, 0.12);
 }
 
 .bg-cyan-subtle {
     background: var(--color-primary-50);
-    border: 1px solid rgba(6, 182, 212, 0.1);
+    border: 1px solid rgba(37, 99, 235, 0.1);
 }
 
 [data-theme="dark"] .bg-cyan-subtle {
-    background: rgba(6, 182, 212, 0.06);
+    background: rgba(37, 99, 235, 0.06);
 }
 
 .info-card-warning {
@@ -1671,7 +1671,7 @@ textarea {
 }
 
 [data-theme="dark"] .type-filter-tabs .type-tab.active .tab-count {
-    background: rgba(6, 182, 212, 0.15);
+    background: rgba(37, 99, 235, 0.15);
     color: var(--color-primary-300);
 }
 
@@ -1683,8 +1683,8 @@ textarea {
 }
 
 [data-theme="dark"] .employee-tabs .btn.active {
-    background: rgba(6, 182, 212, 0.1);
-    border-color: rgba(6, 182, 212, 0.2);
+    background: rgba(37, 99, 235, 0.1);
+    border-color: rgba(37, 99, 235, 0.2);
     color: var(--color-primary-400);
 }
 
@@ -1697,14 +1697,14 @@ textarea {
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
     background: var(--color-primary-50);
-    border: 1px solid rgba(6, 182, 212, 0.15);
+    border: 1px solid rgba(37, 99, 235, 0.15);
     border-radius: var(--radius-xl);
     margin-bottom: var(--space-4);
 }
 
 [data-theme="dark"] .bulk-edit-toolbar {
-    background: rgba(6, 182, 212, 0.08);
-    border-color: rgba(6, 182, 212, 0.12);
+    background: rgba(37, 99, 235, 0.08);
+    border-color: rgba(37, 99, 235, 0.12);
 }
 
 .bulk-edit-toolbar-count {
@@ -2620,7 +2620,7 @@ textarea {
 }
 
 .flatpickr-day:hover {
-    background: rgba(6, 182, 212, 0.1) !important;
+    background: rgba(37, 99, 235, 0.1) !important;
     border-color: transparent !important;
 }
 
@@ -2635,7 +2635,7 @@ textarea {
 }
 
 .flatpickr-day.inRange {
-    background: rgba(6, 182, 212, 0.1) !important;
+    background: rgba(37, 99, 235, 0.1) !important;
     border-color: transparent !important;
     box-shadow: none !important;
 }
@@ -2647,7 +2647,7 @@ textarea {
 
 .flatpickr-day.today:hover {
     border-color: var(--color-primary-500) !important;
-    background: rgba(6, 182, 212, 0.1) !important;
+    background: rgba(37, 99, 235, 0.1) !important;
 }
 
 .flatpickr-day.disabled,
@@ -2673,7 +2673,7 @@ textarea {
 }
 
 .numInputWrapper:hover {
-    background: rgba(6, 182, 212, 0.05) !important;
+    background: rgba(37, 99, 235, 0.05) !important;
 }
 
 .flatpickr-time {
@@ -2687,7 +2687,7 @@ textarea {
 
 .flatpickr-time input:hover,
 .flatpickr-time input:focus {
-    background: rgba(6, 182, 212, 0.05) !important;
+    background: rgba(37, 99, 235, 0.05) !important;
 }
 
 .flatpickr-calendar.open {
@@ -2825,7 +2825,7 @@ textarea {
     font-size: var(--text-xs);
     color: var(--text-muted);
     padding: var(--space-2);
-    background: rgba(6, 182, 212, 0.08);
+    background: rgba(37, 99, 235, 0.08);
     border-radius: var(--radius-sm);
     margin-bottom: var(--space-2);
 }
@@ -3240,14 +3240,14 @@ textarea {
    BADGES & STATUS
    ======================================== */
 .badge-info {
-    background: rgba(6, 182, 212, 0.1);
+    background: rgba(37, 99, 235, 0.1);
     color: var(--color-info-700);
-    border: 1px solid rgba(6, 182, 212, 0.2);
+    border: 1px solid rgba(37, 99, 235, 0.2);
 }
 
 [data-theme="dark"] .badge-info {
     color: var(--color-info-400);
-    background: rgba(6, 182, 212, 0.15);
+    background: rgba(37, 99, 235, 0.15);
 }
 
 /* ========================================
@@ -3297,9 +3297,9 @@ textarea {
 }
 
 .badge-info {
-    background-color: rgba(6, 182, 212, 0.1);
+    background-color: rgba(37, 99, 235, 0.1);
     color: var(--color-info-700);
-    border: 1px solid rgba(6, 182, 212, 0.2);
+    border: 1px solid rgba(37, 99, 235, 0.2);
 }
 
 /* Success / Green */
@@ -3353,6 +3353,6 @@ textarea {
 [data-theme="dark"] .badge-info {
     color: var(--color-info-400);
     /* Fallback if info-400 missing, use lighter cyan manually or var */
-    background-color: rgba(6, 182, 212, 0.15);
-    border-color: rgba(6, 182, 212, 0.3);
+    background-color: rgba(37, 99, 235, 0.15);
+    border-color: rgba(37, 99, 235, 0.3);
 }
