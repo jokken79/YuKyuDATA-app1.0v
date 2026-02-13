@@ -311,7 +311,7 @@ export class DataService {
         if (setBtnLoading) setBtnLoading(btn, true);
 
         try {
-            const res = await this._fetchWithTimeout(`${this.apiBase}/sync-genzai`, { method: 'POST' });
+            const res = await this._fetchWithTimeout(`${this.apiBase}/genzai/sync`, { method: 'POST' });
             if (!res.ok) throw new Error(`Server error: ${res.status}`);
 
             const json = await res.json();
@@ -345,7 +345,7 @@ export class DataService {
         if (setBtnLoading) setBtnLoading(btn, true);
 
         try {
-            const res = await this._fetchWithTimeout(`${this.apiBase}/sync-ukeoi`, { method: 'POST' });
+            const res = await this._fetchWithTimeout(`${this.apiBase}/ukeoi/sync`, { method: 'POST' });
             if (!res.ok) throw new Error(`Server error: ${res.status}`);
 
             const json = await res.json();

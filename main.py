@@ -130,13 +130,6 @@ if _security_issues and not settings.debug:
 security = HTTPBearer(auto_error=False)
 
 
-# TokenResponse model (from auth module)
-class TokenResponse(BaseModel):
-    """Token response model"""
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int
-    user: dict
 
 
 # ============================================
@@ -324,56 +317,6 @@ async def read_root():
 # ============================================
 # Note: All other authentication endpoints are in routes/auth.py
 
-@app.get("/api/csrf-token", tags=["Authentication"])
-async def get_csrf_token():
-    """
-    Generate a CSRF token for non-authenticated requests (stateful CSRF protection).
-
-    Frontend should:
-    1. Call this endpoint to get a token
-    2. Include token in X-CSRF-Token header for POST/PUT/DELETE requests
-    3. Token is not required if Authorization header (JWT) is present
-
-    Returns:
-        dict: CSRF token and usage instructions
-    """
-    try:
-        from orm import SessionLocal
-
-        token = generate_csrf_token()
-
-        # Store token in database for stateful validation
-        with SessionLocal() as session:
-            success, error = database.store_csrf_token(
-                session=session,
-                token=token,
-                user_id=None,  # Anonymous token
-                session_id=None,
-                expires_in_minutes=60
-            )
-
-            if not success:
-                logger.error(f"Failed to store CSRF token: {error}")
-                raise HTTPException(
-                    status_code=500,
-                    detail="Failed to generate CSRF token"
-                )
-
-        return {
-            "csrf_token": token,
-            "header_name": "X-CSRF-Token",
-            "expires_in": 3600,  # 60 minutes
-            "note": "Include this token in X-CSRF-Token header for POST/PUT/DELETE requests. Not required if using JWT authentication."
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"CSRF token generation error: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Error generating CSRF token"
-        )
 
 
 # ============================================

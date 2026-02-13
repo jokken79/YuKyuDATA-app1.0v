@@ -1,9 +1,51 @@
 {
   "mcpServers": {
-    "antigravity-agents": {
+    "antigravity-usn": {
       "command": "python",
-      "args": [".agent/mcp/agents-server-v2.py"],
-      "description": "96 agentes autonomos Antigravity como herramientas MCP"
+      "args": [
+        "C:/Users/kenji/AntigravitiSkillUSN/mcp-server/server_v2.py"
+      ],
+      "description": "Enterprise-grade MCP implementation with +600 corporate skills and agent orchestration."
+    },
+    "think": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
+      "description": "Advanced logical reasoning engine for critical tasks."
+    },
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "description": "Persistent knowledge graph and long-term memory server."
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-playwright"
+      ],
+      "description": "Browser automation and visual UI/UX validation via screenshots."
+    },
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ],
+      "description": "Real-time technical documentation for Next.js and Vercel."
+    },
+    "vercel": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-vercel"
+      ],
+      "description": "Deployment management, logs, and infrastructure monitoring."
     }
   }
 }

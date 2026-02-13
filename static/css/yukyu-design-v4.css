@@ -579,6 +579,32 @@ body {
     align-items: center;
     gap: var(--space-2);
     flex-wrap: wrap;
+    justify-content: flex-end;
+    /* Align to right */
+    flex: 1 1 auto;
+    /* Allow shrinking/growing */
+    min-width: 0;
+    /* Prevent flex overflow */
+}
+
+/* Ensure buttons don't take too much space on mobile */
+@media (max-width: 768px) {
+    .header-actions .btn-text {
+        display: none;
+        /* Hide text, show icons only */
+    }
+
+    .header-actions .btn {
+        padding: var(--space-2);
+        /* Smaller padding */
+    }
+
+    .header-actions__group--years {
+        padding-right: var(--space-2);
+        margin-right: 0;
+        border-right: none;
+        /* Remove separator on small screens */
+    }
 }
 
 .header-actions__group {

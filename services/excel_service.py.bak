@@ -233,9 +233,7 @@ def parse_excel_file(file_path):
     
     # Scan first 10 rows for headers
     found_headers = False
-    # Scan for headers starting from Row 5 (where real headers usually are)
-    found_headers = False
-    for i, row in enumerate(sheet.iter_rows(min_row=5, max_row=15, values_only=True), 5):
+    for i, row in enumerate(sheet.iter_rows(min_row=1, max_row=10, values_only=True), 1):
         row_str = [str(c) if c is not None else "" for c in row]
         if any("氏名" in c or "名前" in c for c in row_str):
             headers = row
@@ -418,23 +416,18 @@ def parse_genzai_sheet(file_path):
 
     wb = openpyxl.load_workbook(file_path, data_only=True)
 
-    # Look for Sheet1 (which contains DBGenzai table)
-    if 'Sheet1' not in wb.sheetnames:
-        # Fallback for older versions
-        if 'DBGenzaiX' in wb.sheetnames:
-             sheet = wb['DBGenzaiX']
-        else:
-             raise ValueError("Sheet1 (DBGenzai) not found in workbook")
-    else:
-        sheet = wb['Sheet1']
+    # Look for DBGenzaiX sheet
+    if 'DBGenzaiX' not in wb.sheetnames:
+        raise ValueError("DBGenzaiX sheet not found in workbook")
 
+    sheet = wb['DBGenzaiX']
     data = []
 
-    # Expected headers (row 3 is header in Sheet1, data starts row 4)
+    # Expected headers (row 1)
     # 0:現在, 1:社員№, 2:派遣先ID, 3:派遣先, 4:配属先, 5:配属ライン, 6:仕事内容,
     # 7:氏名, 8:カナ, 9:性別, 10:国籍, 11:生年月日, 12:年齢, 13:時給, 14:時給改定
 
-    for row in sheet.iter_rows(min_row=4, values_only=True):  # Skip header (Row 1-3)
+    for row in sheet.iter_rows(min_row=2, values_only=True):  # Skip header
         if all(c is None for c in row):
             continue
 
@@ -487,24 +480,18 @@ def parse_ukeoi_sheet(file_path):
 
     wb = openpyxl.load_workbook(file_path, data_only=True)
 
-    # Look for 請負 sheet
-    target_sheet = None
-    if '請負' in wb.sheetnames:
-        target_sheet = '請負'
-    elif 'DBUkeoiX' in wb.sheetnames:
-        target_sheet = 'DBUkeoiX'
-    
-    if not target_sheet:
-        raise ValueError("Contract sheet (請負) not found in workbook")
+    # Look for DBUkeoiX sheet
+    if 'DBUkeoiX' not in wb.sheetnames:
+        raise ValueError("DBUkeoiX sheet not found in workbook")
 
-    sheet = wb[target_sheet]
+    sheet = wb['DBUkeoiX']
     data = []
 
-    # Expected headers (row 4 is header, data starts row 5)
+    # Expected headers (row 1)
     # 0:現在, 1:社員№, 2:請負業務, 3:氏名, 4:カナ, 5:性別, 6:国籍,
     # 7:生年月日, 8:年齢, 9:時給, 10:時給改定
 
-    for row in sheet.iter_rows(min_row=5, values_only=True):  # Skip header (Row 1-4)
+    for row in sheet.iter_rows(min_row=2, values_only=True):  # Skip header
         if all(c is None for c in row):
             continue
 
@@ -809,50 +796,20 @@ def parse_yukyu_usage_details_enhanced(file_path: str) -> Dict[str, Any]:
                 leave_type = 'full'
                 use_date_str = None
                 
-                # Clean string
                 val_str = str(cell_value).strip()
                 
-                # Filter out Noise / Non-Usage Markers according to Spec v2.0
-                if val_str == '*' or val_str == '＊':
-                    continue # Visual padding, ignore
-                
-                if re.match(r'^\d+日間$', val_str):
-                    continue # Consecutive day marker, ignore (dates are in previous cells)
-                
-                # Initialize variables
-                days_used = 1.0
-                leave_type = 'full'
-                use_date_str = None
-                
-                # Check for "Expiration" (Time limit reached)
-                if '消滅' in val_str:
-                    leave_type = 'expired'
-                    days_used = 0.0 # Log it but count as 0 usage
-                    val_str = val_str.replace('消滅', '').strip()
-                
-                # Check for "Half Day"
-                if any(x in val_str for x in ['半', '0.5', 'AM', 'PM', '午前', '午後', '半休']):
+                # Detect Half Day / Hourly
+                # Reuse logic from helper or inline simplified
+                if any(x in val_str for x in ['半', '0.5', 'AM', 'PM', '午前', '午後']):
                     days_used = 0.5
                     leave_type = 'half'
                     result['summary']['half_day_count'] += 1
-                    # Clean marker from string to help date parsing
-                    val_str = re.sub(r'(半休|半|0\.5|AM|PM|午前|午後)', '', val_str).strip()
-
-                # Check for "Hourly"
                 elif '2h' in val_str or '2時間' in val_str:
                     days_used = 0.25
                     leave_type = 'hourly'
                     result['summary']['hourly_count'] += 1
-                    val_str = re.sub(r'(2h|2時間)', '', val_str).strip()
-                
-                # Check for "Payment Note" (e.g. 4/20(5/15支給))
-                if '支給' in val_str:
-                     # Remove the parenthetical note
-                     val_str = re.sub(r'[（(].*?[）)]', '', val_str).strip()
-
                 else:
-                    if leave_type == 'full':
-                        result['summary']['full_day_count'] += 1
+                    result['summary']['full_day_count'] += 1
 
                 # Parse Date
                 # If it's a datetime object (Pandas often converts automatically)
@@ -861,27 +818,17 @@ def parse_yukyu_usage_details_enhanced(file_path: str) -> Dict[str, Any]:
                     year = cell_value.year
                     month = cell_value.month
                 else:
-                    # String parsing with aggressive cleanup
-                    # Remove common Japanese date chars for parsing
+                    # String parsing
+                    # Clean the string first (remove '終業', '半', etc)
                     clean_str = re.sub(r'[^\d\/\-\.]', '', val_str)
                     
                     try:
-                        # Try parsing various formats
-                        # Handle "4/20" (no year) -> assume current fiscal year context
-                        # But for safety, requires year.
-                        # If parsed as current year by pandas default, we might need logic adjustment for historical data
-                        
+                        # Try common formats
                         dt = pd.to_datetime(clean_str, errors='coerce')
-                        
                         if not pd.isna(dt):
                            use_date_str = dt.strftime('%Y-%m-%d')
                            year = dt.year
                            month = dt.month
-                           
-                           # Fix Year 1900 issue (Excel serial 1-31 often parses as Jan 1900)
-                           if year == 1900:
-                                continue # Invalid date
-                        
                     except:
                         pass
                 
@@ -892,13 +839,12 @@ def parse_yukyu_usage_details_enhanced(file_path: str) -> Dict[str, Any]:
                         'use_date': use_date_str,
                         'year': year,
                         'month': month,
-                        'days_used': days_used,
-                        'leave_type': leave_type
+                        'days_used': days_used
                     })
                     result['summary']['total_dates_parsed'] += 1
                 else:
-                    pass # Could not parse date, ignore
-
+                    # Could not parse date
+                    pass # unexpected format
 
         result['data'] = usage_details
         logger.info(f"Pandas parsing complete. Found {len(usage_details)} usage records.")

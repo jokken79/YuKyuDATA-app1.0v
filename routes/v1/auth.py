@@ -38,6 +38,32 @@ def _get_client_info(request: Request) -> tuple:
     return user_agent, ip_address
 
 
+@router.get("/csrf-token")
+async def get_csrf_token():
+    """
+    Generate a CSRF token for non-authenticated requests.
+    """
+    from middleware.csrf import generate_csrf_token
+    from utils.logger import logger
+    
+    try:
+        # Generate stateless token (or stateful if DB implementation exists)
+        token = generate_csrf_token()
+        
+        return {
+            "csrf_token": token,
+            "header_name": "X-CSRF-Token",
+            "expires_in": 3600,
+            "note": "Include this token in X-CSRF-Token header for POST/PUT/DELETE requests."
+        }
+    except Exception as e:
+        logger.error(f"CSRF token generation error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error generating CSRF token"
+        )
+
+
 @router.post("/login", response_model=TokenPair, dependencies=[Depends(rate_limiter_strict)])
 async def login(credentials: LoginRequest, request: Request):
     """
