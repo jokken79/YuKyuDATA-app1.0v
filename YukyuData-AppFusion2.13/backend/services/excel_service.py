@@ -1,0 +1,1071 @@
+import openpyxl
+from openpyxl import load_workbook
+import os
+import re
+import logging
+import pandas as pd
+import numpy as np
+from datetime import datetime
+from typing import Dict, List, Tuple, Any, Optional
+
+# ============================================
+# LOGGING CONFIGURATION
+# ============================================
+logger = logging.getLogger(__name__)
+
+# ============================================
+# CONSTANTS FOR HALF-DAY / HOURLY DETECTION
+# ============================================
+
+# Patterns for half-day leave detection
+HALF_DAY_PATTERNS = [
+    r'半',           # 半 = half
+    r'0\.5',         # 0.5 explicit
+    r'午前',         # 午前 = morning (AM half-day)
+    r'午後',         # 午後 = afternoon (PM half-day)
+    r'半休',         # 半休 = half-day leave
+    r'AM',           # AM half-day
+    r'PM',           # PM half-day
+]
+
+# Patterns for hourly leave detection (2 hours = 0.25 days)
+HOURLY_PATTERNS = [
+    r'2h',           # 2 hours
+    r'2時間',        # 2時間 = 2 hours
+    r'時間休',       # 時間休 = hourly leave
+    r'(\d+)h',       # Generic hours pattern
+    r'(\d+)時間',    # Generic hours in Japanese
+]
+
+# Patterns to remove when parsing dates
+DATE_NOISE_PATTERNS = [
+    r'終業',         # end of work
+    r'至',           # until
+    r'から',         # from
+    r'まで',         # until
+    r'休',           # leave
+    r'取得',         # acquired
+    r'[（(][^）)]*支給[^）)]*[）)]',  # 支給 payment notes: "(5/15支給)" -> remove
+]
+
+# Non-date cell values that should be skipped entirely (spec v2)
+NON_DATE_VALUES = {
+    '*', '＊',       # Padding cells (0 days)
+}
+NON_DATE_PATTERNS = [
+    r'^\d+日間$',    # "7日間" consecutive marker (0 days)
+    r'消滅',         # "2022/8/1消滅" expiration marker (0 days)
+]
+
+
+# ============================================
+# HELPER FUNCTIONS FOR LEAVE TYPE DETECTION
+# ============================================
+
+def is_non_date_cell(cell_value: Any) -> bool:
+    """
+    Checks if a cell value is a non-date marker that should be skipped entirely.
+    Per spec v2: *, X日間, 消滅 are not leave dates and count as 0 days.
+
+    Args:
+        cell_value: The raw cell value
+
+    Returns:
+        True if the cell should be skipped (not a date)
+    """
+    if cell_value is None:
+        return True
+
+    cell_str = str(cell_value).strip()
+    if not cell_str:
+        return True
+
+    # Exact match non-date values
+    if cell_str in NON_DATE_VALUES:
+        return True
+
+    # Pattern match non-date values
+    for pattern in NON_DATE_PATTERNS:
+        if re.search(pattern, cell_str):
+            return True
+
+    return False
+
+
+def detect_leave_type(cell_value: Any) -> Tuple[str, float]:
+    """
+    Detects the type of leave from a cell value.
+
+    Args:
+        cell_value: The raw cell value (can be datetime, string, or number)
+
+    Returns:
+        Tuple of (leave_type, days_used)
+        - leave_type: 'full', 'half_am', 'half_pm', 'hourly', 'padding',
+                      'consecutive_marker', 'expired', or 'unknown'
+        - days_used: float value (1.0, 0.5, 0.25, 0.0)
+    """
+    if cell_value is None:
+        return ('unknown', 0.0)
+
+    cell_str = str(cell_value).strip()
+
+    # Spec v2: Explicit non-date values return 0 days
+    if cell_str in NON_DATE_VALUES:
+        return ('padding', 0.0)
+
+    if re.search(r'^\d+日間$', cell_str):
+        return ('consecutive_marker', 0.0)
+
+    if '消滅' in cell_str:
+        return ('expired', 0.0)
+
+    # Check for hourly leave first (more specific)
+    for pattern in HOURLY_PATTERNS:
+        match = re.search(pattern, cell_str, re.IGNORECASE)
+        if match:
+            # Try to extract hours if pattern has group
+            if match.groups():
+                try:
+                    hours = int(match.group(1))
+                    # Assuming 8-hour workday
+                    days = hours / 8.0
+                    return ('hourly', round(days, 2))
+                except (ValueError, IndexError):
+                    pass
+            # Default 2 hours = 0.25 days
+            return ('hourly', 0.25)
+
+    # Check for half-day patterns
+    for pattern in HALF_DAY_PATTERNS:
+        if re.search(pattern, cell_str, re.IGNORECASE):
+            # Determine AM or PM
+            if re.search(r'午前|AM', cell_str, re.IGNORECASE):
+                return ('half_am', 0.5)
+            elif re.search(r'午後|PM', cell_str, re.IGNORECASE):
+                return ('half_pm', 0.5)
+            else:
+                return ('half_am', 0.5)  # Default to AM if not specified
+
+    # Check if it's just a date (full day)
+    if isinstance(cell_value, datetime):
+        return ('full', 1.0)
+
+    # If it's a string that looks like a date, it's a full day
+    if cell_str and not any(pattern in cell_str.lower() for pattern in ['半', '0.5', 'h', '時間']):
+        # Check if it contains date-like patterns
+        if re.search(r'\d{4}[-/]\d{1,2}[-/]\d{1,2}', cell_str):
+            return ('full', 1.0)
+
+    return ('full', 1.0)  # Default to full day
+
+
+def clean_date_string(date_str: str) -> str:
+    """
+    Removes noise patterns from a date string to facilitate parsing.
+
+    Args:
+        date_str: Raw date string possibly containing Japanese text
+
+    Returns:
+        Cleaned date string
+    """
+    cleaned = date_str
+    for pattern in DATE_NOISE_PATTERNS:
+        cleaned = re.sub(pattern, '', cleaned)
+
+    # Also remove common separators that aren't part of dates
+    cleaned = cleaned.strip()
+
+    return cleaned
+
+
+def parse_date_from_cell(cell_value: Any) -> Optional[datetime]:
+    """
+    Attempts to parse a date from various cell formats.
+    Handles comments and mixed content gracefully.
+
+    Args:
+        cell_value: The cell value (datetime, string, number)
+
+    Returns:
+        datetime object if successfully parsed, None otherwise
+    """
+    if cell_value is None:
+        return None
+
+    # Already a datetime
+    if isinstance(cell_value, datetime):
+        return cell_value
+
+    # Excel serial date (number)
+    if isinstance(cell_value, (int, float)):
+        try:
+            from datetime import timedelta
+            # Excel epoch is 1899-12-30
+            excel_epoch = datetime(1899, 12, 30)
+            # Validate reasonable range (1900-2100)
+            if 1 < cell_value < 73050:  # ~2100
+                return excel_epoch + timedelta(days=int(cell_value))
+        except Exception:
+            pass
+        return None
+
+    # String parsing
+    if isinstance(cell_value, str):
+        # Spec v2: Skip non-date markers before attempting parse
+        if is_non_date_cell(cell_value):
+            return None
+
+        # Strip payment note parentheses: "4/20(5/15支給)" -> "4/20"
+        cleaned_input = re.sub(r'[（(][^）)]*支給[^）)]*[）)]', '', cell_value).strip()
+        date_str = clean_date_string(cleaned_input)
+
+        # Try various date formats
+        date_formats = [
+            '%Y/%m/%d',
+            '%Y-%m-%d',
+            '%Y/%m/%d %H:%M:%S',
+            '%Y-%m-%d %H:%M:%S',
+            '%Y年%m月%d日',
+            '%m/%d/%Y',
+            '%d/%m/%Y',
+        ]
+
+        for fmt in date_formats:
+            try:
+                return datetime.strptime(date_str.strip(), fmt)
+            except ValueError:
+                continue
+
+        # Try to extract date using regex
+        date_match = re.search(r'(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})', date_str)
+        if date_match:
+            try:
+                year = int(date_match.group(1))
+                month = int(date_match.group(2))
+                day = int(date_match.group(3))
+                return datetime(year, month, day)
+            except ValueError:
+                pass
+
+    return None
+
+
+def is_valid_date_for_yukyu(parsed_date: Optional[datetime]) -> bool:
+    """
+    Validates if a parsed date is reasonable for yukyu (paid leave) records.
+
+    Args:
+        parsed_date: The datetime to validate
+
+    Returns:
+        True if the date is valid, False otherwise
+    """
+    if parsed_date is None:
+        return False
+
+    # Reasonable year range: 2000-2100
+    if parsed_date.year < 2000 or parsed_date.year > 2100:
+        return False
+
+    return True
+
+def parse_excel_file(file_path):
+    """
+    Parses an Excel file and returns a list of employee dictionaries.
+    """
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    wb = openpyxl.load_workbook(file_path, data_only=True)
+    # Match JS logic: Use the first sheet
+    sheet = wb.worksheets[0]
+    
+    data = []
+    
+    # Iterate to find header row (looking for '氏名' or '名前')
+    header_row_idx = 1
+    headers = []
+    
+    # Scan first 10 rows for headers
+    found_headers = False
+    # Scan for headers starting from Row 5 (where real headers usually are)
+    found_headers = False
+    for i, row in enumerate(sheet.iter_rows(min_row=5, max_row=15, values_only=True), 5):
+        row_str = [str(c) if c is not None else "" for c in row]
+        if any("氏名" in c or "名前" in c for c in row_str):
+            headers = row
+            header_row_idx = i
+            found_headers = True
+            break
+            
+    if not found_headers:
+        # Fallback to row 1 if detection fails
+        headers = [cell.value for cell in sheet[1]]
+        header_row_idx = 1
+
+    # Identify column indices
+    cols = {
+        'empNum': _find_obs_col(headers, ['社員№', '従業員番号', '社員番号', '番号', 'id', 'no', '№']),
+        'name': _find_obs_col(headers, ['氏名', '名前', 'name']),
+        'haken': _find_obs_col(headers, ['派遣先', '所属', '部署', '現場']),
+        'elapsed_months': _find_obs_col(headers, ['経過月', '経過月数', '經過月']),
+        'granted': _find_obs_col(headers, ['付与数', '付与日数', '付与', '総日数', '有給残日数']),
+        'used': _find_obs_col(headers, ['消化日数', '使用日数', '使用', '消化']),
+        'carry_over': _find_obs_col(headers, ['繰越', '繰越日数', 'carry_over']),
+        'total_available': _find_obs_col(headers, ['保有数', '保有日数', 'total_available']),
+        'balance': _find_obs_col(headers, ['期末残高', 'balance', 'remaining', '残高']),
+        'expired': _find_obs_col(headers, ['時効数', 'expired', '期限切れ', '消滅']),
+        'year': _find_obs_col(headers, ['年度', '年', 'year', '対象年度']),
+        'grant_date': _find_obs_col(headers, ['有給発生', '発生日', '付与日']),
+        'status': _find_obs_col(headers, ['在職中', '状態', 'status']),
+        'kana': _find_obs_col(headers, ['カナ', 'かな', 'kana']),
+        'hire_date': _find_obs_col(headers, ['入社日', '雇用日', 'hire_date']),
+        'after_expiry': _find_obs_col(headers, ['時効後残', '時効後', 'after_expiry']),
+    }
+    
+    # Default year if column not found
+    current_year = datetime.now().year
+
+    employee_summary = {}
+    row_counter = 0
+
+    # Start reading from the row AFTER headers
+    for row in sheet.iter_rows(min_row=header_row_idx + 1, values_only=True):
+        row_counter += 1
+        if all(c is None for c in row):
+            continue
+
+        emp_num = str(row[cols['empNum']]) if cols['empNum'] != -1 and row[cols['empNum']] is not None else "Unknown"
+        name = str(row[cols['name']]) if cols['name'] != -1 and row[cols['name']] is not None else "Unknown"
+
+        # Skip if name is missing (critical for dashboard)
+        if name == "Unknown":
+            continue
+
+        # Skip duplicate header rows (where 付与 column contains text like "付与数")
+        if cols['granted'] != -1 and row[cols['granted']] is not None:
+            granted_value = str(row[cols['granted']])
+            if any(header_text in granted_value for header_text in ['付与', '日数', 'granted']):
+                continue
+
+        haken = str(row[cols['haken']]) if cols['haken'] != -1 and row[cols['haken']] is not None else "Unknown"
+
+        # Parse numeric values
+        try:
+            granted = float(row[cols['granted']]) if cols['granted'] != -1 and row[cols['granted']] is not None else 0.0
+            used = float(row[cols['used']]) if cols['used'] != -1 and row[cols['used']] is not None else 0.0
+        except (ValueError, TypeError):
+            granted = 0.0
+            used = 0.0
+
+        # Read balance from Excel (CRITICAL: Do NOT calculate it)
+        try:
+            if cols['balance'] != -1 and row[cols['balance']] is not None:
+                balance = float(row[cols['balance']])
+            else:
+                # Fallback to calculation ONLY if Excel doesn't have balance column
+                balance = granted - used
+        except (ValueError, TypeError):
+            balance = granted - used
+
+        # Read expired days from Excel
+        try:
+            expired = float(row[cols['expired']]) if cols['expired'] != -1 and row[cols['expired']] is not None else 0.0
+        except (ValueError, TypeError):
+            expired = 0.0
+
+        # Read after-expiry balance (時効後残)
+        try:
+            after_expiry = float(row[cols['after_expiry']]) if cols['after_expiry'] != -1 and row[cols['after_expiry']] is not None else 0.0
+        except (ValueError, TypeError):
+            after_expiry = 0.0
+
+        # Read elapsed months (経過月) - spec v2 column I
+        try:
+            elapsed_months = int(float(row[cols['elapsed_months']])) if cols['elapsed_months'] != -1 and row[cols['elapsed_months']] is not None else None
+        except (ValueError, TypeError):
+            elapsed_months = None
+
+        # Read carry over (繰越) - spec v2 column L
+        try:
+            carry_over = float(row[cols['carry_over']]) if cols['carry_over'] != -1 and row[cols['carry_over']] is not None else 0.0
+        except (ValueError, TypeError):
+            carry_over = 0.0
+
+        # Read total available (保有数) - spec v2 column M
+        try:
+            total_available = float(row[cols['total_available']]) if cols['total_available'] != -1 and row[cols['total_available']] is not None else None
+        except (ValueError, TypeError):
+            total_available = None
+
+        # Extract additional fields: status, kana, hire_date
+        status = str(row[cols['status']]) if cols['status'] != -1 and row[cols['status']] is not None else ""
+        kana = str(row[cols['kana']]) if cols['kana'] != -1 and row[cols['kana']] is not None else ""
+
+        hire_date_str = None
+        if cols['hire_date'] != -1 and row[cols['hire_date']] is not None:
+            hd_val = row[cols['hire_date']]
+            if hasattr(hd_val, 'strftime'):
+                hire_date_str = hd_val.strftime('%Y-%m-%d')
+            else:
+                hire_date_str = str(hd_val)
+
+        # Extract grant_date and year
+        year = current_year
+        grant_date_str = None
+        if cols['grant_date'] != -1 and row[cols['grant_date']] is not None:
+            grant_date_value = row[cols['grant_date']]
+            try:
+                if hasattr(grant_date_value, 'year'):
+                    year = grant_date_value.year
+                    grant_date_str = grant_date_value.strftime('%Y-%m-%d')
+                elif isinstance(grant_date_value, str):
+                    parsed_date = datetime.strptime(grant_date_value.split()[0], '%Y-%m-%d')
+                    year = parsed_date.year
+                    grant_date_str = parsed_date.strftime('%Y-%m-%d')
+            except (ValueError, AttributeError, IndexError):
+                pass
+
+        # Fallback to year column if grant_date didn't work
+        if year == current_year and cols['year'] != -1 and row[cols['year']] is not None:
+            try:
+                year = int(row[cols['year']])
+            except ValueError:
+                pass
+
+        # Unique key includes grant_date to preserve ALL grant periods
+        # (same employee can have 2+ grants in the same year)
+        # For rows without grant_date, generate a synthetic one using row position
+        if not grant_date_str:
+            grant_date_str = f"row-{row_counter}"
+
+        emp_key = f"{emp_num}_{year}_{grant_date_str}"
+        # Safety: if key collision (shouldn't happen with grant_date), append seq
+        if emp_key in employee_summary:
+            seq = 2
+            while f"{emp_key}_{seq}" in employee_summary:
+                seq += 1
+            emp_key = f"{emp_key}_{seq}"
+
+        employee_summary[emp_key] = {
+            'id': f"{emp_num}_{year}",
+            'employeeNum': emp_num,
+            'name': name,
+            'haken': haken,
+            'elapsedMonths': elapsed_months,
+            'granted': granted,
+            'used': used,
+            'carryOver': carry_over,
+            'totalAvailable': total_available,
+            'balance': balance,
+            'expired': expired,
+            'afterExpiry': after_expiry,
+            'year': year,
+            'grantDate': grant_date_str,
+            'status': status,
+            'kana': kana,
+            'hireDate': hire_date_str,
+        }
+
+    # Convert summary dict to list and calculate usage rates
+    for emp in employee_summary.values():
+        emp['usageRate'] = round((emp['used'] / emp['granted']) * 100) if emp['granted'] > 0 else 0
+        data.append(emp)
+
+    return data
+
+def _find_obs_col(headers, keywords):
+    """Finds the index of a column matching one of the keywords.
+    Searches keywords in order, finding the first match across all headers."""
+    for k in keywords:
+        for i, h in enumerate(headers):
+            if h is None: continue
+            h_str = str(h).lower()
+            k_lower = str(k).lower()
+            if k_lower in h_str:
+                return i
+    return -1
+
+
+def parse_genzai_sheet(file_path):
+    """
+    Parses DBGenzaiX sheet from the employee registry Excel file.
+    Returns a list of dispatch employee dictionaries.
+    """
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    wb = openpyxl.load_workbook(file_path, data_only=True)
+
+    # Look for Sheet1 (which contains DBGenzai table)
+    if 'Sheet1' not in wb.sheetnames:
+        # Fallback for older versions
+        if 'DBGenzaiX' in wb.sheetnames:
+             sheet = wb['DBGenzaiX']
+        else:
+             raise ValueError("Sheet1 (DBGenzai) not found in workbook")
+    else:
+        sheet = wb['Sheet1']
+
+    data = []
+
+    # Expected headers (row 3 is header in Sheet1, data starts row 4)
+    # 0:現在, 1:社員№, 2:派遣先ID, 3:派遣先, 4:配属先, 5:配属ライン, 6:仕事内容,
+    # 7:氏名, 8:カナ, 9:性別, 10:国籍, 11:生年月日, 12:年齢, 13:時給, 14:時給改定
+
+    for row in sheet.iter_rows(min_row=4, values_only=True):  # Skip header (Row 1-3)
+        if all(c is None for c in row):
+            continue
+
+        # Extract core fields
+        status = str(row[0]) if row[0] is not None else "Unknown"
+        emp_num = str(row[1]) if row[1] is not None else "Unknown"
+        name = str(row[7]) if row[7] is not None else "Unknown"
+
+        # Skip if no employee number or name, or if they are "0"
+        if emp_num == "Unknown" or name == "Unknown" or emp_num == "0" or name == "0":
+            continue
+
+        # Parse birth date
+        birth_date = None
+        if row[11] is not None:
+            if isinstance(row[11], datetime):
+                birth_date = row[11].strftime('%Y-%m-%d')
+            else:
+                birth_date = str(row[11])
+
+        employee = {
+            'status': status,
+            'employee_num': emp_num,
+            'dispatch_id': str(row[2]) if row[2] is not None else "",
+            'dispatch_name': str(row[3]) if row[3] is not None else "",
+            'department': str(row[4]) if row[4] is not None else "",
+            'line': str(row[5]) if row[5] is not None else "",
+            'job_content': str(row[6]) if row[6] is not None else "",
+            'name': name,
+            'kana': str(row[8]) if row[8] is not None else "",
+            'gender': str(row[9]) if row[9] is not None else "",
+            'nationality': str(row[10]) if row[10] is not None else "",
+            'birth_date': birth_date,
+            'age': int(row[12]) if row[12] is not None else None,
+            'hourly_wage': int(row[13]) if row[13] is not None else 0,
+            'wage_revision': str(row[14]) if row[14] is not None else ""
+        }
+        data.append(employee)
+
+    return data
+
+
+def parse_ukeoi_sheet(file_path):
+    """
+    Parses DBUkeoiX sheet from the employee registry Excel file.
+    Returns a list of contract employee dictionaries.
+    """
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    wb = openpyxl.load_workbook(file_path, data_only=True)
+
+    # Look for 請負 sheet
+    target_sheet = None
+    if '請負' in wb.sheetnames:
+        target_sheet = '請負'
+    elif 'DBUkeoiX' in wb.sheetnames:
+        target_sheet = 'DBUkeoiX'
+    
+    if not target_sheet:
+        raise ValueError("Contract sheet (請負) not found in workbook")
+
+    sheet = wb[target_sheet]
+    data = []
+
+    # Expected headers (row 4 is header, data starts row 5)
+    # 0:現在, 1:社員№, 2:請負業務, 3:氏名, 4:カナ, 5:性別, 6:国籍,
+    # 7:生年月日, 8:年齢, 9:時給, 10:時給改定
+
+    for row in sheet.iter_rows(min_row=5, values_only=True):  # Skip header (Row 1-4)
+        if all(c is None for c in row):
+            continue
+
+        # Extract core fields
+        status = str(row[0]) if row[0] is not None else "Unknown"
+        emp_num = str(row[1]) if row[1] is not None else "Unknown"
+        name = str(row[3]) if row[3] is not None else "Unknown"
+
+        # Skip if no employee number or name, or if they are "0"
+        if emp_num == "Unknown" or name == "Unknown" or emp_num == "0" or name == "0":
+            continue
+
+        # Parse birth date
+        birth_date = None
+        if row[7] is not None:
+            if isinstance(row[7], datetime):
+                birth_date = row[7].strftime('%Y-%m-%d')
+            else:
+                birth_date = str(row[7])
+
+        employee = {
+            'status': status,
+            'employee_num': emp_num,
+            'contract_business': str(row[2]) if row[2] is not None else "",
+            'name': name,
+            'kana': str(row[4]) if row[4] is not None else "",
+            'gender': str(row[5]) if row[5] is not None else "",
+            'nationality': str(row[6]) if row[6] is not None else "",
+            'birth_date': birth_date,
+            'age': int(row[8]) if row[8] is not None else None,
+            'hourly_wage': int(row[9]) if row[9] is not None else 0,
+            'wage_revision': str(row[10]) if row[10] is not None else ""
+        }
+        data.append(employee)
+
+    return data
+
+
+def parse_staff_sheet(file_path):
+    """
+    Parses the DBStaffX sheet from the employee registry Excel file.
+    Includes hire_date (入社日) and leave_date (退社日) for year filtering.
+
+    Expected columns:
+    0:№(status), 1:社員№, 2:事務所, 3:氏名, 4:カナ, 5:性別, 6:国籍,
+    7:生年月日, 8:年齢, 9:ビザ期限, 10:ビザ種類, 11:配偶者,
+    12:〒, 13:住所, 14:建物名, 15:入社日, 16:退社日
+
+    Returns:
+        List of staff employee dicts
+    """
+    wb = load_workbook(file_path, data_only=True)
+
+    if 'DBStaffX' not in wb.sheetnames:
+        raise ValueError("DBStaffX sheet not found in workbook")
+
+    sheet = wb['DBStaffX']
+    data = []
+
+    for row in sheet.iter_rows(min_row=2, values_only=True):  # Skip header
+        if all(c is None for c in row):
+            continue
+
+        # Extract core fields
+        status = str(row[0]) if row[0] is not None else "Unknown"
+        emp_num = str(row[1]) if row[1] is not None else "Unknown"
+        name = str(row[3]) if row[3] is not None else "Unknown"
+
+        # Skip if no employee number or name
+        if emp_num == "Unknown" or name == "Unknown" or emp_num == "0" or name == "0":
+            continue
+
+        # Parse dates
+        def parse_date(val):
+            if val is None:
+                return None
+            if isinstance(val, datetime):
+                return val.strftime('%Y-%m-%d')
+            if isinstance(val, (int, float)) and val > 0:
+                # Excel serial date
+                try:
+                    from datetime import timedelta
+                    excel_epoch = datetime(1899, 12, 30)
+                    return (excel_epoch + timedelta(days=int(val))).strftime('%Y-%m-%d')
+                except:
+                    return None
+            return str(val) if val else None
+
+        birth_date = parse_date(row[7])
+        visa_expiry = parse_date(row[9])
+        hire_date = parse_date(row[15])
+        leave_date = parse_date(row[16])
+
+        employee = {
+            'status': status,
+            'employee_num': emp_num,
+            'office': str(row[2]) if row[2] is not None else "",
+            'name': name,
+            'kana': str(row[4]) if row[4] is not None else "",
+            'gender': str(row[5]) if row[5] is not None else "",
+            'nationality': str(row[6]) if row[6] is not None else "",
+            'birth_date': birth_date,
+            'age': int(row[8]) if row[8] is not None else None,
+            'visa_expiry': visa_expiry,
+            'visa_type': str(row[10]) if row[10] is not None else "",
+            'spouse': str(row[11]) if row[11] is not None else "",
+            'postal_code': str(row[12]) if row[12] is not None else "",
+            'address': str(row[13]) if row[13] is not None else "",
+            'building': str(row[14]) if row[14] is not None else "",
+            'hire_date': hire_date,
+            'leave_date': leave_date
+        }
+        data.append(employee)
+
+    return data
+
+
+def parse_yukyu_usage_details(file_path):
+    """
+    Parses individual yukyu usage dates from columns R-BE (18-57).
+    This extracts the INDIVIDUAL DATES when each employee used yukyu (like v2.0).
+    
+    Args:
+        file_path: Path to the Excel file
+    
+    Returns:
+        List of dicts with individual usage details:
+        [
+            {
+                'employee_num': '123',
+                'name': 'John Doe',
+                'use_date': '2025-03-15',
+                'year': 2025,
+                'month': 3,
+                'days_used': 1.0
+            },
+            ...
+        ]
+    """
+    wb = load_workbook(file_path, data_only=True)
+    sheet = wb.active
+    
+    usage_details = []
+    
+    # Header row is at row 5
+    header_row_idx = 5
+    
+    # Find employee info columns
+    emp_num_col = 3   # Column C: 社員番号
+    name_col = 5      # Column E: 氏名
+    
+    # Date columns are R to BE (columns 18-57 = 40 columns)
+    date_start_col = 18  # Column R
+    date_end_col = 57    # Column BE
+    
+    # Process each data row (starting after header)
+    for row_idx in range(header_row_idx + 1, sheet.max_row + 1):
+        # Get employee info
+        emp_num = sheet.cell(row=row_idx, column=emp_num_col).value
+        name = sheet.cell(row=row_idx, column=name_col).value
+        
+        # Skip if no employee number or name
+        if not emp_num or not name:
+            continue
+        
+        emp_num = str(emp_num)
+        name = str(name)
+        
+        # Extract individual usage dates from columns R-BE
+        for col_idx in range(date_start_col, date_end_col + 1):
+            cell_value = sheet.cell(row=row_idx, column=col_idx).value
+
+            # Skip empty cells
+            if cell_value is None:
+                continue
+
+            # Spec v2: Skip non-date cells (*, X日間, 消滅)
+            if is_non_date_cell(cell_value):
+                continue
+
+            # Detect leave type (full day, half day, hourly)
+            leave_type, days_used = detect_leave_type(cell_value)
+
+            # Skip markers that are 0 days
+            if days_used == 0.0:
+                continue
+
+            # Parse date using the robust parser
+            parsed_date = parse_date_from_cell(cell_value)
+
+            if parsed_date and is_valid_date_for_yukyu(parsed_date):
+                use_date = parsed_date.strftime('%Y-%m-%d')
+                year = parsed_date.year
+                month = parsed_date.month
+
+                usage_details.append({
+                    'employee_num': emp_num,
+                    'name': name,
+                    'use_date': use_date,
+                    'year': year,
+                    'month': month,
+                    'days_used': days_used,
+                    'leave_type': leave_type,
+                })
+    
+    wb.close()
+    return usage_details
+
+
+def parse_yukyu_usage_details_enhanced(file_path: str) -> Dict[str, Any]:
+    """
+    Enhanced version of parse_yukyu_usage_details using Pandas for robustness.
+    - Automatic half-day detection (半, 0.5, 午前, 午後)
+    - Hourly leave detection (2h, 2時間)
+    - Comment handling
+    - Robust date parsing
+    
+    Args:
+        file_path: Path to the Excel file
+        
+    Returns:
+        Dict with keys: data, warnings, errors, summary
+    """
+    logger.info(f"Starting enhanced parsing (Pandas) of: {file_path}")
+    
+    result = {
+        'data': [],
+        'warnings': [],
+        'errors': [],
+        'summary': {
+            'total_rows_processed': 0,
+            'total_dates_parsed': 0,
+            'half_day_count': 0,
+            'hourly_count': 0,
+            'full_day_count': 0
+        }
+    }
+
+    if not os.path.exists(file_path):
+        result['errors'].append(f"File not found: {file_path}")
+        return result
+
+    try:
+        # Determine sheet name
+        xl = pd.ExcelFile(file_path)
+        sheet_name = 0
+        if '作業者データ　有給' in xl.sheet_names:
+            sheet_name = '作業者データ　有給'
+            logger.info("Targeting sheet: 作業者データ　有給")
+        else:
+            logger.info(f"Targeting first sheet: {xl.sheet_names[0]}")
+
+        # Read Excel with Pandas
+        # Header is usually row 5 (0-indexed = 4)
+        df = pd.read_excel(file_path, sheet_name=sheet_name, header=4)
+        
+        # Identify Name Column (usually index 4 / '氏名')
+        name_col = None
+        for col in df.columns:
+            if '氏名' in str(col) or '名前' in str(col):
+                name_col = col
+                break
+        
+        if name_col is None:
+            # Fallback to index 4 if column name not found
+            if len(df.columns) > 4:
+                name_col = df.columns[4]
+            else:
+                result['errors'].append("Could not identify Name column")
+                return result
+                
+        # Employee Num Column (usually index 2 or 3)
+        emp_num_col = None
+        for col in df.columns:
+            if '社員' in str(col) and ('番号' in str(col) or 'No' in str(col) or '№' in str(col)):
+                emp_num_col = col
+                break
+        
+        if emp_num_col is None:
+             if len(df.columns) > 2:
+                 emp_num_col = df.columns[2]
+
+        result['summary']['total_rows_processed'] = len(df)
+
+        # Date columns range (R=17 to BE=56 approx)
+        # We'll take slice from 17 to 57
+        date_columns = df.columns[17:57]
+
+        usage_details = []
+
+        for idx, row in df.iterrows():
+            name = row[name_col]
+            emp_num = row[emp_num_col] if emp_num_col else "Unknown"
+
+            if pd.isna(name) or str(name).strip() == "":
+                continue
+
+            name = str(name).strip()
+            emp_num = str(emp_num).strip()
+
+            # Iterate through date columns
+            for col in date_columns:
+                cell_value = row[col]
+                
+                if pd.isna(cell_value) or cell_value == "":
+                    continue
+
+                # Parse Cell Value
+                days_used = 1.0
+                leave_type = 'full'
+                use_date_str = None
+                
+                # Clean string
+                val_str = str(cell_value).strip()
+                
+                # Filter out Noise / Non-Usage Markers according to Spec v2.0
+                if val_str == '*' or val_str == '＊':
+                    continue # Visual padding, ignore
+                
+                if re.match(r'^\d+日間$', val_str):
+                    continue # Consecutive day marker, ignore (dates are in previous cells)
+                
+                # Initialize variables
+                days_used = 1.0
+                leave_type = 'full'
+                use_date_str = None
+                
+                # Check for "Expiration" (Time limit reached)
+                if '消滅' in val_str:
+                    leave_type = 'expired'
+                    days_used = 0.0 # Log it but count as 0 usage
+                    val_str = val_str.replace('消滅', '').strip()
+                
+                # Check for "Half Day"
+                if any(x in val_str for x in ['半', '0.5', 'AM', 'PM', '午前', '午後', '半休']):
+                    days_used = 0.5
+                    leave_type = 'half'
+                    result['summary']['half_day_count'] += 1
+                    # Clean marker from string to help date parsing
+                    val_str = re.sub(r'(半休|半|0\.5|AM|PM|午前|午後)', '', val_str).strip()
+
+                # Check for "Hourly"
+                elif '2h' in val_str or '2時間' in val_str:
+                    days_used = 0.25
+                    leave_type = 'hourly'
+                    result['summary']['hourly_count'] += 1
+                    val_str = re.sub(r'(2h|2時間)', '', val_str).strip()
+                
+                # Check for "Payment Note" (e.g. 4/20(5/15支給))
+                if '支給' in val_str:
+                     # Remove the parenthetical note
+                     val_str = re.sub(r'[（(].*?[）)]', '', val_str).strip()
+
+                else:
+                    if leave_type == 'full':
+                        result['summary']['full_day_count'] += 1
+
+                # Parse Date
+                # If it's a datetime object (Pandas often converts automatically)
+                if isinstance(cell_value, datetime):
+                    use_date_str = cell_value.strftime('%Y-%m-%d')
+                    year = cell_value.year
+                    month = cell_value.month
+                else:
+                    # String parsing with aggressive cleanup
+                    # Remove common Japanese date chars for parsing
+                    clean_str = re.sub(r'[^\d\/\-\.]', '', val_str)
+                    
+                    try:
+                        # Try parsing various formats
+                        # Handle "4/20" (no year) -> assume current fiscal year context
+                        # But for safety, requires year.
+                        # If parsed as current year by pandas default, we might need logic adjustment for historical data
+                        
+                        dt = pd.to_datetime(clean_str, errors='coerce')
+                        
+                        if not pd.isna(dt):
+                           use_date_str = dt.strftime('%Y-%m-%d')
+                           year = dt.year
+                           month = dt.month
+                           
+                           # Fix Year 1900 issue (Excel serial 1-31 often parses as Jan 1900)
+                           if year == 1900:
+                                continue # Invalid date
+                        
+                    except:
+                        pass
+                
+                if use_date_str:
+                    usage_details.append({
+                        'employee_num': emp_num,
+                        'name': name,
+                        'use_date': use_date_str,
+                        'year': year,
+                        'month': month,
+                        'days_used': days_used,
+                        'leave_type': leave_type
+                    })
+                    result['summary']['total_dates_parsed'] += 1
+                else:
+                    pass # Could not parse date, ignore
+
+
+        result['data'] = usage_details
+        logger.info(f"Pandas parsing complete. Found {len(usage_details)} usage records.")
+
+    except Exception as e:
+        logger.error(f"Pandas parsing failed: {e}", exc_info=True)
+        result['errors'].append(f"Pandas Parsing Error: {str(e)}")
+
+    return result
+
+
+
+def get_import_report(enhanced_result: Dict[str, Any]) -> str:
+    """
+    Generates a human-readable import report from enhanced parsing results.
+
+    Args:
+        enhanced_result: Result from parse_yukyu_usage_details_enhanced()
+
+    Returns:
+        Formatted string report
+    """
+    summary = enhanced_result.get('summary', {})
+    warnings = enhanced_result.get('warnings', [])
+    errors = enhanced_result.get('errors', [])
+
+    report_lines = [
+        "=" * 60,
+        "YUKYU IMPORT REPORT",
+        "=" * 60,
+        "",
+        "STATISTICS:",
+        f"  Total rows processed: {summary.get('total_rows_processed', 0)}",
+        f"  Total dates parsed:   {summary.get('total_dates_parsed', 0)}",
+        f"    - Full days:        {summary.get('full_day_count', 0)}",
+        f"    - Half days:        {summary.get('half_day_count', 0)}",
+        f"    - Hourly:           {summary.get('hourly_count', 0)}",
+        f"  Dates ignored:        {summary.get('dates_ignored', 0)}",
+        f"  Invalid dates:        {summary.get('invalid_dates', 0)}",
+        f"  Cells with comments:  {summary.get('cells_with_comments', 0)}",
+        "",
+    ]
+
+    if errors:
+        report_lines.extend([
+            "ERRORS:",
+            "-" * 40,
+        ])
+        for error in errors[:10]:  # Limit to first 10
+            if isinstance(error, dict):
+                report_lines.append(f"  - Row {error.get('row')}: {error.get('message')}")
+            else:
+                report_lines.append(f"  - {error}")
+        if len(errors) > 10:
+            report_lines.append(f"  ... and {len(errors) - 10} more errors")
+        report_lines.append("")
+
+    if warnings:
+        report_lines.extend([
+            "WARNINGS (first 20):",
+            "-" * 40,
+        ])
+        for warning in warnings[:20]:  # Limit to first 20
+            if isinstance(warning, dict):
+                report_lines.append(
+                    f"  [{warning.get('type', 'unknown')}] Row {warning.get('row')}, "
+                    f"Employee {warning.get('employee')}: {warning.get('message')}"
+                )
+            else:
+                report_lines.append(f"  - {warning}")
+        if len(warnings) > 20:
+            report_lines.append(f"  ... and {len(warnings) - 20} more warnings")
+        report_lines.append("")
+
+    report_lines.extend([
+        "=" * 60,
+        "END OF REPORT",
+        "=" * 60,
+    ])
+
+    return "\n".join(report_lines)
