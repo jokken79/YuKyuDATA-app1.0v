@@ -1,0 +1,22 @@
+{
+  "name": "yukyu-compliance-sentinel",
+  "version": "1.0.0",
+  "description": "Centinela de cumplimiento legal para 労働基準法39条 - Monitoreo, alertas y recomendaciones de compliance",
+  "author": "Yukyu Pro Team",
+  "trigger": "manual",
+  "commands": {
+    "/compliance-check": "Verificar cumplimiento legal de todos los empleados",
+    "/compliance-risk": "Analizar empleados en riesgo de incumplimiento",
+    "/compliance-deadline": "Calcular fechas límite para cumplimiento",
+    "/compliance-report": "Generar reporte de cumplimiento para auditoría",
+    "/compliance-predict": "Predecir riesgos futuros con IA"
+  },
+  "hooks": [],
+  "dependencies": {
+    "services/geminiService": "Análisis predictivo con IA",
+    "services/balanceCalculator": "Cálculos de balance y riesgo",
+    "services/exportService": "Exportación de reportes"
+  },
+  "tags": ["compliance", "legal", "labor-law", "risk", "audit", "39条"],
+  "license": "MIT"
+}

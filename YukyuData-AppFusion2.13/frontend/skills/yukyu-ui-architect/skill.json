@@ -1,0 +1,21 @@
+{
+  "name": "yukyu-ui-architect",
+  "version": "1.0.0",
+  "description": "Arquitecto de UI - Diseño de componentes, accesibilidad, responsive design y sistema de diseño",
+  "author": "Yukyu Pro Team",
+  "trigger": "manual",
+  "commands": {
+    "/ui-audit": "Auditoría completa de UI/UX y accesibilidad",
+    "/ui-a11y": "Análisis de accesibilidad WCAG 2.1 AA",
+    "/ui-responsive": "Verificar diseño responsive en breakpoints",
+    "/ui-components": "Documentar sistema de componentes",
+    "/ui-improve": "Sugerir mejoras de UI/UX"
+  },
+  "hooks": [],
+  "dependencies": {
+    "components/*": "Todos los componentes React",
+    "index.html": "Estilos globales y Tailwind"
+  },
+  "tags": ["ui", "ux", "accessibility", "wcag", "responsive", "design-system", "tailwind"],
+  "license": "MIT"
+}

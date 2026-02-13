@@ -1,0 +1,23 @@
+{
+  "name": "yukyu-excel-master",
+  "version": "1.0.0",
+  "description": "Maestro de Excel - Importación, validación, merge inteligente y debugging de archivos Excel",
+  "author": "Yukyu Pro Team",
+  "trigger": "manual",
+  "commands": {
+    "/excel-analyze": "Analizar estructura de archivo Excel antes de importar",
+    "/excel-validate": "Validar datos de Excel contra schema esperado",
+    "/excel-preview": "Preview de datos que serán importados",
+    "/excel-debug": "Debuggear problemas de importación",
+    "/excel-export": "Exportar datos a formato Excel con todos los períodos"
+  },
+  "hooks": [],
+  "dependencies": {
+    "services/mergeService": "Merge inteligente de datos",
+    "services/expirationService": "Recálculo de expiraciones",
+    "services/exportService": "Exportación a Excel",
+    "components/ExcelSync": "Componente de sincronización"
+  },
+  "tags": ["excel", "import", "export", "validation", "debugging", "sync"],
+  "license": "MIT"
+}

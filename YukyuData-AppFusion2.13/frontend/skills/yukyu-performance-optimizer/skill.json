@@ -1,0 +1,21 @@
+{
+  "name": "yukyu-performance-optimizer",
+  "version": "1.0.0",
+  "description": "Optimizador de rendimiento - Análisis, métricas y mejoras de performance para React + localStorage",
+  "author": "Yukyu Pro Team",
+  "trigger": "manual",
+  "commands": {
+    "/perf-analyze": "Analizar rendimiento actual de la aplicación",
+    "/perf-storage": "Analizar uso de localStorage y optimizar",
+    "/perf-components": "Analizar re-renders innecesarios de componentes",
+    "/perf-bundle": "Analizar tamaño del bundle y dependencias",
+    "/perf-optimize": "Aplicar optimizaciones automáticas"
+  },
+  "hooks": [],
+  "dependencies": {
+    "vite.config.ts": "Configuración de build",
+    "package.json": "Dependencias del proyecto"
+  },
+  "tags": ["performance", "optimization", "react", "localStorage", "bundle", "profiling"],
+  "license": "MIT"
+}

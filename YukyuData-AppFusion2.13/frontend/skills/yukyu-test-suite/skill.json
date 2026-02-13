@@ -1,0 +1,21 @@
+{
+  "name": "yukyu-test-suite",
+  "version": "1.0.0",
+  "description": "Suite de testing completa - Unit tests, integration tests, E2E scenarios y coverage analysis",
+  "author": "Yukyu Pro Team",
+  "trigger": "manual",
+  "commands": {
+    "/test-generate": "Generar tests automáticamente para servicios/componentes",
+    "/test-coverage": "Analizar cobertura de código actual",
+    "/test-scenarios": "Generar escenarios de prueba de negocio",
+    "/test-edge-cases": "Identificar y generar tests para casos edge",
+    "/test-regression": "Crear suite de regresión para bugs conocidos"
+  },
+  "hooks": [],
+  "dependencies": {
+    "services/*": "Todos los servicios para unit testing",
+    "components/*": "Todos los componentes para component testing"
+  },
+  "tags": ["testing", "vitest", "coverage", "unit-tests", "integration", "e2e"],
+  "license": "MIT"
+}
