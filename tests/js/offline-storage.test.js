@@ -777,7 +777,7 @@ describe('OfflineStorage Module', () => {
 
       expect(result.success).toBe(1);
       expect(result.failed).toBe(0);
-      expect(global.fetch).toHaveBeenCalledWith('/api/leave-requests', expect.any(Object));
+      expect(global.fetch).toHaveBeenCalledWith('/api/v1/leave-requests', expect.any(Object));
     });
 
     test('should not sync when offline', async () => {

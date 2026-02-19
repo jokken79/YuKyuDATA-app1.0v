@@ -98,6 +98,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "X-XSS-Protection": "1; mode=block",
             "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
             "Referrer-Policy": "strict-origin-when-cross-origin",
+            "Content-Security-Policy": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+            "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
         }
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
@@ -166,13 +168,13 @@ class AuthenticationLoggingMiddleware(BaseHTTPMiddleware):
         client_ip = request.client.host if request.client else "unknown"
 
         # Log auth attempts
-        if request.url.path == "/api/auth/login":
+        if request.url.path in ("/api/auth/login", "/api/v1/auth/login"):
             logger.info(f"AUTH_ATTEMPT login client_ip={client_ip}")
 
         response = await call_next(request)
 
         # Log auth success/failure
-        if request.url.path == "/api/auth/login":
+        if request.url.path in ("/api/auth/login", "/api/v1/auth/login"):
             if response.status_code == 200:
                 logger.info(f"AUTH_SUCCESS login client_ip={client_ip}")
             else:

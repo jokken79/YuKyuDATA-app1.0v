@@ -4,10 +4,9 @@ Endpoints de autenticacion, login, logout, refresh tokens
 Sistema de refresh tokens con persistencia en base de datos (v5.17)
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-from fastapi.security import HTTPAuthorizationCredentials
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from services.auth_service import auth_service, TokenPair
-from middleware.security import security, verify_token, get_current_user
+from middleware.security import get_current_user
 from middleware.rate_limiter import rate_limiter_strict
 from ..responses import success_response, error_response
 
@@ -22,6 +21,24 @@ from models import (
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+
+def _extract_bearer_or_cookie_token(request: Request) -> str | None:
+    """Extrae token desde Authorization Bearer o cookie HttpOnly."""
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.lower().startswith("bearer "):
+        return auth_header.split(" ", 1)[1].strip()
+
+    return request.cookies.get("access_token")
+
+
+
+
+def _is_secure_request(request: Request) -> bool:
+    """Detecta si la request original fue HTTPS (incluyendo proxy headers)."""
+    forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+    if forwarded_proto:
+        return forwarded_proto == "https"
+    return request.url.scheme == "https"
 
 def _get_client_info(request: Request) -> tuple:
     """
@@ -65,7 +82,7 @@ async def get_csrf_token():
 
 
 @router.post("/login", response_model=TokenPair, dependencies=[Depends(rate_limiter_strict)])
-async def login(credentials: LoginRequest, request: Request):
+async def login(credentials: LoginRequest, request: Request, response: Response):
     """
     Autenticar usuario y obtener tokens
 
@@ -96,11 +113,21 @@ async def login(credentials: LoginRequest, request: Request):
         ip_address=ip_address
     )
 
+    response.set_cookie(
+        key="access_token",
+        value=tokens.access_token,
+        httponly=True,
+        secure=_is_secure_request(request),
+        samesite="lax",
+        max_age=tokens.expires_in,
+        path="/",
+    )
+
     return tokens
 
 
 @router.post("/refresh", response_model=TokenPair, dependencies=[Depends(rate_limiter_strict)])
-async def refresh_token(request_body: RefreshRequest, request: Request):
+async def refresh_token(request_body: RefreshRequest, request: Request, response: Response):
     """
     Renovar access token usando refresh token
 
@@ -120,12 +147,23 @@ async def refresh_token(request_body: RefreshRequest, request: Request):
             user_agent=user_agent,
             ip_address=ip_address
         )
+
+        response.set_cookie(
+            key="access_token",
+            value=tokens.access_token,
+            httponly=True,
+            secure=_is_secure_request(request),
+            samesite="lax",
+            max_age=tokens.expires_in,
+            path="/",
+        )
+
         return tokens
 
     except HTTPException:
         raise
 
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No se pudo renovar el token"
@@ -154,7 +192,7 @@ async def revoke_refresh_token(request_body: RevokeRequest):
 
 
 @router.post("/logout", dependencies=[Depends(rate_limiter_strict)])
-async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def logout(request: Request, response: Response):
     """
     Cerrar sesion y revocar token
 
@@ -164,10 +202,12 @@ async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
 
     **Rate limit**: 30 requests/minuto
     """
-    token = credentials.credentials
+    token = _extract_bearer_or_cookie_token(request)
 
-    # Revocar access token
-    auth_service.revoke_token(token)
+    if token:
+        auth_service.revoke_token(token)
+
+    response.delete_cookie("access_token", path="/")
 
     return success_response(message="Sesion cerrada exitosamente")
 
@@ -217,14 +257,23 @@ async def get_user_sessions(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/verify")
-async def verify_token_endpoint(payload: dict = Depends(verify_token)):
+async def verify_token_endpoint(request: Request):
     """
-    Verificar validez de token actual
+    Verificar validez de token actual.
 
-    **Requiere autenticacion**
-
-    Retorna informacion del token si es valido
+    Requiere token en Authorization Bearer o cookie access_token.
     """
+    token = _extract_bearer_or_cookie_token(request)
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token no proporcionado",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = auth_service.verify_access_token(token)
+
     return success_response(
         data={
             "valid": True,

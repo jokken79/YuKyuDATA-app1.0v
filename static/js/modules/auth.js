@@ -1,29 +1,32 @@
 /**
  * YuKyu Authentication Module
- * Handles login, logout, and token management.
+ * Handles login/logout using secure HttpOnly cookie session.
  */
-import { Utils } from './utils.js';
-
 export const Auth = {
     token: null,
     user: null,
     config: {
-        apiBase: '/api/v1',
-        tokenKey: 'access_token'
+        apiBase: '/api/v1'
     },
-    uiCallback: null, // Callback to update UI state
+    uiCallback: null,
 
     init(uiCallback) {
         this.uiCallback = uiCallback;
-        // Check for saved token
-        const token = localStorage.getItem(this.config.tokenKey);
-        if (token) {
-            this.token = token;
-            this.updateState(true);
-        } else {
+        this.updateState(false);
+        this.checkSession();
+        this.bindEvents();
+    },
+
+    async checkSession() {
+        try {
+            const res = await fetch(`${this.config.apiBase}/auth/verify`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+            this.updateState(res.ok);
+        } catch (error) {
             this.updateState(false);
         }
-        this.bindEvents();
     },
 
     bindEvents() {
@@ -39,6 +42,36 @@ export const Auth = {
         }
     },
 
+    getCsrfToken() {
+        const metaToken = document.querySelector('meta[name="csrf-token"]');
+        if (metaToken) {
+            return metaToken.getAttribute('content');
+        }
+
+        const cookieValue = `; ${document.cookie}`;
+        const parts = cookieValue.split('; csrf-token=');
+        if (parts.length === 2) {
+            return parts.pop().split(';').shift();
+        }
+
+        return null;
+    },
+
+    getRequestHeaders(method = 'GET', headers = {}) {
+        const mergedHeaders = { ...headers };
+        const normalizedMethod = method.toUpperCase();
+        const isMutatingMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(normalizedMethod);
+
+        if (isMutatingMethod && !mergedHeaders['X-CSRF-Token']) {
+            const csrfToken = this.getCsrfToken();
+            if (csrfToken) {
+                mergedHeaders['X-CSRF-Token'] = csrfToken;
+            }
+        }
+
+        return mergedHeaders;
+    },
+
     async handleLogin(e) {
         e.preventDefault();
         const form = e.target;
@@ -47,7 +80,6 @@ export const Auth = {
         const btn = form.querySelector('button[type="submit"]');
         const errorEl = document.getElementById('login-error');
 
-        // Simple loading state
         if (btn) {
             btn.disabled = true;
             btn.innerHTML = '<span class="loading-spinner"></span> Logging in...';
@@ -55,29 +87,23 @@ export const Auth = {
         if (errorEl) errorEl.style.display = 'none';
 
         try {
+            const headers = this.getRequestHeaders('POST', { 'Content-Type': 'application/json' });
             const res = await fetch(`${this.config.apiBase}/auth/login`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                headers,
                 body: JSON.stringify({ username, password })
             });
 
             if (!res.ok) throw new Error('Invalid credentials');
 
-            const data = await res.json();
-            this.token = data.access_token;
-            localStorage.setItem(this.config.tokenKey, this.token);
-
             this.updateState(true);
 
-            // Close modal safely
             const modal = document.getElementById('login-modal');
             if (modal) modal.classList.remove('active');
 
             form.reset();
-
-            // Dispatch event for other modules
             window.dispatchEvent(new CustomEvent('auth:login-success'));
-
         } catch (err) {
             console.error(err);
             if (errorEl) {
@@ -92,10 +118,19 @@ export const Auth = {
         }
     },
 
-    logout() {
+    async logout() {
         this.token = null;
         this.user = null;
-        localStorage.removeItem(this.config.tokenKey);
+        try {
+            await fetch(`${this.config.apiBase}/auth/logout`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: this.getRequestHeaders('POST')
+            });
+        } catch (error) {
+            console.warn('Logout request failed:', error.message);
+        }
+
         this.updateState(false);
         window.dispatchEvent(new CustomEvent('auth:logout'));
     },
@@ -107,30 +142,23 @@ export const Auth = {
         if (input) input.focus();
     },
 
-    // Wrapper for authenticated fetch
     async fetchWithAuth(url, options = {}) {
-        if (!this.token) {
+        const method = options.method || 'GET';
+        const headers = this.getRequestHeaders(method, options.headers || {});
+
+        const res = await fetch(url, {
+            ...options,
+            method,
+            headers,
+            credentials: 'include'
+        });
+
+        if (res.status === 401) {
+            await this.logout();
             this.showLogin();
-            throw new Error('Authentication required');
+            throw new Error('Session expired');
         }
 
-        const headers = {
-            ...options.headers,
-            'Authorization': `Bearer ${this.token}`
-        };
-
-        try {
-            const res = await fetch(url, { ...options, headers });
-
-            if (res.status === 401) {
-                this.logout();
-                this.showLogin();
-                throw new Error('Session expired');
-            }
-
-            return res;
-        } catch (error) {
-            throw error;
-        }
+        return res;
     }
 };

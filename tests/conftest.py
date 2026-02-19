@@ -36,7 +36,8 @@ def _reset_all_rate_limiters():
                 rate_limiter.requests.clear()
             else:
                 rate_limiter.requests = defaultdict(list)
-    except (ImportError, AttributeError):
+    except Exception:
+        # Importing main may fail in isolated unit tests; ignore and continue
         pass
 
     try:
