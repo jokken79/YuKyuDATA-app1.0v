@@ -31,6 +31,15 @@ def _extract_bearer_or_cookie_token(request: Request) -> str | None:
     return request.cookies.get("access_token")
 
 
+
+
+def _is_secure_request(request: Request) -> bool:
+    """Detecta si la request original fue HTTPS (incluyendo proxy headers)."""
+    forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+    if forwarded_proto:
+        return forwarded_proto == "https"
+    return request.url.scheme == "https"
+
 def _get_client_info(request: Request) -> tuple:
     """
     Extrae informacion del cliente de la request.
@@ -108,7 +117,7 @@ async def login(credentials: LoginRequest, request: Request, response: Response)
         key="access_token",
         value=tokens.access_token,
         httponly=True,
-        secure=request.url.scheme == "https",
+        secure=_is_secure_request(request),
         samesite="lax",
         max_age=tokens.expires_in,
         path="/",
@@ -143,7 +152,7 @@ async def refresh_token(request_body: RefreshRequest, request: Request, response
             key="access_token",
             value=tokens.access_token,
             httponly=True,
-            secure=request.url.scheme == "https",
+            secure=_is_secure_request(request),
             samesite="lax",
             max_age=tokens.expires_in,
             path="/",

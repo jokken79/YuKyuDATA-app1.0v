@@ -21,6 +21,7 @@ Se continuó el plan tras la Fase 1, avanzando principalmente en seguridad front
 - ✅ `static/js/modules/auth.js` agrega `X-CSRF-Token` automáticamente en métodos mutantes (POST/PUT/PATCH/DELETE).
 - ✅ Middleware backend actualizado con `Content-Security-Policy` y `Permissions-Policy` por defecto.
 - ✅ `routes/v1/auth.py` actualizado para login/verify/logout con soporte de token en cookie HttpOnly.
+- ✅ Detección de HTTPS detrás de proxy (`x-forwarded-proto`) para marcar cookie `Secure` correctamente.
 - ⚠️ Pendiente: extender CSRF end-to-end al resto de módulos frontend y validar flujo completo en E2E.
 
 ## Fase 5 - Lazy Loading

@@ -88,3 +88,48 @@ def test_refresh_sets_access_token_cookie(monkeypatch):
 
     assert response.status_code == 200
     assert response.cookies.get('access_token') == 'new-access-123'
+
+
+def test_login_sets_secure_cookie_when_forwarded_https(monkeypatch):
+    client = _build_client(monkeypatch)
+
+    class _TokenPair:
+        access_token = 'access-secure'
+        refresh_token = 'refresh-secure'
+        token_type = 'bearer'
+        expires_in = 900
+
+    monkeypatch.setattr('routes.v1.auth.auth_service.authenticate_user', lambda u, p: {'username': u})
+    monkeypatch.setattr('routes.v1.auth.auth_service.create_token_pair', lambda *args, **kwargs: _TokenPair())
+
+    response = client.post(
+        '/api/v1/auth/login',
+        json={'username': 'admin', 'password': 'admin123456'},
+        headers={'x-forwarded-proto': 'https'}
+    )
+
+    assert response.status_code == 200
+    set_cookie = response.headers.get('set-cookie', '').lower()
+    assert 'secure' in set_cookie
+
+
+def test_refresh_sets_secure_cookie_when_forwarded_https(monkeypatch):
+    client = _build_client(monkeypatch)
+
+    class _TokenPair:
+        access_token = 'refresh-secure-token'
+        refresh_token = 'refresh-secure'
+        token_type = 'bearer'
+        expires_in = 900
+
+    monkeypatch.setattr('routes.v1.auth.auth_service.refresh_access_token', lambda *args, **kwargs: _TokenPair())
+
+    response = client.post(
+        '/api/v1/auth/refresh',
+        json={'refresh_token': 'old-refresh'},
+        headers={'x-forwarded-proto': 'https'}
+    )
+
+    assert response.status_code == 200
+    set_cookie = response.headers.get('set-cookie', '').lower()
+    assert 'secure' in set_cookie
