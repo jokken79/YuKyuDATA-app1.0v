@@ -54,10 +54,10 @@ npm install --save-dev jest @testing-library/dom @testing-library/jest-dom
 ```
 
 **Tareas:**
-- [ ] Instalar dependencias
-- [ ] Configurar jest.config.js
-- [ ] Crear setup.js con mocks globales
-- [ ] Verificar que tests pasen
+- [x] Instalar dependencias
+- [x] Configurar jest.config.js
+- [x] Crear setup.js con mocks globales
+- [x] Verificar que tests pasen (sin cobertura estricta)
 
 **Validación:**
 ```bash
@@ -65,22 +65,36 @@ npm test -- --coverage
 ```
 
 #### 1.2 Crear Tests Unitarios
-- [ ] Completar auth.test.js (20 tests)
-- [ ] Completar components.test.js (18 tests)
-- [ ] Completar responsive.test.js (10 tests)
-- [ ] Completar theme.test.js (12 tests)
-- [ ] Completar accessibility.test.js (25 tests)
+- [x] Completar auth.test.js (20 tests)
+- [x] Completar components.test.js (18 tests)
+- [x] Completar responsive.test.js (10 tests)
+- [x] Completar theme.test.js (12 tests)
+- [x] Completar accessibility.test.js (25 tests)
 
 **Meta:** 80%+ coverage de código frontend crítico
 
+
+
+**Estado Fase 1 (actualizado):**
+- ✅ Suite Jest ejecuta correctamente con `npm test -- --runInBand --no-coverage` (205/205 tests).
+- ✅ `npm run test:coverage` ejecuta correctamente con cobertura y thresholds actuales en verde.
+- ✅ CI/CD ya incluye ejecución de tests en GitHub Actions y subida a Codecov.
+
 #### 1.3 Configurar CI/CD
-- [ ] Agregar test step en GitHub Actions
-- [ ] Configurar Codecov para coverage tracking
-- [ ] Reporte automático de coverage
+- [x] Agregar test step en GitHub Actions
+- [x] Configurar Codecov para coverage tracking
+- [x] Reporte automático de coverage
 
 ---
 
 ### FASE 2: SEGURIDAD (ALTA) - 3-5 DÍAS
+
+
+**Estado Fase 2 (actualizado):**
+- ✅ Frontend auth migrado a flujo de cookie HttpOnly en `static/js/modules/auth.js` (login/logout/verify con `credentials: include`).
+- ✅ Tests unitarios de `static/js/modules/auth.js` agregados para validar login/logout/verify con cookies.
+- ✅ Wrapper y utilidades de seguridad disponibles en `static/js/security-improvements.js`.
+- ⚠️ Auth backend+frontend en modo cookie/CSRF para rutas principales; falta cierre CSRF end-to-end en todos los módulos/endpoints y validación integral.
 
 #### 2.1 Migrar JWT a HttpOnly Cookies
 
@@ -97,12 +111,15 @@ response.set_cookie(
 )
 ```
 
-**Frontend Changes:**
-- [ ] Reemplazar localStorage access
-- [ ] Usar `credentials: 'include'` en fetch
-- [ ] Implementar `static/js/security-improvements.js`
+**Frontend + Backend Changes:**
+- [x] Login/verify/logout con soporte de cookie HttpOnly en backend (`routes/v1/auth.py`)
+- [x] Reemplazar localStorage access (módulo auth migrado a cookie-based session)
+- [x] Usar `credentials: 'include'` en fetch
+- [x] Implementar `static/js/security-improvements.js`
 
 #### 2.2 Mejorar CSP Headers
+- [x] Configurar CSP header base en middleware global
+- [x] Agregar Permissions-Policy restrictiva (camera/microphone/geolocation)
 
 **Backend:**
 ```python
@@ -114,7 +131,7 @@ response.set_cookie(
 #### 2.3 Agregar CSRF Protection
 - [ ] Generar CSRF tokens
 - [ ] Validar en POST/PUT/DELETE
-- [ ] Implementar en frontend
+- [x] Implementar en frontend (Auth agrega `X-CSRF-Token` en requests mutantes)
 
 ---
 
@@ -169,8 +186,8 @@ response.set_cookie(
 <img data-src="/images/photo.jpg" alt="Descripción" />
 ```
 
-- [ ] Implementar IntersectionObserver
-- [ ] Usar `static/js/lazy-loading.js`
+- [x] Implementar IntersectionObserver
+- [x] Usar `static/js/lazy-loading.js`
 - [ ] Soportar navegadores antiguos
 
 #### 5.2 Lazy Load de Componentes Pesados
@@ -182,18 +199,24 @@ response.set_cookie(
 
 ### FASE 6: DOCUMENTACIÓN (MEDIA) - 2-3 DÍAS
 
+
+**Estado Fase 6 (actualizado):**
+- ✅ Storybook configurado con `@storybook/addon-a11y` y stories de componentes base.
+- ✅ `static/design-tokens.json` disponible como base de documentación de tokens.
+- ⚠️ Falta consolidar guía de desarrollo única en README/docs.
+
 #### 6.1 Setup Storybook
 ```bash
 npm install --save-dev @storybook/html @storybook/addon-a11y @storybook/addon-backgrounds
 npx storybook init
 ```
 
-- [ ] Crear stories para componentes
-- [ ] Documentar Button, Form, Card, Modal
-- [ ] Addon de accesibilidad
+- [x] Crear stories para componentes
+- [x] Documentar Button, Form, Card, Modal
+- [x] Addon de accesibilidad
 
 #### 6.2 Design Tokens Documentation
-- [ ] Crear design-tokens.json
+- [x] Crear design-tokens.json
 - [ ] Documentar en README
 - [ ] Figma/Zeplin export
 
@@ -207,13 +230,19 @@ npx storybook init
 
 ### FASE 7: LIGHTHOUSE CI (BAJA) - 1-2 DÍAS
 
+
+**Estado Fase 7 (actualizado):**
+- ✅ `lighthouserc.json` presente para configuración local de Lighthouse.
+- ✅ Pipeline de performance ya ejecuta Lighthouse en GitHub Actions (`performance-test.yml`).
+- ⚠️ Pendiente: baselines y objetivos de score versionados por entorno.
+
 #### 7.1 Setup y Configuración
 ```bash
 npm install --save-dev @lhci/cli@latest
 ```
 
-- [ ] Configurar `lighthouserc.json`
-- [ ] Agregar step en CI/CD
+- [x] Configurar `lighthouserc.json`
+- [x] Agregar step en CI/CD
 - [ ] Establecer baselines
 
 #### 7.2 Monitoreo Continuo
@@ -243,7 +272,7 @@ npm install --save-dev @lhci/cli@latest
 ## 🚀 CHECKLIST DE IMPLEMENTACIÓN
 
 ### Semana 1
-- [ ] Instalar dependencias testing
+- [x] Instalar dependencias testing
 - [ ] Crear 55+ tests
 - [ ] Setup Jest CI/CD
 - [ ] Implementar security-improvements.js
